@@ -5,9 +5,9 @@
 	"type": "module",
 	"scripts": {
 		"dev": "vite",
-		"build": "tsc -p tsconfig.json --noEmit && vite build",
+		"build": "tsc -b && vite build",
 		"preview": "vite preview",
-		"typecheck": "tsc -p tsconfig.json --noEmit",
+		"typecheck": "tsc -b",
 		"test": "vitest run"
 	},
 	"dependencies": {

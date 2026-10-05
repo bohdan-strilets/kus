@@ -1,0 +1,19 @@
+{
+	"extends": "../../tsconfig.base.json",
+	"compilerOptions": {
+		"tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
+		"lib": ["ES2023", "DOM", "DOM.Iterable"],
+		"module": "esnext",
+		"moduleResolution": "bundler",
+		"customConditions": ["source"],
+		"jsx": "react-jsx",
+		// browser code only: no Node globals like `process`
+		"types": ["vite/client"],
+		"noEmit": true,
+		"verbatimModuleSyntax": true,
+		"paths": {
+			"@/*": ["./src/*"]
+		}
+	},
+	"include": ["src"]
+}

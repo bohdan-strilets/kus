@@ -5,6 +5,42 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 import globals from 'globals'
 import tseslint from 'typescript-eslint'
 
+// Feature-Sliced Design layers, top to bottom (CLAUDE.md §4). A layer may import only from layers below it.
+const FSD_LAYERS = ['app', 'pages', 'widgets', 'features', 'entities', 'shared']
+
+const FSD_COMMON_PATTERNS = [
+	{
+		regex: '^@/((pages|widgets|features|entities)/[^/]+|shared/[^/]+)/.+',
+		message:
+			'Import a slice or shared segment through its public API (index.ts), not its internals.',
+	},
+	{
+		regex: '^(\\.\\./)+(app|pages|widgets|features|entities|shared)(/|$)',
+		message: 'Use the @/ alias for imports across layers.',
+	},
+]
+
+const createFsdBoundaries = (layer, index) => {
+	const upperLayers = FSD_LAYERS.slice(0, index)
+	const patterns = [...FSD_COMMON_PATTERNS]
+	if (upperLayers.length > 0) {
+		patterns.push({
+			regex: `^@/(${upperLayers.join('|')})(/|$)`,
+			message: `FSD: "${layer}" must not import from upper layers (${upperLayers.join(', ')}).`,
+		})
+	}
+	if (layer === 'features') {
+		patterns.push({
+			regex: '^@/features(/|$)',
+			message: 'No cross-feature imports (CLAUDE.md §4): move shared logic to entities or shared.',
+		})
+	}
+	return {
+		files: [`apps/web/src/${layer}/**/*.{ts,tsx}`],
+		rules: { 'no-restricted-imports': ['error', { patterns }] },
+	}
+}
+
 export default tseslint.config(
 	{
 		ignores: ['**/dist/**', '**/coverage/**', '**/node_modules/**', 'apps/api/src/generated/**'],
@@ -66,5 +102,6 @@ export default tseslint.config(
 			'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
 		},
 	},
+	...FSD_LAYERS.map(createFsdBoundaries),
 	prettier,
 )

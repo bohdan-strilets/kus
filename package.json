@@ -19,7 +19,10 @@
 		"db:up": "docker compose up -d",
 		"db:down": "docker compose stop",
 		"db:logs": "docker compose logs -f db",
-		"db:reset": "docker compose down -v && docker compose up -d"
+		"db:reset": "docker compose down -v && docker compose up -d",
+		"db:migrate": "pnpm --filter @kus/api prisma:migrate",
+		"db:seed": "pnpm --filter @kus/api prisma:seed",
+		"db:studio": "pnpm --filter @kus/api prisma:studio"
 	},
 	"devDependencies": {
 		"@eslint/js": "^10.0.1",

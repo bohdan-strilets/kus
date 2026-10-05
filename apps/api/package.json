@@ -9,7 +9,10 @@
 		"typecheck": "tsc -p tsconfig.json --noEmit",
 		"test": "vitest run",
 		"prisma": "prisma",
-		"prisma:generate": "prisma generate"
+		"prisma:generate": "prisma generate",
+		"prisma:migrate": "prisma migrate dev",
+		"prisma:seed": "prisma db seed",
+		"prisma:studio": "prisma studio"
 	},
 	"dependencies": {
 		"@kus/shared": "workspace:*",
@@ -36,6 +39,7 @@
 		"dotenv": "^18.0.5",
 		"prisma": "^7.10.0",
 		"supertest": "^7.3.1",
+		"tsx": "^4.23.15",
 		"typescript": "~6.0.3",
 		"unplugin-swc": "^2.0.0",
 		"vitest": "^5.0.3"

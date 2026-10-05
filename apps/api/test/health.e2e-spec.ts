@@ -1,27 +1,16 @@
 import type { INestApplication } from '@nestjs/common'
-import { Test } from '@nestjs/testing'
 import { createDataResponseSchema, healthResponseSchema } from '@kus/shared'
 import request from 'supertest'
 import type { App } from 'supertest/types'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
-import { AppModule } from '../src/app.module'
-import { setupApp } from '../src/app.setup'
-import { PrismaService } from '../src/prisma'
+import { createTestApp } from './create-test-app'
 
 describe('GET /api/v1/health', () => {
 	let app: INestApplication<App>
 
 	beforeAll(async () => {
-		const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
-			// health doesn't touch the DB; this keeps the test runnable without Postgres
-			.overrideProvider(PrismaService)
-			.useValue({})
-			.compile()
-
-		app = moduleRef.createNestApplication()
-		setupApp(app)
-		await app.init()
+		app = await createTestApp()
 	})
 
 	afterAll(async () => {

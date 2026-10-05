@@ -1,1 +1,5 @@
-export { type DataEnvelope, ResponseEnvelopeInterceptor } from './response-envelope.interceptor'
+export {
+	type DataEnvelope,
+	type PaginatedEnvelope,
+	ResponseEnvelopeInterceptor,
+} from './response-envelope.interceptor'

@@ -13,6 +13,10 @@ export const paginationMetaSchema = z.object({
 
 export type PaginationMeta = z.infer<typeof paginationMetaSchema>
 
+/** List endpoints: `{ data: [...], meta: { total, page, limit, totalPages } }`. */
+export const createPaginatedResponseSchema = <T extends z.ZodType>(itemSchema: T) =>
+	z.object({ data: z.array(itemSchema), meta: paginationMetaSchema })
+
 export const apiErrorResponseSchema = z.object({
 	statusCode: z.number().int(),
 	errorCode: z.string(),

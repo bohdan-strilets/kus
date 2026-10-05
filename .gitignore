@@ -1,0 +1,46 @@
+# dependencies
+node_modules/
+
+# builds
+dist/
+build/
+coverage/
+*.tsbuildinfo
+
+# generated
+apps/api/src/generated/
+
+# env — secrets never go into the repo
+.env*
+!.env.example
+
+# private data and eval results
+results/
+data/private/
+
+# tool output
+.playwright-mcp/
+
+# Claude Code — personal / local
+.claude/settings.local.json
+CLAUDE.local.md
+.claude/worktrees/
+
+# MCP config can hold API keys
+.mcp.json
+
+# deploy CLIs
+.vercel/
+.railway/
+
+# logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# editors / OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json

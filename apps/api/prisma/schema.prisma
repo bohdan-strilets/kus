@@ -1,12 +1,667 @@
-// Domain models (User, FoodEntry, …) are added in roadmap stage 2.
+// Full domain schema; modules are implemented per roadmap. Model overview: docs/database.md.
 // Before adding a field or model, check this file — not the docs.
+// Enum values are mirrored as zod enums in packages/shared/src/schemas/enums.ts — keep both in sync.
 
 generator client {
-  provider     = "prisma-client"
-  output       = "../src/generated/prisma"
-  moduleFormat = "cjs"
+  provider        = "prisma-client"
+  output          = "../src/generated/prisma"
+  moduleFormat    = "cjs"
+  previewFeatures = ["partialIndexes"]
 }
 
 datasource db {
   provider = "postgresql"
+}
+
+// ───────────────────────── Enums ─────────────────────────
+
+// Lowercase on purpose: values are i18n language codes used as-is by the web app
+enum Locale {
+  uk
+  pl
+  en
+
+  @@map("locale")
+}
+
+enum VerificationTokenType {
+  EMAIL_VERIFY
+  PASSWORD_RESET
+
+  @@map("verification_token_type")
+}
+
+enum Sex {
+  FEMALE
+  MALE
+
+  @@map("sex")
+}
+
+enum ActivityLevel {
+  SEDENTARY
+  LIGHT
+  MODERATE
+  ACTIVE
+  VERY_ACTIVE
+
+  @@map("activity_level")
+}
+
+enum GoalType {
+  LOSE
+  MAINTAIN
+  GAIN
+
+  @@map("goal_type")
+}
+
+enum MessageRole {
+  USER
+  ASSISTANT
+
+  @@map("message_role")
+}
+
+enum MessageStatus {
+  PENDING
+  STREAMING
+  COMPLETED
+  FAILED
+
+  @@map("message_status")
+}
+
+enum AttachmentStatus {
+  PENDING
+  PROCESSED
+  FAILED
+
+  @@map("attachment_status")
+}
+
+enum AiRunPurpose {
+  PARSE_FOOD
+  CHAT_REPLY
+  SUGGEST_MEAL
+  SUMMARY
+
+  @@map("ai_run_purpose")
+}
+
+enum AiRunStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+
+  @@map("ai_run_status")
+}
+
+enum ToolCallStatus {
+  SUCCEEDED
+  REJECTED
+  FAILED
+
+  @@map("tool_call_status")
+}
+
+enum ClarificationStatus {
+  OPEN
+  ANSWERED
+  DISMISSED
+
+  @@map("clarification_status")
+}
+
+enum MealType {
+  BREAKFAST
+  LUNCH
+  DINNER
+  SNACK
+  OTHER
+
+  @@map("meal_type")
+}
+
+enum FoodSource {
+  LABEL
+  MEMORY
+  REFERENCE
+  ESTIMATE
+  MANUAL
+
+  @@map("food_source")
+}
+
+enum MyFoodSource {
+  LABEL
+  MANUAL
+  AI
+
+  @@map("my_food_source")
+}
+
+enum FactCategory {
+  PREFERENCE
+  HABIT
+  RESTRICTION
+  OTHER
+
+  @@map("fact_category")
+}
+
+enum FactStatus {
+  PROPOSED
+  CONFIRMED
+  REJECTED
+
+  @@map("fact_status")
+}
+
+enum ExerciseSource {
+  MANUAL
+  AI_ESTIMATE
+  DEVICE
+
+  @@map("exercise_source")
+}
+
+// ───────────────────────── User & access ─────────────────────────
+
+model User {
+  id              String    @id @default(uuid(7)) @db.Uuid
+  // stored lowercased by the backend
+  email           String    @unique
+  name            String?
+  locale          Locale    @default(uk)
+  // IANA zone; defines the user's "day" for localDate
+  timezone        String    @default("Europe/Warsaw")
+  emailVerifiedAt DateTime? @map("email_verified_at") @db.Timestamptz
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  credentials        AuthCredentials?
+  sessions           Session[]
+  verificationTokens VerificationToken[]
+  profile            UserProfile?
+  goals              UserGoal[]
+  weightEntries      WeightEntry[]
+  messages           Message[]
+  aiRuns             AiRun[]
+  clarifications     Clarification[]
+  meals              Meal[]
+  foodEntries        FoodEntry[]
+  myFoods            MyFood[]
+  recipes            Recipe[]
+  corrections        Correction[]
+  facts              UserFact[]
+  dailyUsage         DailyUsage[]
+  exerciseEntries    ExerciseEntry[]
+
+  @@map("users")
+}
+
+model AuthCredentials {
+  userId              String    @id @map("user_id") @db.Uuid
+  passwordHash        String    @map("password_hash")
+  failedLoginAttempts Int       @default(0) @map("failed_login_attempts")
+  lockedUntil         DateTime? @map("locked_until") @db.Timestamptz
+  passwordChangedAt   DateTime  @default(now()) @map("password_changed_at") @db.Timestamptz
+  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt           DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("auth_credentials")
+}
+
+model Session {
+  id               String    @id @default(uuid(7)) @db.Uuid
+  userId           String    @map("user_id") @db.Uuid
+  refreshTokenHash String    @unique @map("refresh_token_hash")
+  // every rotation creates a new row in the same family; reuse of a used token revokes the whole family
+  tokenFamily      String    @map("token_family") @db.Uuid
+  expiresAt        DateTime  @map("expires_at") @db.Timestamptz
+  usedAt           DateTime? @map("used_at") @db.Timestamptz
+  revokedAt        DateTime? @map("revoked_at") @db.Timestamptz
+  userAgent        String?   @map("user_agent")
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tokenFamily])
+  @@index([userId, expiresAt])
+  @@map("sessions")
+}
+
+model VerificationToken {
+  id        String                @id @default(uuid(7)) @db.Uuid
+  userId    String                @map("user_id") @db.Uuid
+  type      VerificationTokenType
+  tokenHash String                @unique @map("token_hash")
+  expiresAt DateTime              @map("expires_at") @db.Timestamptz
+  usedAt    DateTime?             @map("used_at") @db.Timestamptz
+  createdAt DateTime              @default(now()) @map("created_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type])
+  @@map("verification_tokens")
+}
+
+// ───────────────────────── Profile & goals ─────────────────────────
+
+model UserProfile {
+  userId        String         @id @map("user_id") @db.Uuid
+  heightCm      Float?         @map("height_cm")
+  birthYear     Int?           @map("birth_year")
+  sex           Sex?
+  activityLevel ActivityLevel? @map("activity_level")
+  createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime       @updatedAt @map("updated_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_profiles")
+}
+
+// Goal history: stats for a past day use the goal with the latest validFrom <= that day
+model UserGoal {
+  id             String   @id @default(uuid(7)) @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  type           GoalType
+  targetWeightKg Float?   @map("target_weight_kg")
+  dailyKcal      Float    @map("daily_kcal")
+  proteinG       Float    @map("protein_g")
+  fatG           Float    @map("fat_g")
+  carbsG         Float    @map("carbs_g")
+  validFrom      DateTime @map("valid_from") @db.Date
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, validFrom])
+  @@map("user_goals")
+}
+
+model WeightEntry {
+  id         String   @id @default(uuid(7)) @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  weightKg   Float    @map("weight_kg")
+  measuredAt DateTime @map("measured_at") @db.Timestamptz
+  localDate  DateTime @map("local_date") @db.Date
+  note       String?
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, localDate])
+  @@map("weight_entries")
+}
+
+// ───────────────────────── Chat & AI ─────────────────────────
+
+// One continuous chat per user, so there is no Conversation model
+model Message {
+  id              String        @id @default(uuid(7)) @db.Uuid
+  userId          String        @map("user_id") @db.Uuid
+  role            MessageRole
+  // null for a photo-only message
+  content         String?
+  status          MessageStatus
+  // set by the client for idempotency; assistant messages have none (NULLs don't collide in the unique index)
+  clientMessageId String?       @map("client_message_id")
+  // assistant reply → user message it answers
+  replyToId       String?       @map("reply_to_id") @db.Uuid
+  createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime      @updatedAt @map("updated_at") @db.Timestamptz
+
+  user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  replyTo            Message?            @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies            Message[]           @relation("MessageReplies")
+  attachments        MessageAttachment[]
+  aiRuns             AiRun[]
+  clarifications     Clarification[]     @relation("ClarificationQuestion")
+  clarificationReply Clarification[]     @relation("ClarificationAnswer")
+  meals              Meal[]
+  facts              UserFact[]
+  exerciseEntries    ExerciseEntry[]
+
+  @@unique([userId, clientMessageId])
+  @@index([userId, createdAt])
+  @@index([replyToId])
+  @@map("messages")
+}
+
+model MessageAttachment {
+  id         String           @id @default(uuid(7)) @db.Uuid
+  messageId  String           @map("message_id") @db.Uuid
+  mimeType   String           @map("mime_type")
+  width      Int
+  height     Int
+  sizeBytes  Int              @map("size_bytes")
+  status     AttachmentStatus
+  // originals are not stored in v0.1
+  storageKey String?          @map("storage_key")
+  createdAt  DateTime         @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt  DateTime         @updatedAt @map("updated_at") @db.Timestamptz
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@index([messageId])
+  @@map("message_attachments")
+}
+
+model AiRun {
+  id           String       @id @default(uuid(7)) @db.Uuid
+  userId       String       @map("user_id") @db.Uuid
+  // optional: not every model call belongs to a message; SetNull keeps cost accounting
+  messageId    String?      @map("message_id") @db.Uuid
+  purpose      AiRunPurpose
+  model        String
+  inputTokens  Int          @default(0) @map("input_tokens")
+  outputTokens Int          @default(0) @map("output_tokens")
+  costUsd      Decimal      @default(0) @map("cost_usd") @db.Decimal(12, 8)
+  durationMs   Int?         @map("duration_ms")
+  status       AiRunStatus
+  errorCode    String?      @map("error_code")
+  createdAt    DateTime     @default(now()) @map("created_at") @db.Timestamptz
+
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  message   Message?     @relation(fields: [messageId], references: [id], onDelete: SetNull)
+  toolCalls AiToolCall[]
+
+  @@index([userId, createdAt])
+  @@index([messageId])
+  @@map("ai_runs")
+}
+
+model AiToolCall {
+  id        String         @id @default(uuid(7)) @db.Uuid
+  aiRunId   String         @map("ai_run_id") @db.Uuid
+  // String, not enum: unknown tool names from the model must still be logged for prompt debugging
+  name      String
+  input     Json
+  result    Json?
+  status    ToolCallStatus
+  createdAt DateTime       @default(now()) @map("created_at") @db.Timestamptz
+
+  aiRun AiRun @relation(fields: [aiRunId], references: [id], onDelete: Cascade)
+
+  @@index([aiRunId])
+  @@map("ai_tool_calls")
+}
+
+model Clarification {
+  id              String              @id @default(uuid(7)) @db.Uuid
+  userId          String              @map("user_id") @db.Uuid
+  // assistant message that asked the question
+  messageId       String              @map("message_id") @db.Uuid
+  answerMessageId String?             @map("answer_message_id") @db.Uuid
+  question        String
+  options         Json
+  impactKcal      Float?              @map("impact_kcal")
+  status          ClarificationStatus @default(OPEN)
+  answer          String?
+  answeredAt      DateTime?           @map("answered_at") @db.Timestamptz
+  createdAt       DateTime            @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime            @updatedAt @map("updated_at") @db.Timestamptz
+
+  user          User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  message       Message              @relation("ClarificationQuestion", fields: [messageId], references: [id], onDelete: Cascade)
+  answerMessage Message?             @relation("ClarificationAnswer", fields: [answerMessageId], references: [id], onDelete: SetNull)
+  entries       ClarificationEntry[]
+
+  @@index([userId, status])
+  @@index([messageId])
+  @@index([answerMessageId])
+  @@map("clarifications")
+}
+
+model ClarificationEntry {
+  clarificationId String @map("clarification_id") @db.Uuid
+  foodEntryId     String @map("food_entry_id") @db.Uuid
+
+  clarification Clarification @relation(fields: [clarificationId], references: [id], onDelete: Cascade)
+  foodEntry     FoodEntry     @relation(fields: [foodEntryId], references: [id], onDelete: Cascade)
+
+  @@id([clarificationId, foodEntryId])
+  @@index([foodEntryId])
+  @@map("clarification_entries")
+}
+
+// ───────────────────────── Food ─────────────────────────
+
+// One active meal per (user, localDate, type): new entries join the existing meal instead of creating a duplicate.
+// Enforced by a partial unique so parallel requests can't race; OTHER may repeat within a day.
+model Meal {
+  id              String    @id @default(uuid(7)) @db.Uuid
+  userId          String    @map("user_id") @db.Uuid
+  type            MealType
+  eatenAt         DateTime  @map("eaten_at") @db.Timestamptz
+  localDate       DateTime  @map("local_date") @db.Date
+  sourceMessageId String?   @map("source_message_id") @db.Uuid
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt       DateTime? @map("deleted_at") @db.Timestamptz
+
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sourceMessage Message?    @relation(fields: [sourceMessageId], references: [id], onDelete: SetNull)
+  entries       FoodEntry[]
+
+  @@unique([userId, localDate, type], where: raw("deleted_at IS NULL AND type <> 'OTHER'"))
+  // the partial unique skips OTHER and deleted rows, so day queries need a full index too
+  @@index([userId, localDate, type])
+  @@index([sourceMessageId])
+  @@map("meals")
+}
+
+// Nutrition values are a snapshot: editing MyFood/Recipe later never changes past days
+model FoodEntry {
+  id         String     @id @default(uuid(7)) @db.Uuid
+  userId     String     @map("user_id") @db.Uuid
+  mealId     String     @map("meal_id") @db.Uuid
+  name       String
+  grams      Float
+  quantity   Float?
+  kcal       Float
+  proteinG   Float      @map("protein_g")
+  fatG       Float      @map("fat_g")
+  carbsG     Float      @map("carbs_g")
+  fiberG     Float?     @map("fiber_g")
+  source     FoodSource
+  confidence Float
+  assumption String?
+  myFoodId   String?    @map("my_food_id") @db.Uuid
+  recipeId   String?    @map("recipe_id") @db.Uuid
+  isEdited   Boolean    @default(false) @map("is_edited")
+  createdAt  DateTime   @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt  DateTime   @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt  DateTime?  @map("deleted_at") @db.Timestamptz
+
+  user           User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  meal           Meal                 @relation(fields: [mealId], references: [id], onDelete: Cascade)
+  myFood         MyFood?              @relation(fields: [myFoodId], references: [id], onDelete: SetNull)
+  recipe         Recipe?              @relation(fields: [recipeId], references: [id], onDelete: SetNull)
+  clarifications ClarificationEntry[]
+  corrections    Correction[]
+
+  @@index([mealId])
+  @@index([userId, createdAt])
+  @@index([myFoodId])
+  @@index([recipeId])
+  @@map("food_entries")
+}
+
+// Values are per 100 g only; per-piece label values are converted via pieceGrams by the backend
+model MyFood {
+  id             String       @id @default(uuid(7)) @db.Uuid
+  userId         String       @map("user_id") @db.Uuid
+  name           String
+  // lowercased, trimmed, single spaces — computed by the backend; used for uniqueness and lookup
+  nameNormalized String       @map("name_normalized")
+  // stored normalized the same way as nameNormalized
+  aliases        String[]     @default([])
+  brand          String?
+  barcode        String?
+  kcalPer100g    Float        @map("kcal_per_100g")
+  proteinPer100g Float        @map("protein_per_100g")
+  fatPer100g     Float        @map("fat_per_100g")
+  carbsPer100g   Float        @map("carbs_per_100g")
+  fiberPer100g   Float?       @map("fiber_per_100g")
+  pieceGrams     Float?       @map("piece_grams")
+  defaultGrams   Float?       @map("default_grams")
+  source         MyFoodSource
+  usageCount     Int          @default(0) @map("usage_count")
+  lastUsedAt     DateTime?    @map("last_used_at") @db.Timestamptz
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt      DateTime?    @map("deleted_at") @db.Timestamptz
+
+  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  foodEntries       FoodEntry[]
+  recipeIngredients RecipeIngredient[]
+  corrections       Correction[]
+
+  // partial: a soft-deleted product doesn't block creating a new one with the same name
+  @@unique([userId, nameNormalized], where: raw("deleted_at IS NULL"))
+  @@index([aliases], type: Gin)
+  @@index([userId, lastUsedAt])
+  @@index([userId, barcode])
+  @@map("my_foods")
+}
+
+// Totals are computed from ingredients; cookedGrams turns them into per-100 g of the finished dish
+model Recipe {
+  id             String    @id @default(uuid(7)) @db.Uuid
+  userId         String    @map("user_id") @db.Uuid
+  name           String
+  nameNormalized String    @map("name_normalized")
+  aliases        String[]  @default([])
+  cookedGrams    Float?    @map("cooked_grams")
+  defaultGrams   Float?    @map("default_grams")
+  usageCount     Int       @default(0) @map("usage_count")
+  lastUsedAt     DateTime? @map("last_used_at") @db.Timestamptz
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt      DateTime? @map("deleted_at") @db.Timestamptz
+
+  user        User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ingredients RecipeIngredient[]
+  foodEntries FoodEntry[]
+  corrections Correction[]
+
+  @@unique([userId, nameNormalized], where: raw("deleted_at IS NULL"))
+  @@index([aliases], type: Gin)
+  @@index([userId, lastUsedAt])
+  @@map("recipes")
+}
+
+model RecipeIngredient {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  recipeId  String   @map("recipe_id") @db.Uuid
+  myFoodId  String?  @map("my_food_id") @db.Uuid
+  name      String
+  grams     Float
+  kcal      Float
+  proteinG  Float    @map("protein_g")
+  fatG      Float    @map("fat_g")
+  carbsG    Float    @map("carbs_g")
+  fiberG    Float?   @map("fiber_g")
+  position  Int
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  recipe Recipe  @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  myFood MyFood? @relation(fields: [myFoodId], references: [id], onDelete: SetNull)
+
+  @@index([recipeId])
+  @@index([myFoodId])
+  @@map("recipe_ingredients")
+}
+
+// before/after hold only the changed fields, e.g. { grams: 150 } → { grams: 200 }
+model Correction {
+  id            String   @id @default(uuid(7)) @db.Uuid
+  userId        String   @map("user_id") @db.Uuid
+  foodEntryId   String   @map("food_entry_id") @db.Uuid
+  before        Json
+  after         Json
+  myFoodId      String?  @map("my_food_id") @db.Uuid
+  recipeId      String?  @map("recipe_id") @db.Uuid
+  savedToMemory Boolean  @default(false) @map("saved_to_memory")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  foodEntry FoodEntry @relation(fields: [foodEntryId], references: [id], onDelete: Cascade)
+  myFood    MyFood?   @relation(fields: [myFoodId], references: [id], onDelete: SetNull)
+  recipe    Recipe?   @relation(fields: [recipeId], references: [id], onDelete: SetNull)
+
+  @@index([foodEntryId])
+  @@index([userId, createdAt])
+  @@index([myFoodId])
+  @@index([recipeId])
+  @@map("corrections")
+}
+
+model UserFact {
+  id              String       @id @default(uuid(7)) @db.Uuid
+  userId          String       @map("user_id") @db.Uuid
+  text            String
+  category        FactCategory
+  status          FactStatus   @default(PROPOSED)
+  sourceMessageId String?      @map("source_message_id") @db.Uuid
+  createdAt       DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime     @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt       DateTime?    @map("deleted_at") @db.Timestamptz
+
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sourceMessage Message? @relation(fields: [sourceMessageId], references: [id], onDelete: SetNull)
+
+  @@index([userId, status])
+  @@index([sourceMessageId])
+  @@map("user_facts")
+}
+
+// ───────────────────────── Limits & later modules ─────────────────────────
+
+// Counted per the user's local day so limits match "Today" in the UI; incremented atomically via upsert
+model DailyUsage {
+  id           String   @id @default(uuid(7)) @db.Uuid
+  userId       String   @map("user_id") @db.Uuid
+  localDate    DateTime @map("local_date") @db.Date
+  messageCount Int      @default(0) @map("message_count")
+  photoCount   Int      @default(0) @map("photo_count")
+  aiCostUsd    Decimal  @default(0) @map("ai_cost_usd") @db.Decimal(12, 8)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, localDate])
+  @@map("daily_usage")
+}
+
+// After MVP
+model ExerciseEntry {
+  id              String         @id @default(uuid(7)) @db.Uuid
+  userId          String         @map("user_id") @db.Uuid
+  name            String
+  durationMin     Int            @map("duration_min")
+  kcalBurned      Float          @map("kcal_burned")
+  source          ExerciseSource
+  performedAt     DateTime       @map("performed_at") @db.Timestamptz
+  localDate       DateTime       @map("local_date") @db.Date
+  sourceMessageId String?        @map("source_message_id") @db.Uuid
+  createdAt       DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime       @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt       DateTime?      @map("deleted_at") @db.Timestamptz
+
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sourceMessage Message? @relation(fields: [sourceMessageId], references: [id], onDelete: SetNull)
+
+  @@index([userId, localDate])
+  @@index([sourceMessageId])
+  @@map("exercise_entries")
 }

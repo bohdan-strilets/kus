@@ -1,6 +1,8 @@
 import { CheckCircleIcon, WarningCircleIcon } from '@phosphor-icons/react'
 import { useTranslation } from 'react-i18next'
 
+import { RetryButton } from '@/shared/ui'
+
 import { useHealth } from '../../model/use-health'
 
 // Temporary styling until Surface / Button / Skeleton exist (roadmap stage 1)
@@ -27,13 +29,7 @@ export const HealthStatus = () => {
 			>
 				<WarningCircleIcon aria-hidden size={24} weight="fill" className="shrink-0 text-fat" />
 				<p className="flex-1">{t('health.error')}</p>
-				<button
-					type="button"
-					onClick={() => void refetch()}
-					className="min-h-tap rounded-full bg-accent px-4 font-bold text-white"
-				>
-					{t('common.retry')}
-				</button>
+				<RetryButton label={t('common.retry')} onClick={() => void refetch()} />
 			</div>
 		)
 	}

@@ -15,7 +15,8 @@ export const envSchema = z.object({
 				.map((origin) => origin.trim())
 				.filter(Boolean),
 		)
-		.pipe(z.array(z.url()).min(1)),
+		// browsers send a bare origin, so "https://kus.app/" must become "https://kus.app" to match
+		.pipe(z.array(z.url({ protocol: /^https?$/ }).transform((url) => new URL(url).origin)).min(1)),
 	OPENROUTER_API_KEY: z.string().min(1),
 	AI_MODEL: z.string().min(1),
 })

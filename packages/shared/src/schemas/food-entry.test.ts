@@ -9,7 +9,7 @@ const validEntry = {
 	protein: 11,
 	fat: 9,
 	carbs: 45,
-	source: 'estimate',
+	source: 'ESTIMATE',
 	confidence: 0.7,
 	assumption: 'Молоко 2.5%',
 }
@@ -26,6 +26,14 @@ describe('foodEntrySchema', () => {
 
 	it('rejects weight above 5000 g', () => {
 		expect(foodEntrySchema.safeParse({ ...validEntry, grams: 5001 }).success).toBe(false)
+	})
+
+	it('rejects MANUAL source — only the backend sets it', () => {
+		expect(foodEntrySchema.safeParse({ ...validEntry, source: 'MANUAL' }).success).toBe(false)
+	})
+
+	it('rejects lowercase source values', () => {
+		expect(foodEntrySchema.safeParse({ ...validEntry, source: 'estimate' }).success).toBe(false)
 	})
 
 	it('rejects negative macros', () => {

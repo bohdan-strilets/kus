@@ -26,7 +26,7 @@ const validEntry = {
 	protein: 8,
 	fat: 2,
 	carbs: 42,
-	source: 'estimate',
+	source: 'ESTIMATE',
 	confidence: 0.8,
 	assumption: null,
 }

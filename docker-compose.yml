@@ -1,0 +1,27 @@
+# Local PostgreSQL for development only. Production DB lives on Railway.
+services:
+  db:
+    image: postgres:17
+    container_name: kus-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: kus
+      POSTGRES_PASSWORD: kus
+      POSTGRES_DB: kus
+    ports:
+      # host 5434 because 5432 and 5433 are taken by other local Postgres instances; bound to localhost so the
+      # dev DB with a trivial password isn't reachable from the local network
+      - '127.0.0.1:5434:5432'
+    volumes:
+      - kus-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U kus -d kus']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+volumes:
+  kus-pgdata:
+    # fixed name instead of the default "<project>_kus-pgdata"
+    name: kus-pgdata

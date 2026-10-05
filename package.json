@@ -15,7 +15,11 @@
 		"typecheck": "pnpm --filter @kus/shared build && pnpm -r typecheck",
 		"test": "pnpm -r test",
 		"format": "prettier --write .",
-		"format:check": "prettier --check ."
+		"format:check": "prettier --check .",
+		"db:up": "docker compose up -d",
+		"db:down": "docker compose stop",
+		"db:logs": "docker compose logs -f db",
+		"db:reset": "docker compose down -v && docker compose up -d"
 	},
 	"devDependencies": {
 		"@eslint/js": "^10.0.1",

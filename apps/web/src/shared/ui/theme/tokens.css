@@ -1,0 +1,49 @@
+/*
+ * Design tokens (CLAUDE.md §3). Tailwind v4 generates utilities from them:
+ * --color-accent → bg-accent / text-accent, --radius-card → rounded-card, etc.
+ * `--*: initial` drops Tailwind's default palette so only our tokens exist.
+ */
+@theme {
+	--color-*: initial;
+	--color-white: #ffffff;
+	--color-transparent: transparent;
+	--color-current: currentColor;
+
+	--color-accent: #17845a;
+	--color-ink: #17201b;
+	--color-muted: #55625a;
+
+	--color-protein: #2f6f9f;
+	--color-protein-bg: #e2f0fb;
+	--color-carbs: #5c7a22;
+	--color-carbs-bg: #e6f6c9;
+	--color-fat: #b05a26;
+	--color-fat-bg: #fde6d3;
+
+	--color-surface: rgb(255 255 255 / 0.88);
+	--color-surface-strong: rgb(255 255 255 / 0.92);
+	--color-surface-soft: rgb(255 255 255 / 0.85);
+
+	--gradient-app: linear-gradient(165deg, #ddf3e8 0%, #f4f6ec 45%, #fcebdd 100%);
+
+	--font-sans: 'Manrope Variable', 'Manrope', system-ui, sans-serif;
+
+	--radius-sm: 12px;
+	--radius-md: 16px;
+	--radius-card: 22px;
+	--radius-xl: 26px;
+
+	--shadow-card: 0 10px 28px rgb(23 70 50 / 0.1);
+
+	--breakpoint-tablet: 48rem;
+	--breakpoint-desktop: 64rem;
+
+	--ease-standard: cubic-bezier(0.2, 0, 0, 1);
+	--default-transition-duration: 200ms;
+	--default-transition-timing-function: var(--ease-standard);
+
+	/* min tap target (CLAUDE.md §13) */
+	--spacing-tap: 44px;
+	/* iPhone home indicator area */
+	--spacing-safe-bottom: env(safe-area-inset-bottom);
+}

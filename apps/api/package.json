@@ -1,0 +1,43 @@
+{
+	"name": "@kus/api",
+	"version": "0.0.0",
+	"private": true,
+	"scripts": {
+		"build": "nest build",
+		"dev": "nest start --watch --preserveWatchOutput",
+		"start": "node dist/main.js",
+		"typecheck": "tsc -p tsconfig.json --noEmit",
+		"test": "vitest run",
+		"prisma": "prisma",
+		"prisma:generate": "prisma generate"
+	},
+	"dependencies": {
+		"@kus/shared": "workspace:*",
+		"@nestjs/common": "^11.1.19",
+		"@nestjs/config": "^4.0.4",
+		"@nestjs/core": "^11.1.19",
+		"@nestjs/platform-express": "^11.1.19",
+		"@prisma/adapter-pg": "^7.10.0",
+		"@prisma/client": "^7.10.0",
+		"helmet": "^8.3.0",
+		"nestjs-zod": "^5.5.0",
+		"reflect-metadata": "^0.2.2",
+		"rxjs": "^7.8.2",
+		"zod": "^4.6.5"
+	},
+	"devDependencies": {
+		"@nestjs/cli": "^11.0.24",
+		"@nestjs/schematics": "^11.1.0",
+		"@nestjs/testing": "^11.1.19",
+		"@swc/core": "^1.16.13",
+		"@types/express": "^5.0.6",
+		"@types/node": "^22.20.5",
+		"@types/supertest": "^7.2.1",
+		"dotenv": "^18.0.5",
+		"prisma": "^7.10.0",
+		"supertest": "^7.3.1",
+		"typescript": "~6.0.3",
+		"unplugin-swc": "^2.0.0",
+		"vitest": "^5.0.3"
+	}
+}

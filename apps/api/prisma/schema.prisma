@@ -1,0 +1,12 @@
+// Domain models (User, FoodEntry, …) are added in roadmap stage 2.
+// Before adding a field or model, check this file — not the docs.
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}

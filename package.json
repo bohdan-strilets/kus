@@ -4,7 +4,7 @@
 	"description": "Кусь — AI-трекер харчування через чат",
 	"packageManager": "pnpm@10.32.1",
 	"engines": {
-		"node": ">=22"
+		"node": ">=22.12"
 	},
 	"scripts": {
 		"postinstall": "pnpm --filter @kus/shared build && pnpm --filter @kus/api prisma:generate",

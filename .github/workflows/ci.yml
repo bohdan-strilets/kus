@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [main]
 
+# public repo: the workflow only needs to read the code
+permissions:
+  contents: read
+
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
@@ -32,3 +36,6 @@ jobs:
       - run: pnpm typecheck
 
       - run: pnpm test
+
+      # tests run through Vite; only a real build checks the prod path (CJS api requiring ESM shared)
+      - run: pnpm build

@@ -1,10 +1,13 @@
 /*
  * Design tokens (CLAUDE.md §3). Tailwind v4 generates utilities from them:
  * --color-accent → bg-accent / text-accent, --radius-card → rounded-card, etc.
- * `--*: initial` drops Tailwind's default palette so only our tokens exist.
+ * `--<namespace>-*: initial` drops Tailwind's defaults (palette, radii, shadows) so only
+ * our tokens exist and `rounded-2xl` / `shadow-lg` can't bypass the design system.
  */
 @theme {
 	--color-*: initial;
+	--radius-*: initial;
+	--shadow-*: initial;
 	--color-white: #ffffff;
 	--color-transparent: transparent;
 	--color-current: currentColor;

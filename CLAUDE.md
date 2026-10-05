@@ -143,9 +143,10 @@ apps/api/src/
 
 ### Дані
 - Prisma 7 з адаптером `PrismaPg`, PostgreSQL на Railway
-- Схема проєктується одразу на весь домен (User, AuthCredentials, Session, Message, FoodEntry, MyFood, Recipe, RecipeIngredient, Correction, UserFact, WeightEntry, AiUsage), реалізація — по roadmap
+- Схема спроєктована одразу на весь домен, реалізація — по roadmap. Моделі: User, AuthCredentials, Session, VerificationToken, UserProfile, UserGoal, WeightEntry, Message, MessageAttachment, AiRun, AiToolCall, Clarification, ClarificationEntry, Meal, FoodEntry, MyFood, Recipe, RecipeIngredient, Correction, UserFact, DailyUsage, ExerciseEntry. Опис і діаграма — `docs/database.md`
+- Enum'и схеми дзеркаляться zod-enum'ами в `packages/shared/src/schemas/enums.ts` — змінюєш одне, змінюй і друге
 - Перед додаванням поля чи моделі — перевір актуальну `schema.prisma`, не опис у документах
-- Soft delete (`deletedAt`) для записів користувача (FoodEntry, Recipe, MyFood) — завжди фільтр `deletedAt: null`; це дає «скасувати» в чаті
+- Soft delete (`deletedAt`) для записів користувача (Meal, FoodEntry, MyFood, Recipe, UserFact, ExerciseEntry) — завжди фільтр `deletedAt: null`; це дає «скасувати» в чаті
 - Кожна вибірка даних користувача фільтрується за `userId` з токена — ніколи не довіряти лише `:id` з запиту (IDOR)
 - Явно обробляти `null` там, де Prisma може його повернути
 
@@ -299,6 +300,7 @@ pnpm --filter ai-eval eval
 
 ### Секрети й залежності
 - `.env` не комітиться, секрети — лише через змінні Railway/Vercel; `withCredentials` лише для власного API
+- **Ніколи не створювати й не перезаписувати `.env`-файли командами** (`cp`, `>`, `tee`, Write тощо) — навіть з `.env.example`. Якщо `.env` потрібен чи в ньому бракує змінної — сказати користувачу, що саме туди вписати
 - `pnpm audit` — регулярно
 
 ### Приватність

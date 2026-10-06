@@ -1,41 +1,40 @@
 import { useTranslation } from 'react-i18next'
-import { NavLink } from 'react-router'
 
-import { cn } from '@/shared/lib'
+import { ROUTES } from '@/shared/config'
 
 import { NAV_ITEMS } from '../model/nav-items'
+import { BottomNavItem } from './BottomNavItem'
 
-// Temporary version — rebuilt on top of the design system in roadmap stage 1
-export const BottomNav = () => {
+interface BottomNavProps {
+	/** A new weekly summary is ready: dot on «Прогрес». The data source arrives with stage 6. */
+	hasProgressUpdate?: boolean
+}
+
+/**
+ * The floating tab bar from the mockups: radius 30, white 94%, shadow-float, 16px from the sides
+ * and 20px above the home indicator, inside the 480px app column.
+ */
+export const BottomNav = ({ hasProgressUpdate = false }: BottomNavProps) => {
 	const { t } = useTranslation()
 
 	return (
-		<nav
-			aria-label={t('nav.label')}
-			className="fixed inset-x-0 bottom-0 bg-surface-glass pb-safe-bottom shadow-card backdrop-blur"
-		>
-			<ul className="mx-auto flex max-w-app">
-				{NAV_ITEMS.map(({ to, labelKey, icon: Icon }) => (
-					<li key={to} className="flex-1">
-						<NavLink
-							to={to}
-							className={({ isActive }) =>
-								cn(
-									'flex min-h-tap flex-col items-center justify-center gap-0.5 py-2 text-small transition-colors',
-									isActive ? 'text-primary' : 'text-muted',
-								)
-							}
-						>
-							{({ isActive }) => (
-								<>
-									<Icon aria-hidden size={24} weight={isActive ? 'fill' : 'regular'} />
-									{t(labelKey)}
-								</>
-							)}
-						</NavLink>
-					</li>
-				))}
-			</ul>
-		</nav>
+		<div className="fixed inset-x-0 bottom-0 z-30 mx-auto max-w-app px-gutter pb-safe-bottom">
+			<nav
+				aria-label={t('nav.label')}
+				className="mb-5 rounded-nav bg-surface/94 p-1.5 shadow-float"
+			>
+				<ul className="grid grid-cols-4 items-center">
+					{NAV_ITEMS.map((item) => (
+						<li key={item.to}>
+							<BottomNavItem
+								item={item}
+								hasUpdate={item.to === ROUTES.progress && hasProgressUpdate}
+								updateLabel={t('nav.progressWithUpdate')}
+							/>
+						</li>
+					))}
+				</ul>
+			</nav>
+		</div>
 	)
 }

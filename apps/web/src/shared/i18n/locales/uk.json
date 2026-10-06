@@ -9,7 +9,8 @@
 		"chat": "Чат",
 		"today": "Сьогодні",
 		"progress": "Прогрес",
-		"recipes": "Рецепти"
+		"recipes": "Рецепти",
+		"progressWithUpdate": "Прогрес, новий підсумок тижня"
 	},
 	"toast": {
 		"label": "Сповіщення",

@@ -5,11 +5,13 @@ import type { App } from 'supertest/types'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { z } from 'zod'
 
+import { Public } from '../src/common/decorators'
 import { paginate, type PaginatedResult } from '../src/common/pagination'
 import { createTestApp } from './create-test-app'
 
 const items = [{ id: 'a' }, { id: 'b' }]
 
+@Public()
 @Controller('test-envelope')
 class TestEnvelopeController {
 	@Get('list')

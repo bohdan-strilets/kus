@@ -2,7 +2,9 @@
 import 'dotenv/config'
 
 import { Logger } from '@nestjs/common'
+import { PASSWORD_MIN_LENGTH } from '@kus/shared'
 import { PrismaPg } from '@prisma/adapter-pg'
+import { argon2id, hash } from 'argon2'
 
 import {
 	ActivityLevel,
@@ -94,13 +96,26 @@ const toEntryInput = (
 	}
 }
 
-const seedUser = async (tx: Prisma.TransactionClient): Promise<string> => {
-	// no AuthCredentials: password hashing (argon2) arrives with the auth module, so the demo user can't log in yet
+/** argon2 hash of SEED_DEMO_PASSWORD, or null: without it the demo user exists but can't log in. */
+const getDemoPasswordHash = async (): Promise<string | null> => {
+	const password = process.env.SEED_DEMO_PASSWORD
+	if (!password) return null
+	if (password.length < PASSWORD_MIN_LENGTH) {
+		throw new Error(`SEED_DEMO_PASSWORD must be at least ${PASSWORD_MIN_LENGTH} characters`)
+	}
+	return hash(password, { type: argon2id })
+}
+
+const seedUser = async (
+	tx: Prisma.TransactionClient,
+	passwordHash: string | null,
+): Promise<string> => {
 	const user = await tx.user.create({
 		data: {
 			email: DEMO_EMAIL,
 			name: 'Демо',
 			timezone: DEMO_TIMEZONE,
+			...(passwordHash && { credentials: { create: { passwordHash } } }),
 			profile: {
 				create: { heightCm: 178, birthYear: 1992, activityLevel: ActivityLevel.MODERATE },
 			},
@@ -224,10 +239,12 @@ const seedPastMeals = async (
 }
 
 const seed = async (prisma: PrismaClient): Promise<void> => {
+	// hashed before the transaction: argon2 is slow on purpose and would eat into its timeout
+	const passwordHash = await getDemoPasswordHash()
 	await prisma.$transaction(
 		async (tx) => {
 			await tx.user.deleteMany({ where: { email: DEMO_EMAIL } })
-			const userId = await seedUser(tx)
+			const userId = await seedUser(tx, passwordHash)
 			const ids = await seedMemory(tx, userId)
 			await seedPastMeals(tx, userId, ids)
 			await seedTodayChat(tx, userId, ids.foodIds)

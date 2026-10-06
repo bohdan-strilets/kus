@@ -1,6 +1,6 @@
-import type { INestApplication, Type } from '@nestjs/common'
+import type { Type } from '@nestjs/common'
+import type { NestExpressApplication } from '@nestjs/platform-express'
 import { Test } from '@nestjs/testing'
-import type { App } from 'supertest/types'
 
 import { AppModule } from '../src/app.module'
 import { setupApp } from '../src/app.setup'
@@ -12,15 +12,15 @@ interface CreateTestAppOptions {
 }
 
 /** Full app with the production HTTP pipeline; Prisma is stubbed so tests run without Postgres. */
-export const createTestApp = async ({ controllers = [] }: CreateTestAppOptions = {}): Promise<
-	INestApplication<App>
-> => {
+export const createTestApp = async ({
+	controllers = [],
+}: CreateTestAppOptions = {}): Promise<NestExpressApplication> => {
 	const moduleRef = await Test.createTestingModule({ imports: [AppModule], controllers })
 		.overrideProvider(PrismaService)
 		.useValue({})
 		.compile()
 
-	const app = moduleRef.createNestApplication<INestApplication<App>>()
+	const app = moduleRef.createNestApplication<NestExpressApplication>()
 	setupApp(app)
 	await app.init()
 	return app

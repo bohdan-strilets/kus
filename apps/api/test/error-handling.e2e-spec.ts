@@ -13,6 +13,7 @@ import request from 'supertest'
 import type { App } from 'supertest/types'
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 
+import { Public } from '../src/common/decorators'
 import { AppException, ErrorCodes } from '../src/common/exceptions'
 import { createTestApp } from './create-test-app'
 
@@ -33,6 +34,7 @@ const validEntry = {
 
 class FoodEntryDto extends createZodDto(foodEntrySchema) {}
 
+@Public()
 @Controller('test-errors')
 class TestErrorsController {
 	@Post('food-entries')

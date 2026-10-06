@@ -1,5 +1,5 @@
 @import 'tailwindcss';
-@import '@fontsource-variable/manrope';
+@import '../../shared/ui/theme/fonts.css';
 @import '../../shared/ui/theme/tokens.css';
 
 @layer base {
@@ -9,11 +9,12 @@
 	}
 
 	body {
-		@apply min-h-dvh bg-app font-sans text-body font-medium text-ink antialiased;
+		@apply min-h-dvh font-sans text-body font-medium text-ink antialiased bg-app;
+		/* after bg-app: its `background` shorthand would reset the attachment */
 		background-attachment: fixed;
 	}
 
-	/* CLAUDE-design §14: visible focus, 3px ink outline */
+	/* CLAUDE-design: visible focus, 3px ink outline */
 	:focus-visible {
 		outline: 3px solid var(--color-ink);
 		outline-offset: 2px;

@@ -1,11 +1,12 @@
 /*
- * Kusik design tokens (CLAUDE.md §3). Source of truth: design/tokens/tokens.json + tokens.css,
- * ported 1:1 to Tailwind v4 `@theme`: --color-primary → bg-primary / text-primary, etc.
- * `--<namespace>-*: initial` drops Tailwind's defaults so only our tokens exist and
- * `rounded-2xl` / `shadow-lg` / `text-lg` can't bypass the design system.
+ * Kusik design tokens (CLAUDE.md §3): design/tokens/theme.css, values 1:1.
+ * Tailwind generates the classes: bg-primary, text-ink, rounded-card, shadow-card, ease-spring …
  *
- * Tokens marked «added» are not in design/tokens: they are values repeated in design/mockups
- * (or required for contrast). Why each exists — docs/design-tokens.md.
+ * On top of design/tokens/theme.css:
+ * - `--<namespace>-*: initial` drops Tailwind's defaults, so `rounded-2xl` / `shadow-lg` / `text-lg`
+ *   can't bypass the design system;
+ * - tokens marked «added» repeat across design/mockups or are needed for contrast;
+ *   why each exists — docs/design-tokens.md.
  */
 @theme {
 	--color-*: initial;
@@ -18,10 +19,14 @@
 	--color-transparent: transparent;
 	--color-current: currentColor;
 
+	/* ── Colours ── */
 	/* actions: buttons, links, user messages, active tab */
 	--color-primary: #b9521a;
+	/* pressed, text on apricot plates */
 	--color-primary-deep: #8f3e12;
+	/* tab pill, kcal plates, icon tiles */
 	--color-primary-soft: #fce6d2;
+	/* selected option background (with a primary border) */
 	--color-primary-selected: #fdebdb;
 
 	--color-ink: #2a2118;
@@ -29,37 +34,35 @@
 	--color-muted-strong: #4f4237;
 	/* added: disabled icons, goal dashed line (mockups today, docs Charts) */
 	--color-muted-soft: #a8998a;
-
 	--color-surface: #ffffff;
 	--color-surface-glass: rgb(255 255 255 / 0.92);
 	--color-field: #f7f1e9;
+	/* secondary buttons, camera / mic */
 	--color-secondary: #f3ece3;
 	--color-line: #eadfd3;
 	/* added: dashed suggestion card border (mockups today) */
 	--color-line-strong: #dccbb9;
 	--color-divider: #f0e9e0;
-	/* added: calorie gauge track (mockups chat, today, ring states) */
+	/* ring and bar track */
 	--color-track: #efe6dc;
 	/* added: bottom sheet grabber (docs Sheet) */
 	--color-handle: #e2d6c9;
 	/* added: switch off state (docs Toggle) */
 	--color-toggle-off: #ddcfc0;
 
-	/* ONLY success and data: ring, charts, «logged», days within goal */
+	/* ONLY success and data */
 	--color-success: #17845a;
 	--color-success-soft: #e3f3ea;
 	--color-success-ink: #0f5e40;
-
-	--color-danger: #b42330;
-	--color-danger-soft: #fce9ea;
-
-	/* over goal is not an error: warm, never red. `over` for arcs/dots/bars only */
+	/* over goal in data — not an error. For arcs, dots and bars only */
 	--color-over: #c25a1c;
 	/* added: text for over-goal numbers — `over` is 4.40:1 on white, this is ≥ 4.5:1 on surface and bg-app */
 	--color-over-ink: #ab4f19;
 	/* added: over-goal bars in the weekly summary (docs Charts) */
 	--color-over-soft: #f2a877;
-
+	/* errors, deletion */
+	--color-danger: #b42330;
+	--color-danger-soft: #fce9ea;
 	--color-scrim: rgb(42 33 24 / 0.4);
 
 	/* macros: always these colours, always in protein → carbs → fat order */
@@ -77,7 +80,8 @@
 	--color-logo-to: #d45f22;
 	--color-logo-letter: #fff4e6;
 
-	--font-sans: 'Manrope Variable', 'Manrope', system-ui, -apple-system, 'Segoe UI', sans-serif;
+	/* ── Font ── */
+	--font-sans: 'Manrope', system-ui, -apple-system, 'Segoe UI', sans-serif;
 
 	--text-screen-title: 24px;
 	--text-screen-title--line-height: 1.2;
@@ -94,22 +98,27 @@
 	--text-card-title--font-weight: 700;
 	--text-caption: 13px;
 	--text-caption--line-height: 1.4;
+	/* added: weight from tokens.json font.scale.caption (theme.css leaves it out) */
 	--text-caption--font-weight: 600;
 	/* minimum text size in the app */
 	--text-small: 12px;
 	--text-small--line-height: 1.4;
+	/* added: weight from tokens.json font.scale.small (theme.css leaves it out) */
 	--text-small--font-weight: 600;
+	/* added: tokens.json font.scale.wordmark — «kusik», always lowercase */
 	--text-wordmark: 22px;
 	--text-wordmark--line-height: 1;
 	--text-wordmark--letter-spacing: -0.04em;
 	--text-wordmark--font-weight: 800;
 
+	/* ── Radii ── */
 	--radius-screen: 40px;
 	--radius-sheet: 28px;
 	--radius-card: 24px;
 	--radius-bubble: 20px;
 	--radius-tail: 6px;
 	--radius-tile: 16px;
+	/* added: tokens.json radius.field */
 	--radius-field: 16px;
 	--radius-chip: 18px;
 	--radius-icon: 12px;
@@ -125,6 +134,7 @@
 	/* added: floating bottom nav (mockups chat, today) */
 	--radius-nav: 30px;
 
+	/* ── Shadows ── */
 	--shadow-card: 0 10px 28px rgb(80 50 20 / 0.1);
 	--shadow-chip: 0 4px 12px rgb(80 50 20 / 0.08);
 	--shadow-accent: 0 6px 16px rgb(185 82 26 / 0.25);
@@ -134,6 +144,7 @@
 	/* added: form field card (docs Field) */
 	--shadow-field: 0 6px 16px rgb(80 50 20 / 0.06);
 
+	/* ── Motion ── */
 	/* appear */
 	--ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
 	/* lively feedback: badge, hamster, switch */
@@ -141,14 +152,14 @@
 	/* disappear */
 	--ease-in: cubic-bezier(0.4, 0, 1, 1);
 
+	/* ── Layout (added) ── */
 	--breakpoint-tablet: 48rem;
 	--breakpoint-desktop: 64rem;
-
+	/* side gutter 16 · min tap target 44 (CLAUDE.md §13) · main button 48 — tokens.json size */
 	--spacing-gutter: 16px;
-	/* min tap target (CLAUDE.md §13) */
 	--spacing-tap: 44px;
 	--spacing-button: 48px;
-	/* app column on wide screens (CLAUDE-design §15) */
+	/* app column on wide screens (CLAUDE-design §12) */
 	--container-app: 480px;
 	/* iPhone notch and home indicator areas */
 	--spacing-safe-top: env(safe-area-inset-top);
@@ -158,11 +169,15 @@
 	--default-transition-timing-function: var(--ease-out);
 }
 
-/* Durations are plain variables (Tailwind has no duration namespace) so reduced motion can zero them in one place */
+/* Durations aren't a Tailwind namespace, so they are plain variables: duration-(--duration-base) */
 :root {
 	--duration-fast: 120ms;
 	--duration-base: 200ms;
 	--duration-slow: 320ms;
+
+	--bg-app: linear-gradient(165deg, #fcebd8 0%, #fbf6ee 50%, #eef4e8 100%);
+	--bg-soft-card: linear-gradient(120deg, #fdebdb, #fbf3e6);
+	--bg-dark-card: linear-gradient(120deg, #2a2118, #3d2d20);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -173,26 +188,15 @@
 	}
 }
 
+/* Gradients aren't colours, so they are separate utilities */
 @utility bg-app {
-	background-image: linear-gradient(165deg, #fcebd8 0%, #fbf6ee 50%, #eef4e8 100%);
+	background: var(--bg-app);
 }
 
 @utility bg-soft-card {
-	background-image: linear-gradient(120deg, #fdebdb, #fbf3e6);
+	background: var(--bg-soft-card);
 }
 
 @utility bg-dark-card {
-	background-image: linear-gradient(120deg, #2a2118, #3d2d20);
-}
-
-@utility duration-fast {
-	transition-duration: var(--duration-fast);
-}
-
-@utility duration-base {
-	transition-duration: var(--duration-base);
-}
-
-@utility duration-slow {
-	transition-duration: var(--duration-slow);
+	background: var(--bg-dark-card);
 }

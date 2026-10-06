@@ -1,0 +1,48 @@
+/* Endless loops stay in CSS (CLAUDE.md §7 exception), 1:1 with design/src/brand/loader.css */
+.k-loader-spin {
+	transform-origin: 50% 50%;
+	animation: kSpin 1.1s cubic-bezier(0.55, 0.15, 0.45, 0.85) infinite;
+}
+
+.k-loader-crumb {
+	position: absolute;
+	border-radius: 50%;
+	opacity: 0;
+	animation: kCrumb 1.1s ease-in infinite;
+}
+
+.k-loader-crumb-late {
+	animation-delay: 0.35s;
+}
+
+@keyframes kSpin {
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+@keyframes kCrumb {
+	0% {
+		opacity: 0;
+		transform: translate(0, 0);
+	}
+	25% {
+		opacity: 1;
+	}
+	100% {
+		opacity: 0;
+		transform: translate(8px, 22px);
+	}
+}
+
+/* Reduced motion: slow spin stays (otherwise nothing says «in progress»), crumbs go */
+@media (prefers-reduced-motion: reduce) {
+	.k-loader-spin {
+		animation-duration: 2.4s;
+	}
+
+	.k-loader-crumb {
+		animation: none;
+		opacity: 0;
+	}
+}

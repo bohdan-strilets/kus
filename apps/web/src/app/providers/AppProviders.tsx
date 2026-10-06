@@ -1,4 +1,5 @@
 import { QueryClientProvider } from '@tanstack/react-query'
+import { MotionConfig } from 'motion/react'
 import type { ReactNode } from 'react'
 import { I18nextProvider } from 'react-i18next'
 
@@ -8,6 +9,9 @@ import { queryClient } from './query-client'
 
 export const AppProviders = ({ children }: { children: ReactNode }) => (
 	<I18nextProvider i18n={i18n}>
-		<QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+		<QueryClientProvider client={queryClient}>
+			{/* prefers-reduced-motion: Motion skips transform/layout animations app-wide (CLAUDE.md §7) */}
+			<MotionConfig reducedMotion="user">{children}</MotionConfig>
+		</QueryClientProvider>
 	</I18nextProvider>
 )

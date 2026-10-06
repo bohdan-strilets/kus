@@ -89,11 +89,11 @@
 - Кольори, типографіка, відступи (spacing-скейл), радіуси, тіні, transition — лише через токени
 - Breakpoints: mobile (основний, макети 390×844); на ширших — колонка max-width 480px по центру
 - Нижня навігація: Чат · Сьогодні · Прогрес · Рецепти; Профіль і Пам'ять — через аватар
-- Іконки UI — Phosphor; власні SVG лише для бренду й ілюстрацій (лого, лоадер, хом'як, піктограми страв) і для брендових іконок з макетів у `shared/ui/icons`: нижня навігація, камера, мікрофон, «надіслати». Нову брендову іконку — лише з макета
+- Іконки — за `design/CLAUDE-design.md` п. 6: Phosphor для всього, крім брендових SVG з макетів (у `shared/ui/icons/brand/`)
 - Хом'як-маскот — лише компонент `Hamster` / `HamsterHead`, лого — `LogoMark` / `Logo`
 
 ### Базові компоненти (Рівень 0 — не дублювати)
-`Surface`, `Text`, `Heading`, `Button`, `IconButton`, `Input`, `Chip`, `Badge`, `Spinner` (= `Loader` з `design/src/brand`), `Skeleton`, `BaseBottomSheet`, `BaseModal`, `FormField`, `AppLayout`, `BottomNav`.
+`Surface`, `Text`, `Heading`, `Button`, `IconButton`, `Input`, `Chip`, `Badge`, `Loader` (це і є Spinner, `shared/ui/brand`), `Skeleton`, `BaseBottomSheet`, `BaseModal`, `FormField`, `AppLayout`, `BottomNav`.
 
 Предметні компоненти (у своїх entities/features): `MacroTile`, `Gauge`, `EntryCard`, `ClarifyCard`, `MessageBubble`, `Composer`.
 

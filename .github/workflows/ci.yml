@@ -18,6 +18,22 @@ jobs:
   check:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # API e2e tests need a real DB; same image, credentials and host port as docker-compose.yml,
+    # so the DATABASE_URL in apps/api/vitest.config.mts works unchanged (tests create kus_test themselves)
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: kus
+          POSTGRES_PASSWORD: kus
+          POSTGRES_DB: kus
+        ports:
+          - 5434:5432
+        options: >-
+          --health-cmd "pg_isready -U kus -d kus"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v4
 

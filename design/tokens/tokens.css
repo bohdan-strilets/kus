@@ -1,0 +1,66 @@
+/* Kusik design tokens. Єдине джерело кольорів і розмірів у CSS.
+   Підключи один раз у main.css: @import "./tokens.css"; */
+:root {
+  --k-primary: #B9521A;
+  --k-primary-deep: #8F3E12;
+  --k-primary-soft: #FCE6D2;
+  --k-primary-selected: #FDEBDB;
+
+  --k-ink: #2A2118;
+  --k-muted: #6B5D50;
+  --k-muted-strong: #4F4237;
+  --k-surface: #FFFFFF;
+  --k-surface-glass: rgba(255, 255, 255, 0.92);
+  --k-field: #F7F1E9;
+  --k-button-secondary: #F3ECE3;
+  --k-line: #EADFD3;
+  --k-divider: #F0E9E0;
+
+  --k-success: #17845A;
+  --k-success-soft: #E3F3EA;
+  --k-success-ink: #0F5E40;
+  --k-danger: #B42330;
+  --k-danger-soft: #FCE9EA;
+
+  --k-protein-bg: #E2F0FB; --k-protein-ink: #3D5568; --k-protein-bar: #2F6F9F;
+  --k-carbs-bg: #E6F6C9;   --k-carbs-ink: #46592A;   --k-carbs-bar: #5C7A22;
+  --k-fat-bg: #FDE6D3;     --k-fat-ink: #6B4A33;     --k-fat-bar: #B05A26;
+
+  --k-logo-from: #FFB877;
+  --k-logo-to: #D45F22;
+  --k-logo-letter: #FFF4E6;
+
+  --k-bg-app: linear-gradient(165deg, #FCEBD8 0%, #FBF6EE 50%, #EEF4E8 100%);
+  --k-bg-soft-card: linear-gradient(120deg, #FDEBDB, #FBF3E6);
+  --k-bg-dark-card: linear-gradient(120deg, #2A2118, #3D2D20);
+
+  --k-font: 'Manrope', system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  --k-radius-screen: 40px;
+  --k-radius-sheet: 28px;
+  --k-radius-card: 24px;
+  --k-radius-bubble: 20px;
+  --k-radius-tail: 6px;
+  --k-radius-tile: 16px;
+  --k-radius-chip: 18px;
+  --k-radius-icon: 12px;
+  --k-radius-button: 24px;
+
+  --k-shadow-card: 0 10px 28px rgba(80, 50, 20, 0.10);
+  --k-shadow-chip: 0 4px 12px rgba(80, 50, 20, 0.08);
+  --k-shadow-accent: 0 6px 16px rgba(185, 82, 26, 0.25);
+  --k-shadow-sheet: 0 -10px 30px rgba(0, 0, 0, 0.12);
+  --k-scrim: rgba(42, 33, 24, 0.4);
+  --k-over: #C25A1C;
+
+  --k-t-fast: 120ms;
+  --k-t-base: 200ms;
+  --k-t-slow: 320ms;
+  --k-ease-out: cubic-bezier(.2, .8, .2, 1);
+  --k-ease-spring: cubic-bezier(.34, 1.56, .64, 1);
+  --k-ease-in: cubic-bezier(.4, 0, 1, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --k-t-fast: 0ms; --k-t-base: 0ms; --k-t-slow: 0ms; }
+}

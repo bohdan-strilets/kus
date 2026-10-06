@@ -1,0 +1,241 @@
+<title>Звуки Kusik</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap">
+<style>
+/* Layout: one narrow column of sound rows grouped by moment, like a settings screen in the app */
+:root {
+  --bg: #FBF6EE;
+  --surface: #FFFFFF;
+  --fg: #2A2118;
+  --muted: #6B5D50;
+  --line: #EADFD3;
+  --accent: #B9521A;
+  --accent-ink: #FFFFFF;
+  --mint: #FCE6D2;
+  --peach: #FCE6D6;
+  --playing: #E6F6C9;
+  --font: 'Manrope', system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111814; --surface: #1A231E; --fg: #EAF2EC; --muted: #9DB0A4; --line: #2A372F;
+    --accent: #F0955A; --accent-ink: #2A1408; --mint: #1D3328; --peach: #3A2A20; --playing: #2A3A1C;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111814; --surface: #1A231E; --fg: #EAF2EC; --muted: #9DB0A4; --line: #2A372F;
+  --accent: #F0955A; --accent-ink: #2A1408; --mint: #1D3328; --peach: #3A2A20; --playing: #2A3A1C;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--font); font-size: 15px; line-height: 1.45; }
+.wrap { max-width: 560px; margin: 0 auto; padding-inline: 16px; padding-block: 28px 48px; display: flex; flex-direction: column; gap: 24px; }
+header { display: flex; flex-direction: column; gap: 8px; }
+h1 { margin: 0; font-size: 30px; font-weight: 800; letter-spacing: -0.03em; text-wrap: balance; }
+.lede { margin: 0; color: var(--muted); max-width: 60ch; }
+.controls { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; padding: 14px 16px; border-radius: 20px; background: var(--surface); border: 1px solid var(--line); }
+.controls label { font-size: 13px; font-weight: 700; color: var(--muted); display: flex; align-items: center; gap: 10px; }
+input[type="range"] { accent-color: var(--accent); width: 140px; }
+input[type="checkbox"] { accent-color: var(--accent); width: 18px; height: 18px; }
+.group { display: flex; flex-direction: column; gap: 8px; }
+.group h2 { margin: 0; padding: 0 4px; font-size: 12px; font-weight: 800; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); }
+.list { display: flex; flex-direction: column; border-radius: 22px; background: var(--surface); border: 1px solid var(--line); overflow: hidden; }
+.row { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 14px; align-items: center; padding: 12px 14px; border-top: 1px solid var(--line); transition: background 0.25s; }
+.row:first-child { border-top: none; }
+.row.is-playing { background: var(--playing); }
+.play { width: 52px; height: 52px; border-radius: 26px; border: none; background: var(--accent); color: var(--accent-ink); display: flex; align-items: center; justify-content: center; cursor: pointer; }
+.play:focus-visible { outline: 3px solid var(--fg); outline-offset: 2px; }
+.play svg { width: 20px; height: 20px; }
+.info { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.name { font-weight: 800; font-size: 16px; }
+.when { color: var(--muted); font-size: 14px; }
+.meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.chip { font-size: 12px; font-weight: 700; padding: 2px 9px; border-radius: 10px; background: var(--mint); font-variant-numeric: tabular-nums; }
+.chip.peach { background: var(--peach); }
+.note { margin: 0; font-size: 13px; color: var(--muted); padding: 0 4px; }
+@media (prefers-reduced-motion: reduce) { .row { transition: none; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Звуки Kusik</h1>
+    <p class="lede">Чернетка звукової родини застосунку: м'які, хрусткі, «дерев'яні». Натисни на кнопку, щоб послухати. На телефоні вимкни беззвучний режим.</p>
+  </header>
+
+  <div class="controls">
+    <label for="vol">Гучність <input id="vol" type="range" min="0" max="1" step="0.05" value="0.7"></label>
+    <label for="hap"><input id="hap" type="checkbox" checked> Вібрація, якщо телефон дозволяє</label>
+  </div>
+
+  <section class="group" aria-labelledby="g1">
+    <h2 id="g1">Успіх</h2>
+    <div class="list" id="list-success"></div>
+  </section>
+  <section class="group" aria-labelledby="g2">
+    <h2 id="g2">Питання</h2>
+    <div class="list" id="list-question"></div>
+  </section>
+  <section class="group" aria-labelledby="g3">
+    <h2 id="g3">Невдача</h2>
+    <div class="list" id="list-fail"></div>
+  </section>
+  <section class="group" aria-labelledby="g4">
+    <h2 id="g4">Голос і сповіщення</h2>
+    <div class="list" id="list-system"></div>
+  </section>
+
+  <p class="note">Для перебору калорій і наближення до ліміту звуку свідомо немає: там лише вібрація або тиша. Звуки згенеровані синтезатором прямо в браузері, тому це ескізи, а не фінальні файли.</p>
+</div>
+
+<script>
+(function () {
+  var ctx = null, master = null, noiseBuf = null;
+
+  function audio() {
+    if (!ctx) {
+      var AC = window.AudioContext || window.webkitAudioContext;
+      ctx = new AC();
+      master = ctx.createGain();
+      master.gain.value = parseFloat(document.getElementById('vol').value);
+      master.connect(ctx.destination);
+      noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 0.5, ctx.sampleRate);
+      var d = noiseBuf.getChannelData(0);
+      for (var i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    }
+    if (ctx.state === 'suspended') ctx.resume();
+    return ctx;
+  }
+
+  function env(g, t, peak, attack, decay) {
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(peak, t + attack);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + attack + decay);
+  }
+
+  // Wooden mallet: sine body plus a quick bright partial for the strike
+  function mallet(freq, t, dur, vol) {
+    [[1, 1], [4, 0.25], [10, 0.06]].forEach(function (p, i) {
+      var o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = 'sine'; o.frequency.value = freq * p[0];
+      env(g, t, vol * p[1], 0.004, i === 0 ? dur : dur * 0.25);
+      o.connect(g); g.connect(master); o.start(t); o.stop(t + dur + 0.05);
+    });
+  }
+
+  // Bell: inharmonic partials, longer ring
+  function bell(freq, t, dur, vol) {
+    [[1, 1], [2.76, 0.35], [5.4, 0.12]].forEach(function (p, i) {
+      var o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = 'sine'; o.frequency.value = freq * p[0];
+      env(g, t, vol * p[1], 0.003, dur / (i + 1));
+      o.connect(g); g.connect(master); o.start(t); o.stop(t + dur + 0.05);
+    });
+  }
+
+  function soft(freq, t, dur, vol, type, glideTo) {
+    var o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = type || 'triangle'; o.frequency.setValueAtTime(freq, t);
+    if (glideTo) o.frequency.exponentialRampToValueAtTime(glideTo, t + dur);
+    env(g, t, vol, 0.01, dur);
+    o.connect(g); g.connect(master); o.start(t); o.stop(t + dur + 0.05);
+  }
+
+  // Crunch: short bursts of band-passed noise, like biting a cookie
+  function crunch(t, vol, centre) {
+    var times = [0, 0.028, 0.05];
+    times.forEach(function (dt, i) {
+      var s = ctx.createBufferSource(), f = ctx.createBiquadFilter(), g = ctx.createGain();
+      s.buffer = noiseBuf;
+      f.type = 'bandpass'; f.frequency.value = (centre || 2600) * (1 - i * 0.15); f.Q.value = 1.6;
+      env(g, t + dt, vol * (1 - i * 0.3), 0.002, 0.035);
+      s.connect(f); f.connect(g); g.connect(master);
+      s.start(t + dt, Math.random() * 0.3, 0.06);
+    });
+  }
+
+  // Crispy bite: a low snap, then a run of short, bright, irregular cracks
+  function crispy(t, vol, cracks, spread) {
+    var s0 = ctx.createBufferSource(), f0 = ctx.createBiquadFilter(), g0 = ctx.createGain();
+    s0.buffer = noiseBuf; f0.type = 'lowpass'; f0.frequency.value = 700;
+    env(g0, t, vol * 0.7, 0.001, 0.035);
+    s0.connect(f0); f0.connect(g0); g0.connect(master); s0.start(t, Math.random() * 0.3, 0.05);
+    var at = t;
+    for (var i = 0; i < cracks; i++) {
+      var s = ctx.createBufferSource(), hp = ctx.createBiquadFilter(), bp = ctx.createBiquadFilter(), g = ctx.createGain();
+      s.buffer = noiseBuf;
+      hp.type = 'highpass'; hp.frequency.value = 1800;
+      bp.type = 'bandpass'; bp.frequency.value = 2800 + Math.random() * 4200; bp.Q.value = 0.9;
+      var level = vol * (1 - i / (cracks + 1)) * (0.6 + Math.random() * 0.4);
+      env(g, at, level, 0.0008, 0.008 + Math.random() * 0.02);
+      s.connect(hp); hp.connect(bp); bp.connect(g); g.connect(master);
+      s.start(at, Math.random() * 0.4, 0.04);
+      at += spread * (0.5 + Math.random());
+    }
+  }
+
+  function click(t, vol) {
+    var s = ctx.createBufferSource(), f = ctx.createBiquadFilter(), g = ctx.createGain();
+    s.buffer = noiseBuf; f.type = 'highpass'; f.frequency.value = 3000;
+    env(g, t, vol, 0.001, 0.012);
+    s.connect(f); f.connect(g); g.connect(master); s.start(t, 0, 0.03);
+  }
+
+  var C5 = 523.25, E5 = 659.25, G5 = 783.99, C6 = 1046.5, D6 = 1174.66, E4 = 329.63, C4 = 261.63, A4 = 440;
+
+  var sounds = [
+    { list: 'list-success', name: 'Кусь', when: 'Страву записано. Звучить найчастіше, тому найтихіший.', len: '0,15 с', hap: [12], hapLabel: 'один легкий тап', mood: 'Записав',
+      play: function (t) { crunch(t, 0.55); mallet(E5 * 1.5, t + 0.07, 0.12, 0.18); } },
+    { list: 'list-success', name: 'Ціль дня', when: 'Калорії в нормі, білок добрано.', len: '0,6 с', hap: [15, 60, 15], hapLabel: 'два тапи', mood: 'Радіє',
+      play: function (t) { mallet(C5, t, 0.35, 0.35); mallet(E5, t + 0.1, 0.35, 0.33); mallet(G5, t + 0.2, 0.5, 0.33); } },
+    { list: 'list-success', name: 'Досягнення', when: 'Серія днів, мінус кілограм. Рідкісний і найяскравіший.', len: '1,3 с', hap: [20, 50, 20, 50, 40], hapLabel: 'ритм із трьох тапів', mood: 'Гордий',
+      play: function (t) {
+        crunch(t, 0.4);
+        [C5, E5, G5, C6].forEach(function (f, i) { mallet(f, t + 0.06 + i * 0.09, 0.5, 0.3); });
+        bell(C6 * 2, t + 0.45, 0.9, 0.08); bell(G5 * 2, t + 0.55, 0.8, 0.06);
+      } },
+    { list: 'list-success', name: 'Збережено', when: 'Рецепт збережено, Kusik запам\'ятав факт.', len: '0,05 с', hap: [8], hapLabel: 'ледь відчутний тап', mood: 'Записав',
+      play: function (t) { click(t, 0.35); mallet(1400, t, 0.05, 0.12); } },
+    { list: 'list-question', name: 'Уточнення', when: 'Хом\'як питає: «гречка суха чи варена?»', len: '0,4 с', hap: [10, 40, 10], hapLabel: 'два легкі тапи', mood: 'Думає',
+      play: function (t) { bell(G5, t, 0.3, 0.22); bell(D6, t + 0.11, 0.4, 0.18); } },
+    { list: 'list-fail', name: 'Ой', when: 'Помилка або немає зв\'язку.', len: '0,35 с', hap: [30, 40, 30], hapLabel: 'два щільні тапи', mood: 'Ой',
+      play: function (t) { soft(E4, t, 0.16, 0.3, 'triangle'); soft(C4, t + 0.14, 0.22, 0.3, 'triangle'); } },
+    { list: 'list-fail', name: 'Фото не вийшло', when: 'Не вдалося розпізнати етикетку чи страву.', len: '0,3 с', hap: [25], hapLabel: 'один тап', mood: 'Ой',
+      play: function (t) { soft(A4, t, 0.3, 0.22, 'sine', A4 * 0.82); } },
+    { list: 'list-system', name: 'Мікрофон: старт', when: 'Почався голосовий запис.', len: '0,06 с', hap: [10], hapLabel: 'легкий тап', mood: '',
+      play: function (t) { soft(600, t, 0.06, 0.2, 'sine', 900); } },
+    { list: 'list-system', name: 'Мікрофон: стоп', when: 'Запис завершено, Kusik обробляє.', len: '0,06 с', hap: [10], hapLabel: 'легкий тап', mood: '',
+      play: function (t) { soft(900, t, 0.06, 0.2, 'sine', 600); } },
+    { list: 'list-system', name: 'Нагадування', when: 'Сповіщення «що на сніданок?». Впізнаваний «кусь» і дзвіночок.', len: '0,5 с', hap: [15, 70, 15], hapLabel: 'системна вібрація', mood: 'Нагадує',
+      play: function (t) { crunch(t, 0.5); bell(E5, t + 0.12, 0.3, 0.2); bell(C6, t + 0.24, 0.45, 0.16); } }
+  ];
+
+  var playIcon = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.4-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z"></path></svg>';
+
+  sounds.forEach(function (s, i) {
+    var row = document.createElement('div');
+    row.className = 'row';
+    row.innerHTML =
+      '<button class="play" id="play-' + i + '" type="button" aria-label="Програти звук: ' + s.name + '">' + playIcon + '</button>' +
+      '<div class="info"><span class="name">' + s.name + '</span><span class="when">' + s.when + '</span>' +
+      '<span class="meta"><span class="chip">' + s.len + '</span><span class="chip">Вібрація: ' + s.hapLabel + '</span>' +
+      (s.mood ? '<span class="chip peach">Хом\'як: ' + s.mood + '</span>' : '') + '</span></div>';
+    row.querySelector('button').addEventListener('click', function () {
+      try {
+        audio();
+        s.play(ctx.currentTime + 0.02);
+      } catch (e) {}
+      if (document.getElementById('hap').checked && navigator.vibrate) {
+        try { navigator.vibrate(s.hap); } catch (e) {}
+      }
+      row.classList.add('is-playing');
+      setTimeout(function () { row.classList.remove('is-playing'); }, 600);
+    });
+    document.getElementById(s.list).appendChild(row);
+  });
+
+  document.getElementById('vol').addEventListener('input', function (e) {
+    if (master) master.gain.value = parseFloat(e.target.value);
+  });
+})();
+</script>

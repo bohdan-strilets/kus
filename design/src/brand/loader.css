@@ -1,0 +1,31 @@
+.k-loader { position: relative; display: inline-block; flex: none; }
+.k-loader-spin {
+  display: block;
+  transform-origin: 50% 50%;
+  animation: kSpin 1.1s cubic-bezier(.55, .15, .45, .85) infinite;
+}
+.k-loader-crumb {
+  position: absolute;
+  border-radius: 50%;
+  opacity: 0;
+  animation: kCrumb 1.1s ease-in infinite;
+}
+.k-loader-crumb-2 { animation-delay: .35s; }
+
+.k-loader-block {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px;
+}
+.k-loader-label { font-size: 15px; font-weight: 700; color: var(--k-muted-strong, #4F4237); }
+
+@keyframes kSpin { to { transform: rotate(360deg); } }
+@keyframes kCrumb {
+  0% { opacity: 0; transform: translate(0, 0); }
+  25% { opacity: 1; }
+  100% { opacity: 0; transform: translate(8px, 22px); }
+}
+
+/* Зменшений рух: повільне обертання лишається (інакше незрозуміло, що йде процес), крихти зникають */
+@media (prefers-reduced-motion: reduce) {
+  .k-loader-spin { animation-duration: 2.4s; }
+  .k-loader-crumb { animation: none; opacity: 0; }
+}

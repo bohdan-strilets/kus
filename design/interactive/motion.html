@@ -1,0 +1,514 @@
+<title>Рух Kusik</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap">
+<style>
+/* Layout: a header with motion tokens, then a responsive grid of live demo cards; each card = app-like stage + spec + play button. The app has one light look, so this page commits to it. */
+:root {
+  color-scheme: light;
+  --bg: #FBF6EE;
+  --surface: #FFFFFF;
+  --ink: #2A2118;
+  --muted: #6B5D50;
+  --line: #EADFD3;
+  --accent: #B9521A;
+  --accent-deep: #8F3E12;
+  --mint: #FCE6D2;
+  --mint-2: #FCE6D2;
+  --mint-3: #E58A45;
+  --peach: #FCEBDD;
+  --peach-2: #FDE6D3;
+  --peach-3: #F2A877;
+  --danger: #B42330;
+  --app-bg: linear-gradient(165deg, #FCEBD8 0%, #FBF6EE 50%, #EEF4E8 100%);
+  --font: 'Manrope', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --t-fast: 120ms;
+  --t-base: 200ms;
+  --t-slow: 320ms;
+  --ease-out: cubic-bezier(.2, .8, .2, 1);
+  --ease-spring: cubic-bezier(.34, 1.56, .64, 1);
+  --slow: 1;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font); font-size: 15px; line-height: 1.45; }
+.wrap { max-width: 1180px; margin: 0 auto; padding-inline: 16px; padding-block: 32px 64px; display: flex; flex-direction: column; gap: 28px; }
+h1 { margin: 0; font-size: clamp(30px, 5vw, 44px); font-weight: 800; letter-spacing: -0.03em; text-wrap: balance; }
+.lede { margin: 6px 0 0; color: var(--muted); max-width: 64ch; }
+.top { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+.tokens { display: flex; flex-wrap: wrap; gap: 8px; }
+.tok { display: flex; flex-direction: column; padding: 10px 14px; border-radius: 16px; background: var(--surface); border: 1px solid var(--line); min-width: 130px; }
+.tok b { font-size: 15px; font-variant-numeric: tabular-nums; }
+.tok span { font-size: 12px; color: var(--muted); }
+.controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 22px; font-size: 14px; font-weight: 600; color: var(--muted); }
+.controls label { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+.controls input { accent-color: var(--accent); width: 18px; height: 18px; margin: 0; }
+.note { font-size: 13px; color: var(--muted); }
+.group-title { margin: 8px 0 0; font-size: 12px; font-weight: 800; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); gap: 18px; }
+.demo { background: var(--surface); border: 1px solid var(--line); border-radius: 26px; overflow: hidden; display: flex; flex-direction: column; min-width: 0; }
+.stage { position: relative; height: 250px; background: var(--app-bg); overflow: hidden; display: flex; align-items: center; justify-content: center; padding: 16px; }
+.meta { padding: 16px 18px 18px; display: flex; flex-direction: column; gap: 10px; }
+.meta h3 { margin: 0; font-size: 17px; font-weight: 800; letter-spacing: -0.01em; }
+.meta p { margin: 0; font-size: 14px; color: var(--muted); }
+.spec { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font-size: 12px; font-weight: 700; padding: 3px 9px; border-radius: 10px; background: var(--mint-2); color: var(--accent-deep); font-variant-numeric: tabular-nums; }
+.chip.p { background: var(--peach-2); color: #6B4A33; }
+.play { align-self: flex-start; min-height: 44px; padding: 0 18px; border-radius: 22px; border: none; background: var(--ink); color: #FFFFFF; font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; }
+.play:focus-visible, button:focus-visible, textarea:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.play svg { width: 14px; height: 14px; }
+
+/* app pieces */
+.btn { min-height: 46px; padding: 0 20px; border-radius: 23px; border: none; background: var(--accent); color: #FFFFFF; font-family: inherit; font-size: 15px; font-weight: 700; cursor: pointer; transition: transform calc(var(--t-fast) * var(--slow)) var(--ease-out), box-shadow calc(var(--t-fast) * var(--slow)) var(--ease-out); box-shadow: 0 6px 16px rgba(185, 82, 26, 0.28); }
+.btn:active { transform: scale(0.96); box-shadow: 0 2px 6px rgba(185, 82, 26, 0.25); }
+.switch { position: relative; width: 52px; height: 30px; border-radius: 15px; border: none; padding: 0; background: #DDCFC0; cursor: pointer; transition: background calc(var(--t-base) * var(--slow)) var(--ease-out); }
+.switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 12px; background: #FFFFFF; box-shadow: 0 1px 3px rgba(0,0,0,.2); transition: transform calc(var(--t-slow) * var(--slow)) var(--ease-spring); }
+.switch[aria-checked="true"] { background: var(--accent); }
+.switch[aria-checked="true"]::after { transform: translateX(22px); }
+.choice { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; width: 100%; max-width: 280px; }
+.choice button { min-height: 50px; border-radius: 14px; border: 2px solid transparent; background: #FFFFFF; font-family: inherit; font-size: 14px; font-weight: 700; color: var(--ink); cursor: pointer; transition: transform calc(var(--t-fast) * var(--slow)) var(--ease-out), border-color calc(var(--t-base) * var(--slow)), background calc(var(--t-base) * var(--slow)); }
+.choice button:active { transform: scale(0.96); }
+.choice button[aria-pressed="true"] { border-color: var(--accent); background: var(--mint-2); }
+.col { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.row { display: flex; align-items: center; gap: 14px; }
+
+.chat { position: absolute; inset: 0; padding: 14px; display: flex; flex-direction: column; justify-content: flex-end; gap: 8px; }
+.u { align-self: flex-end; max-width: 78%; padding: 9px 13px; border-radius: 18px 18px 6px 18px; background: var(--accent); color: #FFFFFF; font-size: 14px; font-weight: 500; box-shadow: 0 6px 14px rgba(185,82,26,.25); }
+.ai { align-self: stretch; display: flex; align-items: flex-end; gap: 8px; }
+.ai .b { flex: 1 1 auto; min-width: 0; padding: 10px 12px; border-radius: 18px 18px 18px 6px; background: rgba(255,255,255,.94); box-shadow: 0 8px 20px rgba(80,50,20,.10); font-size: 14px; }
+.typing { display: inline-flex; gap: 5px; padding: 12px 14px; border-radius: 18px 18px 18px 6px; background: rgba(255,255,255,.94); }
+.typing i { width: 7px; height: 7px; border-radius: 4px; background: var(--mint-3); animation: wave calc(900ms * var(--slow)) ease-in-out infinite; }
+.typing i:nth-child(2) { animation-delay: calc(150ms * var(--slow)); }
+.typing i:nth-child(3) { animation-delay: calc(300ms * var(--slow)); }
+@keyframes wave { 0%, 60%, 100% { transform: translateY(0); opacity: .5 } 30% { transform: translateY(-5px); opacity: 1 } }
+.fr { display: flex; justify-content: space-between; font-size: 13px; padding: 3px 0; }
+.fr span:last-child { font-weight: 700; font-variant-numeric: tabular-nums; }
+.kc { padding: 2px 8px; border-radius: 8px; background: #FCE6D2; font-size: 12px; font-weight: 800; color: #8F3E12; font-variant-numeric: tabular-nums; }
+
+.card { width: 100%; max-width: 300px; padding: 12px 14px; border-radius: 20px; background: rgba(255,255,255,.94); box-shadow: 0 8px 20px rgba(80,50,20,.10); }
+.expand { overflow: hidden; height: 0; }
+.expand-in { margin-top: 8px; padding: 10px; border-radius: 14px; background: #FFF4EA; display: flex; flex-direction: column; gap: 8px; }
+.link { padding: 0; border: none; background: none; font-family: inherit; font-size: 12px; font-weight: 700; color: #8A4A12; text-decoration: underline; cursor: pointer; }
+
+.ring-wrap { position: relative; width: 132px; height: 132px; }
+.ring-num { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.ring-num b { font-size: 24px; font-weight: 800; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.ring-num span { font-size: 11px; color: var(--muted); }
+.bars { display: flex; flex-direction: column; gap: 8px; width: 120px; }
+.bar { display: flex; flex-direction: column; gap: 3px; font-size: 11px; color: var(--muted); font-weight: 600; }
+.track { height: 6px; border-radius: 3px; background: rgba(255,255,255,.8); overflow: hidden; }
+.fill { height: 6px; border-radius: 3px; width: 0; }
+
+.badge { position: absolute; right: -10px; top: -10px; width: 30px; height: 30px; border-radius: 15px; background: var(--accent); display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(185,82,26,.35); transform: scale(0); }
+.pc { position: absolute; left: 0; top: 0; pointer-events: none; }
+
+.ach { position: relative; width: 100%; max-width: 300px; padding: 18px; border-radius: 24px; background: linear-gradient(140deg, #FCE6D2, #FCEBDD); overflow: hidden; display: flex; align-items: center; gap: 12px; box-shadow: 0 12px 28px rgba(80,50,20,.14); }
+.blob { position: absolute; border-radius: 50%; filter: blur(2px); opacity: .55; }
+.ach b { font-size: 30px; font-weight: 800; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+
+.tabs { position: absolute; left: 12px; right: 12px; bottom: 12px; padding: 5px; border-radius: 22px; background: rgba(255,255,255,.95); box-shadow: 0 8px 20px rgba(80,50,20,.12); display: grid; grid-template-columns: repeat(4, 1fr); }
+.tabs button { position: relative; z-index: 1; min-height: 44px; border: none; background: none; font-family: inherit; font-size: 11px; font-weight: 700; color: var(--muted); cursor: pointer; transition: color calc(var(--t-base) * var(--slow)); }
+.tabs button[aria-current="true"] { color: var(--accent); }
+.ind { position: absolute; top: 5px; bottom: 5px; left: 5px; width: calc((100% - 10px) / 4); border-radius: 17px; background: var(--mint); transition: transform calc(var(--t-slow) * var(--slow)) var(--ease-spring); }
+.tab-content { position: absolute; left: 16px; right: 16px; top: 18px; font-size: 22px; font-weight: 800; letter-spacing: -0.02em; }
+.scrim { position: absolute; inset: 0; background: rgba(23,32,27,.4); opacity: 0; pointer-events: none; }
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; padding: 10px 16px 18px; border-radius: 22px 22px 0 0; background: #FFFFFF; transform: translateY(105%); display: flex; flex-direction: column; gap: 8px; }
+.handle { align-self: center; width: 36px; height: 4px; border-radius: 2px; background: #E2D6C9; }
+
+.field { width: 100%; max-width: 280px; display: flex; flex-direction: column; gap: 6px; }
+.field .box { padding: 10px 14px; border-radius: 16px; background: #FFFFFF; box-shadow: 0 6px 16px rgba(80,50,20,.06), inset 0 0 0 2px var(--danger); }
+.field .box small { display: block; font-size: 12px; font-weight: 600; color: var(--danger); }
+.field .box div { font-size: 16px; font-weight: 600; letter-spacing: 0.2em; }
+.err { font-size: 12px; font-weight: 600; color: var(--danger); opacity: 0; }
+
+.grow { position: absolute; left: 12px; right: 12px; bottom: 12px; display: flex; flex-direction: column; gap: 6px; padding: 10px 6px 6px 14px; border-radius: 22px; background: #FFFFFF; box-shadow: 0 8px 20px rgba(80,50,20,.12), 0 0 0 2px var(--accent); }
+.grow textarea { width: 100%; border: none; outline: none; resize: none; background: transparent; font-family: inherit; font-size: 14px; line-height: 20px; color: var(--ink); height: 20px; padding: 0 8px 0 0; transition: height calc(var(--t-fast) * var(--slow)) var(--ease-out); overflow: hidden; }
+.grow .gb { display: flex; justify-content: flex-end; }
+.send { width: 38px; height: 38px; border-radius: 19px; border: none; background: var(--accent); display: flex; align-items: center; justify-content: center; }
+
+.rec { position: absolute; left: 12px; right: 12px; bottom: 12px; display: flex; align-items: center; gap: 10px; padding: 6px; border-radius: 24px; background: #FFFFFF; box-shadow: 0 8px 20px rgba(80,50,20,.12), 0 0 0 2px #F2B9A6; }
+.rec .dot { width: 10px; height: 10px; border-radius: 5px; background: #D9473F; }
+.wave { flex: 1 1 auto; min-width: 0; height: 32px; display: flex; align-items: center; gap: 3px; overflow: hidden; }
+.wave i { flex: none; width: 3px; height: 6px; border-radius: 2px; background: var(--accent); transition: height calc(90ms * var(--slow)) linear; }
+
+@media (prefers-reduced-motion: reduce) {
+  .typing i { animation: none; opacity: .7; }
+}
+</style>
+
+<svg width="0" height="0" style="position: absolute" aria-hidden="true">
+  <defs>
+    <symbol id="kh" viewBox="0 0 100 100"><circle cx="27" cy="24" r="10" fill="#E89A68"></circle><circle cx="27" cy="25" r="5.5" fill="#F7B3A2"></circle><circle cx="73" cy="24" r="10" fill="#E89A68"></circle><circle cx="73" cy="25" r="5.5" fill="#F7B3A2"></circle><ellipse cx="50" cy="56" rx="41" ry="38" fill="#F6B98A"></ellipse><circle cx="22" cy="64" r="13" fill="#F9C7A0"></circle><circle cx="78" cy="64" r="13" fill="#F9C7A0"></circle><ellipse cx="50" cy="72" rx="25" ry="20" fill="#FFEBD8"></ellipse><ellipse cx="24" cy="61" rx="6" ry="3.5" fill="#F28E7A" opacity="0.55"></ellipse><ellipse cx="76" cy="61" rx="6" ry="3.5" fill="#F28E7A" opacity="0.55"></ellipse><ellipse cx="50" cy="58" rx="3.6" ry="2.6" fill="#D96B5C"></ellipse></symbol>
+    <linearGradient id="kg" x1="0.15" y1="0.1" x2="0.85" y2="0.95"><stop offset="0" stop-color="#FFB877"></stop><stop offset="1" stop-color="#D45F22"></stop></linearGradient>
+    <mask id="kb"><rect width="100" height="100" fill="#FFFFFF"></rect><circle cx="91" cy="31" r="10" fill="#000000"></circle><circle cx="83" cy="18" r="10" fill="#000000"></circle><circle cx="70" cy="10" r="9.5" fill="#000000"></circle></mask>
+  </defs>
+</svg>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Рух Kusik</h1>
+      <p class="lede">Живий довідник анімацій і ефектів застосунку. Натисни «Програти» біля будь-якого прикладу. Числа під ним підуть у код як є.</p>
+    </div>
+    <div class="tokens" aria-label="Тривалості й криві руху">
+      <div class="tok"><b>120 мс</b><span>швидко: дотик, натискання</span></div>
+      <div class="tok"><b>200 мс</b><span>база: появи, перемикання</span></div>
+      <div class="tok"><b>320 мс</b><span>повільно: панелі, переходи</span></div>
+      <div class="tok"><b>до 1 с</b><span>тільки свята</span></div>
+      <div class="tok"><b>ease-out</b><span>.2, .8, .2, 1</span></div>
+      <div class="tok"><b>пружинка</b><span>.34, 1.56, .64, 1</span></div>
+    </div>
+    <div class="controls">
+      <label for="slow"><input id="slow" type="checkbox"> Сповільнити втричі</label>
+      <label for="snd"><input id="snd" type="checkbox" checked> Зі звуками Kusik</label>
+      <span class="note" id="rm-note"></span>
+    </div>
+  </header>
+
+  <h2 class="group-title">Відгук і чат</h2>
+  <div class="grid">
+    <article class="demo">
+      <div class="stage"><div class="col">
+        <button class="btn" type="button">Записати</button>
+        <div class="row"><span style="font-weight:700">Звуки</span><button class="switch" id="sw" role="switch" aria-checked="true" aria-label="Звуки"></button></div>
+        <div class="choice" role="group" aria-label="Гречка"><button type="button" aria-pressed="true">Варена · 110</button><button type="button" aria-pressed="false">Суха · 343</button></div>
+      </div></div>
+      <div class="meta"><h3>Відгук на дотик</h3><p>Кнопки й варіанти ледь стискаються, перемикач перекочується пружинкою. Натискай самостійно.</p><div class="spec"><span class="chip">120 мс</span><span class="chip">ease-out</span><span class="chip p">вібрація 8–12 мс</span></div></div>
+    </article>
+
+    <article class="demo">
+      <div class="stage"><div class="chat" id="chat"></div></div>
+      <div class="meta"><h3>Повідомлення й відповідь</h3><p>Твоє повідомлення виїжджає знизу, хом'як друкує хвилею, картка страви збирається по рядках, калорії докручуються.</p><div class="spec"><span class="chip">200 мс поява</span><span class="chip">60 мс між рядками</span><span class="chip">500 мс число</span></div><button class="play" type="button" data-play="chat">▶ Програти</button></div>
+    </article>
+
+    <article class="demo">
+      <div class="stage"><div class="card" id="clar">
+        <div class="fr"><span>Яйця варені · 3 шт</span><span>215</span></div>
+        <div class="fr"><span>Гречка варена · 100 г · <button class="link" id="clar-btn" type="button" aria-expanded="false">суха?</button></span><span id="clar-k">110</span></div>
+        <div class="expand" id="clar-x"><div class="expand-in"><b style="font-size:13px">100 г — це вага якої гречки?</b><div class="choice"><button type="button" aria-pressed="true" data-k="110">Варена · 110</button><button type="button" aria-pressed="false" data-k="343">Суха · 343</button></div></div></div>
+      </div></div>
+      <div class="meta"><h3>Уточнення розкривається</h3><p>Рядок плавно відкриває вибір без стрибка картки. Після вибору число перераховується.</p><div class="spec"><span class="chip">250 мс висота</span><span class="chip">ease-out</span></div><button class="play" type="button" data-play="clar">▶ Програти</button></div>
+    </article>
+
+    <article class="demo">
+      <div class="stage">
+        <div class="tab-content" id="tab-c">Чат</div>
+        <div class="scrim" id="scrim"></div>
+        <div class="tabs" id="tabs"><span class="ind" id="ind"></span><button type="button" aria-current="true">Чат</button><button type="button" aria-current="false">Сьогодні</button><button type="button" aria-current="false">Прогрес</button><button type="button" aria-current="false">Рецепти</button></div>
+        <div class="sheet" id="sheet"><span class="handle"></span><b style="font-size:17px">Сніданок · 08:40</b><span style="font-size:13px;color:var(--muted)">Нижня панель редагування</span><button class="btn" type="button" id="sheet-close">Зберегти</button></div>
+      </div>
+      <div class="meta"><h3>Вкладки й нижня панель</h3><p>Капсула переїжджає на нову вкладку, вміст м'яко змінюється. Панель виїжджає знизу поверх затемнення.</p><div class="spec"><span class="chip">200 мс вміст</span><span class="chip">320 мс панель</span><span class="chip">пружинка капсули</span></div><button class="play" type="button" data-play="sheet">▶ Відкрити панель</button></div>
+    </article>
+  </div>
+
+  <h2 class="group-title">Прогрес і стани</h2>
+  <div class="grid">
+    <article class="demo">
+      <div class="stage"><div class="row" style="gap:22px">
+        <div class="ring-wrap"><svg width="132" height="132" viewBox="0 0 132 132" aria-hidden="true"><circle cx="66" cy="66" r="54" fill="none" stroke="rgba(255,255,255,.85)" stroke-width="12"></circle><circle id="ring" cx="66" cy="66" r="54" fill="none" stroke="#17845A" stroke-width="12" stroke-linecap="round" transform="rotate(-90 66 66)" stroke-dasharray="339.3" stroke-dashoffset="339.3"></circle></svg><div class="ring-num"><b id="ring-n">0</b><span>з 2 200 ккал</span></div></div>
+        <div class="bars"><div class="bar">Білки<div class="track"><div class="fill" style="background:#2F6F9F" data-w="56"></div></div></div><div class="bar">Вуглеводи<div class="track"><div class="fill" style="background:#5C7A22" data-w="71"></div></div></div><div class="bar">Жири<div class="track"><div class="fill" style="background:#B05A26" data-w="60"></div></div></div></div>
+      </div></div>
+      <div class="meta"><h3>Кільце, смужки, числа</h3><p>Прогрес заповнюється, а не з'являється одразу. Числа рахуються до нового значення.</p><div class="spec"><span class="chip">700 мс</span><span class="chip">смужки з затримкою 80 мс</span></div><button class="play" type="button" data-play="ring">▶ Програти</button></div>
+    </article>
+
+    <article class="demo">
+      <div class="stage"><div class="col">
+        <div style="position:relative">
+          <svg width="90" height="90" viewBox="0 0 100 100" aria-hidden="true" id="ham"><use href="#kh"></use><g id="face"></g></svg>
+        </div>
+        <button class="play" type="button" id="emo" style="background:#FFFFFF;color:var(--ink)">Змінити емоцію</button>
+      </div></div>
+      <div class="meta"><h3>Хом'як оживає</h3><p>Кліпає раз на кілька секунд, а при зміні емоції ледь підстрибує. Більше нічого, щоб не відволікав.</p><div class="spec"><span class="chip">150 мс кліп</span><span class="chip">300 мс підскок</span><span class="chip p">кліп кожні 4–6 с</span></div></div>
+    </article>
+
+    <article class="demo">
+      <div class="stage"><div class="field"><div class="box" id="fld"><small>Пароль</small><div>••••••••</div></div><span class="err" id="err">Неправильний email або пароль</span></div></div>
+      <div class="meta"><h3>Помилка в полі</h3><p>Поле коротко хитається, повідомлення проявляється. Без червоних спалахів.</p><div class="spec"><span class="chip">300 мс</span><span class="chip">зсув до 6 px</span></div><button class="play" type="button" data-play="shake">▶ Програти</button></div>
+    </article>
+
+    <article class="demo">
+      <div class="stage"><div class="grow"><label for="gt" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Повідомлення</label><textarea id="gt" rows="1"></textarea><div class="gb"><span class="send"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"></path></svg></span></div></div></div>
+      <div class="meta"><h3>Поле росте з текстом</h3><p>Кожен новий рядок плавно додає висоту, до п'яти рядків. Далі текст прокручується всередині.</p><div class="spec"><span class="chip">120 мс на рядок</span><span class="chip">максимум 5 рядків</span></div><button class="play" type="button" data-play="grow">▶ Програти</button></div>
+    </article>
+
+    <article class="demo">
+      <div class="stage"><div class="rec"><span class="dot" aria-hidden="true"></span><b id="rec-t" style="font-variant-numeric:tabular-nums;font-size:14px">0:00</b><span class="wave" id="wave" role="img" aria-label="Хвиля голосу"></span></div></div>
+      <div class="meta"><h3>Голосовий запис</h3><p>Хвиля рухається в такт голосу, таймер іде. На макеті хвиля імітована.</p><div class="spec"><span class="chip">оновлення 90 мс</span><span class="chip p">лише під час запису</span></div><button class="play" type="button" data-play="voice">▶ Програти 3 с</button></div>
+    </article>
+  </div>
+
+  <h2 class="group-title">Ефекти успіху</h2>
+  <div class="grid">
+    <article class="demo">
+      <div class="stage"><div class="card" id="kus-card" style="position:relative">
+        <div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:14px">Сніданок · 08:40</b><span class="kc">370 ккал</span></div>
+        <div class="fr"><span>Яйця варені</span><span>215</span></div><div class="fr"><span>Гречка варена</span><span>110</span></div><div class="fr"><span>Кава з молоком</span><span>45</span></div>
+        <span class="badge" id="kus-badge"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span>
+      </div></div>
+      <div class="meta"><h3>1 · Кусь: страву записано</h3><p>Галочка вискакує пружинкою, з неї вилітає кілька крихт. Найчастіша подія, тому найскромніша.</p><div class="spec"><span class="chip">450 мс</span><span class="chip">4 крихти</span><span class="chip p">звук «Кусь»</span></div><button class="play" type="button" data-play="kusik">▶ Програти</button></div>
+    </article>
+
+    <article class="demo">
+      <div class="stage" id="goal-stage"><div class="row" style="gap:18px">
+        <div class="ring-wrap" id="goal-ring-wrap"><svg width="132" height="132" viewBox="0 0 132 132" aria-hidden="true"><circle cx="66" cy="66" r="54" fill="none" stroke="rgba(255,255,255,.85)" stroke-width="12"></circle><circle id="goal-ring" cx="66" cy="66" r="54" fill="none" stroke="#17845A" stroke-width="12" stroke-linecap="round" transform="rotate(-90 66 66)" stroke-dasharray="339.3" stroke-dashoffset="30"></circle></svg><div class="ring-num"><b id="goal-n">2 010</b><span>з 2 200 ккал</span></div></div>
+        <svg width="70" height="70" viewBox="0 0 100 100" aria-hidden="true" id="goal-ham"><use href="#kh"></use><g id="goal-face"></g></svg>
+      </div></div>
+      <div class="meta"><h3>2 · Ціль дня закрита</h3><p>Кільце доходить до кінця і спалахує, від нього розлітаються кружечки й короткі лінії, хом'як радіє.</p><div class="spec"><span class="chip">900 мс</span><span class="chip">12 частинок</span><span class="chip p">звук «Ціль дня»</span></div><button class="play" type="button" data-play="goal">▶ Програти</button></div>
+    </article>
+
+    <article class="demo">
+      <div class="stage" id="ach-stage"><div class="ach" id="ach">
+        <span class="blob" style="width:120px;height:120px;background:#F7C59A;left:-30px;top:-40px"></span>
+        <span class="blob" style="width:90px;height:90px;background:#D9EFE2;right:-20px;bottom:-30px"></span>
+        <svg width="64" height="64" viewBox="0 0 100 100" aria-hidden="true" style="position:relative;flex:none"><use href="#kh"></use><path d="M33.5 47 Q38 42 42.5 47" stroke="#2B1D14" stroke-width="3" stroke-linecap="round" fill="none"></path><path d="M57.5 47 Q62 42 66.5 47" stroke="#2B1D14" stroke-width="3" stroke-linecap="round" fill="none"></path><path d="M33 37 l9 -2 M58 35 l9 2" stroke="#C97F52" stroke-width="2" stroke-linecap="round"></path><path d="M44 63 Q50 67 57 61" stroke="#2B1D14" stroke-width="2.4" stroke-linecap="round" fill="none"></path></svg>
+        <div style="position:relative;display:flex;flex-direction:column"><b id="ach-n">7</b><span style="font-size:14px;font-weight:700">днів поспіль у нормі</span></div>
+      </div></div>
+      <div class="meta"><h3>3 · Досягнення</h3><p>Єдиний великий ефект: картка на кольоровому тлі, надкушені кружечки й зірочки злітають і падають. Буває раз на кілька днів.</p><div class="spec"><span class="chip">1 000 мс</span><span class="chip">18 частинок</span><span class="chip p">звук «Досягнення»</span></div><button class="play" type="button" data-play="ach">▶ Програти</button></div>
+    </article>
+  </div>
+
+  <p class="note">Без ефектів залишаються звичайні повідомлення, форми, помилки й перебір калорій. Якщо в телефоні ввімкнено «Зменшити рух», усі приклади одразу показують кінцевий стан.</p>
+</div>
+
+<script>
+(function () {
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var slow = false;
+  if (reduce) document.getElementById('rm-note').textContent = 'У тебе ввімкнено «Зменшити рух», тому анімації показано без руху.';
+  var S = function () { return slow ? 3 : 1; };
+  document.getElementById('slow').addEventListener('change', function (e) {
+    slow = e.target.checked; document.documentElement.style.setProperty('--slow', slow ? 3 : 1);
+  });
+  var wait = function (ms) { return new Promise(function (r) { setTimeout(r, reduce ? 0 : ms * S()); }); };
+  function anim(el, kf, o) {
+    if (reduce || !el.animate) { var last = kf[kf.length - 1]; for (var k in last) { if (k !== 'offset' && k !== 'easing') el.style[k] = last[k]; } return Promise.resolve(); }
+    var a = el.animate(kf, { duration: o.duration * S(), delay: (o.delay || 0) * S(), easing: o.easing || 'cubic-bezier(.2,.8,.2,1)', fill: 'both' });
+    return a.finished.catch(function () {});
+  }
+  function count(el, from, to, dur, fmt) {
+    fmt = fmt || function (v) { return Math.round(v).toLocaleString('uk-UA'); };
+    if (reduce) { el.textContent = fmt(to); return; }
+    var t0 = performance.now(), d = dur * S();
+    (function f(t) { var p = Math.min(1, (t - t0) / d); var e = 1 - Math.pow(1 - p, 3); el.textContent = fmt(from + (to - from) * e); if (p < 1) requestAnimationFrame(f); })(t0);
+  }
+
+  // ---- sound (same synth family as the sound page)
+  var ctx = null, master = null, noise = null;
+  function audio() {
+    if (!document.getElementById('snd').checked) return null;
+    try {
+      if (!ctx) { var AC = window.AudioContext || window.webkitAudioContext; ctx = new AC(); master = ctx.createGain(); master.gain.value = 0.6; master.connect(ctx.destination);
+        noise = ctx.createBuffer(1, ctx.sampleRate * 0.5, ctx.sampleRate); var d = noise.getChannelData(0); for (var i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; }
+      if (ctx.state === 'suspended') ctx.resume();
+      return ctx;
+    } catch (e) { return null; }
+  }
+  function env(g, t, peak, a, dcy) { g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(peak, t + a); g.gain.exponentialRampToValueAtTime(0.0001, t + a + dcy); }
+  function mallet(f, t, dur, v) { [[1, 1], [4, .25], [10, .06]].forEach(function (p, i) { var o = ctx.createOscillator(), g = ctx.createGain(); o.frequency.value = f * p[0]; env(g, t, v * p[1], .004, i ? dur * .25 : dur); o.connect(g); g.connect(master); o.start(t); o.stop(t + dur + .05); }); }
+  function bell(f, t, dur, v) { [[1, 1], [2.76, .35], [5.4, .12]].forEach(function (p, i) { var o = ctx.createOscillator(), g = ctx.createGain(); o.frequency.value = f * p[0]; env(g, t, v * p[1], .003, dur / (i + 1)); o.connect(g); g.connect(master); o.start(t); o.stop(t + dur + .05); }); }
+  function crunch(t, v) { [0, .028, .05].forEach(function (dt, i) { var s = ctx.createBufferSource(), fl = ctx.createBiquadFilter(), g = ctx.createGain(); s.buffer = noise; fl.type = 'bandpass'; fl.frequency.value = 2600 * (1 - i * .15); fl.Q.value = 1.6; env(g, t + dt, v * (1 - i * .3), .002, .035); s.connect(fl); fl.connect(g); g.connect(master); s.start(t + dt, Math.random() * .3, .06); }); }
+  var sounds = {
+    kusik: function (t) { crunch(t, .55); mallet(988, t + .07, .12, .18); },
+    goal: function (t) { mallet(523.25, t, .35, .35); mallet(659.25, t + .1, .35, .33); mallet(783.99, t + .2, .5, .33); },
+    ach: function (t) { crunch(t, .4); [523.25, 659.25, 783.99, 1046.5].forEach(function (f, i) { mallet(f, t + .06 + i * .09, .5, .3); }); bell(2093, t + .45, .9, .08); bell(1568, t + .55, .8, .06); }
+  };
+  function sound(name) { var c = audio(); if (c) sounds[name](c.currentTime + .02); }
+
+  // ---- particles
+  var BITE = '<svg width="100%" height="100%" viewBox="0 0 100 100"><circle cx="50" cy="50" r="42" fill="url(#kg)" mask="url(#kb)"></circle></svg>';
+  var STAR = function (c) { return '<svg width="100%" height="100%" viewBox="0 0 20 20"><path d="M10 0 L12.4 7.6 L20 10 L12.4 12.4 L10 20 L7.6 12.4 L0 10 L7.6 7.6Z" fill="' + c + '"></path></svg>'; };
+  function piece(type, color) {
+    var s = document.createElement('span'); s.className = 'pc'; s.setAttribute('aria-hidden', 'true');
+    if (type === 'dot') { s.style.cssText += 'width:7px;height:7px;border-radius:50%;background:' + color; }
+    if (type === 'line') { s.style.cssText += 'width:12px;height:3px;border-radius:2px;background:' + color; }
+    if (type === 'ring') { s.style.cssText += 'width:11px;height:11px;border-radius:50%;border:2px solid ' + color; }
+    if (type === 'bite') { s.style.cssText += 'width:14px;height:14px'; s.innerHTML = BITE; }
+    if (type === 'star') { s.style.cssText += 'width:12px;height:12px'; s.innerHTML = STAR(color); }
+    return s;
+  }
+  function burst(host, x, y, cfg) {
+    if (reduce) return;
+    for (var i = 0; i < cfg.n; i++) {
+      var type = cfg.types[i % cfg.types.length], color = cfg.colors[i % cfg.colors.length];
+      var p = piece(type, color); host.appendChild(p);
+      var a = (cfg.spread ? cfg.spread[0] + Math.random() * (cfg.spread[1] - cfg.spread[0]) : (i / cfg.n) * Math.PI * 2 + Math.random() * .4);
+      var d = cfg.dist * (0.65 + Math.random() * 0.5);
+      var dx = Math.cos(a) * d, dy = Math.sin(a) * d;
+      var rot = type === 'line' ? (a * 180 / Math.PI) : (Math.random() * 240 - 120);
+      var base = 'translate(' + x + 'px,' + y + 'px) translate(-50%,-50%) ';
+      var kf = cfg.gravity
+        ? [{ transform: base + 'translate(0,0) scale(.3) rotate(0deg)', opacity: 1 },
+           { transform: base + 'translate(' + dx * .8 + 'px,' + (dy - 20) + 'px) scale(1) rotate(' + rot / 2 + 'deg)', opacity: 1, offset: .45 },
+           { transform: base + 'translate(' + dx + 'px,' + (dy + cfg.gravity) + 'px) scale(.9) rotate(' + rot + 'deg)', opacity: 0 }]
+        : [{ transform: base + 'translate(0,0) scale(.3) rotate(' + (type === 'line' ? rot : 0) + 'deg)', opacity: 1 },
+           { transform: base + 'translate(' + dx + 'px,' + dy + 'px) scale(1) rotate(' + rot + 'deg)', opacity: 0 }];
+      (function (el) { el.animate(kf, { duration: cfg.dur * S() * (0.8 + Math.random() * .4), easing: 'cubic-bezier(.2,.8,.2,1)', fill: 'both' }).finished.then(function () { el.remove(); }); })(p);
+    }
+  }
+  function centerIn(host, el) { var h = host.getBoundingClientRect(), r = el.getBoundingClientRect(); return [r.left - h.left + r.width / 2, r.top - h.top + r.height / 2]; }
+
+  // ---- hamster faces
+  var F = {
+    smile: '<ellipse cx="38" cy="47" rx="4.4" ry="5.4" fill="#2B1D14" class="eye"></ellipse><ellipse cx="62" cy="47" rx="4.4" ry="5.4" fill="#2B1D14" class="eye"></ellipse><path d="M44 63 Q47 66 50 63 Q53 66 56 63" stroke="#2B1D14" stroke-width="2.4" stroke-linecap="round" fill="none"></path><rect x="47.2" y="64.4" width="2.6" height="3.6" rx="0.8" fill="#FFFFFF"></rect><rect x="50.2" y="64.4" width="2.6" height="3.6" rx="0.8" fill="#FFFFFF"></rect>',
+    happy: '<path d="M33.5 48 Q38 42 42.5 48" stroke="#2B1D14" stroke-width="3" stroke-linecap="round" fill="none"></path><path d="M57.5 48 Q62 42 66.5 48" stroke="#2B1D14" stroke-width="3" stroke-linecap="round" fill="none"></path><path d="M43 62 Q50 74 57 62 Z" fill="#2B1D14"></path>',
+    think: '<ellipse cx="39.5" cy="45" rx="4.4" ry="5.4" fill="#2B1D14" class="eye"></ellipse><ellipse cx="63.5" cy="45" rx="4.4" ry="5.4" fill="#2B1D14" class="eye"></ellipse><ellipse cx="51" cy="65" rx="2.6" ry="3" fill="#2B1D14"></ellipse>',
+    proud: '<path d="M33.5 47 Q38 42 42.5 47" stroke="#2B1D14" stroke-width="3" stroke-linecap="round" fill="none"></path><path d="M57.5 47 Q62 42 66.5 47" stroke="#2B1D14" stroke-width="3" stroke-linecap="round" fill="none"></path><path d="M44 63 Q50 67 57 61" stroke="#2B1D14" stroke-width="2.4" stroke-linecap="round" fill="none"></path>'
+  };
+  var order = ['smile', 'think', 'happy', 'proud'], fi = 0;
+  var face = document.getElementById('face'), ham = document.getElementById('ham');
+  face.innerHTML = F.smile;
+  document.getElementById('goal-face').innerHTML = F.smile;
+  document.getElementById('emo').addEventListener('click', function () {
+    fi = (fi + 1) % order.length; face.innerHTML = F[order[fi]];
+    anim(ham, [{ transform: 'translateY(0)' }, { transform: 'translateY(-8px)', offset: .4 }, { transform: 'translateY(0)' }], { duration: 300, easing: 'cubic-bezier(.34,1.56,.64,1)' });
+  });
+  function blink() {
+    var eyes = face.querySelectorAll('.eye');
+    eyes.forEach(function (e) { e.style.transformBox = 'fill-box'; e.style.transformOrigin = 'center'; anim(e, [{ transform: 'scaleY(1)' }, { transform: 'scaleY(.1)', offset: .5 }, { transform: 'scaleY(1)' }], { duration: 150 }); });
+    setTimeout(blink, (4000 + Math.random() * 2000));
+  }
+  if (!reduce) setTimeout(blink, 1500);
+
+  // ---- tap demo
+  var sw = document.getElementById('sw');
+  sw.addEventListener('click', function () { sw.setAttribute('aria-checked', sw.getAttribute('aria-checked') === 'true' ? 'false' : 'true'); });
+  document.querySelectorAll('.choice').forEach(function (g) {
+    g.addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b) return; g.querySelectorAll('button').forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); }); if (b.dataset.k) setClar(+b.dataset.k); });
+  });
+
+  // ---- chat demo
+  var HEAD = function (f) { return '<svg width="30" height="30" viewBox="0 0 100 100" aria-hidden="true" style="flex:none"><use href="#kh"></use>' + F[f] + '</svg>'; };
+  async function playChat() {
+    var c = document.getElementById('chat'); c.innerHTML = '';
+    var u = document.createElement('div'); u.className = 'u'; u.textContent = 'на сніданок 3 яйця, гречка і кава'; c.appendChild(u);
+    await anim(u, [{ transform: 'translateY(14px)', opacity: 0 }, { transform: 'translateY(0)', opacity: 1 }], { duration: 200 });
+    var t = document.createElement('div'); t.className = 'ai'; t.innerHTML = HEAD('think') + '<span class="typing" aria-label="Kusik друкує"><i></i><i></i><i></i></span>'; c.appendChild(t);
+    await anim(t, [{ opacity: 0 }, { opacity: 1 }], { duration: 150 });
+    await wait(900);
+    t.remove();
+    var a = document.createElement('div'); a.className = 'ai';
+    a.innerHTML = HEAD('smile') + '<div class="b"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><b style="font-size:13px">Сніданок · 08:40</b><span class="kc"><span id="cc">0</span> ккал</span></div><div class="fr r"><span>Яйця варені · 3 шт</span><span>215</span></div><div class="fr r"><span>Гречка варена · 100 г</span><span>110</span></div><div class="fr r"><span>Кава з молоком</span><span>45</span></div></div>';
+    c.appendChild(a);
+    a.querySelectorAll('.r').forEach(function (r) { r.style.opacity = 0; });
+    await anim(a, [{ transform: 'translateY(10px)', opacity: 0 }, { transform: 'translateY(0)', opacity: 1 }], { duration: 200 });
+    a.querySelectorAll('.r').forEach(function (r, i) { anim(r, [{ transform: 'translateY(6px)', opacity: 0 }, { transform: 'translateY(0)', opacity: 1 }], { duration: 200, delay: i * 60 }); });
+    count(document.getElementById('cc'), 0, 370, 500);
+  }
+
+  // ---- clarify
+  var clarOpen = false, x = document.getElementById('clar-x'), cb = document.getElementById('clar-btn');
+  function setClar(k) { var el = document.getElementById('clar-k'); count(el, +el.textContent || 0, k, 300); }
+  async function toggleClar() {
+    clarOpen = !clarOpen; cb.setAttribute('aria-expanded', clarOpen);
+    var h = x.firstElementChild.offsetHeight + 8;
+    await anim(x, clarOpen ? [{ height: '0px' }, { height: h + 'px' }] : [{ height: h + 'px' }, { height: '0px' }], { duration: 250 });
+  }
+  cb.addEventListener('click', toggleClar);
+
+  // ---- tabs + sheet
+  var tabs = document.getElementById('tabs'), ind = document.getElementById('ind'), tc = document.getElementById('tab-c');
+  tabs.addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (!b) return;
+    var btns = [].slice.call(tabs.querySelectorAll('button')), i = btns.indexOf(b);
+    btns.forEach(function (x) { x.setAttribute('aria-current', x === b ? 'true' : 'false'); });
+    ind.style.transform = 'translateX(' + (i * 100) + '%)';
+    anim(tc, [{ opacity: 0, transform: 'translateX(8px)' }, { opacity: 1, transform: 'translateX(0)' }], { duration: 200 });
+    tc.textContent = b.textContent;
+  });
+  var sheet = document.getElementById('sheet'), scrim = document.getElementById('scrim');
+  async function openSheet() { anim(scrim, [{ opacity: 0 }, { opacity: 1 }], { duration: 320 }); await anim(sheet, [{ transform: 'translateY(105%)' }, { transform: 'translateY(0)' }], { duration: 320 }); }
+  async function closeSheet() { anim(scrim, [{ opacity: 1 }, { opacity: 0 }], { duration: 250 }); await anim(sheet, [{ transform: 'translateY(0)' }, { transform: 'translateY(105%)' }], { duration: 250, easing: 'cubic-bezier(.4,0,1,1)' }); }
+  document.getElementById('sheet-close').addEventListener('click', closeSheet);
+
+  // ---- ring
+  function playRing() {
+    var r = document.getElementById('ring'), C = 339.3;
+    anim(r, [{ strokeDashoffset: C }, { strokeDashoffset: C * (1 - .62) }], { duration: 700 });
+    count(document.getElementById('ring-n'), 0, 1370, 700);
+    document.querySelectorAll('.bars .fill').forEach(function (f, i) { anim(f, [{ width: '0%' }, { width: f.dataset.w + '%' }], { duration: 600, delay: 120 + i * 80 }); });
+  }
+
+  // ---- shake
+  async function playShake() {
+    var f = document.getElementById('fld'), e = document.getElementById('err');
+    e.style.opacity = 0;
+    await anim(f, [{ transform: 'translateX(0)' }, { transform: 'translateX(-6px)' }, { transform: 'translateX(6px)' }, { transform: 'translateX(-4px)' }, { transform: 'translateX(4px)' }, { transform: 'translateX(0)' }], { duration: 300, easing: 'linear' });
+    anim(e, [{ opacity: 0, transform: 'translateY(-4px)' }, { opacity: 1, transform: 'translateY(0)' }], { duration: 200 });
+  }
+
+  // ---- grow
+  var growing = false;
+  async function playGrow() {
+    if (growing) return; growing = true;
+    var ta = document.getElementById('gt'); ta.value = ''; ta.style.height = '20px';
+    var text = 'на обід був суп з фрикадельками, десь повна тарілка, потім два шматки хліба з маслом і салат з капусти з олією, ще компот без цукру, а на перекус яблуко і жменя горіхів';
+    for (var i = 0; i <= text.length; i += 2) {
+      ta.value = text.slice(0, i);
+      ta.style.height = '0px'; var h = Math.min(ta.scrollHeight, 100); ta.style.height = h + 'px';
+      await wait(reduce ? 0 : 18);
+    }
+    growing = false;
+  }
+
+  // ---- voice
+  var wave = document.getElementById('wave');
+  for (var i = 0; i < 40; i++) { var b = document.createElement('i'); wave.appendChild(b); }
+  var recTimer = null;
+  function playVoice() {
+    if (recTimer) return;
+    var bars = wave.querySelectorAll('i'), t0 = Date.now(), tEl = document.getElementById('rec-t');
+    recTimer = setInterval(function () {
+      var sec = Math.floor((Date.now() - t0) / 1000); tEl.textContent = '0:0' + sec;
+      bars.forEach(function (b) { b.style.height = (reduce ? 10 : 4 + Math.random() * 26) + 'px'; });
+      if (Date.now() - t0 > 3000) { clearInterval(recTimer); recTimer = null; bars.forEach(function (b) { b.style.height = '6px'; }); }
+    }, 90);
+  }
+
+  // ---- success 1: kusik
+  async function playKus() {
+    var badge = document.getElementById('kus-badge'), host = document.getElementById('kus-card');
+    badge.style.transform = 'scale(0)';
+    sound('kusik');
+    await anim(badge, [{ transform: 'scale(0)' }, { transform: 'scale(1.25)', offset: .6 }, { transform: 'scale(1)' }], { duration: 300, easing: 'cubic-bezier(.34,1.56,.64,1)' });
+    var p = centerIn(host, badge);
+    burst(host, p[0], p[1], { n: 4, types: ['dot', 'dot', 'bite', 'dot'], colors: ['#E58A45', '#F2A877', '#E58A45', '#F7C59A'], dist: 30, dur: 450, spread: [-Math.PI * .95, -Math.PI * .05] });
+  }
+
+  // ---- success 2: goal
+  async function playGoal() {
+    var r = document.getElementById('goal-ring'), C = 339.3, wrap = document.getElementById('goal-ring-wrap'), stage = document.getElementById('goal-stage');
+    var gface = document.getElementById('goal-face'), gham = document.getElementById('goal-ham');
+    gface.innerHTML = F.smile;
+    r.style.strokeDashoffset = 30;
+    count(document.getElementById('goal-n'), 2010, 2200, 450);
+    await anim(r, [{ strokeDashoffset: 30 }, { strokeDashoffset: 0 }], { duration: 450 });
+    sound('goal');
+    anim(wrap, [{ transform: 'scale(1)', filter: 'drop-shadow(0 0 0 rgba(23,132,90,0))' }, { transform: 'scale(1.07)', filter: 'drop-shadow(0 0 14px rgba(23,132,90,.8))', offset: .35 }, { transform: 'scale(1)', filter: 'drop-shadow(0 0 0 rgba(23,132,90,0))' }], { duration: 600 });
+    var p = centerIn(stage, wrap);
+    burst(stage, p[0], p[1], { n: 12, types: ['dot', 'line', 'ring', 'line'], colors: ['#E58A45', '#F2A877', '#B9521A', '#F7C59A'], dist: 92, dur: 700 });
+    gface.innerHTML = F.happy;
+    anim(gham, [{ transform: 'translateY(0)' }, { transform: 'translateY(-10px)', offset: .4 }, { transform: 'translateY(0)' }], { duration: 320, easing: 'cubic-bezier(.34,1.56,.64,1)' });
+  }
+
+  // ---- success 3: achievement
+  async function playAch() {
+    var card = document.getElementById('ach'), stage = document.getElementById('ach-stage');
+    sound('ach');
+    await anim(card, [{ transform: 'scale(.9)', opacity: 0 }, { transform: 'scale(1.03)', opacity: 1, offset: .6 }, { transform: 'scale(1)', opacity: 1 }], { duration: 380, easing: 'cubic-bezier(.34,1.56,.64,1)' });
+    count(document.getElementById('ach-n'), 6, 7, 300);
+    var p = centerIn(stage, card);
+    burst(stage, p[0], p[1] - 10, { n: 18, types: ['bite', 'star', 'dot', 'star', 'dot', 'ring'], colors: ['#F2A877', '#E58A45', '#F5C451', '#B9521A', '#F7C59A'], dist: 120, dur: 1000, gravity: 60, spread: [-Math.PI * .95, -Math.PI * .05] });
+  }
+
+  var map = { chat: playChat, clar: toggleClar, sheet: openSheet, ring: playRing, shake: playShake, grow: playGrow, voice: playVoice, kusik: playKus, goal: playGoal, ach: playAch };
+  document.querySelectorAll('[data-play]').forEach(function (b) { b.addEventListener('click', function () { map[b.dataset.play](); }); });
+
+  // resting states so the page reads complete before anything is played
+  (function rest() {
+    var c = document.getElementById('chat');
+    c.innerHTML = '<div class="u">на сніданок 3 яйця, гречка і кава</div><div class="ai">' + HEAD('smile') + '<div class="b"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><b style="font-size:13px">Сніданок · 08:40</b><span class="kc">370 ккал</span></div><div class="fr"><span>Яйця варені · 3 шт</span><span>215</span></div><div class="fr"><span>Гречка варена · 100 г</span><span>110</span></div><div class="fr"><span>Кава з молоком</span><span>45</span></div></div></div>';
+    document.getElementById('ring').style.strokeDashoffset = 339.3 * .38; document.getElementById('ring-n').textContent = '1 370';
+    document.querySelectorAll('.bars .fill').forEach(function (f) { f.style.width = f.dataset.w + '%'; });
+    document.getElementById('kus-badge').style.transform = 'scale(1)';
+    document.getElementById('gt').value = 'на обід був суп з фрикадельками';
+  })();
+})();
+</script>

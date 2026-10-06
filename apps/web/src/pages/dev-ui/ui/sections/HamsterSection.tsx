@@ -13,7 +13,17 @@ import { DevSection } from '../DevSection'
 const BODY_SIZE = 96
 // the label keys list every mood, so the catalogue never misses a new one
 const MOODS = Object.keys(HAMSTER_LABEL_KEYS) as HamsterMood[]
-const HEAD_MOODS: readonly HamsterHeadMood[] = ['smile', 'happy', 'think', 'proud']
+const HEAD_MOODS: readonly HamsterHeadMood[] = [
+	'smile',
+	'smileOpen',
+	'happy',
+	'think',
+	'proud',
+	'content',
+	'oops',
+	'hungry',
+]
+const HEAD_SIZE = 34
 
 export const HamsterSection = () => {
 	const { t } = useTranslation()
@@ -35,10 +45,10 @@ export const HamsterSection = () => {
 			</DevSection>
 
 			<DevSection title={t('devUi.sections.heads')}>
-				<div className="flex gap-4">
+				<div className="grid grid-cols-4 gap-4">
 					{HEAD_MOODS.map((mood) => (
 						<figure key={mood} className="flex flex-col items-center gap-1">
-							<HamsterHead mood={mood} />
+							<HamsterHead mood={mood} size={HEAD_SIZE} />
 							<figcaption className="text-small text-muted">{mood}</figcaption>
 						</figure>
 					))}

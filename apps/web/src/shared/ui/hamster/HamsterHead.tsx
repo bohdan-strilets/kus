@@ -4,11 +4,11 @@ import { cn } from '@/shared/lib'
 
 import { HAMSTER_COLORS as C } from './hamster.constants'
 import type { HamsterHeadProps } from './hamster.types'
-import { HEAD_FACES } from './head-faces'
+import { HEAD_FACES } from './hamster-head.faces'
 
 /**
  * Kusik's avatar next to his chat replies (viewBox 0 0 100 100). Always decorative: text is next
- * to it.
+ * to it. Defaults to `smile` (winks), as in mockups/chat.html.
  */
 export const HamsterHead = ({ mood = 'smile', size = 34, className }: HamsterHeadProps) => (
 	<svg

@@ -27,8 +27,9 @@ export type HamsterMood =
 	/** Вечір — day summary */
 	| 'sleepy'
 
-/** Chat avatar moods. */
-export type HamsterHeadMood = 'smile' | 'happy' | 'think' | 'proud'
+/** Chat avatar faces, picked by context (design/docs/components.md, Bubble — Kusik). */
+export type HamsterHeadMood =
+	'smile' | 'smileOpen' | 'happy' | 'think' | 'proud' | 'content' | 'oops' | 'hungry'
 
 export interface HamsterProps {
 	mood?: HamsterMood

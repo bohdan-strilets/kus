@@ -10,3 +10,11 @@ export const getLineProps = (width = 3): SVGProps<SVGPathElement> => ({
 	strokeLinejoin: 'round',
 	fill: 'none',
 })
+
+/** Head face lines: no line join, unlike the full body (design/src/hamster/hamster-head.faces.tsx). */
+export const getHeadStrokeProps = (width: number): SVGProps<SVGPathElement> => ({
+	stroke: HAMSTER_COLORS.eye,
+	strokeWidth: width,
+	strokeLinecap: 'round',
+	fill: 'none',
+})

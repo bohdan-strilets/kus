@@ -8,7 +8,7 @@ export const RootLayout = () => {
 	const { t } = useTranslation()
 
 	return (
-		<div className="mx-auto flex min-h-dvh max-w-lg flex-col">
+		<div className="mx-auto flex min-h-dvh max-w-app flex-col">
 			{/* room for the fixed bottom nav */}
 			<main className="flex-1 pb-24">
 				<Suspense fallback={<p className="px-4 pt-6 text-muted">{t('common.loading')}</p>}>

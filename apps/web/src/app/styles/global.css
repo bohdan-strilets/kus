@@ -9,8 +9,13 @@
 	}
 
 	body {
-		@apply min-h-dvh font-sans text-ink antialiased;
-		background-image: var(--gradient-app);
+		@apply min-h-dvh bg-app font-sans text-body font-medium text-ink antialiased;
 		background-attachment: fixed;
+	}
+
+	/* CLAUDE-design §14: visible focus, 3px ink outline */
+	:focus-visible {
+		outline: 3px solid var(--color-ink);
+		outline-offset: 2px;
 	}
 }

@@ -12,17 +12,17 @@ export const BottomNav = () => {
 	return (
 		<nav
 			aria-label={t('nav.label')}
-			className="fixed inset-x-0 bottom-0 bg-surface-strong pb-safe-bottom shadow-card backdrop-blur"
+			className="fixed inset-x-0 bottom-0 bg-surface-glass pb-safe-bottom shadow-card backdrop-blur"
 		>
-			<ul className="mx-auto flex max-w-lg">
+			<ul className="mx-auto flex max-w-app">
 				{NAV_ITEMS.map(({ to, labelKey, icon: Icon }) => (
 					<li key={to} className="flex-1">
 						<NavLink
 							to={to}
 							className={({ isActive }) =>
 								cn(
-									'flex min-h-tap flex-col items-center justify-center gap-0.5 py-2 text-xs font-semibold transition-colors',
-									isActive ? 'text-accent' : 'text-muted',
+									'flex min-h-tap flex-col items-center justify-center gap-0.5 py-2 text-small transition-colors',
+									isActive ? 'text-primary' : 'text-muted',
 								)
 							}
 						>

@@ -16,7 +16,7 @@ export const HealthStatus = () => {
 			<div
 				role="status"
 				aria-label={t('common.loading')}
-				className="h-14 animate-pulse rounded-md bg-surface motion-reduce:animate-none"
+				className="h-14 animate-pulse rounded-tile bg-surface motion-reduce:animate-none"
 			/>
 		)
 	}
@@ -25,9 +25,9 @@ export const HealthStatus = () => {
 		return (
 			<div
 				role="alert"
-				className="flex items-center gap-3 rounded-md bg-surface px-4 py-2 shadow-card"
+				className="flex items-center gap-3 rounded-tile bg-surface px-4 py-2 shadow-card"
 			>
-				<WarningCircleIcon aria-hidden size={24} weight="fill" className="shrink-0 text-fat" />
+				<WarningCircleIcon aria-hidden size={24} weight="fill" className="shrink-0 text-danger" />
 				<p className="flex-1">{t('health.error')}</p>
 				<RetryButton label={t('common.retry')} onClick={() => void refetch()} />
 			</div>
@@ -38,9 +38,9 @@ export const HealthStatus = () => {
 		<div
 			role="status"
 			aria-label={t('health.label')}
-			className="flex min-h-14 items-center gap-3 rounded-md bg-surface px-4 shadow-card"
+			className="flex min-h-14 items-center gap-3 rounded-tile bg-surface px-4 shadow-card"
 		>
-			<CheckCircleIcon aria-hidden size={24} weight="fill" className="shrink-0 text-accent" />
+			<CheckCircleIcon aria-hidden size={24} weight="fill" className="shrink-0 text-success" />
 			<p>{t('health.ok')}</p>
 		</div>
 	)

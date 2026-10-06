@@ -6,3 +6,8 @@ export const ROUTES = {
 } as const
 
 export type RoutePath = (typeof ROUTES)[keyof typeof ROUTES]
+
+/** Registered only in dev builds (see app/router). */
+export const DEV_ROUTES = {
+	ui: '/dev/ui',
+} as const

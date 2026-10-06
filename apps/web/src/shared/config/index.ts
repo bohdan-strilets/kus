@@ -1,2 +1,2 @@
 export { env } from './env'
-export { type RoutePath, ROUTES } from './routes'
+export { DEV_ROUTES, type RoutePath, ROUTES } from './routes'

@@ -1,12 +1,26 @@
-import { createBrowserRouter, Navigate } from 'react-router'
+import { createBrowserRouter, Navigate, type RouteObject } from 'react-router'
 
-import { ROUTES } from '@/shared/config'
+import { DEV_ROUTES, ROUTES } from '@/shared/config'
 
 import { ChatPage, ProgressPage, RecipesPage, TodayPage } from './lazy-pages'
 import { RootLayout } from './RootLayout'
 import { RouteErrorPage } from './RouteErrorPage'
+import { RouteLoader } from './RouteLoader'
+
+// `import.meta.env.DEV` is a build-time constant: in production this branch and its chunk are dropped
+const devRoutes: RouteObject[] = import.meta.env.DEV
+	? [
+			{
+				path: DEV_ROUTES.ui,
+				errorElement: <RouteErrorPage />,
+				hydrateFallbackElement: <RouteLoader />,
+				lazy: () => import('@/pages/dev-ui').then((m) => ({ Component: m.DevUiPage })),
+			},
+		]
+	: []
 
 export const router = createBrowserRouter([
+	...devRoutes,
 	{
 		element: <RootLayout />,
 		// last resort if the layout itself fails

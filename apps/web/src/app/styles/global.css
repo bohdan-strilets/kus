@@ -3,6 +3,15 @@
 @import '../../shared/ui/theme/tokens.css';
 @import '../../shared/lib/motion/motion.css';
 
+/* Horizontal chip rows scroll without a scrollbar (docs QuickChips) */
+@utility scrollbar-none {
+	scrollbar-width: none;
+
+	&::-webkit-scrollbar {
+		display: none;
+	}
+}
+
 @layer base {
 	html {
 		-webkit-text-size-adjust: 100%;
@@ -10,9 +19,7 @@
 	}
 
 	body {
-		@apply min-h-dvh font-sans text-body font-medium text-ink antialiased bg-app;
-		/* after bg-app: its `background` shorthand would reset the attachment */
-		background-attachment: fixed;
+		@apply min-h-dvh bg-app bg-fixed font-sans text-body font-medium text-ink antialiased;
 	}
 
 	/* CLAUDE-design: visible focus, 3px ink outline */

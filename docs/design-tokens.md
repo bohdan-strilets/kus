@@ -40,6 +40,11 @@ used only once is rounded to the nearest existing token. Mockups win over `token
 | `spacing-safe-top`, `spacing-safe-bottom`         | `env(safe-area-inset-*)`          | `CLAUDE-design.md`                                                     | iPhone notch and home indicator                                                                                                                                                                                                                                                                           |
 | `container-app`                                   | 480px                             | `CLAUDE-design.md`                                                     | Column width on wide screens                                                                                                                                                                                                                                                                              |
 | `breakpoint-tablet`, `breakpoint-desktop`         | 48rem / 64rem                     | —                                                                      | Project breakpoints from roadmap stage 0                                                                                                                                                                                                                                                                  |
+| `text-title`                                      | 20/800, −0.02em                   | sheet, dialog and empty state titles                                   | Repeats in 25 mockups                                                                                                                                                                                                                                                                                     |
+| `text-input`                                      | 16px                              | auth and onboarding inputs                                             | 16px so iOS doesn't zoom (CLAUDE-design rule 4)                                                                                                                                                                                                                                                           |
+| `color-notice`                                    | `#F2894F`                         | the «new» dot on «Прогрес»                                             | Repeats on every tab mockup                                                                                                                                                                                                                                                                               |
+| `shadow-dialog`                                   | `0 20px 50px rgb(0 0 0 / .2)`     | `settings-delete-confirm`                                              | Only one mockup, but it is the dialog card shadow every future dialog reuses                                                                                                                                                                                                                              |
+| `color-scrim-strong`                              | `rgb(42 33 24 / .45)`             | `settings-delete-confirm`                                              | Dialogs dim more than sheets (0.4) in the mockups                                                                                                                                                                                                                                                         |
 
 `color-track` (`#EFE6DC`) used to be on this list; `theme.css` now has it.
 
@@ -56,15 +61,25 @@ Durations (`fast` 120, `base` 200, `slow` 320) are plain `--duration-*` variable
 Code rules from the root `CLAUDE.md` win over `design/src` (the priority rule in `CLAUDE-design.md`).
 Agreed with the product owner on 2026-10-06:
 
-| In `design/`                                     | In `apps/web`                                                                          | Why                                                                                           |
-| ------------------------------------------------ | -------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
-| `<Hamster blink>`                                | `<Hamster isBlinking>`                                                                 | Booleans are named `is/has/can/should` (CLAUDE.md §7)                                         |
-| `useDelayedFlag` in `src/brand/`                 | `shared/lib/use-delayed-flag.ts`                                                       | A generic hook, not brand UI; it also resets in render instead of in an effect (CLAUDE.md §4) |
-| `.k-wordmark` CSS class                          | `text-wordmark` token (`tokens.json` → `font.scale.wordmark`)                          | Typography goes through tokens (CLAUDE.md §3)                                                 |
-| i18n into `locales/uk/`                          | `locales/uk.json`                                                                      | One file per locale is enough for now                                                         |
-| Sound and haptics on by default                  | Off by default (`DEFAULT_SOUND_SETTINGS`)                                              | Opt-in until «Налаштування → Звуки й вібрація» exists                                         |
-| `@fontsource/manrope/{500…800}.css`, all subsets | `shared/ui/theme/fonts.css`: 400–800, only cyrillic + latin-ext + latin, only `.woff2` | Smaller PWA precache; uk/pl/en need nothing else                                              |
-| `Spinner` in the Level 0 list                    | `Loader` is the Spinner                                                                | One component, as `CLAUDE-design.md` rule 10 says                                             |
+| In `design/`                                                   | In `apps/web`                                                                                                 | Why                                                                                                                         |
+| -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `<Hamster blink>`                                              | `<Hamster isBlinking>`                                                                                        | Booleans are named `is/has/can/should` (CLAUDE.md §7)                                                                       |
+| `useDelayedFlag` in `src/brand/`                               | `shared/lib/use-delayed-flag.ts`                                                                              | A generic hook, not brand UI; it also resets in render instead of in an effect (CLAUDE.md §4)                               |
+| `.k-wordmark` CSS class                                        | `text-wordmark` token (`tokens.json` → `font.scale.wordmark`)                                                 | Typography goes through tokens (CLAUDE.md §3)                                                                               |
+| i18n into `locales/uk/`                                        | `locales/uk.json`                                                                                             | One file per locale is enough for now                                                                                       |
+| Sound and haptics on by default                                | Off by default (`DEFAULT_SOUND_SETTINGS`)                                                                     | Opt-in until «Налаштування → Звуки й вібрація» exists                                                                       |
+| `@fontsource/manrope/{500…800}.css`, all subsets               | `shared/ui/theme/fonts.css`: 400–800, only cyrillic + latin-ext + latin, only `.woff2`                        | Smaller PWA precache; uk/pl/en need nothing else                                                                            |
+| `Spinner` in the Level 0 list                                  | `Loader` is the Spinner                                                                                       | One component, as `CLAUDE-design.md` rule 10 says                                                                           |
+| `bg-app` etc. use the `background` shorthand                   | `background-image`                                                                                            | The shorthand resets `background-attachment`, so `bg-app bg-fixed` would depend on class order; the gradient looks the same |
+| Text links: `primary` 14/600 (docs)                            | Button `text` — `primary` 700 on a white card; `textOnBackground` — `primary-deep` 700 on the screen gradient | Weight from the mockups; `primary` is 4.20:1 on `bg-app`, so links there are `primary-deep`                                 |
+| Button `primary`: `shadow-accent` (docs)                       | No shadow                                                                                                     | No primary button in the mockups has one (auth, sheets, dialog, chat-error)                                                 |
+| 40 / 36 / 34 px buttons, chips, composer icons                 | Visual size kept, tap area ≥ 44                                                                               | An invisible `::after` widens the hit area (CLAUDE.md §13)                                                                  |
+| «записано» badge: `primary` + shadow (interactive/motion.html) | `success`, no shadow                                                                                          | docs win over interactive/: `components.md` and CLAUDE-design rule 3                                                        |
+| One scrim `rgba(42,33,24,.4)`                                  | `scrim` 0.4 under sheets, `scrim-strong` 0.45 under dialogs                                                   | The mockups use both: chat-edit-entry / install-hint vs settings-delete-confirm                                             |
+
+`Hamster` (12 moods) and `HamsterHead` (8 faces) are independent: the first is an illustration,
+the second is the chat avatar whose face is picked from the conversation context. There is no
+mood → face mapping on purpose.
 
 ## Contrast (WCAG 2.x)
 
@@ -92,14 +107,15 @@ UI parts (arcs, bars, borders) need ≥ 3:1.
 | white                     | ink                                          | 15.80                     | ✅                                           |
 | muted-soft                | surface                                      | 2.77                      | ❌ disabled controls only (exempt from WCAG) |
 
-| UI part                          | Against          | Contrast           |                                                              |
-| -------------------------------- | ---------------- | ------------------ | ------------------------------------------------------------ |
-| success arc                      | track            | 3.80               | ✅                                                           |
-| over arc                         | track            | 3.57               | ✅                                                           |
-| protein / carbs / fat bar        | their `-bg`      | 4.64 / 4.31 / 4.02 | ✅                                                           |
-| primary border (selected option) | primary-selected | 4.22               | ✅                                                           |
-| line                             | surface          | 1.31               | ❌ decorative borders only, never the only edge of a control |
-| toggle-off                       | surface          | 1.53               | ❌ open question for the Toggle (not built yet)              |
+| UI part                          | Against          | Contrast           |                                                                         |
+| -------------------------------- | ---------------- | ------------------ | ----------------------------------------------------------------------- |
+| success arc                      | track            | 3.80               | ✅                                                                      |
+| over arc                         | track            | 3.57               | ✅                                                                      |
+| protein / carbs / fat bar        | their `-bg`      | 4.64 / 4.31 / 4.02 | ✅                                                                      |
+| primary border (selected option) | primary-selected | 4.22               | ✅                                                                      |
+| line                             | surface          | 1.31               | ❌ decorative borders only, never the only edge of a control            |
+| toggle-off                       | surface          | 1.53               | ❌ open question for the Toggle (not built yet)                         |
+| notice dot                       | surface          | 2.3                | ⚠️ colour from the mockups; the meaning is also in the tab's aria-label |
 
 ### Rules that follow from it
 

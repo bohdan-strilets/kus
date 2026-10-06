@@ -60,10 +60,14 @@
 	--color-over-ink: #ab4f19;
 	/* added: over-goal bars in the weekly summary (docs Charts) */
 	--color-over-soft: #f2a877;
+	/* added: «new» dot badge on a nav tab (every tab mockup) */
+	--color-notice: #f2894f;
 	/* errors, deletion */
 	--color-danger: #b42330;
 	--color-danger-soft: #fce9ea;
 	--color-scrim: rgb(42 33 24 / 0.4);
+	/* added: under centred dialogs (mockups/settings-delete-confirm.html); sheets keep `scrim` */
+	--color-scrim-strong: rgb(42 33 24 / 0.45);
 
 	/* macros: always these colours, always in protein → carbs → fat order */
 	--color-protein-bg: #e2f0fb;
@@ -91,6 +95,14 @@
 	--text-big-number--line-height: 1.1;
 	--text-big-number--letter-spacing: -0.03em;
 	--text-big-number--font-weight: 800;
+	/* added: sheet, dialog and empty state titles 20/800 (25 mockups) */
+	--text-title: 20px;
+	--text-title--line-height: 1.25;
+	--text-title--letter-spacing: -0.02em;
+	--text-title--font-weight: 800;
+	/* added: form inputs — 16px so iOS doesn't zoom (CLAUDE-design rule 4, auth and onboarding mockups) */
+	--text-input: 16px;
+	--text-input--line-height: 1.5;
 	--text-body: 15px;
 	--text-body--line-height: 1.45;
 	--text-card-title: 14px;
@@ -141,6 +153,8 @@
 	--shadow-sheet: 0 -10px 30px rgb(0 0 0 / 0.12);
 	/* added: floating bottom nav and composer (mockups chat, today) */
 	--shadow-float: 0 10px 28px rgb(80 50 20 / 0.12);
+	/* added: BaseModal card (settings-delete-confirm) */
+	--shadow-dialog: 0 20px 50px rgb(0 0 0 / 0.2);
 	/* added: form field card (docs Field) */
 	--shadow-field: 0 6px 16px rgb(80 50 20 / 0.06);
 
@@ -188,15 +202,16 @@
 	}
 }
 
-/* Gradients aren't colours, so they are separate utilities */
+/* Gradients aren't colours, so they are separate utilities. background-image (not the `background`
+   shorthand of design/tokens/theme.css) so bg-fixed and other background-* utilities still apply */
 @utility bg-app {
-	background: var(--bg-app);
+	background-image: var(--bg-app);
 }
 
 @utility bg-soft-card {
-	background: var(--bg-soft-card);
+	background-image: var(--bg-soft-card);
 }
 
 @utility bg-dark-card {
-	background: var(--bg-dark-card);
+	background-image: var(--bg-dark-card);
 }

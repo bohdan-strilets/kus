@@ -1,5 +1,8 @@
 import type { ReactNode } from 'react'
 
+import { Heading } from '../heading'
+import { Text } from '../text'
+
 interface PageStubProps {
 	title: string
 	description: string
@@ -8,9 +11,9 @@ interface PageStubProps {
 
 /** Temporary page body for screens that aren't built yet; replaced as each screen lands. */
 export const PageStub = ({ title, description, children }: PageStubProps) => (
-	<section className="flex flex-col gap-4 px-4 pt-6">
-		<h1 className="text-screen-title">{title}</h1>
-		<p className="text-muted">{description}</p>
+	<section className="flex flex-col gap-4 px-gutter pt-6">
+		<Heading as="h1">{title}</Heading>
+		<Text tone="muted">{description}</Text>
 		{children}
 	</section>
 )

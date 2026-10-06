@@ -41,5 +41,7 @@ export {
 	type SoundSettings,
 	unlockSound,
 } from './sound'
+export { focusDialogContainer } from './focus-dialog-container'
 export { DEFAULT_FLAG_DELAY_MS, useDelayedFlag } from './use-delayed-flag'
+export { useAutoHeight } from './use-auto-height'
 export { useSvgId } from './use-svg-id'

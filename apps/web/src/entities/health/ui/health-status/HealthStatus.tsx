@@ -1,11 +1,12 @@
 import { CheckCircleIcon, WarningCircleIcon } from '@phosphor-icons/react'
 import { useTranslation } from 'react-i18next'
 
-import { RetryButton } from '@/shared/ui'
+import { Button, Skeleton, Surface, Text } from '@/shared/ui'
 
 import { useHealth } from '../../model/use-health'
 
-// Temporary styling until Surface / Button / Skeleton exist (roadmap stage 1)
+const STATUS_ICON_SIZE = 24
+
 export const HealthStatus = () => {
 	const { t } = useTranslation()
 	const { isPending, isError, isFetching, refetch } = useHealth()
@@ -13,35 +14,43 @@ export const HealthStatus = () => {
 
 	if (isPending || isRetrying) {
 		return (
-			<div
-				role="status"
-				aria-label={t('common.loading')}
-				className="h-14 animate-pulse rounded-tile bg-surface motion-reduce:animate-none"
-			/>
+			<div role="status" aria-label={t('common.loading')}>
+				<Skeleton shape="block" className="h-14" />
+			</div>
 		)
 	}
 
 	if (isError) {
 		return (
-			<div
-				role="alert"
-				className="flex items-center gap-3 rounded-tile bg-surface px-4 py-2 shadow-card"
-			>
-				<WarningCircleIcon aria-hidden size={24} weight="fill" className="shrink-0 text-danger" />
-				<p className="flex-1">{t('health.error')}</p>
-				<RetryButton label={t('common.retry')} onClick={() => void refetch()} />
-			</div>
+			<Surface radius="tile" role="alert" className="flex items-center gap-3 px-4 py-2">
+				<WarningCircleIcon
+					aria-hidden
+					size={STATUS_ICON_SIZE}
+					weight="fill"
+					className="shrink-0 text-danger"
+				/>
+				<Text className="flex-1">{t('health.error')}</Text>
+				<Button size="md" onClick={() => void refetch()}>
+					{t('common.retry')}
+				</Button>
+			</Surface>
 		)
 	}
 
 	return (
-		<div
+		<Surface
+			radius="tile"
 			role="status"
 			aria-label={t('health.label')}
-			className="flex min-h-14 items-center gap-3 rounded-tile bg-surface px-4 shadow-card"
+			className="flex min-h-14 items-center gap-3 px-4"
 		>
-			<CheckCircleIcon aria-hidden size={24} weight="fill" className="shrink-0 text-success" />
-			<p>{t('health.ok')}</p>
-		</div>
+			<CheckCircleIcon
+				aria-hidden
+				size={STATUS_ICON_SIZE}
+				weight="fill"
+				className="shrink-0 text-success"
+			/>
+			<Text>{t('health.ok')}</Text>
+		</Surface>
 	)
 }

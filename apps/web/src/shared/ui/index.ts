@@ -1,12 +1,21 @@
 export {
+	BRAND_NAME,
+	Loader,
+	type LoaderProps,
+	Logo,
+	LogoMark,
+	type LogoMarkProps,
+	type LogoProps,
+	WORDMARK,
+} from './brand'
+export {
 	Hamster,
-	HAMSTER_MOODS,
-	type HamsterMood,
+	HAMSTER_LABEL_KEYS,
 	HamsterHead,
-	HEAD_MOODS,
-	type HeadMood,
+	type HamsterHeadMood,
+	type HamsterHeadProps,
+	type HamsterMood,
+	type HamsterProps,
 } from './hamster'
-export { Loader, type LoaderProps } from './loader'
-export { Logo, LogoMark, type LogoMarkProps, type LogoProps } from './logo'
 export { PageStub } from './page-stub/PageStub'
 export { RetryButton } from './retry-button/RetryButton'

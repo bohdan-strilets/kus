@@ -1,4 +1,4 @@
-import { HAMSTER_COLOR as C } from './hamster.colors'
+import { HAMSTER_COLORS as C } from './hamster.constants'
 import { getLineProps } from './hamster-line'
 
 /** Full body in the 0 0 120 120 viewBox. */
@@ -48,7 +48,7 @@ export const Cookie = ({ gradientId, maskId }: CookieProps) => (
 			textAnchor="middle"
 			fontSize="16"
 			className="font-sans font-extrabold"
-			fill={C.cookieLetter}
+			fill={C.logoLetter}
 		>
 			k
 		</text>
@@ -60,8 +60,8 @@ export const Cookie = ({ gradientId, maskId }: CookieProps) => (
 export const CookieDefs = ({ gradientId, maskId }: CookieProps) => (
 	<defs>
 		<linearGradient id={gradientId} x1="0.15" y1="0.1" x2="0.85" y2="0.95">
-			<stop offset="0" stopColor={C.cookieFrom} />
-			<stop offset="1" stopColor={C.cookieTo} />
+			<stop offset="0" stopColor={C.logoFrom} />
+			<stop offset="1" stopColor={C.logoTo} />
 		</linearGradient>
 		<mask id={maskId}>
 			<rect width="120" height="120" fill="#FFFFFF" />
@@ -97,7 +97,7 @@ export const Smile = () => (
 			height="3.8"
 			rx="0.8"
 			fill={C.white}
-			stroke={C.tooth}
+			stroke={C.toothLine}
 			strokeWidth="0.6"
 		/>
 		<rect
@@ -107,7 +107,7 @@ export const Smile = () => (
 			height="3.8"
 			rx="0.8"
 			fill={C.white}
-			stroke={C.tooth}
+			stroke={C.toothLine}
 			strokeWidth="0.6"
 		/>
 	</>

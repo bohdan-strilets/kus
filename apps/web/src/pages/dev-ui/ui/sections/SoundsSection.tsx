@@ -30,7 +30,7 @@ export const SoundsSection = () => {
 
 	// sound is opt-in in the app; this page turns it on only while it is open
 	useEffect(() => {
-		configureSound({ sound: true, haptics: true })
+		configureSound({ isSoundOn: true, isHapticsOn: true })
 		return () => {
 			configureSound(DEFAULT_SOUND_SETTINGS)
 		}

@@ -3,13 +3,15 @@ import { motion } from 'motion/react'
 import { useTranslation } from 'react-i18next'
 
 import {
-	enterBubbleVariants,
-	hopVariants,
+	bubbleVariants,
+	HOP_KEYFRAMES,
+	HOP_TRANSITION,
 	popInVariants,
-	shakeVariants,
-	staggerListVariants,
-	staggerRowVariants,
-	tabEnterVariants,
+	ROW_STAGGER_S,
+	rowVariants,
+	SHAKE_KEYFRAMES,
+	SHAKE_TRANSITION,
+	tabContentVariants,
 } from '@/shared/lib'
 import { HamsterHead } from '@/shared/ui'
 
@@ -32,7 +34,7 @@ export const ChatMotionDemos = () => {
 			<DemoCard title={t('devUi.demo.bubble')} onReplay={replayBubble}>
 				<motion.div
 					key={bubbleKey}
-					variants={enterBubbleVariants}
+					variants={bubbleVariants}
 					initial="hidden"
 					animate="visible"
 					className="self-end rounded-bubble rounded-br-tail bg-primary px-4 py-2.5 text-white shadow-accent"
@@ -44,15 +46,15 @@ export const ChatMotionDemos = () => {
 			<DemoCard title={t('devUi.demo.rows')} onReplay={replayRows}>
 				<motion.ul
 					key={rowsKey}
-					variants={staggerListVariants}
 					initial="hidden"
 					animate="visible"
+					transition={{ staggerChildren: ROW_STAGGER_S }}
 					className="flex flex-col gap-1"
 				>
 					{DEMO_ROWS.map((index) => (
 						<motion.li
 							key={index}
-							variants={staggerRowVariants}
+							variants={rowVariants}
 							className="rounded-icon bg-field px-3 py-2"
 						>
 							{t('devUi.demo.rowText', { index })}
@@ -76,9 +78,8 @@ export const ChatMotionDemos = () => {
 			<DemoCard title={t('devUi.demo.hop')} onReplay={replayHop}>
 				<motion.span
 					key={hopKey}
-					variants={hopVariants}
-					initial="rest"
-					animate="hop"
+					animate={HOP_KEYFRAMES}
+					transition={HOP_TRANSITION}
 					className="self-center"
 				>
 					<HamsterHead mood="happy" size={48} />
@@ -88,9 +89,8 @@ export const ChatMotionDemos = () => {
 			<DemoCard title={t('devUi.demo.shake')} onReplay={replayShake}>
 				<motion.div
 					key={shakeKey}
-					variants={shakeVariants}
-					initial="rest"
-					animate="shake"
+					animate={SHAKE_KEYFRAMES}
+					transition={SHAKE_TRANSITION}
 					className="h-12 rounded-tile bg-surface shadow-field ring-2 ring-danger ring-inset"
 				/>
 			</DemoCard>
@@ -98,7 +98,7 @@ export const ChatMotionDemos = () => {
 			<DemoCard title={t('devUi.demo.tab')} onReplay={replayTab}>
 				<motion.div
 					key={tabKey}
-					variants={tabEnterVariants}
+					variants={tabContentVariants}
 					initial="hidden"
 					animate="visible"
 					className="h-12 rounded-tile bg-primary-soft"

@@ -1,10 +1,10 @@
-import { HAMSTER_COLOR as C } from './hamster.colors'
+import { HAMSTER_COLORS as C } from './hamster.constants'
 import { getLineProps } from './hamster-line'
 import { Eyes, Smile } from './hamster-parts'
 import type { HamsterMood, MoodParts } from './hamster.types'
 
 /** Per-mood artwork, 1:1 with design/mockups/brand-hamster.html (viewBox 0 0 120 120). */
-export const MOODS: Record<HamsterMood, MoodParts> = {
+export const HAMSTER_MOODS: Record<HamsterMood, MoodParts> = {
 	wave: {
 		back: (
 			<path
@@ -218,7 +218,7 @@ export const MOODS: Record<HamsterMood, MoodParts> = {
 		),
 	},
 	oops: {
-		back: <path d="M96 36 q-5 7 0 10 q5 -3 0 -10z" fill={C.tear} />,
+		back: <path d="M96 36 q-5 7 0 10 q5 -3 0 -10z" fill={C.sweat} />,
 		face: (
 			<>
 				<Eyes />

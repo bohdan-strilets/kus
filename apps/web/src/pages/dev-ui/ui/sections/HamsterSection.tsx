@@ -1,10 +1,19 @@
 import { useTranslation } from 'react-i18next'
 
-import { Hamster, HAMSTER_MOODS, HamsterHead, HEAD_MOODS } from '@/shared/ui'
+import {
+	Hamster,
+	HAMSTER_LABEL_KEYS,
+	HamsterHead,
+	type HamsterHeadMood,
+	type HamsterMood,
+} from '@/shared/ui'
 
 import { DevSection } from '../DevSection'
 
 const BODY_SIZE = 96
+// the label keys list every mood, so the catalogue never misses a new one
+const MOODS = Object.keys(HAMSTER_LABEL_KEYS) as HamsterMood[]
+const HEAD_MOODS: readonly HamsterHeadMood[] = ['smile', 'happy', 'think', 'proud']
 
 export const HamsterSection = () => {
 	const { t } = useTranslation()
@@ -13,12 +22,12 @@ export const HamsterSection = () => {
 		<>
 			<DevSection title={t('devUi.sections.hamster')}>
 				<div className="grid grid-cols-3 gap-3">
-					{HAMSTER_MOODS.map((mood) => (
+					{MOODS.map((mood) => (
 						<figure
 							key={mood}
 							className="flex flex-col items-center gap-1 rounded-tile bg-surface p-2 shadow-chip"
 						>
-							<Hamster mood={mood} size={BODY_SIZE} />
+							<Hamster mood={mood} size={BODY_SIZE} label={t(HAMSTER_LABEL_KEYS[mood])} />
 							<figcaption className="text-small text-muted">{mood}</figcaption>
 						</figure>
 					))}
@@ -29,7 +38,7 @@ export const HamsterSection = () => {
 				<div className="flex gap-4">
 					{HEAD_MOODS.map((mood) => (
 						<figure key={mood} className="flex flex-col items-center gap-1">
-							<HamsterHead mood={mood} isBlinking />
+							<HamsterHead mood={mood} />
 							<figcaption className="text-small text-muted">{mood}</figcaption>
 						</figure>
 					))}

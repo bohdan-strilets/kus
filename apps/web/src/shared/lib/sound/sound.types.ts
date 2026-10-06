@@ -21,8 +21,8 @@ export type SoundName =
 	| 'remind'
 
 export interface SoundSettings {
-	sound: boolean
-	haptics: boolean
+	isSoundOn: boolean
+	isHapticsOn: boolean
 	/** 0…1 */
 	volume: number
 }

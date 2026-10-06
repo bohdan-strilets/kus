@@ -33,7 +33,7 @@ export const COLOR_GROUPS: readonly (readonly ColorSwatch[])[] = [
 		{ name: 'line', className: 'bg-line' },
 		{ name: 'line-strong', className: 'bg-line-strong', isAdded: true },
 		{ name: 'divider', className: 'bg-divider' },
-		{ name: 'track', className: 'bg-track', isAdded: true },
+		{ name: 'track', className: 'bg-track' },
 		{ name: 'handle', className: 'bg-handle', isAdded: true },
 		{ name: 'toggle-off', className: 'bg-toggle-off', isAdded: true },
 	],

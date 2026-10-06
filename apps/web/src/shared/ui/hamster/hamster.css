@@ -43,9 +43,21 @@
 	}
 }
 
+/* Hop on mood change: add .k-hop for a moment (Motion alternative: HOP_KEYFRAMES) */
+.k-hop {
+	animation: kHop 300ms var(--ease-spring);
+}
+
+@keyframes kHop {
+	40% {
+		transform: translateY(-8px);
+	}
+}
+
 @media (prefers-reduced-motion: reduce) {
 	.k-blink .k-eye,
-	.k-hamster .k-paw-wave {
+	.k-hamster .k-paw-wave,
+	.k-hop {
 		animation: none;
 	}
 }

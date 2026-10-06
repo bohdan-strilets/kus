@@ -1,6 +1,7 @@
 @import 'tailwindcss';
 @import '../../shared/ui/theme/fonts.css';
 @import '../../shared/ui/theme/tokens.css';
+@import '../../shared/lib/motion/motion.css';
 
 @layer base {
 	html {

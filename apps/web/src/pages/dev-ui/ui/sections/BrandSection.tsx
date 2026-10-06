@@ -14,6 +14,7 @@ export const BrandSection = () => {
 	const { t } = useTranslation()
 	const [isWaiting, setIsWaiting] = useState(false)
 	const isLoaderShown = useDelayedFlag(isWaiting)
+	const loadingLabel = t('common.loading')
 
 	return (
 		<DevSection title={t('devUi.sections.brand')}>
@@ -26,17 +27,17 @@ export const BrandSection = () => {
 					{MARK_SIZES.map((size) => (
 						<LogoMark key={size} size={size} />
 					))}
-					<span className="flex size-12 items-center justify-center rounded-button bg-primary text-white">
-						<LogoMark size={28} variant="mono" />
+					<span className="flex size-12 items-center justify-center rounded-button bg-primary">
+						<LogoMark size={28} monoColor="var(--color-white)" />
 					</span>
 				</div>
-				<Loader size={120} label={t('devUi.loaderCaption')} />
+				<Loader size={120} ariaLabel={loadingLabel} label={t('devUi.loaderCaption')} />
 				<div className="flex flex-wrap items-center gap-4">
 					{LOADER_SIZES.map((size) => (
-						<Loader key={size} size={size} />
+						<Loader key={size} size={size} ariaLabel={loadingLabel} />
 					))}
 					<span className="flex h-12 items-center rounded-button bg-primary px-4">
-						<Loader size={20} tone="onPrimary" />
+						<Loader size={20} tone="onPrimary" ariaLabel={loadingLabel} />
 					</span>
 				</div>
 			</div>
@@ -49,7 +50,7 @@ export const BrandSection = () => {
 						setIsWaiting((value) => !value)
 					}}
 				/>
-				{isLoaderShown && <Loader size={28} />}
+				{isLoaderShown && <Loader size={28} ariaLabel={loadingLabel} />}
 			</div>
 		</DevSection>
 	)

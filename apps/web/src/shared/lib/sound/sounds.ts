@@ -50,12 +50,14 @@ export const configureSound = (next: Partial<SoundSettings>): void => {
 
 /** Call in the first click/tap handler: browsers (iOS especially) block audio until a gesture. */
 export const unlockSound = (): void => {
-	if (!settings.sound) return
 	getGraph()
 }
 
 const vibrate = (name: SoundName): void => {
-	if (!settings.haptics || !('vibrate' in navigator)) return
+	if (!settings.isHapticsOn || !('vibrate' in navigator)) return
+	// without a user gesture the browser blocks vibration and logs an error
+	// (`userActivation` is missing before Safari 16.4 — then just try)
+	if ('userActivation' in navigator && !navigator.userActivation.hasBeenActive) return
 	navigator.vibrate(HAPTICS[name])
 }
 
@@ -66,7 +68,7 @@ export const playSound = (name: SoundName): void => {
 	lastPlayedAt = now
 
 	vibrate(name)
-	if (!settings.sound || document.visibilityState !== 'visible') return
+	if (!settings.isSoundOn || document.visibilityState !== 'visible') return
 	const audio = getGraph()
 	if (!audio) return
 	RECIPES[name](audio, audio.context.currentTime + SCHEDULE_LEAD_S)

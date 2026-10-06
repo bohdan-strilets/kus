@@ -2,9 +2,12 @@ import { AnimatePresence, motion } from 'motion/react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { expandVariants, scrimVariants, sheetVariants } from '@/shared/lib'
+import { EASE, scrimVariants, sheetVariants } from '@/shared/lib'
 
 import { DemoCard } from '../DemoCard'
+
+/** Clarification expands by height: Motion `height: auto`, 250 ms (design/docs/motion.md). */
+const EXPAND_TRANSITION = { duration: 0.25, ease: EASE.out }
 
 export const OverlayMotionDemos = () => {
 	const { t } = useTranslation()
@@ -21,9 +24,9 @@ export const OverlayMotionDemos = () => {
 				}}
 			>
 				<motion.div
-					variants={expandVariants}
-					initial="collapsed"
-					animate={isExpanded ? 'expanded' : 'collapsed'}
+					initial={false}
+					animate={isExpanded ? { height: 'auto', opacity: 1 } : { height: 0, opacity: 0 }}
+					transition={EXPAND_TRANSITION}
 					className="overflow-hidden"
 				>
 					<p className="rounded-tile bg-primary-selected p-4 text-card-title">

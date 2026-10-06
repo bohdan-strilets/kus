@@ -1,27 +1,51 @@
 import type { ReactNode } from 'react'
 
 /** Full-body moods, see the table in design/docs/brand.md. */
-export const HAMSTER_MOODS = [
-	'wave',
-	'happy',
-	'think',
-	'logged',
-	'support',
-	'surprised',
-	'yum',
-	'hungry',
-	'proud',
-	'remind',
-	'oops',
-	'sleepy',
-] as const
-
-export type HamsterMood = (typeof HAMSTER_MOODS)[number]
+export type HamsterMood =
+	/** Привіт — first launch, morning */
+	| 'wave'
+	/** Радіє — day goal closed */
+	| 'happy'
+	/** Думає — clarifying a portion, Kusik is typing */
+	| 'think'
+	/** Записав — meal added (with a green check) */
+	| 'logged'
+	/** Підтримує — over goal, without reproach */
+	| 'support'
+	/** Здивований — «Ого, 900 ккал у салаті?» */
+	| 'surprised'
+	/** Ласує — favourite recipe */
+	| 'yum'
+	/** Голодний — meal reminder */
+	| 'hungry'
+	/** Гордий — streak, minus a kilogram */
+	| 'proud'
+	/** Нагадує — notification */
+	| 'remind'
+	/** Ой — error, offline */
+	| 'oops'
+	/** Вечір — day summary */
+	| 'sleepy'
 
 /** Chat avatar moods. */
-export const HEAD_MOODS = ['smile', 'happy', 'think', 'proud'] as const
+export type HamsterHeadMood = 'smile' | 'happy' | 'think' | 'proud'
 
-export type HeadMood = (typeof HEAD_MOODS)[number]
+export interface HamsterProps {
+	mood?: HamsterMood
+	/** 140 empty states · 90 dialogs · 120 onboarding */
+	size?: number
+	/** Screen reader text via t(HAMSTER_LABEL_KEYS[mood]). Without it the hamster is decorative. */
+	label?: string
+	/** Blink every 4–6 s. Off under reduced motion. */
+	isBlinking?: boolean
+	className?: string
+}
+
+export interface HamsterHeadProps {
+	mood?: HamsterHeadMood
+	size?: number
+	className?: string
+}
 
 export interface MoodParts {
 	/** Decor behind the hamster (stars, thought bubbles, moon). */

@@ -1,3 +1,4 @@
-export { Hamster, type HamsterProps } from './Hamster'
-export { HamsterHead, type HamsterHeadProps } from './HamsterHead'
-export { HAMSTER_MOODS, type HamsterMood, HEAD_MOODS, type HeadMood } from './hamster.types'
+export { Hamster } from './Hamster'
+export { HAMSTER_LABEL_KEYS } from './hamster.constants'
+export type { HamsterHeadMood, HamsterHeadProps, HamsterMood, HamsterProps } from './hamster.types'
+export { HamsterHead } from './HamsterHead'

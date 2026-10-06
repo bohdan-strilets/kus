@@ -1,11 +1,11 @@
 import type { ReactNode } from 'react'
 
-import { HAMSTER_COLOR as C } from './hamster.colors'
+import { HAMSTER_COLORS as C } from './hamster.constants'
 import { getLineProps } from './hamster-line'
-import type { HeadMood } from './hamster.types'
+import type { HamsterHeadMood } from './hamster.types'
 
 /** Chat avatar faces, 1:1 with design/interactive/motion.html (viewBox 0 0 100 100). */
-export const HEAD_FACES: Record<HeadMood, ReactNode> = {
+export const HEAD_FACES: Record<HamsterHeadMood, ReactNode> = {
 	smile: (
 		<>
 			<ellipse className="k-eye" cx="38" cy="47" rx="4.4" ry="5.4" fill={C.eye} />

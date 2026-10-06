@@ -1,4 +1,6 @@
-/** Bite mask in the 0 0 100 100 viewBox — shared by LogoMark and Loader (design/src/brand). */
+// Shared mark geometry (viewBox 0 0 100 100): a bitten r42 circle and a mask with three bites.
+// Used by LogoMark and Loader — don't draw the mark any other way.
+
 export const BiteMask = ({ id }: { id: string }) => (
 	<mask id={id}>
 		<rect width="100" height="100" fill="#FFFFFF" />
@@ -13,4 +15,8 @@ export const LogoGradient = ({ id }: { id: string }) => (
 		<stop offset="0" stopColor="var(--color-logo-from)" />
 		<stop offset="1" stopColor="var(--color-logo-to)" />
 	</linearGradient>
+)
+
+export const BittenCircle = ({ fill, maskId }: { fill: string; maskId: string }) => (
+	<circle cx="50" cy="50" r="42" fill={fill} mask={`url(#${maskId})`} />
 )

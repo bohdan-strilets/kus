@@ -1,12 +1,16 @@
 import { motion } from 'motion/react'
+import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import {
+	BAR_DELAY_MS,
+	BAR_FILL_MS,
+	BAR_STEP_MS,
 	cn,
+	EASE,
+	fillArc,
 	formatInteger,
-	getBarFillTransition,
-	RING_FILL,
-	ringGlowVariants,
+	RING_FILL_MS,
 	useCountUp,
 } from '@/shared/lib'
 
@@ -22,26 +26,33 @@ const MACRO_DEMO = [
 	{ id: 'fat', percent: 60, className: 'bg-fat-bar' },
 ] as const
 
-/** Semicircle from the chat header mockup (112×70). */
+/** Half circle from the chat header mockup (112×70). */
 const ARC_PATH = 'M10 62 A46 46 0 0 1 102 62'
 
-const DemoArc = ({ ratio }: { ratio: number }) => (
-	<svg width="112" height="70" viewBox="0 0 112 70" fill="none" aria-hidden="true">
-		<path d={ARC_PATH} className="stroke-track" strokeWidth="11" strokeLinecap="round" />
-		<motion.path
-			d={ARC_PATH}
-			className="stroke-success"
-			strokeWidth="11"
-			strokeLinecap="round"
-			initial={{ pathLength: 0 }}
-			animate={{ pathLength: ratio }}
-			transition={{ duration: RING_FILL.duration, ease: RING_FILL.ease }}
-		/>
-	</svg>
-)
+const DemoArc = ({ ratio }: { ratio: number }) => {
+	const arcRef = useRef<SVGPathElement>(null)
+
+	useEffect(() => {
+		if (!arcRef.current) return
+		void fillArc(arcRef.current, ratio)
+	}, [ratio])
+
+	return (
+		<svg width="112" height="70" viewBox="0 0 112 70" fill="none" aria-hidden="true">
+			<path d={ARC_PATH} className="stroke-track" strokeWidth="11" strokeLinecap="round" />
+			<path
+				ref={arcRef}
+				d={ARC_PATH}
+				className="stroke-success"
+				strokeWidth="11"
+				strokeLinecap="round"
+			/>
+		</svg>
+	)
+}
 
 const CountedKcal = () => {
-	const ref = useCountUp<HTMLSpanElement>(EATEN_KCAL, { durationMs: RING_FILL.duration * 1000 })
+	const ref = useCountUp<HTMLSpanElement>(EATEN_KCAL, { durationMs: RING_FILL_MS })
 	return (
 		<span ref={ref} className="text-big-number tabular-nums">
 			{formatInteger(EATEN_KCAL)}
@@ -49,11 +60,16 @@ const CountedKcal = () => {
 	)
 }
 
+const getBarTransition = (index: number) => ({
+	duration: BAR_FILL_MS / 1000,
+	delay: (BAR_DELAY_MS + index * BAR_STEP_MS) / 1000,
+	ease: EASE.out,
+})
+
 export const DataMotionDemos = () => {
 	const { t } = useTranslation()
 	const [ringKey, replayRing] = useReplay()
 	const [barsKey, replayBars] = useReplay()
-	const [glowKey, replayGlow] = useReplay()
 
 	return (
 		<>
@@ -67,28 +83,16 @@ export const DataMotionDemos = () => {
 			<DemoCard title={t('devUi.demo.bars')} onReplay={replayBars}>
 				<div key={barsKey} className="flex flex-col gap-2">
 					{MACRO_DEMO.map((macro, index) => (
-						<div key={macro.id} className="h-1.5 rounded-full bg-divider">
+						<div key={macro.id} className="h-1.5 rounded-full bg-track">
 							<motion.div
 								className={cn('h-full rounded-full', macro.className)}
 								initial={{ width: 0 }}
 								animate={{ width: `${macro.percent}%` }}
-								transition={getBarFillTransition(index)}
+								transition={getBarTransition(index)}
 							/>
 						</div>
 					))}
 				</div>
-			</DemoCard>
-
-			<DemoCard title={t('devUi.demo.glow')} onReplay={replayGlow}>
-				<motion.div
-					key={glowKey}
-					variants={ringGlowVariants}
-					initial="rest"
-					animate="glow"
-					className="self-center"
-				>
-					<DemoArc ratio={1} />
-				</motion.div>
 			</DemoCard>
 		</>
 	)

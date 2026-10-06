@@ -1,7 +1,7 @@
 import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { burst, CELEBRATE, type CelebrationLevel, getCenterIn, playSound } from '@/shared/lib'
+import { burst, CELEBRATE, type CelebrationLevel, playSound } from '@/shared/lib'
 import { LogoMark } from '@/shared/ui'
 
 import { DemoButton } from '../DemoButton'
@@ -18,8 +18,7 @@ export const CelebrateSection = () => {
 		const host = hostRef.current
 		const target = targetRef.current
 		if (!host || !target) return
-		const [x, y] = getCenterIn(host, target)
-		burst(host, x, y, CELEBRATE[level])
+		burst(host, target, CELEBRATE[level])
 		// each success level has a sound of the same name (design/docs/motion.md)
 		playSound(level)
 	}
@@ -31,7 +30,7 @@ export const CelebrateSection = () => {
 				className="relative flex h-40 items-center justify-center rounded-card bg-surface shadow-card"
 			>
 				<div ref={targetRef}>
-					<LogoMark size={48} label="" />
+					<LogoMark size={48} isLabelled={false} />
 				</div>
 			</div>
 			<div className="flex flex-wrap gap-2">

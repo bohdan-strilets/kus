@@ -4,3 +4,4 @@ coverage
 apps/api/src/generated
 CLAUDE.md
 .playwright-mcp
+design/

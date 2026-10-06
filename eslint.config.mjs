@@ -42,6 +42,7 @@ const createFsdBoundaries = (layer, index) => {
 }
 
 export default tseslint.config(
+	{ ignores: ['design/**'] },
 	{
 		ignores: ['**/dist/**', '**/coverage/**', '**/node_modules/**', 'apps/api/src/generated/**'],
 	},

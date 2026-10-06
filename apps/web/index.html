@@ -3,9 +3,17 @@
 	<head>
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-		<meta name="theme-color" content="#DDF3E8" />
+		<!-- keep in sync with APP_BACKGROUND_COLOR in vite.config.ts -->
+		<meta name="theme-color" content="#FBF6EE" />
+		<meta name="mobile-web-app-capable" content="yes" />
+		<!-- older iOS Safari reads only the prefixed name -->
+		<meta name="apple-mobile-web-app-capable" content="yes" />
+		<meta name="apple-mobile-web-app-title" content="Kusik" />
+		<meta name="apple-mobile-web-app-status-bar-style" content="default" />
 		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<title>Кусь</title>
+		<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+		<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+		<title>Kusik</title>
 	</head>
 	<body>
 		<div id="root"></div>

@@ -3,10 +3,47 @@ import { fileURLToPath, URL } from 'node:url'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import { defaultClientConditions } from 'vite'
+import { VitePWA } from 'vite-plugin-pwa'
 import { defineConfig } from 'vitest/config'
 
+// Middle stop of the bg-app gradient (shared/ui/theme/tokens.css), as design/README.md specifies
+// for the manifest; keep in sync with <meta name="theme-color"> in index.html
+const APP_BACKGROUND_COLOR = '#FBF6EE'
+
 export default defineConfig({
-	plugins: [react(), tailwindcss()],
+	plugins: [
+		react(),
+		tailwindcss(),
+		VitePWA({
+			registerType: 'autoUpdate',
+			includeAssets: ['favicon.svg', 'favicon-32.png', 'apple-touch-icon.png'],
+			manifest: {
+				name: 'Kusik',
+				short_name: 'Kusik',
+				lang: 'uk',
+				start_url: '/',
+				display: 'standalone',
+				orientation: 'portrait',
+				theme_color: APP_BACKGROUND_COLOR,
+				background_color: APP_BACKGROUND_COLOR,
+				icons: [
+					{ src: '/icon-192.png', sizes: '192x192', type: 'image/png' },
+					{ src: '/icon-512.png', sizes: '512x512', type: 'image/png' },
+					{
+						src: '/icon-maskable-512.png',
+						sizes: '512x512',
+						type: 'image/png',
+						purpose: 'maskable',
+					},
+				],
+			},
+			workbox: {
+				globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
+				// API calls go same-origin through the rewrite: never answer them with the SPA shell
+				navigateFallbackDenylist: [/^\/api\//],
+			},
+		}),
+	],
 	resolve: {
 		alias: {
 			'@': fileURLToPath(new URL('./src', import.meta.url)),
@@ -31,6 +68,10 @@ export default defineConfig({
 						{ name: 'vendor-zod', test: /node_modules[\\/]zod[\\/]/ },
 						{ name: 'vendor-data', test: /node_modules[\\/](@tanstack|axios)[\\/]/ },
 						{ name: 'vendor-i18n', test: /node_modules[\\/](i18next|react-i18next)[\\/]/ },
+						{
+							name: 'vendor-motion',
+							test: /node_modules[\\/](motion|motion-dom|motion-utils|framer-motion)[\\/]/,
+						},
 					],
 				},
 			},

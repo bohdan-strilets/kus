@@ -1,21 +1,15 @@
 import { Suspense } from 'react'
-import { useTranslation } from 'react-i18next'
 import { Outlet } from 'react-router'
 
+import { AppLayout } from '@/shared/ui'
 import { BottomNav } from '@/widgets/bottom-nav'
 
-export const RootLayout = () => {
-	const { t } = useTranslation()
+import { RouteLoader } from './RouteLoader'
 
-	return (
-		<div className="mx-auto flex min-h-dvh max-w-app flex-col">
-			{/* room for the fixed bottom nav */}
-			<main className="flex-1 pb-24">
-				<Suspense fallback={<p className="px-4 pt-6 text-muted">{t('common.loading')}</p>}>
-					<Outlet />
-				</Suspense>
-			</main>
-			<BottomNav />
-		</div>
-	)
-}
+export const RootLayout = () => (
+	<AppLayout bottomNav={<BottomNav />}>
+		<Suspense fallback={<RouteLoader />}>
+			<Outlet />
+		</Suspense>
+	</AppLayout>
+)

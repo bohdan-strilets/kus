@@ -9,6 +9,9 @@ import { HEAD_FACES } from './hamster-head.faces'
 /**
  * Kusik's avatar next to his chat replies (viewBox 0 0 100 100). Always decorative: text is next
  * to it. Defaults to `smile` (winks), as in mockups/chat.html.
+ *
+ * The face is picked from the conversation context (typing, clarifying, error…), not from a
+ * Hamster mood — the two sets are independent. The picking rules live with the Kusik bubble.
  */
 export const HamsterHead = ({ mood = 'smile', size = 34, className }: HamsterHeadProps) => (
 	<svg

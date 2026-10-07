@@ -1,0 +1,179 @@
+import { describe, expect, it } from 'vitest'
+
+import { selectClarifications } from './clarifications.js'
+import { parseToolCalls, type RawToolCall } from './parse-tool-calls.js'
+import { logFoodInputSchema } from './tools.js'
+
+const egg = {
+	name: 'Яйце варене',
+	grams: 150,
+	quantity: 3,
+	kcal: 233,
+	protein: 19,
+	fat: 16,
+	carbs: 1.7,
+	fiber: 0,
+	category: 'eggs',
+	source: 'REFERENCE',
+	confidence: 0.9,
+	assumption: null,
+	memoryRef: null,
+}
+
+const soup = {
+	...egg,
+	name: 'Суп',
+	grams: 300,
+	quantity: null,
+	kcal: 150,
+	protein: 6,
+	fat: 6,
+	carbs: 18,
+	category: 'soup',
+	source: 'ESTIMATE',
+	confidence: 0.4,
+}
+
+const call = (name: string, input: unknown): RawToolCall => ({
+	name,
+	arguments: JSON.stringify(input),
+})
+
+const logFood = (items: unknown[]): RawToolCall =>
+	call('log_food', { items, mealType: null, reply: 'Записав!' })
+
+const options = { memoryRefs: new Set(['m1']) }
+
+describe('parseToolCalls', () => {
+	it('returns a log decision for a valid log_food', () => {
+		const result = parseToolCalls([logFood([egg])], options)
+		expect(result.ok).toBe(true)
+		if (!result.ok) return
+		expect(result.decision.kind).toBe('log')
+		expect(result.calls[0]?.status).toBe('SUCCEEDED')
+	})
+
+	it('rejects invalid JSON with a message the model can act on', () => {
+		const result = parseToolCalls([{ name: 'log_food', arguments: '{"items": [' }], options)
+		expect(result).toMatchObject({ ok: false, errors: ['log_food: arguments are not valid JSON'] })
+		expect(result.calls[0]?.status).toBe('REJECTED')
+	})
+
+	it('explains a macros mismatch in the error', () => {
+		const result = parseToolCalls([logFood([{ ...egg, kcal: 400 }])], options)
+		expect(result.ok).toBe(false)
+		if (result.ok) return
+		expect(result.errors[0]).toContain('items.0.kcal: kcal does not match')
+	})
+
+	it('rejects an unknown tool', () => {
+		const result = parseToolCalls([call('get_weather', {})], options)
+		expect(result).toMatchObject({ ok: false, errors: ['unknown tool "get_weather"'] })
+	})
+
+	it('rejects an empty answer', () => {
+		expect(parseToolCalls([], options).ok).toBe(false)
+	})
+
+	it('rejects log_food together with reply', () => {
+		const result = parseToolCalls([logFood([egg]), call('reply', { text: 'Привіт' })], options)
+		expect(result.ok).toBe(false)
+	})
+
+	it('rejects clarify without log_food', () => {
+		const clarify = call('clarify', {
+			question: '?',
+			itemIndexes: [0],
+			options: [
+				{ label: 'a', kcal: 100 },
+				{ label: 'b', kcal: 300 },
+			],
+		})
+		expect(parseToolCalls([clarify, call('reply', { text: 'Ок' })], options).ok).toBe(false)
+	})
+
+	it('rejects a memory ref the backend did not give', () => {
+		const item = { ...egg, source: 'MEMORY', memoryRef: 'm7' }
+		const result = parseToolCalls([logFood([item])], options)
+		expect(result).toMatchObject({ ok: false })
+	})
+
+	it('accepts a memory ref from the context', () => {
+		const item = { ...egg, source: 'MEMORY', memoryRef: 'm1' }
+		expect(parseToolCalls([logFood([item])], options).ok).toBe(true)
+	})
+
+	it('rejects clarify indexes outside the logged items', () => {
+		const clarify = call('clarify', {
+			question: 'Яка тарілка?',
+			itemIndexes: [3],
+			options: [
+				{ label: 'Мала', kcal: 100 },
+				{ label: 'Велика', kcal: 300 },
+			],
+		})
+		expect(parseToolCalls([logFood([soup]), clarify], options).ok).toBe(false)
+	})
+
+	it('rejects repeated clarify indexes so the model fixes them on the retry', () => {
+		const clarify = call('clarify', {
+			question: 'Яка тарілка?',
+			itemIndexes: [0, 0],
+			options: [
+				{ label: 'Мала', kcal: 100 },
+				{ label: 'Велика', kcal: 300 },
+			],
+		})
+		const result = parseToolCalls([logFood([soup]), clarify], options)
+		expect(result).toMatchObject({ ok: false })
+		if (result.ok) return
+		expect(result.errors[0]).toContain('itemIndexes must not repeat')
+	})
+
+	it('returns not_food and reply decisions', () => {
+		const notFood = parseToolCalls([call('not_food', { reply: 'Камінь — не їжа 🙂' })], options)
+		expect(notFood).toMatchObject({ ok: true, decision: { kind: 'not_food' } })
+		const reply = parseToolCalls([call('reply', { text: 'Привіт!' })], options)
+		expect(reply).toMatchObject({ ok: true, decision: { kind: 'reply', text: 'Привіт!' } })
+	})
+})
+
+describe('selectClarifications', () => {
+	const log = logFoodInputSchema.parse({
+		items: [soup, egg],
+		mealType: null,
+		reply: 'Ок',
+	})
+
+	const clarify = (itemIndexes: number[], kcals: number[]) => ({
+		question: '?',
+		itemIndexes,
+		options: kcals.map((kcal, index) => ({ label: `o${index}`, kcal })),
+	})
+
+	it('keeps a question that changes kcal by 80+ and 15%+', () => {
+		const [selected] = selectClarifications(log, [clarify([0], [120, 350])])
+		expect(selected?.impactKcal).toBe(230)
+	})
+
+	it('drops a question below 80 kcal', () => {
+		expect(selectClarifications(log, [clarify([0], [120, 190])])).toEqual([])
+	})
+
+	it('drops a question below 15 % of the referenced items', () => {
+		// soup + eggs = 383 kcal; 15 % = 57 → 80 passes the share but…
+		expect(selectClarifications(log, [clarify([0, 1], [1000, 1085])])).toHaveLength(1)
+		// …the same 85 kcal swing on a 1000 kcal item is noise
+		const heavy = { ...log, items: log.items.slice(0, 1).map((item) => ({ ...item, kcal: 1000 })) }
+		expect(selectClarifications(heavy, [clarify([0], [1000, 1085])])).toEqual([])
+	})
+
+	it('keeps at most 2 questions, the largest impact first', () => {
+		const selected = selectClarifications(log, [
+			clarify([0], [100, 200]),
+			clarify([0], [100, 400]),
+			clarify([1], [100, 250]),
+		])
+		expect(selected.map((item) => item.impactKcal)).toEqual([300, 150])
+	})
+})

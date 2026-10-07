@@ -23,13 +23,17 @@ const OVERSIZED_BODY_BYTES = 200 * 1024
 const validEntry = {
 	name: 'Гречка варена',
 	grams: 200,
+	quantity: null,
 	kcal: 220,
 	protein: 8,
 	fat: 2,
 	carbs: 42,
+	fiber: null,
+	category: 'porridge',
 	source: 'ESTIMATE',
 	confidence: 0.8,
 	assumption: null,
+	memoryRef: null,
 }
 
 class FoodEntryDto extends createZodDto(foodEntrySchema) {}

@@ -8,6 +8,8 @@ export const surfaceVariants = cva('', {
 			glass: 'bg-surface-glass',
 			/** list rows, chips, back button (white 85% in today/chat mockups) */
 			frosted: 'bg-surface/85',
+			/** the day summary card under the chat header (white 82% in every chat mockup) */
+			translucent: 'bg-surface/82',
 			/** «Вечеря» suggestion row in today */
 			dashed: 'border-2 border-dashed border-line-strong bg-surface/45',
 			soft: 'bg-soft-card',

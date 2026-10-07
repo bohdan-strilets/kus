@@ -11,7 +11,10 @@ export interface UserAvatarProps {
 	onClick?: () => void
 }
 
-/** The initial on the warm gradient with a white ring — opens profile and memory. */
+/**
+ * The initial on the warm gradient with a white ring — opens profile and memory. The mockups set
+ * the letter 16/800; it takes the body size (15), the nearest text role (docs/design-tokens.md).
+ */
 export const UserAvatar = ({ name, size = 'md', onClick }: UserAvatarProps) => {
 	const { t } = useTranslation()
 
@@ -22,7 +25,7 @@ export const UserAvatar = ({ name, size = 'md', onClick }: UserAvatarProps) => {
 			onClick={onClick}
 			{...PRESS}
 			className={cn(
-				'flex shrink-0 cursor-pointer items-center justify-center rounded-full border-2 border-white bg-avatar text-input font-extrabold text-ink shadow-chip',
+				'flex shrink-0 cursor-pointer items-center justify-center rounded-full border-2 border-white bg-avatar text-body font-extrabold text-ink shadow-chip',
 				size === 'md' ? 'size-11.5' : 'size-11',
 			)}
 		>

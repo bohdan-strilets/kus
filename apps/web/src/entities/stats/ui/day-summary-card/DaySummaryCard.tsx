@@ -1,6 +1,7 @@
 import { Link } from 'react-router'
 
 import { ROUTES } from '@/shared/config'
+import { Surface } from '@/shared/ui'
 
 import type { MacroProgressSet } from '../../model/macro.types'
 import { CalorieGauge } from '../calorie-gauge/CalorieGauge'
@@ -17,11 +18,10 @@ export interface DaySummaryCardProps {
  * three compact macro tiles; a tap opens «Сьогодні».
  */
 export const DaySummaryCard = ({ eaten, goal, macros }: DaySummaryCardProps) => (
-	<Link
-		to={ROUTES.today}
-		className="flex items-center gap-3.5 rounded-card bg-surface/82 px-4 py-3.5 text-ink shadow-card"
-	>
-		<CalorieGauge eaten={eaten} goal={goal} size="compact" />
-		<MacroTiles macros={macros} variant="compact" className="min-w-0 flex-1" />
+	<Link to={ROUTES.today} className="block rounded-card text-ink">
+		<Surface variant="translucent" className="flex items-center gap-3.5 px-4 py-3.5">
+			<CalorieGauge eaten={eaten} goal={goal} size="compact" />
+			<MacroTiles macros={macros} variant="compact" className="min-w-0 flex-1" />
+		</Surface>
 	</Link>
 )

@@ -1,9 +1,10 @@
-import { type SubmitEvent, useRef } from 'react'
+import { type KeyboardEvent, type SubmitEvent, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { cn } from '@/shared/lib'
+import { COARSE_POINTER_QUERY, cn, useMediaQuery } from '@/shared/lib'
 import { Icon, ICON_SIZE, IconButton, Text, Textarea } from '@/shared/ui'
 
+import { getEnterAction } from '../../model/get-enter-action'
 import { useIsMultiline } from '../../model/use-is-multiline'
 import { ComposerAction } from './ComposerAction'
 import type { ComposerProps } from './composer.types'
@@ -14,8 +15,8 @@ import { VoiceRecorder } from './VoiceRecorder'
  * side). One textarea for both layouts so it never remounts and keeps focus: single line — camera,
  * field and one primary slot that is the mic while empty and «надіслати» with text; long text
  * (chat-long-input.html) — the field on top, then camera, «Kusik розбере все на окремі продукти»
- * and send. While recording the bar turns into the voice recorder. Presentational: the caller
- * owns the text and the actions.
+ * and send. Enter sends only with a physical keyboard (getEnterAction). While recording the bar
+ * turns into the voice recorder. Presentational: the caller owns the text and the actions.
  */
 export const Composer = ({
 	value,
@@ -31,6 +32,7 @@ export const Composer = ({
 	const { isMultiline, measure } = useIsMultiline(textareaRef, value, !voice)
 	// whitespace alone is nothing to send
 	const canSend = value.trim().length > 0
+	const isCoarsePointer = useMediaQuery(COARSE_POINTER_QUERY)
 
 	if (voice) return <VoiceRecorder {...voice} />
 
@@ -38,6 +40,19 @@ export const Composer = ({
 		event.preventDefault()
 		if (!canSend) return
 		onSubmit()
+	}
+
+	const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>): void => {
+		const action = getEnterAction({
+			key: event.key,
+			shiftKey: event.shiftKey,
+			isComposing: event.nativeEvent.isComposing,
+			isCoarsePointer,
+			hasText: canSend,
+		})
+		if (action === 'default') return
+		event.preventDefault()
+		if (action === 'send') event.currentTarget.form?.requestSubmit()
 	}
 
 	return (
@@ -57,6 +72,7 @@ export const Composer = ({
 				aria-label={t('composer.label')}
 				placeholder={placeholder ?? t('composer.placeholder')}
 				value={value}
+				onKeyDown={handleKeyDown}
 				onChange={(event) => {
 					onValueChange(event.target.value)
 					measure()

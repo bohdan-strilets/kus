@@ -17,6 +17,9 @@
 | Токени з поясненнями «коли вживати» | `tokens/tokens.json` | лишається в `design/` |
 | Лого, лоадер | `src/brand/` | `apps/web/src/shared/ui/brand/` |
 | Хом'як | `src/hamster/` | `apps/web/src/shared/ui/hamster/` |
+| Іконки інтерфейсу (51) | `src/icon/` (SVG у `svg/`) | `apps/web/src/shared/ui/icon/` |
+| Іконки страв (45 категорій) | `src/food/` (SVG у `svg/`) | `apps/web/src/shared/ui/food-icon/`; список категорій — у `packages/shared` (див. `docs/food-categories.md`) |
+| Генератор іконок | `scripts/build-icons.mjs` | `apps/web/scripts/`, у `package.json` → `"icons": "node scripts/build-icons.mjs"`; поправ шляхи в `PACKS` |
 | Рух (Motion) | `src/motion/` | `apps/web/src/shared/lib/motion/` |
 | Звуки | `src/sound/` | `apps/web/src/shared/lib/sound/` |
 | Рядки для i18n | `src/i18n/uk.json` | злити в `apps/web/src/shared/i18n/locales/uk/` |
@@ -38,12 +41,14 @@
      Відома розбіжність: картка страви в макеті пише «Б 23 · Ж 17 · В 27» — у коді виводь «Б 23 · В 27 · Ж 17».
 4. **Розміри:** текст мінімум 12px, зона дотику ≥ 44×44, основна кнопка 48px, бічний відступ 16px. Input — 16px (iOS не зумить).
 5. **Числа:** `toLocaleString('uk-UA')` («1 370»), десяткова кома («82,4 кг»), справжній мінус «−1,6», `tabular-nums` у великих числах.
-6. **Іконки — Phosphor для всього, крім брендових.** Phosphor: weight `regular`, 18px у кнопках, найближчий відповідник до макета.
-   **Виняток — брендові SVG, переносяться з макетів 1:1 (path, stroke 1.9–2, round caps), не замінюються Phosphor:**
-   - 4 іконки нижньої навігації (22px): Чат, Сьогодні (кільце-прогрес), Прогрес, Рецепти — з `mockups/chat.html`;
-   - у полі вводу: камера, мікрофон і «надіслати» — з `mockups/chat.html` / `chat-voice.html`;
-   - а також лого, лоадер, хом'як і піктограми страв у списках.
-   Їх тримай в одному місці (`shared/ui/icons/brand/`), щоб не дублювати path по компонентах.
+6. **Іконки — лише власний пак, сторонніх бібліотек немає.**
+   - Інтерфейс: `<Icon name="camera" size={18} />` з `shared/ui/icon` — 51 іконка, сітка 24, лінія ~1.75px, колір `currentColor`
+     (`text-muted`, `text-primary`). Розміри: 18 — кнопки й поля, 22 — нижня навігація.
+   - Активна вкладка — варіант `-filled` (`chat-filled`, `progress-filled`, `recipes-filled`); «Сьогодні» — `<ProgressRingIcon progress={eaten / goal} isActive />`.
+     Усі стани навігації — `mockups/brand-nav-states.html`.
+   - Страви: `<FoodIcon category>`. Лого, лоадер, хом'як — свої компоненти.
+   - Бракує іконки — скіл `add-icon` (SVG у `svg/` → `pnpm --filter web icons`). Емодзі замість іконок — ніколи.
+   - Каталог з назвами: `src/icon/icon.preview.html`, дошка — `mockups/brand-icons.html`.
 7. **Хом'як** — тільки `<Hamster>` / `<HamsterHead>` з `shared/ui/hamster`. Не малюй іншого, не міняй пропорцій, не додавай настроїв без макета.
    `label` — через `t(HAMSTER_LABEL_KEYS[mood])`; без `label` хом'як декоративний.
 8. **Лого** — тільки `<LogoMark>` / `<Logo>` або файли з `assets/`. «kusik» у логотипі — завжди малими.

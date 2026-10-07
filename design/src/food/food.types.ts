@@ -1,0 +1,55 @@
+// Категорії страв для іконок. Той самий список — у packages/shared/src/schemas/enums.ts (FoodCategory)
+// і в enum Prisma. Змінюєш тут — змінюй там (правило з CLAUDE.md).
+export const FOOD_CATEGORIES = [
+  'eggs',
+  'porridge',
+  'cereal',
+  'pancakes',
+  'toast',
+  'bread',
+  'pastry',
+  'dumplings',
+  'pasta',
+  'pizza',
+  'soup',
+  'borscht',
+  'meat',
+  'poultry',
+  'sausage',
+  'fish',
+  'seafood',
+  'potatoes',
+  'salad',
+  'vegetables',
+  'legumes',
+  'milk',
+  'yogurt',
+  'cottage_cheese',
+  'cheese',
+  'fruit',
+  'banana',
+  'berries',
+  'dried_fruit',
+  'nuts',
+  'snacks',
+  'protein_bar',
+  'chocolate',
+  'cake',
+  'ice_cream',
+  'cookies',
+  'coffee',
+  'tea',
+  'juice',
+  'soda',
+  'alcohol',
+  'protein_shake',
+  'fast_food',
+  'sauce',
+  'plate',
+] as const;
+
+export type FoodCategory = (typeof FOOD_CATEGORIES)[number];
+
+export type FoodGroup = 'grain' | 'soup' | 'protein' | 'plant' | 'dairy' | 'sweet' | 'drink' | 'neutral';
+
+export const FALLBACK_FOOD_CATEGORY: FoodCategory = 'plate';

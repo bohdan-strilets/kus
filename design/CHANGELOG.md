@@ -1,0 +1,129 @@
+# Kusik — журнал дизайн-рішень
+
+Новий запис — зверху. Кожен запис: що вирішили, чому, які файли змінились, що лишилось зробити в репозиторії.
+
+---
+
+## 2026-10-07 · InputBar: мікрофон і «надіслати» в одному слоті; токени gauge/stat/avatar
+
+**Рішення:** праворуч у полі вводу — одна кнопка `primary` 42×42. Порожнє поле → мікрофон, є текст → «надіслати».
+Раніше в макетах стояли обидві (мікрофон вторинний + «надіслати»), а `components.md` уже описував один слот — тепер макети узгоджені з документацією.
+Довгий текст — як у `chat-long-input` (поле до 5 рядків, під ним камера … «надіслати»). Онбординг 1–4 не змінено: там поле «або напиши своїми словами» лише з «надіслати».
+Placeholder онбордингу 5 скорочено до «Наприклад: вівсянка і кава» — попередній «Наприклад: «вівсянка і кава зранку»» обрізався на 390 px.
+
+**Токени (перенесено з репозиторію, щоб архів їх не затирав):** `font.scale.gauge` 28/800 і `font.scale.stat` 17/800 (кільце калорій),
+`gradient.avatar` (аватар у шапці). У `theme.css` — відповідні `--text-gauge`, `--text-stat`, `--bg-avatar` і `@utility bg-avatar`.
+Якщо в репозиторії ці токени вже названі інакше — лишай назви з репозиторію і поправ `design/`.
+
+**Файли:** `mockups/{chat,chat-clarify,chat-compact,chat-edit-entry,chat-error,chat-new-day,chat-new-recipe,chat-photo,chat-typing,chat-weekly-summary,chat-weight,install-hint,onboarding-5-plan,onboarding-5-plan-how}.html` + скриншоти,
+`docs/components.md` (InputBar, Header, CalorieRing), `tokens/tokens.json`, `tokens/theme.css`.
+
+**У репозиторії:** у `InputBar` прибрати окрему кнопку мікрофона; праворуч — один слот: `value.trim() ? send : mic`. Звірити з `screenshots/chat.png` і `chat-long-input.png`.
+
+---
+
+## 2026-10-07 · Нижня навігація: правки після перенесення в код
+
+**Що було не так** (помічено в застосунку):
+1. `recipes` / `recipes-filled` — миска з двома хвильками пари читалась як смайлик (пара = очі, миска = усмішка), особливо поруч із хом'яком, і дублювала `FoodIcon` `soup`.
+2. «Сьогодні»: неактивна на 0% виглядала як сіра вимкнена радіокнопка (трек 30% прозорості); активна — тонке кільце `primary` на `primary-soft` майже зливалось.
+3. `progress-filled` майже не відрізнявся від `progress` (заливка 22%).
+
+**Рішення:**
+- `recipes` — **книга рецептів** (розгорнута, з корінцем), без пари й посуду. `recipes-filled` — суцільна книга з кремовим корінцем.
+  Розглядали каструлю з кришкою (читається як кошик) і картку рецепта (як документ) — книга найоднозначніша.
+- `ProgressRingIcon` отримав `isActive`:
+  - неактивна — трек тієї ж ваги й кольору, що контури інших вкладок; прогрес — товща дуга (3.6) поверх; понад ціль — друге коло всередині;
+  - активна — суцільний диск (як `chat-filled`), прогрес — кремове кільце-виріз; понад ціль — кремова точка в центрі, що росте до +50%.
+  Пробували циферблат із рискою (читався як кнопка живлення) і півкільце-спідометр (замало «маси» поруч з іншими) — відкинули.
+- `progress-filled` — суцільна заливка під лінією графіка.
+- `today` у паку — просто коло вагою контуру (порожній день); з даними завжди `ProgressRingIcon`.
+
+**Файли:** `src/icon/svg/{today,progress-filled,recipes,recipes-filled}.svg`, `src/icon/icon.generated.tsx`, `src/icon/ProgressRingIcon.tsx`,
+`mockups/brand-nav-states.html` + скриншот (нова дошка, відрендерена з компонентів), `mockups/brand-icons.html`, `docs/components.md`, `CLAUDE-design.md`.
+
+**У репозиторії:** замінити ці 4 SVG у `shared/ui/icon/svg/`, `pnpm --filter web icons`, замінити `ProgressRingIcon.tsx`,
+у `BottomNav` передавати `isActive` у `ProgressRingIcon`; скриншот навігації звірити з `screenshots/brand-nav-states.png`.
+
+---
+
+## 2026-10-07 · Іконки страв, власний пак іконок, генератор, скіли
+
+### Коротко
+
+1. Іконки страв — **45 категорій**, а не картинка під кожну страву. AI ставить кожній позиції `category`, фронт показує `<FoodIcon>`.
+2. **Phosphor прибрано повністю.** Замість нього власний пак із **51 іконки** інтерфейсу: `<Icon name>`.
+3. Обидва паки збирає **один генератор** `scripts/build-icons.mjs`. SVG — джерело правди, TSX генерується.
+4. **12 скілів** для Claude Code в `.claude/skills/` на всі повторювані задачі (дизайн + бекенд + AI).
+5. `CLAUDE.md`: стек, правила іконок, таблиця скілів, виняток для `design/`.
+
+### Рішення і чому
+
+**Іконки страв**
+- Страву користувач пише довільним текстом, тому малюємо **категорії**. Емодзі відкинули (різні на iOS/Android, не в стилі), картинки від AI — дорого й нестабільно, фото користувача — оригінали у v0.1 не зберігаються.
+- Користувач обрав повний список із **45**: 42 основні + `fast_food`, `sauce`, `plate` (запасна).
+- Значення — **snake_case** (`dried_fruit`, `ice_cream`, `cottage_cheese`, `protein_bar`, `protein_shake`, `fast_food`): Prisma enum не допускає дефісів, а zod і Prisma мають збігатися символ у символ.
+- Категорія впливає **лише на іконку**, не на калорії — помилка AI тут дешева.
+- Невідома або `null` → `plate`. Іконка прийому їжі на «Сьогодні» = категорія **найкалорійнішої** позиції (`getMealCategory`), окреме поле не потрібне.
+- Тло плитки — за групою (8 груп), токени `--color-food-*` у `theme.css`.
+- Стиль: плоскі заливки + контур 1.2, viewBox 32, ракурс збоку/3/4, як ілюстрації в макетах.
+
+**Іконки інтерфейсу**
+- Phosphor прибрано: один стиль усюди, мінус залежність. Брендові (вкладки, камера, мікрофон, «надіслати») — частина паку.
+- 33 іконки взято з макетів і вирівняно (сітка 24, лише лінії, заокруглені кінці, `currentColor`), 18 домальовано: `chevron-up`, `chevron-down`, `more`, `minus`, `image`, `stop`, `export`, `logout`, `eye`, `eye-off`, `mail`, `bell`, `globe`, `trend-flat`, `scale`, `calendar`, `clock`, `info`.
+- Товщину лінії рахує компонент: ~1.75px оптично за будь-якого розміру (22 → 1.9, 18 → 2.3). Розміри: 18 — кнопки й поля, 22 — навігація.
+- Активна вкладка — варіант `-filled`. Вкладка «Сьогодні» — `<ProgressRingIcon progress={eaten / goal} />`: кільце заповнюється разом з днем (у макеті 62%).
+- Назви іконок — kebab-case, типізовані: неіснуюча назва не пройде typecheck.
+
+**Генератор**
+- `node scripts/build-icons.mjs [icon|food]`, без залежностей. Перевіряє кожен SVG: viewBox, назва, жодних `id`/`<style>`/`<script>`, для UI — лише `currentColor` або `var(...)`.
+- Згенеровані `*.generated.tsx` і `*.preview.html` **комітяться**, вручну не редагуються, ліміт довжини файлу на них не поширюється, ESLint/Prettier їх ігнорують.
+- `FoodIcon` має тип `Record<FoodCategory, ReactNode>`: нова категорія без SVG ламає typecheck (перевірено).
+
+**Скіли** (`.claude/skills/`, поруч із `verify`)
+- Дизайн: `screen-from-mockup`, `new-ui-component`, `add-empty-state`, `add-icon`, `add-food-category`, `add-hamster-mood`, `add-sound`, `add-design-token`.
+- Код: `new-fsd-slice`, `new-api-endpoint`, `add-prisma-model`, `add-ai-tool`.
+- Кожен: порядок дій + чекліст «Готово, коли» + `/verify`. Правило в `CLAUDE.md`: та сама послідовність утретє без скіла — запропонувати новий.
+- Шляхи в скілах — після перенесення в `apps/web` (`shared/ui/icon`, `shared/ui/food-icon`, `apps/web/scripts/build-icons.mjs`).
+
+**`design/` лише для читання — з одним винятком**
+Скіли `add-*` дописують каталоги: таблиці в `design/docs/*.md` і `design/tokens/tokens.json`, щоб документація не відставала від коду. Решта `design/` — без змін.
+
+### Перед цим у тій самій сесії (коротко)
+
+- Стан перебору кільця калорій: друге коло кольором `over` (#C25A1C), без червоного й звуку, понад +50% не росте (`mockups/brand-calorie-ring-states.html`, `today-over.html`).
+- Голова хом'яка для чату — 8 виразів 1:1 з макетів: `smile` (підморгує, за замовчуванням), `smileOpen`, `happy`, `think`, `proud`, `content`, `oops`, `hungry`.
+- Код у `design/src` переписано під правила `CLAUDE.md` (стрілкові функції, i18n, Motion, файли < 200 рядків), токени — Tailwind v4 `@theme`.
+- Тимчасовий виняток «брендові іконки + Phosphor для решти» **скасовано** цим записом.
+
+### Файли
+
+| Що | Файли |
+|---|---|
+| Іконки страв | `src/food/` (`svg/` ×45, `FoodIcon.tsx`, `food.types.ts`, `food.constants.ts`, `meal-category.ts`, `food-icons.generated.tsx`, `index.ts`), `docs/food-categories.md`, `mockups/brand-food-icons.html` |
+| Іконки інтерфейсу | `src/icon/` (`svg/` ×51, `Icon.tsx`, `ProgressRingIcon.tsx`, `icon.generated.tsx`, `index.ts`), `mockups/brand-icons.html` |
+| Генератор | `scripts/build-icons.mjs` |
+| Токени | `tokens/theme.css` (+8 `--color-food-*`), `tokens/tokens.json` |
+| i18n | `src/i18n/uk.json` (+`food.category.*`) |
+| Документація | `README.md`, `CLAUDE-design.md` (п. 6 — іконки, таблиця перенесення), `docs/components.md` |
+| Корінь репо | `CLAUDE.md`, `.claude/skills/*` (12) |
+| Видалити | `design/assets/food/` (SVG переїхали в `src/food/svg/`), `design/src/food/food-icons.{meals,protein-plant,dairy-sweet-drink}.tsx`, залежність `@phosphor-icons/react` |
+
+### Що зробити в репозиторії (порядок)
+
+1. Розпакувати оновлення в корінь, видалити файли зі списку «Видалити».
+2. `pnpm --filter web remove @phosphor-icons/react` (якщо стоїть) і прибрати її імпорти.
+3. `design/scripts/build-icons.mjs` → `apps/web/scripts/`; у `PACKS` шляхи на `../src/shared/ui/icon/…` і `../src/shared/ui/food-icon/…`; у `apps/web/package.json` — `"icons": "node scripts/build-icons.mjs"`.
+4. `design/src/icon` → `apps/web/src/shared/ui/icon/`, `design/src/food` → `apps/web/src/shared/ui/food-icon/`; `cx` → `cn`; `pnpm --filter web icons`.
+5. `*.generated.tsx`, `*.preview.html` — в ignores ESLint і Prettier.
+6. `FOOD_CATEGORIES` → `packages/shared/src/schemas/enums.ts` (zod), `enum FoodCategory` + `FoodEntry.category @default(plate)` у Prisma, міграція (скіл `add-prisma-model`).
+7. Поле `category` в інструменті `log_food` — текст із `docs/food-categories.md`; кейси з того ж файлу в `packages/ai-eval`; рядок у `PROMPT_CHANGELOG.md` (скіл `add-ai-tool`).
+8. Злити `food.category.*` у локаль `uk`.
+9. `pnpm lint && pnpm typecheck && pnpm test`, скриншоти `icon.preview.html` і `food-icons.preview.html`, `/verify`.
+
+### Відкрите
+
+- Екран дозволу на push — лише якщо нагадування будуть у v0.1.
+- Сторінки політики й умов — текстом у стилі лендингу, без окремого макета.
+- Темна тема — відкладена. Домен — не куплено (рекомендовано `kusik.app`).
+- Кнопка «Продовжити з Google» — офіційний знак Google за їхніми правилами бренду, не з нашого паку.

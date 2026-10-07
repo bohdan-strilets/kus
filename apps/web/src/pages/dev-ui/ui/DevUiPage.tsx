@@ -4,6 +4,13 @@ import { addDevMessages } from '@/shared/i18n'
 import { AppLayout, Heading, Text } from '@/shared/ui'
 import { BottomNav } from '@/widgets/bottom-nav'
 
+import { ChatPartsSection } from './domain/ChatPartsSection'
+import { ComposerSection } from './domain/ComposerSection'
+import { FacesSection } from './domain/FacesSection'
+import { FoodIconsSection } from './domain/FoodIconsSection'
+import { FormatSection } from './domain/FormatSection'
+import { PreviewsSection } from './domain/PreviewsSection'
+import { StatsSection } from './domain/StatsSection'
 import { ButtonsSection } from './level0/ButtonsSection'
 import { ChipsBadgesSection } from './level0/ChipsBadgesSection'
 import { FormsSection } from './level0/FormsSection'
@@ -40,6 +47,13 @@ export const DevUiPage = () => {
 						{t('devUi.level0.navHint')}
 					</Text>
 				</header>
+				<PreviewsSection />
+				<ChatPartsSection />
+				<FacesSection />
+				<StatsSection />
+				<ComposerSection />
+				<FoodIconsSection />
+				<FormatSection />
 				<SurfacesSection />
 				<ButtonsSection />
 				<IconButtonsSection />

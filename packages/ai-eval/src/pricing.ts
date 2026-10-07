@@ -1,4 +1,4 @@
-import { buildFoodParseMessages, createFoodParseRequest } from '@kus/shared'
+import { type AiReasoningMode, buildFoodParseMessages, createFoodParseRequest } from '@kus/shared'
 import { z } from 'zod'
 
 import type { EvalCase } from './cases/index.js'
@@ -7,8 +7,11 @@ import { BASE_CONTEXT } from './run-case.js'
 
 /** Calibrated on a real Claude Sonnet 5.5 run (~5100 input tokens per case): Cyrillic + JSON schema. */
 const CHARS_PER_TOKEN = 2.2
-/** Typical tool-call answer; reasoning models may spend more. */
-const OUTPUT_TOKENS_PER_CASE = 450
+/** Answer size grows with the message: ~6 tokens of arguments per character of a food list. */
+const OUTPUT_TOKENS_BASE = 200
+const OUTPUT_TOKENS_PER_TEXT_CHAR = 6
+/** Upper bound of thinking per request: low = 0.2, minimal = 0.1 × max_tokens (OpenRouter docs). */
+const REASONING_TOKENS: Record<AiReasoningMode, number> = { minimal: 800, low: 1600 }
 /** Share of cases expected to need the validation retry (~2× input on those). */
 const RETRY_OVERHEAD = 0.15
 
@@ -49,10 +52,18 @@ const estimateInputTokens = (evalCase: EvalCase): number => {
 export const estimateCost = async (
 	models: string[],
 	cases: EvalCase[],
+	reasoning: AiReasoningMode,
 ): Promise<CostEstimate[]> => {
 	const prices = await fetchPrices()
 	const inputTokens = cases.reduce((sum, evalCase) => sum + estimateInputTokens(evalCase), 0)
-	const outputTokens = cases.length * OUTPUT_TOKENS_PER_CASE
+	const outputTokens = cases.reduce(
+		(sum, evalCase) =>
+			sum +
+			OUTPUT_TOKENS_BASE +
+			evalCase.text.length * OUTPUT_TOKENS_PER_TEXT_CHAR +
+			REASONING_TOKENS[reasoning],
+		0,
+	)
 	return models.map((model) => {
 		const price = prices.get(model)
 		if (!price) throw new Error(`Model "${model}" is not on OpenRouter`)

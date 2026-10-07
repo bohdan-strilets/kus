@@ -106,6 +106,7 @@ export const summarize = (model: string, pairs: Pair[]): ModelSummary => {
 		cases: results.length,
 		failed: results.filter((result) => result.decision === 'error').length,
 		retried: results.filter((result) => result.wasRetried).length,
+		truncated: results.filter((result) => result.truncated).length,
 		kcal: {
 			exact: toErrorStats(collectErrors(pairs, 'kcal', 'exact')),
 			range: toErrorStats(collectErrors(pairs, 'kcal', 'range')),

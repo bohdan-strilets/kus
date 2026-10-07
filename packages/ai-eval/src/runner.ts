@@ -1,3 +1,5 @@
+import type { AiReasoningMode } from '@kus/shared'
+
 import type { EvalCase } from './cases/index.js'
 import type { CaseResult } from './eval.types.js'
 import { runCase } from './run-case.js'
@@ -5,6 +7,7 @@ import { runCase } from './run-case.js'
 export interface RunOptions {
 	apiKey: string
 	model: string
+	reasoning: AiReasoningMode
 	concurrency: number
 	/** Shared across models of one run; checked before each case starts. */
 	budget: { spentUsd: number; maxUsd: number }

@@ -1,5 +1,10 @@
 import type { EvalCase } from './cases/index.js'
 import type { CaseResult, ErrorStats, ModelSummary, RateStats } from './eval.types.js'
+import {
+	explainMissedClarify,
+	isDecisionCorrectWithMemory,
+	MISSED_CLARIFY_LABELS,
+} from './clarify-analysis.js'
 import { getErrorPct, isDecisionCorrect, MIN_BASE } from './metrics.js'
 
 const PERCENT = 100
@@ -15,7 +20,7 @@ const formatRate = ({ correct, total }: RateStats): string =>
 
 export const formatSummaryTable = (summaries: ModelSummary[]): string => {
 	const header = [
-		'| Модель | ккал точні: сер / мед | ккал діапазон | білок точні | білок діапазон | категорії | рішення | без інструмента | повтор / збій | $/запит | мс p50 / p95 | токени in / out | cached/запит |',
+		'| Модель | ккал точні: сер / мед | ккал діапазон | білок точні | білок діапазон | категорії | рішення | без інструмента | повтор / збій / обрізано | $/запит | мс p50 / p95 | токени in / out | cached/запит |',
 		'|---|---|---|---|---|---|---|---|---|---|---|---|---|',
 	]
 	const rows = summaries.map((summary) => {
@@ -30,7 +35,7 @@ export const formatSummaryTable = (summaries: ModelSummary[]): string => {
 			formatRate(summary.categories),
 			formatRate(summary.decisions),
 			formatRate({ correct: summary.modelCalls.textOnly, total: summary.modelCalls.total }),
-			`${summary.retried} / ${summary.failed}`,
+			`${summary.retried} / ${summary.failed} / ${summary.truncated}`,
 			`$${summary.costUsd.perCase.toFixed(5)}`,
 			`${Math.round(summary.latencyMs.p50)} / ${Math.round(summary.latencyMs.p95)}`,
 			`${Math.round(inputPerCase)} / ${Math.round(outputPerCase)}`,
@@ -99,4 +104,25 @@ export const formatMisses = (pairs: { evalCase: EvalCase; result: CaseResult }[]
 	return [...decisionMisses, ...kcalMisses]
 		.map((miss) => `- ${miss.caseId}: ${miss.issue}`)
 		.join('\n')
+}
+
+type Pair = { evalCase: EvalCase; result: CaseResult }
+
+/** Each expected-but-missing question with its reason, and decisions recounted with memory. */
+export const formatClarifyReport = (pairs: Pair[]): string => {
+	const reasons = pairs.flatMap(({ evalCase, result }) => {
+		const reason = explainMissedClarify(evalCase, result)
+		if (!reason) return []
+		const asked = result.clarifyCalls
+			.map((call) => `${Math.round(call.impactKcal)} ккал${call.isKept ? '' : ' (відкинуто)'}`)
+			.join(', ')
+		return [
+			`- ${evalCase.id}: ${MISSED_CLARIFY_LABELS[reason]}${asked ? `; питання: ${asked}` : ''}`,
+		]
+	})
+	const correct = pairs.filter(({ evalCase, result }) =>
+		isDecisionCorrectWithMemory(evalCase, result),
+	).length
+	const withMemory = `Рішення з урахуванням пам'яті: ${formatRate({ correct, total: pairs.length })}`
+	return [withMemory, ...reasons].join('\n')
 }

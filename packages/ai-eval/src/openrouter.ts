@@ -1,6 +1,7 @@
 import {
 	type AiCompletion,
 	aiCompletionSchema,
+	type AiReasoningMode,
 	type AiRequestMessage,
 	createFoodParseRequest,
 } from '@kus/shared'
@@ -14,6 +15,12 @@ const RETRYABLE_STATUS = new Set([408, 409, 429, 500, 502, 503, 504])
 export interface CompletionResponse {
 	completion: AiCompletion
 	latencyMs: number
+}
+
+export interface EvalModelOptions {
+	apiKey: string
+	model: string
+	reasoning: AiReasoningMode
 }
 
 export class OpenRouterError extends Error {
@@ -48,10 +55,10 @@ const isRetryable = (error: unknown): boolean =>
 		: true
 
 export const requestFoodParse = async (
-	{ apiKey, model }: { apiKey: string; model: string },
+	{ apiKey, model, reasoning }: EvalModelOptions,
 	messages: AiRequestMessage[],
 ): Promise<CompletionResponse> => {
-	const body = createFoodParseRequest(model, messages)
+	const body = createFoodParseRequest(model, messages, { reasoning })
 	const startedAt = Date.now()
 	let lastError: unknown
 	for (let attempt = 0; attempt <= NETWORK_RETRIES; attempt += 1) {

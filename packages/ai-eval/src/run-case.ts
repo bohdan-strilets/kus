@@ -7,13 +7,15 @@ import {
 	type FoodParseContext,
 	type FoodParseDecision,
 	getRawToolCalls,
+	isOutputTruncated,
 	type MemoryFoodContext,
 	parseToolCalls,
 } from '@kus/shared'
 
 import type { EvalCase } from './cases/index.js'
-import type { ActualDecision, CaseResult } from './eval.types.js'
-import { requestFoodParse } from './openrouter.js'
+import type { ActualDecision, CaseResult, LoggedItem } from './eval.types.js'
+import { getClarifyCalls } from './clarify-calls.js'
+import { type EvalModelOptions, requestFoodParse } from './openrouter.js'
 
 /** Fixed clock, so meal-type guesses and reruns compare like for like. */
 export const BASE_CONTEXT: FoodParseContext = {
@@ -26,6 +28,7 @@ export const BASE_CONTEXT: FoodParseContext = {
 }
 
 const GRAMS_PER_100 = 100
+const OUTPUT_TRUNCATED = 'OUTPUT_TRUNCATED'
 
 /** Per item: a memory item's numbers come from the saved food, scaled by grams — as the backend does. */
 const getItemTotals = (
@@ -37,6 +40,16 @@ const getItemTotals = (
 	const factor = item.grams / GRAMS_PER_100
 	return { kcal: food.per100g.kcal * factor, protein: food.per100g.protein * factor }
 }
+
+const toLoggedItem = (item: AiFoodItem, memory: MemoryFoodContext[]): LoggedItem => ({
+	name: item.name,
+	grams: item.grams,
+	quantity: item.quantity,
+	...getItemTotals(item, memory),
+	source: item.source,
+	memoryRef: item.memoryRef,
+	assumption: item.assumption,
+})
 
 const sumItems = (items: AiFoodItem[], memory: MemoryFoodContext[]) =>
 	items.reduce(
@@ -61,23 +74,26 @@ const failedResult = (
 		CaseResult,
 		'costUsd' | 'latencyMs' | 'inputTokens' | 'outputTokens' | 'cachedTokens' | 'textOnlyAnswers'
 	>,
-	error: string,
+	{ error, attempts }: { error: string; attempts: number },
 ): CaseResult => ({
 	...base,
 	...usage,
-	attempts: 1 + AI_VALIDATION_RETRY_COUNT,
+	attempts,
 	decision: 'error',
 	error,
+	truncated: error === OUTPUT_TRUNCATED,
+	items: [],
+	clarifyCalls: [],
 	kcal: null,
 	protein: null,
 	categories: [],
 	replyText: null,
-	wasRetried: true,
+	wasRetried: attempts > 1,
 })
 
 export const runCase = async (
 	evalCase: EvalCase,
-	{ apiKey, model }: { apiKey: string; model: string },
+	options: EvalModelOptions,
 ): Promise<CaseResult> => {
 	const memory = evalCase.context?.memory ?? []
 	const memoryRefs = new Set(memory.map((food) => food.ref))
@@ -93,17 +109,22 @@ export const runCase = async (
 		cachedTokens: 0,
 		textOnlyAnswers: 0,
 	}
-	const base = { caseId: evalCase.id, model }
+	const base = { caseId: evalCase.id, model: options.model }
 
+	let attemptsMade = 0
 	try {
 		for (let attempt = 1; attempt <= 1 + AI_VALIDATION_RETRY_COUNT; attempt += 1) {
-			const { completion, latencyMs } = await requestFoodParse({ apiKey, model }, messages)
+			attemptsMade = attempt
+			const { completion, latencyMs } = await requestFoodParse(options, messages)
 			usage.latencyMs += latencyMs
 			usage.costUsd += completion.usage?.cost ?? 0
 			usage.inputTokens += completion.usage?.prompt_tokens ?? 0
 			usage.outputTokens += completion.usage?.completion_tokens ?? 0
 			usage.cachedTokens += completion.usage?.prompt_tokens_details?.cached_tokens ?? 0
 
+			// same rule as the backend: a cut-off answer is not retried
+			if (isOutputTruncated(completion))
+				return failedResult(base, usage, { error: OUTPUT_TRUNCATED, attempts: attempt })
 			const rawCalls = getRawToolCalls(completion)
 			if (rawCalls.length === 0) usage.textOnlyAnswers += 1
 			const result = parseToolCalls(rawCalls, { memoryRefs })
@@ -120,17 +141,22 @@ export const runCase = async (
 					protein: totals?.protein ?? null,
 					categories: items.map((item) => item.category),
 					replyText: result.decision.kind === 'reply' ? result.decision.text : null,
+					items: items.map((item) => toLoggedItem(item, memory)),
+					clarifyCalls: getClarifyCalls(rawCalls, result.decision),
+					truncated: false,
 					wasRetried: attempt > 1,
 				}
 			}
 			messages = [...messages, ...buildRetryMessages(completion, result.errors)]
 		}
-		return failedResult(base, usage, 'INVALID_TOOL_CALLS')
+		return failedResult(base, usage, {
+			error: 'INVALID_TOOL_CALLS',
+			attempts: 1 + AI_VALIDATION_RETRY_COUNT,
+		})
 	} catch (error) {
-		return failedResult(
-			base,
-			usage,
-			error instanceof Error ? error.message.slice(0, 200) : 'UNKNOWN',
-		)
+		return failedResult(base, usage, {
+			error: error instanceof Error ? error.message.slice(0, 200) : 'UNKNOWN',
+			attempts: attemptsMade,
+		})
 	}
 }

@@ -18,8 +18,33 @@ export interface CaseResult {
 	inputTokens: number
 	outputTokens: number
 	cachedTokens: number
+	/** Logged items, kept in results/ (gitignored) for per-item analysis; never printed. */
+	items: LoggedItem[]
+	/** Every valid clarify call of the final answer, including the ones below the backend threshold. */
+	clarifyCalls: ClarifyCall[]
+	/** The answer hit max_tokens (OUTPUT_TRUNCATED). */
+	truncated: boolean
 	/** Model calls answered with text instead of a tool call (possible with tool_choice "auto"). */
 	textOnlyAnswers: number
+}
+
+export interface ClarifyCall {
+	question: string
+	options: { label: string; kcal: number }[]
+	impactKcal: number
+	/** Passed the thresholds (≥ 80 kcal and ≥ 15 %, max 2) and would reach the user. */
+	isKept: boolean
+}
+
+export interface LoggedItem {
+	name: string
+	grams: number
+	quantity: number | null
+	kcal: number
+	protein: number
+	source: string
+	memoryRef: string | null
+	assumption: string | null
 }
 
 export interface ErrorStats {
@@ -39,6 +64,7 @@ export interface ModelSummary {
 	cases: number
 	failed: number
 	retried: number
+	truncated: number
 	kcal: { exact: ErrorStats; range: ErrorStats }
 	protein: { exact: ErrorStats; range: ErrorStats }
 	categories: RateStats

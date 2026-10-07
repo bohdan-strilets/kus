@@ -22,6 +22,9 @@ const result = (overrides: Partial<CaseResult>): CaseResult => ({
 	outputTokens: 300,
 	cachedTokens: 0,
 	textOnlyAnswers: 0,
+	items: [],
+	clarifyCalls: [],
+	truncated: false,
 	...overrides,
 })
 

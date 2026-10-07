@@ -37,6 +37,8 @@ export const evalCaseSchema = z.object({
 		categories: z.array(foodCategorySchema).optional(),
 		/** For reply cases: substrings the answer must contain (e.g. the remaining kcal). */
 		replyIncludes: z.array(z.string()).optional(),
+		/** For clarify cases: stems of the items a question is expected about ("пряник"). */
+		clarifyAbout: z.array(z.string().min(1)).optional(),
 	}),
 	/** Where the numbers come from (label text, USDA FDC, typical portion). */
 	reference: z.string().min(1),

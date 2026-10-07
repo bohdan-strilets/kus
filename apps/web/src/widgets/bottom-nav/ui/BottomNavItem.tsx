@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { NavLink } from 'react-router'
 
 import { cn } from '@/shared/lib'
-import { Badge } from '@/shared/ui'
+import { Badge, Icon, ICON_SIZE, ProgressRingIcon } from '@/shared/ui'
 
 import { NAV_PILL_LAYOUT_ID, NAV_PILL_TRANSITION } from '../model/bottom-nav.constants'
 import type { NavItem } from '../model/nav-items'
@@ -14,6 +14,8 @@ interface BottomNavItemProps {
 	hasUpdate?: boolean
 	/** e.g. «Прогрес, новий підсумок тижня» (mockups). */
 	updateLabel?: string
+	/** eaten / goal for the «Сьогодні» ring. */
+	todayProgress: number
 }
 
 /**
@@ -21,9 +23,14 @@ interface BottomNavItemProps {
  * brand «bite» (two white circles clipped by the pill's top-right corner), label 12/800 primary;
  * inactive tabs are muted 12/600.
  */
-export const BottomNavItem = ({ item, hasUpdate = false, updateLabel }: BottomNavItemProps) => {
+export const BottomNavItem = ({
+	item,
+	hasUpdate = false,
+	updateLabel,
+	todayProgress,
+}: BottomNavItemProps) => {
 	const { t } = useTranslation()
-	const { to, labelKey, icon: Icon } = item
+	const { to, labelKey, icon } = item
 
 	return (
 		<NavLink
@@ -50,7 +57,15 @@ export const BottomNavItem = ({ item, hasUpdate = false, updateLabel }: BottomNa
 								<span className="absolute top-0.75 -right-1.75 size-2.25 rounded-full bg-white" />
 							</motion.span>
 						)}
-						<Icon isActive={isActive} className="relative" />
+						{icon === 'progressRing' ? (
+							<ProgressRingIcon progress={todayProgress} className="relative" />
+						) : (
+							<Icon
+								name={isActive ? icon.activeName : icon.name}
+								size={ICON_SIZE.nav}
+								className="relative"
+							/>
+						)}
 						{hasUpdate && <Badge variant="notice" className="absolute top-0.5 right-2.75" />}
 					</span>
 					{t(labelKey)}

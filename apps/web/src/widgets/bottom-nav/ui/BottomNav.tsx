@@ -8,13 +8,15 @@ import { BottomNavItem } from './BottomNavItem'
 interface BottomNavProps {
 	/** A new weekly summary is ready: dot on «Прогрес». The data source arrives with stage 6. */
 	hasProgressUpdate?: boolean
+	/** eaten / goal, fills the «Сьогодні» tab ring; 0 until the day's stats arrive (stage 4). */
+	todayProgress?: number
 }
 
 /**
  * The floating tab bar from the mockups: radius 30, white 94%, shadow-float, 16px from the sides
  * and 20px above the home indicator, inside the 480px app column.
  */
-export const BottomNav = ({ hasProgressUpdate = false }: BottomNavProps) => {
+export const BottomNav = ({ hasProgressUpdate = false, todayProgress = 0 }: BottomNavProps) => {
 	const { t } = useTranslation()
 
 	return (
@@ -30,6 +32,7 @@ export const BottomNav = ({ hasProgressUpdate = false }: BottomNavProps) => {
 								item={item}
 								hasUpdate={item.to === ROUTES.progress && hasProgressUpdate}
 								updateLabel={t('nav.progressWithUpdate')}
+								todayProgress={todayProgress}
 							/>
 						</li>
 					))}

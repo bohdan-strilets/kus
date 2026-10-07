@@ -9,7 +9,7 @@ export type IconButtonProps = IconButtonVariantProps &
 	Omit<HTMLMotionProps<'button'>, 'children' | 'aria-label'> & {
 		/** Accessible name — the icon alone says nothing to a screen reader. */
 		label: string
-		/** The icon, aria-hidden (Phosphor or a brand icon). */
+		/** The icon (<Icon name>), decorative: the button carries the label. */
 		children: ReactNode
 	}
 

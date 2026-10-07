@@ -2,7 +2,7 @@ import { type SubmitEvent, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { cn } from '@/shared/lib'
-import { CameraIcon, IconButton, MicIcon, SendIcon, Text, Textarea } from '@/shared/ui'
+import { Icon, ICON_SIZE, IconButton, Text, Textarea } from '@/shared/ui'
 
 import { useIsMultiline } from '../../model/use-is-multiline'
 import type { ComposerProps } from './composer.types'
@@ -42,7 +42,7 @@ export const Composer = ({
 			)}
 		>
 			<IconButton size="sm" label={t('composer.addPhoto')} onClick={onPhotoClick}>
-				<CameraIcon />
+				<Icon name="camera" size={ICON_SIZE.control} />
 			</IconButton>
 			<Textarea
 				ref={textareaRef}
@@ -61,11 +61,11 @@ export const Composer = ({
 				</Text>
 			) : (
 				<IconButton size="sm" label={t('composer.voice')} onClick={onVoiceStart}>
-					<MicIcon />
+					<Icon name="mic" size={ICON_SIZE.control} />
 				</IconButton>
 			)}
 			<IconButton type="submit" variant="primary" label={t('composer.send')}>
-				<SendIcon />
+				<Icon name="send" size={ICON_SIZE.control} />
 			</IconButton>
 		</form>
 	)

@@ -1,4 +1,3 @@
-import { CheckIcon } from '@phosphor-icons/react'
 import { motion } from 'motion/react'
 import { useTranslation } from 'react-i18next'
 
@@ -13,7 +12,7 @@ import {
 	SHAKE_TRANSITION,
 	tabContentVariants,
 } from '@/shared/lib'
-import { HamsterHead } from '@/shared/ui'
+import { HamsterHead, Icon } from '@/shared/ui'
 
 import { useReplay } from '../../model/use-replay'
 import { DemoCard } from '../DemoCard'
@@ -71,7 +70,7 @@ export const ChatMotionDemos = () => {
 					animate="visible"
 					className="flex size-8 items-center justify-center self-center rounded-full bg-success text-white"
 				>
-					<CheckIcon aria-hidden size={18} weight="bold" />
+					<Icon name="check" size={18} />
 				</motion.span>
 			</DemoCard>
 

@@ -1,4 +1,3 @@
-import { XIcon } from '@phosphor-icons/react'
 import * as Dialog from '@radix-ui/react-dialog'
 import { AnimatePresence, motion, type PanInfo, useDragControls } from 'motion/react'
 import type { ReactNode } from 'react'
@@ -8,6 +7,7 @@ import { cn, focusDialogContainer, sheetVariants } from '@/shared/lib'
 
 import { DialogScrim } from '../dialog-scrim'
 import { Heading } from '../heading'
+import { Icon } from '../icon'
 import { IconButton } from '../icon-button'
 import { Text } from '../text'
 import {
@@ -137,7 +137,7 @@ export const BaseBottomSheet = ({
 														label={t('common.close')}
 														className={cn(isCentered && 'absolute top-0 right-0')}
 													>
-														<XIcon aria-hidden size={CLOSE_ICON_SIZE} weight="bold" />
+														<Icon name="close" size={CLOSE_ICON_SIZE} />
 													</IconButton>
 												</Dialog.Close>
 											)}

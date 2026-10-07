@@ -1,9 +1,9 @@
-import { CheckIcon } from '@phosphor-icons/react'
 import { type HTMLMotionProps, motion } from 'motion/react'
 import type { ReactNode } from 'react'
 
 import { cn, PRESS } from '@/shared/lib'
 
+import { Icon } from '../icon'
 import { type ChipVariantProps, chipVariants } from './chip.variants'
 
 const CHECK_ICON_SIZE = 14
@@ -34,7 +34,7 @@ export const Chip = ({
 			{...props}
 		>
 			{isToggle && isSelected && (
-				<CheckIcon aria-hidden size={CHECK_ICON_SIZE} weight="bold" className="text-primary" />
+				<Icon name="check" size={CHECK_ICON_SIZE} className="text-primary" />
 			)}
 			{children}
 		</motion.button>

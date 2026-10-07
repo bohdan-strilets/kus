@@ -1,8 +1,8 @@
-import { CheckIcon, WarningCircleIcon } from '@phosphor-icons/react'
 import type { ReactNode } from 'react'
 
 import { cn } from '@/shared/lib'
 
+import { Icon } from '../icon'
 import { type BadgeVariantProps, badgeVariants } from './badge.variants'
 
 const SUCCESS_ICON_SIZE = 16
@@ -28,10 +28,8 @@ export const Badge = ({ variant, children, label, className }: BadgeProps) => {
 
 	return (
 		<span className={cn(badgeVariants({ variant }), className)} {...a11yProps}>
-			{variant === 'success' && <CheckIcon aria-hidden size={SUCCESS_ICON_SIZE} weight="bold" />}
-			{variant === 'failed' && (
-				<WarningCircleIcon aria-hidden size={FAILED_ICON_SIZE} weight="bold" />
-			)}
+			{variant === 'success' && <Icon name="check" size={SUCCESS_ICON_SIZE} />}
+			{variant === 'failed' && <Icon name="alert" size={FAILED_ICON_SIZE} />}
 			{!isIconOnly && children}
 		</span>
 	)

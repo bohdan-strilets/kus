@@ -1,7 +1,6 @@
-import { ArrowClockwiseIcon } from '@phosphor-icons/react'
 import { useTranslation } from 'react-i18next'
 
-import { Button, Surface } from '@/shared/ui'
+import { Button, Icon, Surface } from '@/shared/ui'
 
 import { DevSection } from '../DevSection'
 
@@ -30,10 +29,7 @@ export const ButtonsSection = () => {
 					{t('devUi.level0.disabled')}
 				</Button>
 				<div className="flex flex-wrap items-center gap-2">
-					<Button
-						size="md"
-						icon={<ArrowClockwiseIcon aria-hidden size={RETRY_ICON_SIZE} weight="bold" />}
-					>
+					<Button size="md" icon={<Icon name="retry" size={RETRY_ICON_SIZE} />}>
 						{t('devUi.level0.retry')}
 					</Button>
 					<Button variant="secondary" size="sm">

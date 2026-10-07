@@ -1,10 +1,9 @@
-import { ArrowClockwiseIcon } from '@phosphor-icons/react'
 import { useTranslation } from 'react-i18next'
 
 import { EntryCard, EntryItem } from '@/entities/entry'
 import { KusikRow, MessageBubble, TimeDivider, TypingIndicator } from '@/entities/message'
 import { RecipeSuggestion } from '@/entities/recipe'
-import { Button, Text } from '@/shared/ui'
+import { Button, Icon, Text } from '@/shared/ui'
 
 import { SEED_BREAKFAST, SEED_CHAT_TIMES, SEED_RECIPE } from '../../model/seed'
 import { useSeedEntries } from '../../model/use-seed-entries'
@@ -49,7 +48,7 @@ export const ChatPartsSection = () => {
 						<Button
 							size="md"
 							className="self-start"
-							icon={<ArrowClockwiseIcon aria-hidden size={RETRY_ICON_SIZE} weight="bold" />}
+							icon={<Icon name="retry" size={RETRY_ICON_SIZE} />}
 						>
 							{t('chat.retry')}
 						</Button>

@@ -1,9 +1,8 @@
-import { CaretLeftIcon, CaretRightIcon } from '@phosphor-icons/react'
 import { useTranslation } from 'react-i18next'
 
 import { UserAvatar } from '@/entities/user'
 import { formatDayHeading } from '@/shared/lib'
-import { Heading, IconButton, LogoMark, Text, WORDMARK } from '@/shared/ui'
+import { Heading, Icon, IconButton, LogoMark, Text, WORDMARK } from '@/shared/ui'
 
 import { SEED_TODAY } from '../../model/seed'
 
@@ -51,10 +50,10 @@ export const TodayPreviewHeader = () => {
 			</div>
 			<div className="flex gap-2">
 				<IconButton variant="frosted" label={t('devUi.seed.prevDay')}>
-					<CaretLeftIcon aria-hidden size={CARET_SIZE} weight="bold" />
+					<Icon name="chevron-left" size={CARET_SIZE} />
 				</IconButton>
 				<IconButton variant="frosted" disabled label={t('devUi.seed.nextDay')}>
-					<CaretRightIcon aria-hidden size={CARET_SIZE} weight="bold" />
+					<Icon name="chevron-right" size={CARET_SIZE} />
 				</IconButton>
 			</div>
 		</header>

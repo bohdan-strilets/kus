@@ -1,7 +1,6 @@
-import { CheckCircleIcon, WarningCircleIcon } from '@phosphor-icons/react'
 import { useTranslation } from 'react-i18next'
 
-import { Button, Skeleton, Surface, Text } from '@/shared/ui'
+import { Button, Icon, Skeleton, Surface, Text } from '@/shared/ui'
 
 import { useHealth } from '../../model/use-health'
 
@@ -23,12 +22,7 @@ export const HealthStatus = () => {
 	if (isError) {
 		return (
 			<Surface radius="tile" role="alert" className="flex items-center gap-3 px-4 py-2">
-				<WarningCircleIcon
-					aria-hidden
-					size={STATUS_ICON_SIZE}
-					weight="fill"
-					className="shrink-0 text-danger"
-				/>
+				<Icon name="alert" size={STATUS_ICON_SIZE} className="shrink-0 text-danger" />
 				<Text className="flex-1">{t('health.error')}</Text>
 				<Button size="md" onClick={() => void refetch()}>
 					{t('common.retry')}
@@ -44,12 +38,7 @@ export const HealthStatus = () => {
 			aria-label={t('health.label')}
 			className="flex min-h-14 items-center gap-3 px-4"
 		>
-			<CheckCircleIcon
-				aria-hidden
-				size={STATUS_ICON_SIZE}
-				weight="fill"
-				className="shrink-0 text-success"
-			/>
+			<Icon name="check" size={STATUS_ICON_SIZE} className="shrink-0 text-success" />
 			<Text>{t('health.ok')}</Text>
 		</Surface>
 	)

@@ -1,7 +1,6 @@
-import { TrashIcon } from '@phosphor-icons/react'
 import { useTranslation } from 'react-i18next'
 
-import { IconButton, SendIcon, Text } from '@/shared/ui'
+import { Icon, ICON_SIZE, IconButton, Text } from '@/shared/ui'
 
 import { formatRecordingTime } from '../../model/format-recording-time'
 import type { ComposerVoiceState } from './composer.types'
@@ -32,7 +31,7 @@ export const VoiceRecorder = ({ elapsedSeconds, levels, onCancel, onStop }: Comp
 					label={t('composer.cancelRecording')}
 					onClick={onCancel}
 				>
-					<TrashIcon aria-hidden size={TRASH_ICON_SIZE} />
+					<Icon name="trash" size={TRASH_ICON_SIZE} />
 				</IconButton>
 				<span className="flex shrink-0 items-center gap-1.5">
 					<span aria-hidden="true" className="size-2.5 rounded-full bg-danger" />
@@ -51,7 +50,7 @@ export const VoiceRecorder = ({ elapsedSeconds, levels, onCancel, onStop }: Comp
 					))}
 				</span>
 				<IconButton variant="primary" label={t('composer.stopAndSend')} onClick={onStop}>
-					<SendIcon />
+					<Icon name="send" size={ICON_SIZE.control} />
 				</IconButton>
 			</div>
 		</div>

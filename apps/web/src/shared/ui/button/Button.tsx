@@ -11,7 +11,7 @@ import { type ButtonVariantProps, buttonVariants } from './button.variants'
 export type ButtonProps = ButtonVariantProps &
 	Omit<HTMLMotionProps<'button'>, 'children'> & {
 		children: ReactNode
-		/** Leading icon (Phosphor 18 or a brand icon). */
+		/** Leading icon, e.g. <Icon name="retry" size={ICON_SIZE.control} />. */
 		icon?: ReactNode
 		/** Blocks clicks at once; the loader and loadingText appear only after 300 ms (CLAUDE.md §12). */
 		isLoading?: boolean

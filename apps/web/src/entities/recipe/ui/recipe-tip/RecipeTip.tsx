@@ -1,8 +1,7 @@
-import { PlusIcon } from '@phosphor-icons/react'
 import { useTranslation } from 'react-i18next'
 
 import { formatInteger } from '@/shared/lib'
-import { HamsterHead, IconButton, Surface, Text } from '@/shared/ui'
+import { HamsterHead, Icon, IconButton, Surface, Text } from '@/shared/ui'
 
 export interface RecipeTipProps {
 	/** «Вечеря» — the meal still to come. */
@@ -43,7 +42,7 @@ export const RecipeTip = ({ mealLabel, recipeName, kcal, onAdd }: RecipeTipProps
 				label={t('recipe.addToMeal', { meal: mealLabel })}
 				onClick={onAdd}
 			>
-				<PlusIcon aria-hidden size={PLUS_ICON_SIZE} weight="bold" />
+				<Icon name="plus" size={PLUS_ICON_SIZE} />
 			</IconButton>
 		</Surface>
 	)

@@ -4,6 +4,7 @@ import { addDevMessages } from '@/shared/i18n'
 import { AppLayout, Heading, Text } from '@/shared/ui'
 import { BottomNav } from '@/widgets/bottom-nav'
 
+import { SEED_EATEN_KCAL, SEED_GOAL_KCAL } from '../model/seed'
 import { ChatPartsSection } from './domain/ChatPartsSection'
 import { ComposerSection } from './domain/ComposerSection'
 import { FacesSection } from './domain/FacesSection'
@@ -36,7 +37,9 @@ export const DevUiPage = () => {
 	const { t } = useTranslation()
 
 	return (
-		<AppLayout bottomNav={<BottomNav hasProgressUpdate />}>
+		<AppLayout
+			bottomNav={<BottomNav hasProgressUpdate todayProgress={SEED_EATEN_KCAL / SEED_GOAL_KCAL} />}
+		>
 			<div className="flex flex-col gap-8 px-gutter pb-12">
 				<header className="flex flex-col gap-1 pt-6">
 					<Heading as="h1">{t('devUi.title')}</Heading>

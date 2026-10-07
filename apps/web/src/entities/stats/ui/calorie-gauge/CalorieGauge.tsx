@@ -1,8 +1,7 @@
-import { CheckIcon } from '@phosphor-icons/react'
 import { useTranslation } from 'react-i18next'
 
 import { cn, formatInteger, formatSignedInteger, RING_FILL_MS, useCountUp } from '@/shared/lib'
-import { Text } from '@/shared/ui'
+import { Icon, Text } from '@/shared/ui'
 
 import { getGaugeState } from '../../lib/get-gauge-state'
 import { GAUGE_GEOMETRY, type GaugeSize } from './calorie-gauge.constants'
@@ -34,7 +33,7 @@ export const CalorieGauge = ({ eaten, goal, size = 'large' }: CalorieGaugeProps)
 		if (isLarge && state.status === 'closed') {
 			return (
 				<>
-					<CheckIcon aria-hidden size={CLOSED_ICON_SIZE} weight="bold" className="text-success" />
+					<Icon name="check" size={CLOSED_ICON_SIZE} className="text-success" />
 					<Text as="span" variant="small" tone="success">
 						{t('gauge.goalClosed')}
 					</Text>

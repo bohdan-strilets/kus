@@ -45,18 +45,6 @@ export {
 	ProgressRingIcon,
 	type ProgressRingIconProps,
 } from './icon'
-export {
-	BRAND_ICON_SIZE,
-	type BrandIconProps,
-	CameraIcon,
-	MicIcon,
-	NavChatIcon,
-	type NavIconProps,
-	NavProgressIcon,
-	NavRecipesIcon,
-	NavTodayIcon,
-	SendIcon,
-} from './icons/brand'
 export { Input, type InputProps } from './input'
 export { BaseModal, type BaseModalProps } from './modal'
 export { PageStub } from './page-stub'

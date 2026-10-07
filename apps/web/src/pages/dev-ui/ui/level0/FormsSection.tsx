@@ -1,14 +1,13 @@
-import { EyeIcon, EyeSlashIcon } from '@phosphor-icons/react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import {
 	Button,
-	CameraIcon,
 	FormField,
+	Icon,
+	ICON_SIZE,
 	IconButton,
 	Input,
-	SendIcon,
 	Surface,
 	Textarea,
 } from '@/shared/ui'
@@ -62,9 +61,9 @@ export const FormsSection = () => {
 							}}
 						>
 							{isPasswordShown ? (
-								<EyeSlashIcon aria-hidden size={EYE_ICON_SIZE} />
+								<Icon name="eye-off" size={EYE_ICON_SIZE} />
 							) : (
-								<EyeIcon aria-hidden size={EYE_ICON_SIZE} />
+								<Icon name="eye" size={EYE_ICON_SIZE} />
 							)}
 						</IconButton>
 					}
@@ -99,7 +98,7 @@ export const FormsSection = () => {
 
 			<Surface radius="panel" shadow="float" className="flex items-end gap-2 p-1.5">
 				<IconButton size="sm" label={t('devUi.level0.addPhoto')}>
-					<CameraIcon />
+					<Icon name="camera" size={ICON_SIZE.control} />
 				</IconButton>
 				<Textarea
 					aria-label={t('devUi.level0.composerPlaceholder')}
@@ -111,7 +110,7 @@ export const FormsSection = () => {
 					className="self-center"
 				/>
 				<IconButton variant="primary" label={t('devUi.level0.send')}>
-					<SendIcon />
+					<Icon name="send" size={ICON_SIZE.control} />
 				</IconButton>
 			</Surface>
 		</DevSection>

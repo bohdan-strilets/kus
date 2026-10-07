@@ -3,7 +3,13 @@ import { describe, expect, it } from 'vitest'
 
 import { type EvalCase, REPO_CASES } from './cases/index.js'
 import type { CaseResult } from './eval.types.js'
-import { countCategoryMatches, getErrorPct, isDecisionCorrect, summarize } from './metrics.js'
+import {
+	countCategoryMatches,
+	countMealMatches,
+	getErrorPct,
+	isDecisionCorrect,
+	summarize,
+} from './metrics.js'
 
 const result = (overrides: Partial<CaseResult>): CaseResult => ({
 	caseId: 'c',
@@ -117,5 +123,35 @@ describe('repo cases', () => {
 	it('cover every decision', () => {
 		const decisions = new Set(REPO_CASES.map((item) => item.expect.decision))
 		expect([...decisions].sort()).toEqual(['clarify', 'log', 'log_or_clarify', 'not_food', 'reply'])
+	})
+})
+
+describe('countMealMatches', () => {
+	const day = evalCase({
+		decision: 'log',
+		itemMeals: [
+			{ stem: 'борщ', mealType: 'LUNCH' },
+			{ stem: 'гречк', mealType: 'DINNER' },
+		],
+	})
+	const logged = (name: string, mealType: string | null) => ({
+		name,
+		mealType,
+		grams: 300,
+		quantity: null,
+		kcal: 150,
+		protein: 5,
+		source: 'ESTIMATE',
+		memoryRef: null,
+		assumption: null,
+	})
+
+	it('counts an item only in its expected meal', () => {
+		const items = [logged('Борщ', 'LUNCH'), logged('Гречка варена', 'LUNCH')]
+		expect(countMealMatches(day, result({ items }))).toBe(1)
+	})
+
+	it('does not count a missing item or one left to the clock', () => {
+		expect(countMealMatches(day, result({ items: [logged('Борщ', null)] }))).toBe(0)
 	})
 })

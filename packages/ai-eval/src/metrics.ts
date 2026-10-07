@@ -85,6 +85,14 @@ const collectErrors = (
 		return [getErrorPct(expected, actual, MIN_BASE[field])]
 	})
 
+/** Each expected item stem must be logged, and in the expected meal. */
+export const countMealMatches = (evalCase: EvalCase, result: CaseResult): number =>
+	(evalCase.expect.itemMeals ?? []).filter(({ stem, mealType }) =>
+		result.items.some(
+			(item) => item.name.toLowerCase().includes(stem) && item.mealType === mealType,
+		),
+	).length
+
 const getDecisionStats = (pairs: Pair[]): ModelSummary['decisions'] => {
 	const byExpected: ModelSummary['decisions']['byExpected'] = {}
 	let correct = 0
@@ -125,6 +133,13 @@ export const summarize = (model: string, pairs: Pair[]): ModelSummary => {
 				(sum, { evalCase }) => sum + (evalCase.expect.categories?.length ?? 0),
 				0,
 			),
+		},
+		meals: {
+			correct: pairs.reduce(
+				(sum, { evalCase, result }) => sum + countMealMatches(evalCase, result),
+				0,
+			),
+			total: pairs.reduce((sum, { evalCase }) => sum + (evalCase.expect.itemMeals?.length ?? 0), 0),
 		},
 		decisions: getDecisionStats(pairs),
 		costUsd: { total: totalCost, perCase: getAverage(results.map((r) => r.costUsd)) ?? 0 },

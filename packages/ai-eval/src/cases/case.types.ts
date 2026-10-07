@@ -1,4 +1,4 @@
-import { foodCategorySchema, type FoodParseContext } from '@kus/shared'
+import { foodCategorySchema, type FoodParseContext, loggableMealTypeSchema } from '@kus/shared'
 import { z } from 'zod'
 
 /** `log` = logged without a question; `clarify` = logged and asked; `log_or_clarify` = either is fine. */
@@ -37,7 +37,11 @@ export const evalCaseSchema = z.object({
 		categories: z.array(foodCategorySchema).optional(),
 		/** For reply cases: substrings the answer must contain (e.g. the remaining kcal). */
 		replyIncludes: z.array(z.string()).optional(),
-		/** For clarify cases: stems of the items a question is expected about ("пряник"). */
+		/** Whole-day cases: an item (name stem) must land in this meal. */
+		itemMeals: z
+			.array(z.object({ stem: z.string().min(1), mealType: loggableMealTypeSchema }))
+			.optional(),
+		/** For clarify cases: stems of the items a question is expected about ("печив"). */
 		clarifyAbout: z.array(z.string().min(1)).optional(),
 	}),
 	/** Where the numbers come from (label text, USDA FDC, typical portion). */

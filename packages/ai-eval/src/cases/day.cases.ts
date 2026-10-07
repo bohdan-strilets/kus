@@ -23,6 +23,12 @@ export const DAY_CASES: EvalCase[] = [
 			decision: 'log_or_clarify',
 			kcal: range(1767, 2522),
 			protein: range(125, 160),
+			itemMeals: [
+				{ stem: 'гречк', mealType: 'LUNCH' },
+				{ stem: 'сосис', mealType: 'LUNCH' },
+				{ stem: 'лосос', mealType: 'DINNER' },
+				{ stem: 'картопл', mealType: 'DINNER' },
+			],
 			categories: [
 				'eggs',
 				'bread',
@@ -44,6 +50,14 @@ export const DAY_CASES: EvalCase[] = [
 		expect: {
 			decision: 'log_or_clarify',
 			kcal: range(1615, 2945),
+			itemMeals: [
+				{ stem: 'вівсян', mealType: 'BREAKFAST' },
+				{ stem: 'борщ', mealType: 'LUNCH' },
+				{ stem: 'котлет', mealType: 'LUNCH' },
+				{ stem: 'йогурт', mealType: 'SNACK' },
+				{ stem: 'горіх', mealType: 'SNACK' },
+				{ stem: 'гречк', mealType: 'DINNER' },
+			],
 			categories: ['porridge', 'banana', 'borscht', 'meat', 'poultry'],
 		},
 		reference:

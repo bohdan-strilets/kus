@@ -24,6 +24,7 @@ const evalCase = (text: string): EvalCase => ({
 
 const item = (memoryRef: string | null): LoggedItem => ({
 	name: 'Печиво',
+	mealType: null,
 	grams: 45,
 	quantity: 3,
 	kcal: 194,

@@ -38,6 +38,8 @@ export interface ClarifyCall {
 
 export interface LoggedItem {
 	name: string
+	/** The item's own meal, else the message's; null = the backend would use the clock. */
+	mealType: string | null
 	grams: number
 	quantity: number | null
 	kcal: number
@@ -68,6 +70,8 @@ export interface ModelSummary {
 	kcal: { exact: ErrorStats; range: ErrorStats }
 	protein: { exact: ErrorStats; range: ErrorStats }
 	categories: RateStats
+	/** Items of whole-day cases placed in the expected meal. */
+	meals: RateStats
 	decisions: RateStats & { byExpected: Record<string, RateStats> }
 	costUsd: { total: number; perCase: number }
 	latencyMs: { p50: number; p95: number }

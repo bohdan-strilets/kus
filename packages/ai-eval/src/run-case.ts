@@ -41,8 +41,13 @@ const getItemTotals = (
 	return { kcal: food.per100g.kcal * factor, protein: food.per100g.protein * factor }
 }
 
-const toLoggedItem = (item: AiFoodItem, memory: MemoryFoodContext[]): LoggedItem => ({
+const toLoggedItem = (
+	item: AiFoodItem,
+	memory: MemoryFoodContext[],
+	messageMealType: string | null,
+): LoggedItem => ({
 	name: item.name,
+	mealType: item.mealType ?? messageMealType,
 	grams: item.grams,
 	quantity: item.quantity,
 	...getItemTotals(item, memory),
@@ -141,7 +146,13 @@ export const runCase = async (
 					protein: totals?.protein ?? null,
 					categories: items.map((item) => item.category),
 					replyText: result.decision.kind === 'reply' ? result.decision.text : null,
-					items: items.map((item) => toLoggedItem(item, memory)),
+					items: items.map((item) =>
+						toLoggedItem(
+							item,
+							memory,
+							result.decision.kind === 'log' ? result.decision.log.mealType : null,
+						),
+					),
 					clarifyCalls: getClarifyCalls(rawCalls, result.decision),
 					truncated: false,
 					wasRetried: attempt > 1,

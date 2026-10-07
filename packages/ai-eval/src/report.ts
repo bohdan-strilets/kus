@@ -20,8 +20,8 @@ const formatRate = ({ correct, total }: RateStats): string =>
 
 export const formatSummaryTable = (summaries: ModelSummary[]): string => {
 	const header = [
-		'| Модель | ккал точні: сер / мед | ккал діапазон | білок точні | білок діапазон | категорії | рішення | без інструмента | повтор / збій / обрізано | $/запит | мс p50 / p95 | токени in / out | cached/запит |',
-		'|---|---|---|---|---|---|---|---|---|---|---|---|---|',
+		'| Модель | ккал точні: сер / мед | ккал діапазон | білок точні | білок діапазон | категорії | прийоми | рішення | без інструмента | повтор / збій / обрізано | $/запит | мс p50 / p95 | токени in / out | cached/запит |',
+		'|---|---|---|---|---|---|---|---|---|---|---|---|---|---|',
 	]
 	const rows = summaries.map((summary) => {
 		const { inputPerCase, outputPerCase, cachedPerCase } = summary.tokens
@@ -33,6 +33,7 @@ export const formatSummaryTable = (summaries: ModelSummary[]): string => {
 			formatErrors(summary.protein.exact),
 			formatErrors(summary.protein.range),
 			formatRate(summary.categories),
+			formatRate(summary.meals),
 			formatRate(summary.decisions),
 			formatRate({ correct: summary.modelCalls.textOnly, total: summary.modelCalls.total }),
 			`${summary.retried} / ${summary.failed} / ${summary.truncated}`,

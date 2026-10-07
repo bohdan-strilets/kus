@@ -9,6 +9,7 @@ import {
 import type { ApiErrorResponse } from '@kus/shared'
 import type { Response } from 'express'
 
+import { Prisma } from '../../generated/prisma/client'
 import { AppException, type ErrorCode, ErrorCodes } from '../exceptions'
 
 const STATUS_ERROR_CODES: Partial<Record<number, ErrorCode>> = {
@@ -22,6 +23,7 @@ const STATUS_ERROR_CODES: Partial<Record<number, ErrorCode>> = {
 	[HttpStatus.TOO_MANY_REQUESTS]: ErrorCodes.TOO_MANY_REQUESTS,
 }
 
+const PRISMA_ERROR_PREFIX = 'PrismaClient'
 const CLIENT_ERROR_MIN = 400
 const SERVER_ERROR_MIN = 500
 
@@ -51,6 +53,20 @@ const getErrorCode = (statusCode: number): ErrorCode => {
 	return STATUS_ERROR_CODES[statusCode] ?? ErrorCodes.CLIENT_ERROR
 }
 
+/**
+ * Prisma error messages quote the query arguments — message text, food names (CLAUDE.md §10.1),
+ * so for them only the class and the error code are logged.
+ */
+const getSafeTrace = (exception: unknown): string => {
+	if (exception instanceof Prisma.PrismaClientKnownRequestError) {
+		return `${exception.name} ${exception.code}`
+	}
+	if (exception instanceof Error && exception.name.startsWith(PRISMA_ERROR_PREFIX)) {
+		return exception.name
+	}
+	return exception instanceof Error ? (exception.stack ?? exception.name) : String(exception)
+}
+
 /** Turns every thrown error into the API error format from CLAUDE.md §5. */
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
@@ -60,13 +76,22 @@ export class AllExceptionsFilter implements ExceptionFilter {
 		const response = host.switchToHttp().getResponse<Response>()
 		const body = this.toErrorBody(exception)
 
-		// 4xx are expected client mistakes; only server failures are worth an error log
-		if (body.statusCode >= SERVER_ERROR_MIN) {
-			const stack = exception instanceof Error ? exception.stack : String(exception)
-			this.logger.error(`Request failed (${body.errorCode})`, stack)
-		}
+		// 4xx are expected client mistakes; only server failures are worth a log
+		if (body.statusCode >= SERVER_ERROR_MIN) this.logServerFailure(exception, body.errorCode)
 
 		response.status(body.statusCode).json(body)
+	}
+
+	/**
+	 * A 5xx AppException is thrown on purpose (AI_UNAVAILABLE: the model failed, details are already
+	 * in AiRun) — a warning without a stack. Anything else is a bug: an error with a safe trace.
+	 */
+	private logServerFailure(exception: unknown, errorCode: string): void {
+		if (exception instanceof AppException) {
+			this.logger.warn(`Request failed (${errorCode})`)
+			return
+		}
+		this.logger.error(`Request failed (${errorCode})`, getSafeTrace(exception))
 	}
 
 	private toErrorBody(exception: unknown): ApiErrorResponse {

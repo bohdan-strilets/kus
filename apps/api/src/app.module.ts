@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common'
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core'
+import { ScheduleModule } from '@nestjs/schedule'
 import { minutes, ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler'
 
 import { AllExceptionsFilter } from './common/filters'
@@ -20,6 +21,8 @@ const DEFAULT_THROTTLE = { ttl: minutes(1), limit: 100 }
 		AppConfigModule,
 		PrismaModule,
 		ThrottlerModule.forRoot([DEFAULT_THROTTLE]),
+		// daily cleanup of old AI tool calls
+		ScheduleModule.forRoot(),
 		HealthModule,
 		AuthModule,
 		UsersModule,

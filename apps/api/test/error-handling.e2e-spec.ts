@@ -15,6 +15,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest
 
 import { Public } from '../src/common/decorators'
 import { AppException, ErrorCodes } from '../src/common/exceptions'
+import { Prisma } from '../src/generated/prisma/client'
 import { createTestApp } from './create-test-app'
 
 // above express' default 100 kb JSON limit
@@ -61,6 +62,26 @@ class TestErrorsController {
 		throw Object.assign(new Error('OpenRouter rejected the API key'), { status: 401 })
 	}
 
+	@Get('expected-unavailable')
+	throwExpectedUnavailable(): never {
+		throw new AppException({
+			status: HttpStatus.SERVICE_UNAVAILABLE,
+			errorCode: ErrorCodes.AI_UNAVAILABLE,
+		})
+	}
+
+	@Get('prisma-error')
+	throwPrismaError(): never {
+		// Prisma quotes query arguments in its messages — here a user's food
+		throw new Prisma.PrismaClientKnownRequestError(
+			'Unique constraint failed: "Борщ з пампушками"',
+			{
+				code: 'P2002',
+				clientVersion: 'test',
+			},
+		)
+	}
+
 	@Get('unexpected')
 	throwUnexpected(): never {
 		throw new Error('database exploded')
@@ -70,6 +91,7 @@ class TestErrorsController {
 describe('API error handling', () => {
 	let app: INestApplication<App>
 	const logError = vi.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined)
+	const logWarn = vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined)
 
 	beforeAll(async () => {
 		app = await createTestApp({ controllers: [TestErrorsController] })
@@ -77,11 +99,13 @@ describe('API error handling', () => {
 
 	afterEach(() => {
 		logError.mockClear()
+		logWarn.mockClear()
 	})
 
 	afterAll(async () => {
 		await app.close()
 		logError.mockRestore()
+		logWarn.mockRestore()
 	})
 
 	const post = (body: unknown) =>
@@ -171,6 +195,25 @@ describe('API error handling', () => {
 		expect(response.body).toEqual({ statusCode: 500, errorCode: 'INTERNAL_ERROR', details: {} })
 		expect(JSON.stringify(response.body)).not.toContain('database exploded')
 		expect(logError).toHaveBeenCalledOnce()
+	})
+
+	it('logs an expected 5xx AppException as a warning without a stack', async () => {
+		const response = await request(app.getHttpServer())
+			.get('/api/v1/test-errors/expected-unavailable')
+			.expect(503)
+
+		expect(response.body).toEqual({ statusCode: 503, errorCode: 'AI_UNAVAILABLE', details: {} })
+		expect(logError).not.toHaveBeenCalled()
+		expect(logWarn.mock.calls).toEqual([['Request failed (AI_UNAVAILABLE)']])
+	})
+
+	it('logs a Prisma error by class and code only, never its message', async () => {
+		await request(app.getHttpServer()).get('/api/v1/test-errors/prisma-error').expect(500)
+
+		expect(logError).toHaveBeenCalledOnce()
+		const logged = JSON.stringify(logError.mock.calls)
+		expect(logged).toContain('PrismaClientKnownRequestError P2002')
+		expect(logged).not.toContain('Борщ')
 	})
 
 	it('treats an upstream SDK error with a 4xx status as our 500, not the client’s 401', async () => {

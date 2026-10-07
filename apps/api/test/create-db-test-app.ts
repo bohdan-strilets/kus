@@ -5,6 +5,8 @@ import { Test } from '@nestjs/testing'
 import { AppModule } from '../src/app.module'
 import { setupApp } from '../src/app.setup'
 import type { Env } from '../src/config'
+import type { AiClient } from '../src/modules/ai/ai-client'
+import { AI_CLIENT } from '../src/modules/ai/ai.constants'
 import { validateEnv } from '../src/config/validate-env'
 import { PrismaService } from '../src/prisma'
 import { assertSafeTestDatabase, resetDatabase } from './test-database'
@@ -17,6 +19,12 @@ interface CreateDbTestAppOptions {
 	 * in-memory throttler, which lets a test go past the per-minute login limit.
 	 */
 	shouldResetDatabase?: boolean
+	/** Replaces the OpenRouter client; tests must never call the real model. */
+	aiClient?: AiClient
+}
+
+const UNCONFIGURED_AI_CLIENT: AiClient = {
+	post: () => Promise.reject(new Error('AI client is not configured in this test')),
 }
 
 export interface DbTestApp {
@@ -32,6 +40,7 @@ export interface DbTestApp {
 export const createDbTestApp = async ({
 	env = {},
 	shouldResetDatabase = true,
+	aiClient = UNCONFIGURED_AI_CLIENT,
 }: CreateDbTestAppOptions = {}): Promise<DbTestApp> => {
 	// ConfigModule validates env once at import time; a per-app env needs its own ConfigService
 	const config = validateEnv({ ...process.env, ...env })
@@ -44,6 +53,8 @@ export const createDbTestApp = async ({
 	const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
 		.overrideProvider(ConfigService)
 		.useValue(configService)
+		.overrideProvider(AI_CLIENT)
+		.useValue(aiClient)
 		.compile()
 
 	const app = moduleRef.createNestApplication<NestExpressApplication>()

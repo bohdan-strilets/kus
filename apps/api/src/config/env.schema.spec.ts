@@ -50,3 +50,23 @@ describe('envSchema auth', () => {
 		expect(envSchema.safeParse({ ...baseEnv, ALLOW_REGISTRATION: 'maybe' }).success).toBe(false)
 	})
 })
+
+describe('envSchema AI', () => {
+	it('falls back to AI_MODEL for empty or unset purpose models', () => {
+		const env = envSchema.parse({ ...baseEnv, AI_MODEL_VISION: '  ' })
+		expect(env.AI_MODEL_VISION).toBe('provider/model')
+		expect(env.AI_MODEL_CHAT).toBe('provider/model')
+	})
+
+	it('keeps an explicit purpose model', () => {
+		const env = envSchema.parse({ ...baseEnv, AI_MODEL_VISION: 'provider/vision' })
+		expect(env.AI_MODEL_VISION).toBe('provider/vision')
+	})
+
+	it('defaults the timeout and the daily limit, and rejects a zero limit', () => {
+		const env = envSchema.parse(baseEnv)
+		expect(env.AI_TIMEOUT_MS).toBe(25_000)
+		expect(env.AI_DAILY_MESSAGE_LIMIT).toBe(100)
+		expect(envSchema.safeParse({ ...baseEnv, AI_DAILY_MESSAGE_LIMIT: '0' }).success).toBe(false)
+	})
+})

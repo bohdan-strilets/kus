@@ -21,6 +21,15 @@ export const ErrorCodes = {
 	REFRESH_TOKEN_INVALID: 'REFRESH_TOKEN_INVALID',
 	REFRESH_TOKEN_REUSED: 'REFRESH_TOKEN_REUSED',
 	USER_NOT_FOUND: 'USER_NOT_FOUND',
+
+	// chat & AI
+	/** The model failed or kept returning invalid data; the message is FAILED and can be resent. */
+	AI_UNAVAILABLE: 'AI_UNAVAILABLE',
+	DAILY_LIMIT_REACHED: 'DAILY_LIMIT_REACHED',
+	/** The same clientMessageId is being processed right now. */
+	MESSAGE_IN_PROGRESS: 'MESSAGE_IN_PROGRESS',
+	/** A clientMessageId was resent with a different text. */
+	CLIENT_MESSAGE_ID_REUSED: 'CLIENT_MESSAGE_ID_REUSED',
 } as const
 
 export type ErrorCode = (typeof ErrorCodes)[keyof typeof ErrorCodes]

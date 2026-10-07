@@ -16,7 +16,9 @@ apps/api/src/generated/
 
 # private data and eval results
 results/
-data/private/
+# "**/" matters: a pattern with an inner slash is anchored to the repo root and would miss
+# packages/ai-eval/data/private (real meals and weight — never in git)
+**/data/private/
 
 # tool output
 .playwright-mcp/

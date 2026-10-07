@@ -1,0 +1,22 @@
+{
+	"name": "@kus/ai-eval",
+	"version": "0.0.0",
+	"private": true,
+	"type": "module",
+	"description": "Quality check of the food-parsing AI: kcal/protein error, categories, decisions, cost",
+	"scripts": {
+		"eval": "node --env-file-if-exists=../../apps/api/.env --import tsx src/cli.ts",
+		"typecheck": "tsc -p tsconfig.json --noEmit",
+		"test": "vitest run"
+	},
+	"dependencies": {
+		"@kus/shared": "workspace:*",
+		"zod": "^4.6.5"
+	},
+	"devDependencies": {
+		"@types/node": "^22.20.5",
+		"tsx": "^4.23.15",
+		"typescript": "~6.0.3",
+		"vitest": "^5.0.3"
+	}
+}

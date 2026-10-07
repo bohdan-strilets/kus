@@ -1,1 +1,2 @@
+node scripts/check-staged-private.mjs
 pnpm exec lint-staged

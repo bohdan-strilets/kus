@@ -166,6 +166,58 @@ enum ExerciseSource {
   @@map("exercise_source")
 }
 
+// Picks the dish icon only — never affects kcal or macros (design/docs/food-categories.md).
+// Lowercase snake_case: the values are also the icon file names in apps/web.
+enum FoodCategory {
+  eggs
+  porridge
+  cereal
+  pancakes
+  toast
+  bread
+  pastry
+  dumplings
+  pasta
+  pizza
+  soup
+  borscht
+  meat
+  poultry
+  sausage
+  fish
+  seafood
+  potatoes
+  salad
+  vegetables
+  legumes
+  milk
+  yogurt
+  cottage_cheese
+  cheese
+  fruit
+  banana
+  berries
+  dried_fruit
+  nuts
+  snacks
+  protein_bar
+  chocolate
+  cake
+  ice_cream
+  cookies
+  coffee
+  tea
+  juice
+  soda
+  alcohol
+  protein_shake
+  fast_food
+  sauce
+  plate
+
+  @@map("food_category")
+}
+
 // ───────────────────────── User & access ─────────────────────────
 
 model User {
@@ -459,26 +511,28 @@ model Meal {
 
 // Nutrition values are a snapshot: editing MyFood/Recipe later never changes past days
 model FoodEntry {
-  id         String     @id @default(uuid(7)) @db.Uuid
-  userId     String     @map("user_id") @db.Uuid
-  mealId     String     @map("meal_id") @db.Uuid
+  id         String       @id @default(uuid(7)) @db.Uuid
+  userId     String       @map("user_id") @db.Uuid
+  mealId     String       @map("meal_id") @db.Uuid
   name       String
   grams      Float
   quantity   Float?
   kcal       Float
-  proteinG   Float      @map("protein_g")
-  fatG       Float      @map("fat_g")
-  carbsG     Float      @map("carbs_g")
-  fiberG     Float?     @map("fiber_g")
+  proteinG   Float        @map("protein_g")
+  fatG       Float        @map("fat_g")
+  carbsG     Float        @map("carbs_g")
+  fiberG     Float?       @map("fiber_g")
+  // a snapshot like the numbers: copied from MyFood / Recipe when logged from memory
+  category   FoodCategory @default(plate)
   source     FoodSource
   confidence Float
   assumption String?
-  myFoodId   String?    @map("my_food_id") @db.Uuid
-  recipeId   String?    @map("recipe_id") @db.Uuid
-  isEdited   Boolean    @default(false) @map("is_edited")
-  createdAt  DateTime   @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt  DateTime   @updatedAt @map("updated_at") @db.Timestamptz
-  deletedAt  DateTime?  @map("deleted_at") @db.Timestamptz
+  myFoodId   String?      @map("my_food_id") @db.Uuid
+  recipeId   String?      @map("recipe_id") @db.Uuid
+  isEdited   Boolean      @default(false) @map("is_edited")
+  createdAt  DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt  DateTime     @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt  DateTime?    @map("deleted_at") @db.Timestamptz
 
   user           User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
   meal           Meal                 @relation(fields: [mealId], references: [id], onDelete: Cascade)
@@ -512,6 +566,7 @@ model MyFood {
   fiberPer100g   Float?       @map("fiber_per_100g")
   pieceGrams     Float?       @map("piece_grams")
   defaultGrams   Float?       @map("default_grams")
+  category       FoodCategory @default(plate)
   source         MyFoodSource
   usageCount     Int          @default(0) @map("usage_count")
   lastUsedAt     DateTime?    @map("last_used_at") @db.Timestamptz
@@ -534,18 +589,19 @@ model MyFood {
 
 // Totals are computed from ingredients; cookedGrams turns them into per-100 g of the finished dish
 model Recipe {
-  id             String    @id @default(uuid(7)) @db.Uuid
-  userId         String    @map("user_id") @db.Uuid
+  id             String       @id @default(uuid(7)) @db.Uuid
+  userId         String       @map("user_id") @db.Uuid
   name           String
-  nameNormalized String    @map("name_normalized")
-  aliases        String[]  @default([])
-  cookedGrams    Float?    @map("cooked_grams")
-  defaultGrams   Float?    @map("default_grams")
-  usageCount     Int       @default(0) @map("usage_count")
-  lastUsedAt     DateTime? @map("last_used_at") @db.Timestamptz
-  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz
-  deletedAt      DateTime? @map("deleted_at") @db.Timestamptz
+  nameNormalized String       @map("name_normalized")
+  aliases        String[]     @default([])
+  cookedGrams    Float?       @map("cooked_grams")
+  defaultGrams   Float?       @map("default_grams")
+  category       FoodCategory @default(plate)
+  usageCount     Int          @default(0) @map("usage_count")
+  lastUsedAt     DateTime?    @map("last_used_at") @db.Timestamptz
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt      DateTime?    @map("deleted_at") @db.Timestamptz
 
   user        User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   ingredients RecipeIngredient[]

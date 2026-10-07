@@ -7,6 +7,7 @@ import {
 	exerciseSourceSchema,
 	factCategorySchema,
 	factStatusSchema,
+	foodCategorySchema,
 	foodSourceSchema,
 	goalTypeSchema,
 	localeSchema,
@@ -42,6 +43,7 @@ const ENUM_PAIRS: [string, Record<string, string>, readonly string[]][] = [
 	['FactCategory', PrismaEnums.FactCategory, factCategorySchema.options],
 	['FactStatus', PrismaEnums.FactStatus, factStatusSchema.options],
 	['ExerciseSource', PrismaEnums.ExerciseSource, exerciseSourceSchema.options],
+	['FoodCategory', PrismaEnums.FoodCategory, foodCategorySchema.options],
 ]
 
 describe('shared zod enums ↔ Prisma enums', () => {

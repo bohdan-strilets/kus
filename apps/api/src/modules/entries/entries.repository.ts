@@ -2,7 +2,9 @@ import { Injectable } from '@nestjs/common'
 
 import type { FoodEntry, Meal, Prisma } from '../../generated/prisma/client'
 import { PrismaService } from '../../prisma'
-import type { LoggableMealType, NewFoodEntry } from './entries.types'
+import type { LoggableMealType } from '@kus/shared'
+
+import type { NewFoodEntry } from './entries.types'
 
 export type MealWithEntries = Meal & { entries: FoodEntry[] }
 

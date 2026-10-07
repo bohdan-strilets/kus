@@ -95,8 +95,8 @@ export const chatMessageSchema = z.object({
 	clientMessageId: z.string().nullable(),
 	replyToId: z.uuid().nullable(),
 	createdAt: z.iso.datetime(),
-	/** Assistant replies only: what this turn logged. */
-	meal: loggedMealSchema.nullable(),
+	/** Assistant replies only: what this turn logged, one card per meal (a whole day → several). */
+	meals: z.array(loggedMealSchema),
 	clarifications: z.array(clarificationResponseSchema),
 })
 

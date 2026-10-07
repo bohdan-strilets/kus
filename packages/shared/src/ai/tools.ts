@@ -22,6 +22,11 @@ const MAX_OPTION_KCAL = 20_000
 
 const replyTextSchema = z.string().trim().min(1).max(REPLY_MAX_LENGTH)
 
+/** OTHER may repeat within a day, so a message never logs into it. */
+export const loggableMealTypeSchema = mealTypeSchema.exclude(['OTHER'])
+
+export type LoggableMealType = z.infer<typeof loggableMealTypeSchema>
+
 export const aiFoodItemSchema = foodEntryBaseSchema
 	.extend({
 		name: foodEntryBaseSchema.shape.name.describe(
@@ -55,6 +60,12 @@ export const aiFoodItemSchema = foodEntryBaseSchema
 		memoryRef: foodEntryBaseSchema.shape.memoryRef.describe(
 			'Ref of the saved food used ("m1"), only when source is MEMORY; else null',
 		),
+		mealType: loggableMealTypeSchema
+			.nullable()
+			.default(null)
+			.describe(
+				'Meal of this item when the message names several ("сніданок: …, обід: …"); else null — the message-level mealType or the clock decides',
+			),
 	})
 	.superRefine(refineFoodEntry)
 
@@ -62,11 +73,12 @@ export type AiFoodItem = z.infer<typeof aiFoodItemSchema>
 
 export const logFoodInputSchema = z.object({
 	items: z.array(aiFoodItemSchema).min(1).max(MAX_ITEMS_PER_MESSAGE),
-	mealType: mealTypeSchema
-		.exclude(['OTHER'])
+	mealType: loggableMealTypeSchema
 		.nullable()
 		.default(null)
-		.describe('Only if the user named the meal ("на обід") — else null, the backend uses the time'),
+		.describe(
+			'Only if the user named one meal for the whole message ("на обід") — else null; items may name their own',
+		),
 	reply: replyTextSchema.describe(
 		'1–2 short warm sentences for the chat in the language of the user. No totals or day sums — the app shows them',
 	),

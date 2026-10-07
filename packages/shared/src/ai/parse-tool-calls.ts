@@ -15,7 +15,7 @@ import {
 	type ReplyInput,
 	replyInputSchema,
 } from './tools.js'
-import { type ClarificationResult, selectClarifications } from './clarifications.js'
+import { type ClarificationResult, filterClarifications } from './clarifications.js'
 
 /** Hints appended to validation errors so the model can fix them on the retry. */
 const ERROR_HINTS: Record<string, string> = {
@@ -182,7 +182,7 @@ const decide = (valid: ValidatedCall[], options: ParseToolCallsOptions): Decisio
 	if (log) {
 		const errors = checkLogReferences(log, clarifications, options)
 		if (errors.length > 0) return { decision: null, errors }
-		const selected = selectClarifications(log, clarifications)
+		const selected = filterClarifications(log, clarifications)
 		return { decision: { kind: 'log', log, clarifications: selected }, errors: [] }
 	}
 	if (clarifications.length > 0) return { decision: null, errors: [ONE_DECISION_ERROR] }

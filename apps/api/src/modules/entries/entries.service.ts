@@ -4,7 +4,18 @@ import type { DayMealContext, LoggedMeal, NutritionTotals } from '@kus/shared'
 import type { Prisma } from '../../generated/prisma/client'
 import { roundNutrition, sumEntries, toDayMealContext, toLoggedMeal } from './entries.mapper'
 import { EntriesRepository } from './entries.repository'
-import type { LogEntriesParams } from './entries.types'
+import { getMealRank, MEAL_TYPE_ORDER } from './entries.constants'
+import type { LogEntriesParams, NewFoodEntry } from './entries.types'
+
+const roundEntry = (entry: NewFoodEntry): NewFoodEntry => ({
+	...entry,
+	grams: roundNutrition(entry.grams),
+	kcal: roundNutrition(entry.kcal),
+	protein: roundNutrition(entry.protein),
+	fat: roundNutrition(entry.fat),
+	carbs: roundNutrition(entry.carbs),
+	fiber: entry.fiber === null ? null : roundNutrition(entry.fiber),
+})
 
 export interface DaySummary {
 	totals: NutritionTotals
@@ -15,64 +26,77 @@ export interface DaySummary {
 export class EntriesService {
 	constructor(private readonly entriesRepository: EntriesRepository) {}
 
-	/** Adds entries to the day's meal of that type (created on first use). Runs inside the caller's tx. */
+	/**
+	 * Adds each entry to the day's meal of its type (created on first use). Runs inside the
+	 * caller's tx. `entryIds` follow the input order, so clarify item indexes still map.
+	 */
 	async logEntries(
-		{ userId, sourceMessageId, mealType, eatenAt, localDate, entries }: LogEntriesParams,
+		{ userId, sourceMessageId, eatenAt, localDate, entries }: LogEntriesParams,
 		tx: Prisma.TransactionClient,
-	): Promise<{ meal: LoggedMeal; entryIds: string[] }> {
-		const meal = await this.entriesRepository.findOrCreateMeal(
-			{ userId, type: mealType, localDate, eatenAt, sourceMessageId },
-			tx,
-		)
-		const created = await this.entriesRepository.createEntries(
-			{
-				userId,
-				mealId: meal.id,
-				sourceMessageId,
-				entries: entries.map((entry) => ({
-					...entry,
-					grams: roundNutrition(entry.grams),
-					kcal: roundNutrition(entry.kcal),
-					protein: roundNutrition(entry.protein),
-					fat: roundNutrition(entry.fat),
-					carbs: roundNutrition(entry.carbs),
-					fiber: entry.fiber === null ? null : roundNutrition(entry.fiber),
-				})),
-			},
-			tx,
-		)
-		const withEntries = await this.entriesRepository.findMealWithEntries(
-			{ userId, mealId: meal.id },
-			tx,
-		)
-		// the meal was found or created a moment ago in this same transaction
-		if (!withEntries) throw new Error('Meal disappeared inside its own transaction')
-		return {
-			meal: toLoggedMeal(withEntries, sourceMessageId),
-			entryIds: created.map((entry) => entry.id),
+	): Promise<{ meals: LoggedMeal[]; entryIds: string[] }> {
+		const entryIds: string[] = []
+		const meals: LoggedMeal[] = []
+		for (const mealType of MEAL_TYPE_ORDER) {
+			const group = entries.flatMap((input, index) =>
+				input.mealType === mealType ? [{ index, entry: input.entry }] : [],
+			)
+			if (group.length === 0) continue
+			const meal = await this.entriesRepository.findOrCreateMeal(
+				{ userId, type: mealType, localDate, eatenAt, sourceMessageId },
+				tx,
+			)
+			const created = await this.entriesRepository.createEntries(
+				{
+					userId,
+					mealId: meal.id,
+					sourceMessageId,
+					entries: group.map(({ entry }) => roundEntry(entry)),
+				},
+				tx,
+			)
+			group.forEach(({ index }, position) => {
+				const id = created[position]?.id
+				// clarify links rely on this order; a mismatch must fail, not leave a hole
+				if (!id) throw new Error('Created entries do not match the input')
+				entryIds[index] = id
+			})
+			const withEntries = await this.entriesRepository.findMealWithEntries(
+				{ userId, mealId: meal.id },
+				tx,
+			)
+			// the meal was found or created a moment ago in this same transaction
+			if (!withEntries) throw new Error('Meal disappeared inside its own transaction')
+			meals.push(toLoggedMeal(withEntries, sourceMessageId))
 		}
+		return { meals, entryIds }
 	}
 
 	async getDaySummary(userId: string, localDate: Date): Promise<DaySummary> {
 		const meals = await this.entriesRepository.findDayMeals({ userId, localDate })
 		return {
 			totals: sumEntries(meals.flatMap((meal) => meal.entries)),
-			meals: meals.filter((meal) => meal.entries.length > 0).map(toDayMealContext),
+			// by the day's course: a whole day logged at once gives several meals with the same eatenAt
+			meals: meals
+				.filter((meal) => meal.entries.length > 0)
+				.sort((a, b) => getMealRank(a.type) - getMealRank(b.type))
+				.map(toDayMealContext),
 		}
 	}
 
-	/** Chat cards: for each source message, the meal it logged into. */
+	/** Chat cards: for each source message, the meals it logged into, in the day's order. */
 	async getLoggedMealsByMessage(
 		userId: string,
 		messageIds: string[],
-	): Promise<Map<string, LoggedMeal>> {
-		const result = new Map<string, LoggedMeal>()
+	): Promise<Map<string, LoggedMeal[]>> {
+		const result = new Map<string, LoggedMeal[]>()
 		if (messageIds.length === 0) return result
 		const meals = await this.entriesRepository.findMealsBySourceMessages({ userId, messageIds })
-		for (const meal of meals) {
+		const ordered = [...meals].sort((a, b) => getMealRank(a.type) - getMealRank(b.type))
+		for (const meal of ordered) {
 			const sources = new Set(meal.entries.map((entry) => entry.sourceMessageId))
 			for (const messageId of messageIds) {
-				if (sources.has(messageId)) result.set(messageId, toLoggedMeal(meal, messageId))
+				if (!sources.has(messageId)) continue
+				result.set(messageId, [...(result.get(messageId) ?? []), toLoggedMeal(meal, messageId)])
 			}
 		}
 		return result

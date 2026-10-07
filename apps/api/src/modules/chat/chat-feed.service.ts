@@ -30,7 +30,7 @@ const toClarificationResponse = (
 })
 
 interface ChatMessageExtras {
-	meals: Map<string, LoggedMeal>
+	meals: Map<string, LoggedMeal[]>
 	clarifications: ClarificationWithEntries[]
 }
 
@@ -47,7 +47,7 @@ const toChatMessage = (
 		clientMessageId: message.clientMessageId,
 		replyToId: message.replyToId,
 		createdAt: message.createdAt.toISOString(),
-		meal: isAssistant && message.replyToId ? (meals.get(message.replyToId) ?? null) : null,
+		meals: isAssistant && message.replyToId ? (meals.get(message.replyToId) ?? []) : [],
 		clarifications: isAssistant
 			? clarifications
 					.filter((clarification) => clarification.messageId === message.id)

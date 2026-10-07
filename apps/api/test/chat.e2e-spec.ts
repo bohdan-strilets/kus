@@ -82,7 +82,7 @@ describe('chat messages (e2e, real DB, fake model)', () => {
 		const { data } = sendResponseSchema.parse(response.body)
 		expect(data.userMessage.status).toBe('COMPLETED')
 		expect(data.assistantMessage).toMatchObject({ role: 'ASSISTANT', content: 'Записав!' })
-		const meal = data.assistantMessage.meal
+		const meal = data.assistantMessage.meals[0]
 		expect(meal?.entries.map((entry) => entry.name)).toEqual(['Яйце варене', 'Гречка варена'])
 		expect(meal?.totals).toEqual({ kcal: 343, protein: 23.1, fat: 17, carbs: 21.6, fiber: 2.7 })
 		expect(data.dayTotals).toMatchObject({ totals: { kcal: 343 }, goalKcal: null })
@@ -182,7 +182,7 @@ describe('chat messages (e2e, real DB, fake model)', () => {
 
 		expect(sendResponseSchema.parse(stone.body).data.assistantMessage).toMatchObject({
 			content: 'Камінь краще не їсти!',
-			meal: null,
+			meals: [],
 		})
 		expect(sendResponseSchema.parse(hello.body).data.assistantMessage.content).toBe('Привіт!')
 		expect(await prisma.meal.count()).toBe(0)
@@ -212,7 +212,7 @@ describe('chat messages (e2e, real DB, fake model)', () => {
 			question: 'Який суп і яка тарілка?',
 			impactKcal: 180,
 			status: 'OPEN',
-			entryIds: [assistantMessage.meal?.entries[0]?.id],
+			entryIds: [assistantMessage.meals[0]?.entries[0]?.id],
 		})
 	})
 
@@ -231,11 +231,87 @@ describe('chat messages (e2e, real DB, fake model)', () => {
 		await send(owner, 'на вечерю 3 яйця').expect(201)
 		const second = await send(owner, 'і ще гречка на вечерю').expect(201)
 
-		const meal = sendResponseSchema.parse(second.body).data.assistantMessage.meal
+		const meal = sendResponseSchema.parse(second.body).data.assistantMessage.meals[0]
 		expect(meal?.type).toBe('DINNER')
 		expect(meal?.entries.map((entry) => entry.name)).toEqual(['Гречка варена'])
 		expect(meal?.totals.kcal).toBe(343)
 		expect(await prisma.meal.count()).toBe(1)
+	})
+
+	it('splits a whole day into meals by item, in the day order, keeping clarify links', async () => {
+		await start()
+		const owner = await registerUser('owner@kus.app')
+		const [eggs, buckwheat] = EGGS_AND_BUCKWHEAT_ITEMS
+		const day = {
+			name: 'log_food',
+			args: {
+				items: [
+					{ ...SOUP_ITEM, mealType: 'DINNER' },
+					{ ...eggs, mealType: 'BREAKFAST' },
+					{ ...buckwheat, mealType: 'DINNER' },
+				],
+				mealType: null,
+				reply: 'Записав день',
+			},
+		}
+		const soupQuestion = {
+			name: 'clarify',
+			args: {
+				question: 'Який суп?',
+				itemIndexes: [0],
+				options: [
+					{ label: 'Бульйон', kcal: 60 },
+					{ label: 'Густий', kcal: 330 },
+				],
+			},
+		}
+		fake.respond(createCompletion([day, soupQuestion]))
+
+		const response = await send(owner, 'сніданок: яйця; вечеря: суп і гречка').expect(201)
+
+		const { assistantMessage } = sendResponseSchema.parse(response.body).data
+		expect(assistantMessage.meals.map((meal) => meal.type)).toEqual(['BREAKFAST', 'DINNER'])
+		expect(assistantMessage.meals[1]?.entries.map((entry) => entry.name)).toEqual([
+			'Суп',
+			'Гречка варена',
+		])
+		const soupId = assistantMessage.meals[1]?.entries[0]?.id
+		expect(assistantMessage.clarifications[0]?.entryIds).toEqual([soupId])
+		expect(await prisma.meal.count()).toBe(2)
+
+		const feed = listResponseSchema.parse((await owner.agent.get(MESSAGES_URL).expect(200)).body)
+		expect(feed.data[0]?.meals.map((meal) => meal.type)).toEqual(['BREAKFAST', 'DINNER'])
+	})
+
+	it('mixes item and message meal types and adds to a meal logged earlier that day', async () => {
+		await start()
+		const owner = await registerUser('owner@kus.app')
+		const [eggs, buckwheat] = EGGS_AND_BUCKWHEAT_ITEMS
+		const breakfast = {
+			name: 'log_food',
+			args: { items: [eggs], mealType: 'BREAKFAST', reply: 'Ок' },
+		}
+		const mixed = {
+			name: 'log_food',
+			args: {
+				items: [{ ...SOUP_ITEM, mealType: 'BREAKFAST' }, buckwheat],
+				mealType: 'DINNER',
+				reply: 'Ок',
+			},
+		}
+		fake.respond(createCompletion([breakfast]), createCompletion([mixed]))
+		await send(owner, 'на сніданок яйця').expect(201)
+
+		const response = await send(owner, 'ще суп зранку, а на вечерю гречка').expect(201)
+
+		const { meals } = sendResponseSchema.parse(response.body).data.assistantMessage
+		expect(meals.map((meal) => [meal.type, meal.entries.map((entry) => entry.name)])).toEqual([
+			['BREAKFAST', ['Суп']],
+			['DINNER', ['Гречка варена']],
+		])
+		// the morning meal is the same one: eggs (233) + soup (150)
+		expect(meals[0]?.totals.kcal).toBe(383)
+		expect(await prisma.meal.count()).toBe(2)
 	})
 
 	it('stops at the daily AI limit with 429 and marks the message FAILED', async () => {
@@ -303,7 +379,7 @@ describe('chat messages (e2e, real DB, fake model)', () => {
 		expect(prompt).toContain('Remaining today: 2000 kcal')
 		expect(prompt).toContain('m1: \\"Батончик Olimp\\"')
 		expect(prompt).not.toContain('Чужий\\"')
-		const entry = sendResponseSchema.parse(response.body).data.assistantMessage.meal?.entries[0]
+		const entry = sendResponseSchema.parse(response.body).data.assistantMessage.meals[0]?.entries[0]
 		expect(entry).toMatchObject({
 			kcal: 228,
 			protein: 18,
@@ -349,7 +425,7 @@ describe('chat messages (e2e, real DB, fake model)', () => {
 			'Записав!',
 			'банан',
 		])
-		expect(first.data[0]?.meal?.entries).toHaveLength(2)
+		expect(first.data[0]?.meals[0]?.entries).toHaveLength(2)
 		expect(first.meta.nextCursor).not.toBeNull()
 
 		const second = listResponseSchema.parse(
@@ -428,7 +504,7 @@ describe('chat messages (e2e, real DB, fake model)', () => {
 
 		const { assistantMessage, dayTotals } = sendResponseSchema.parse(response.body).data
 		// 110 buckwheat + 150 soup; the deleted 233 kcal of eggs is gone
-		expect(assistantMessage.meal?.totals.kcal).toBe(260)
+		expect(assistantMessage.meals[0]?.totals.kcal).toBe(260)
 		expect(dayTotals.totals.kcal).toBe(260)
 	})
 

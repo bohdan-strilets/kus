@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { selectClarifications } from './clarifications.js'
+import { filterClarifications, isMultiMealLog } from './clarifications.js'
 import { parseToolCalls, type RawToolCall } from './parse-tool-calls.js'
 import { logFoodInputSchema } from './tools.js'
 
@@ -146,7 +146,7 @@ describe('parseToolCalls', () => {
 	})
 })
 
-describe('selectClarifications', () => {
+describe('filterClarifications', () => {
 	const log = logFoodInputSchema.parse({
 		items: [soup, egg],
 		mealType: null,
@@ -160,28 +160,59 @@ describe('selectClarifications', () => {
 	})
 
 	it('keeps a question that changes kcal by 80+ and 15%+', () => {
-		const [selected] = selectClarifications(log, [clarify([0], [120, 350])])
+		const [selected] = filterClarifications(log, [clarify([0], [120, 350])])
 		expect(selected?.impactKcal).toBe(230)
 	})
 
 	it('drops a question below 80 kcal', () => {
-		expect(selectClarifications(log, [clarify([0], [120, 190])])).toEqual([])
+		expect(filterClarifications(log, [clarify([0], [120, 190])])).toEqual([])
 	})
 
 	it('drops a question below 15 % of the referenced items', () => {
 		// soup + eggs = 383 kcal; 15 % = 57 → 80 passes the share but…
-		expect(selectClarifications(log, [clarify([0, 1], [1000, 1085])])).toHaveLength(1)
+		expect(filterClarifications(log, [clarify([0, 1], [1000, 1085])])).toHaveLength(1)
 		// …the same 85 kcal swing on a 1000 kcal item is noise
 		const heavy = { ...log, items: log.items.slice(0, 1).map((item) => ({ ...item, kcal: 1000 })) }
-		expect(selectClarifications(heavy, [clarify([0], [1000, 1085])])).toEqual([])
+		expect(filterClarifications(heavy, [clarify([0], [1000, 1085])])).toEqual([])
 	})
 
 	it('keeps at most 2 questions, the largest impact first', () => {
-		const selected = selectClarifications(log, [
+		const selected = filterClarifications(log, [
 			clarify([0], [100, 200]),
 			clarify([0], [100, 400]),
 			clarify([1], [100, 250]),
 		])
 		expect(selected.map((item) => item.impactKcal)).toEqual([300, 150])
+	})
+
+	describe('for a message with several meals', () => {
+		const day = logFoodInputSchema.parse({
+			items: [
+				{ ...soup, mealType: 'LUNCH' },
+				{ ...egg, mealType: 'BREAKFAST' },
+			],
+			mealType: null,
+			reply: 'Ок',
+		})
+
+		it('treats items in different meals as one day', () => {
+			expect(isMultiMealLog(day)).toBe(true)
+			expect(isMultiMealLog(log)).toBe(false)
+		})
+
+		it('keeps one question, and only with 150+ kcal of impact', () => {
+			const selected = filterClarifications(day, [
+				clarify([0], [100, 400]),
+				clarify([1], [100, 300]),
+				clarify([0], [100, 240]),
+			])
+			expect(selected.map((item) => item.impactKcal)).toEqual([300])
+		})
+
+		it('drops a question a single meal would keep', () => {
+			const question = clarify([0], [100, 220])
+			expect(filterClarifications(log, [question])).toHaveLength(1)
+			expect(filterClarifications(day, [question])).toEqual([])
+		})
 	})
 })

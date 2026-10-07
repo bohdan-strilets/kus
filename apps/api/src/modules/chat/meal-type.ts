@@ -1,4 +1,4 @@
-import type { LoggableMealType } from '../entries/entries.types'
+import type { LoggableMealType } from '@kus/shared'
 
 /** Local hour → meal when the user didn't name it: [from, to) in the user's timezone. */
 const MEAL_HOURS: { type: LoggableMealType; from: number; to: number }[] = [

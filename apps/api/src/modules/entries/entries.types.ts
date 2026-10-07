@@ -1,7 +1,6 @@
-import type { FoodCategory, FoodSource, MealType } from '../../generated/prisma/client'
+import type { LoggableMealType } from '@kus/shared'
 
-/** OTHER may repeat within a day, so it can't be found-or-created; the chat never logs it. */
-export type LoggableMealType = Exclude<MealType, 'OTHER'>
+import type { FoodCategory, FoodSource } from '../../generated/prisma/client'
 
 /** Values already validated and, for memory items, recomputed by the backend. */
 export interface NewFoodEntry {
@@ -20,11 +19,16 @@ export interface NewFoodEntry {
 	myFoodId: string | null
 }
 
+export interface MealEntryInput {
+	mealType: LoggableMealType
+	entry: NewFoodEntry
+}
+
 export interface LogEntriesParams {
 	userId: string
 	sourceMessageId: string
-	mealType: LoggableMealType
 	eatenAt: Date
 	localDate: Date
-	entries: NewFoodEntry[]
+	/** In the model's item order; a whole day may span several meals. */
+	entries: MealEntryInput[]
 }

@@ -158,19 +158,18 @@ export class ChatService {
 			if (!reply) throw new MessageInProgressException()
 			if (decision.kind !== 'log') return
 
-			const entries = decision.log.items.map((item) => this.toNewEntry(item, memory))
+			// an item's own meal, else the message's, else the clock
+			const fallbackMealType =
+				decision.log.mealType ?? getMealTypeByHour(getLocalHour(now, timezone))
+			const entries = decision.log.items.map((item) => ({
+				mealType: item.mealType ?? fallbackMealType,
+				entry: this.toNewEntry(item, memory),
+			}))
 			const { entryIds } = await this.entriesService.logEntries(
-				{
-					userId,
-					sourceMessageId: message.id,
-					mealType: decision.log.mealType ?? getMealTypeByHour(getLocalHour(now, timezone)),
-					eatenAt: now,
-					localDate,
-					entries,
-				},
+				{ userId, sourceMessageId: message.id, eatenAt: now, localDate, entries },
 				tx,
 			)
-			const usedFoodIds = [...new Set(entries.flatMap((entry) => entry.myFoodId ?? []))]
+			const usedFoodIds = [...new Set(entries.flatMap(({ entry }) => entry.myFoodId ?? []))]
 			await this.memoryService.markUsed({ userId, ids: usedFoodIds, usedAt: now }, tx)
 
 			for (const clarification of decision.clarifications) {
@@ -190,7 +189,11 @@ export class ChatService {
 	}
 
 	/** A memory item takes its numbers from the saved food, scaled by the backend. */
-	private toNewEntry({ memoryRef, ...item }: AiFoodItem, memory: RelevantFoods): NewFoodEntry {
+	// mealType and memoryRef aren't FoodEntry columns: left in the spread, Prisma would reject them
+	private toNewEntry(
+		{ memoryRef, mealType: _mealType, ...item }: AiFoodItem,
+		memory: RelevantFoods,
+	): NewFoodEntry {
 		const food = memoryRef === null ? undefined : memory.byRef.get(memoryRef)
 		if (!food) return { ...item, myFoodId: null }
 		return {
@@ -222,7 +225,8 @@ export class ChatService {
 
 		const [userDto, replyDto] = await this.chatFeed.toChatMessages(userId, [userMessage, reply])
 		if (!userDto || !replyDto) throw new Error('Chat turn lost a message while mapping')
-		const mealDate = replyDto.meal ? new Date(`${replyDto.meal.localDate}T00:00:00Z`) : null
+		const [firstMeal] = replyDto.meals
+		const mealDate = firstMeal ? new Date(`${firstMeal.localDate}T00:00:00Z`) : null
 		const dayDate = localDate ?? mealDate ?? getLocalDate(reply.createdAt, timezone)
 		const { totals } = await this.chatContext.getDayOverview(userId, dayDate)
 		return { userMessage: userDto, assistantMessage: replyDto, dayTotals: totals }

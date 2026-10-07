@@ -10,6 +10,7 @@ import { ComposerSection } from './domain/ComposerSection'
 import { FacesSection } from './domain/FacesSection'
 import { FoodIconsSection } from './domain/FoodIconsSection'
 import { FormatSection } from './domain/FormatSection'
+import { NavStatesSection } from './domain/NavStatesSection'
 import { PreviewsSection } from './domain/PreviewsSection'
 import { StatsSection } from './domain/StatsSection'
 import { ButtonsSection } from './level0/ButtonsSection'
@@ -51,6 +52,7 @@ export const DevUiPage = () => {
 					</Text>
 				</header>
 				<PreviewsSection />
+				<NavStatesSection />
 				<ChatPartsSection />
 				<FacesSection />
 				<StatsSection />

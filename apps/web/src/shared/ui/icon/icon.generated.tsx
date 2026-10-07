@@ -262,10 +262,8 @@ export const ICON_PATHS: Record<IconName, ReactNode> = {
 	),
 	'progress-filled': (
 		<>
-			<path d="M5 15l4.5-4.5 3.5 3 6-6.5V19H5z" fill="currentColor" stroke="none" opacity=".22" />
+			<path d="M4.5 15.2l5-5 3.5 3 6-6.5V19.5h-14.5z" fill="currentColor" />
 			<path d="M4 19.5h16" />
-			<path d="M5 15l4.5-4.5 3.5 3 6-6.5" />
-			<circle cx="19" cy="7" r="1.6" fill="currentColor" stroke="none" />
 		</>
 	),
 	'progress': (
@@ -277,14 +275,14 @@ export const ICON_PATHS: Record<IconName, ReactNode> = {
 	),
 	'recipes-filled': (
 		<>
-			<path d="M3.5 11.5h17a8.5 8.5 0 0 1-17 0z" fill="currentColor" />
-			<path d="M9 3.5c-1 1.2 1 2 0 3.5M13.5 3.5c-1 1.2 1 2 0 3.5" />
+			<path d="M12 6.5c-2-1.5-5-2-8-1.5v13c3-.5 6 0 8 1.5 2-1.5 5-2 8-1.5V5c-3-.5-6 0-8 1.5z" fill="currentColor" />
+			<path d="M12 6.5v13" stroke="var(--icon-cutout, #FFFFFF)" />
 		</>
 	),
 	'recipes': (
 		<>
-			<path d="M3.5 11.5h17a8.5 8.5 0 0 1-17 0z" />
-			<path d="M9 3.5c-1 1.2 1 2 0 3.5M13.5 3.5c-1 1.2 1 2 0 3.5" />
+			<path d="M12 6.5c-2-1.5-5-2-8-1.5v13c3-.5 6 0 8 1.5 2-1.5 5-2 8-1.5V5c-3-.5-6 0-8 1.5z" />
+			<path d="M12 6.5v13" />
 		</>
 	),
 	'retry': (
@@ -334,7 +332,7 @@ export const ICON_PATHS: Record<IconName, ReactNode> = {
 	),
 	'today': (
 		<>
-			<circle cx="12" cy="12" r="8" strokeWidth="3" opacity=".3" />
+			<circle cx="12" cy="12" r="8.5" />
 		</>
 	),
 	'trash': (

@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { ROUTES } from '@/shared/config'
 
 import { NAV_ITEMS } from '../model/nav-items'
+import { navBarVariants } from './bottom-nav.variants'
 import { BottomNavItem } from './BottomNavItem'
 
 interface BottomNavProps {
@@ -21,10 +22,7 @@ export const BottomNav = ({ hasProgressUpdate = false, todayProgress = 0 }: Bott
 
 	return (
 		<div className="fixed inset-x-0 bottom-0 z-30 mx-auto max-w-app px-gutter pb-safe-bottom">
-			<nav
-				aria-label={t('nav.label')}
-				className="mb-5 rounded-nav bg-surface/94 p-1.5 shadow-float"
-			>
+			<nav aria-label={t('nav.label')} className={navBarVariants({ className: 'mb-5' })}>
 				<ul className="grid grid-cols-4 items-center">
 					{NAV_ITEMS.map((item) => (
 						<li key={item.to}>

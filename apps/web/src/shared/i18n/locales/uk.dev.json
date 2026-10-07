@@ -28,7 +28,8 @@
 			"composer": "Composer",
 			"foodIcons": "FoodIcon",
 			"format": "format",
-			"previews": "Екрани з компонентів (для звірки з design/screenshots)"
+			"previews": "Екрани з компонентів (для звірки з design/screenshots)",
+			"navStates": "Нижня навігація — стани (brand-nav-states)"
 		},
 		"level0": {
 			"screenTitle": "Сьогодні",
@@ -179,6 +180,15 @@
 			"supportAvatarMissing": "Голова для SupportCard: у today-over намальований вираз, якого немає серед 8 HamsterHead — чекає рішення.",
 			"voiceStart": "Голос",
 			"voiceStop": "Зупинити голос"
+		},
+		"navStates": {
+			"todayActive": "Активна вкладка «Сьогодні»",
+			"otherActive": "Активна інша вкладка, «Сьогодні» неактивна",
+			"empty": "0 % — ще нічого не записано",
+			"partial": "≈ 60 % — 1 370 з 2 200",
+			"closed": "100 % — ціль закрита",
+			"over": "понад ціль, +35 % (друге коло)",
+			"otherTabs": "Інші активні вкладки"
 		}
 	}
 }

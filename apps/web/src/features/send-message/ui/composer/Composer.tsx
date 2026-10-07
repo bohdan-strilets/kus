@@ -5,17 +5,21 @@ import { cn } from '@/shared/lib'
 import { Icon, ICON_SIZE, IconButton, Text, Textarea } from '@/shared/ui'
 
 import { useIsMultiline } from '../../model/use-is-multiline'
+import { ComposerAction } from './ComposerAction'
 import type { ComposerProps } from './composer.types'
 import { VoiceRecorder } from './VoiceRecorder'
 
 /**
- * docs InputBar. One textarea for both layouts so it never remounts and keeps focus:
- * single line (mockups/chat.html) — camera, field, mic, send; long text (chat-long-input.html) —
- * the field on top, then camera, «Kusik розбере все на окремі продукти» and send. While recording
- * the bar turns into the voice recorder. Presentational: the caller owns the text and the actions.
+ * docs InputBar (the design spec wins over mockups/chat.html, which drew mic and send side by
+ * side). One textarea for both layouts so it never remounts and keeps focus: single line — camera,
+ * field and one primary slot that is the mic while empty and «надіслати» with text; long text
+ * (chat-long-input.html) — the field on top, then camera, «Kusik розбере все на окремі продукти»
+ * and send. While recording the bar turns into the voice recorder. Presentational: the caller
+ * owns the text and the actions.
  */
 export const Composer = ({
 	value,
+	placeholder,
 	onValueChange,
 	onSubmit,
 	onPhotoClick,
@@ -25,11 +29,14 @@ export const Composer = ({
 	const { t } = useTranslation()
 	const textareaRef = useRef<HTMLTextAreaElement>(null)
 	const { isMultiline, measure } = useIsMultiline(textareaRef, value, !voice)
+	// whitespace alone is nothing to send
+	const canSend = value.trim().length > 0
 
 	if (voice) return <VoiceRecorder {...voice} />
 
 	const handleSubmit = (event: SubmitEvent<HTMLFormElement>): void => {
 		event.preventDefault()
+		if (!canSend) return
 		onSubmit()
 	}
 
@@ -37,7 +44,7 @@ export const Composer = ({
 		<form
 			onSubmit={handleSubmit}
 			className={cn(
-				'flex flex-wrap items-center gap-2 bg-surface shadow-float focus-within:ring-2 focus-within:ring-primary',
+				'flex flex-wrap items-center gap-2 bg-surface shadow-card focus-within:ring-2 focus-within:ring-primary',
 				isMultiline ? 'rounded-card pt-3 pr-1.5 pb-1.5 pl-4' : 'rounded-panel p-1.5',
 			)}
 		>
@@ -48,7 +55,7 @@ export const Composer = ({
 				ref={textareaRef}
 				name="message"
 				aria-label={t('composer.label')}
-				placeholder={t('composer.placeholder')}
+				placeholder={placeholder ?? t('composer.placeholder')}
 				value={value}
 				onChange={(event) => {
 					onValueChange(event.target.value)
@@ -57,17 +64,17 @@ export const Composer = ({
 				className={cn(isMultiline ? 'order-first basis-full pr-2.5' : 'flex-1 py-2')}
 			/>
 			{isMultiline ? (
-				<Text as="span" variant="small" weight="regular" tone="muted" className="flex-1">
-					{t('composer.longHint')}
-				</Text>
+				<>
+					<Text as="span" variant="small" weight="regular" tone="muted" className="flex-1">
+						{t('composer.longHint')}
+					</Text>
+					<IconButton type="submit" variant="primary" label={t('composer.send')}>
+						<Icon name="send" size={ICON_SIZE.control} />
+					</IconButton>
+				</>
 			) : (
-				<IconButton size="sm" label={t('composer.voice')} onClick={onVoiceStart}>
-					<Icon name="mic" size={ICON_SIZE.control} />
-				</IconButton>
+				<ComposerAction canSend={canSend} onVoiceStart={onVoiceStart} />
 			)}
-			<IconButton type="submit" variant="primary" label={t('composer.send')}>
-				<Icon name="send" size={ICON_SIZE.control} />
-			</IconButton>
 		</form>
 	)
 }

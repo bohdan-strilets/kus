@@ -54,4 +54,5 @@ export {
 export { focusDialogContainer } from './focus-dialog-container'
 export { DEFAULT_FLAG_DELAY_MS, useDelayedFlag } from './use-delayed-flag'
 export { useAutoHeight } from './use-auto-height'
+export { COARSE_POINTER_QUERY, useMediaQuery } from './use-media-query'
 export { useSvgId } from './use-svg-id'

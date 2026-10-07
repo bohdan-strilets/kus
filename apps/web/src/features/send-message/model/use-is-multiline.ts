@@ -6,8 +6,13 @@ const MULTILINE_FACTOR = 1.5
 const COLLAPSED = -1
 
 const doesTextWrap = (element: HTMLTextAreaElement): boolean => {
-	const lineHeight = Number.parseFloat(getComputedStyle(element).lineHeight)
-	return element.scrollHeight > lineHeight * MULTILINE_FACTOR
+	const style = getComputedStyle(element)
+	// scrollHeight includes the vertical padding (py-2 in the single-line layout)
+	const contentHeight =
+		element.scrollHeight -
+		Number.parseFloat(style.paddingTop) -
+		Number.parseFloat(style.paddingBottom)
+	return contentHeight > Number.parseFloat(style.lineHeight) * MULTILINE_FACTOR
 }
 
 /**

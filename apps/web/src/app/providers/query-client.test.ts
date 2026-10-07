@@ -32,6 +32,6 @@ describe('shouldRetry', () => {
 	})
 
 	it('stops after the retry limit', () => {
-		expect(shouldRetry(3, createHttpError(503))).toBe(false)
+		expect(shouldRetry(2, createHttpError(503))).toBe(false)
 	})
 })

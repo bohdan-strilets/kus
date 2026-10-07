@@ -9,6 +9,8 @@ import { defineConfig } from 'vitest/config'
 // Middle stop of the bg-app gradient (shared/ui/theme/tokens.css), as design/README.md specifies
 // for the manifest; keep in sync with <meta name="theme-color"> in index.html
 const APP_BACKGROUND_COLOR = '#FBF6EE'
+// `pnpm --filter api dev` (PORT in apps/api/.env.example)
+const API_DEV_TARGET = 'http://localhost:3000'
 
 export default defineConfig({
 	plugins: [
@@ -55,6 +57,10 @@ export default defineConfig({
 	server: {
 		port: 5173,
 		strictPort: true,
+		// same origin as production (the Vercel /api rewrite): first-party cookies, no CORS
+		proxy: {
+			'/api': API_DEV_TARGET,
+		},
 	},
 	build: {
 		rolldownOptions: {

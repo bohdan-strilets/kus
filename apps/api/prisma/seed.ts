@@ -68,6 +68,7 @@ const toEntryInput = (
 			grams: item.grams,
 			quantity: item.quantity ?? null,
 			...scaleMacros(food.per100g, item.grams / 100),
+			category: food.category,
 			source: FoodSource.MEMORY,
 			confidence: 0.95,
 			myFoodId: ids.foodIds[item.food],
@@ -80,6 +81,7 @@ const toEntryInput = (
 			name: recipe.name,
 			grams: item.grams,
 			...scaleMacros(getRecipeTotals(item.recipe), item.grams / recipe.cookedGrams),
+			category: recipe.category,
 			source: FoodSource.MEMORY,
 			confidence: 0.9,
 			recipeId: ids.recipeIds[item.recipe],
@@ -90,6 +92,7 @@ const toEntryInput = (
 		name: item.name,
 		grams: item.grams,
 		...item.macros,
+		category: item.category,
 		source: FoodSource.ESTIMATE,
 		confidence: item.confidence,
 		assumption: item.assumption,
@@ -202,6 +205,7 @@ const seedMemory = async (tx: Prisma.TransactionClient, userId: string): Promise
 				aliases: recipe.aliases.map(normalizeName),
 				cookedGrams: recipe.cookedGrams,
 				defaultGrams: recipe.defaultGrams,
+				category: recipe.category,
 				ingredients: {
 					create: recipe.ingredients.map(({ food, grams }, position) => ({
 						name: DEMO_FOODS[food].name,

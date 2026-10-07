@@ -1,5 +1,5 @@
 // Fictional demo data for local development. Never put real personal data here — the repo is public.
-import { MealType, MyFoodSource } from '../src/generated/prisma/client'
+import { FoodCategory, MealType, MyFoodSource } from '../src/generated/prisma/client'
 
 export const DEMO_EMAIL = 'demo@kus.local'
 export const DEMO_TIMEZONE = 'Europe/Warsaw'
@@ -26,6 +26,8 @@ export type DemoFood = {
 	per100g: Macros
 	pieceGrams: number | null
 	defaultGrams: number | null
+	// the icon; entries logged from this food copy it as a snapshot
+	category: FoodCategory
 	source: MyFoodSource
 }
 
@@ -34,6 +36,7 @@ export type DemoRecipe = {
 	aliases: string[]
 	cookedGrams: number
 	defaultGrams: number
+	category: FoodCategory
 	ingredients: { food: DemoFoodKey; grams: number }[]
 }
 
@@ -43,6 +46,7 @@ export type DemoMealItem =
 	| {
 			kind: 'estimate'
 			name: string
+			category: FoodCategory
 			grams: number
 			macros: Macros
 			confidence: number
@@ -80,6 +84,7 @@ export const DEMO_FOODS: Record<DemoFoodKey, DemoFood> = {
 		per100g: macros(366, 12.5, 6.2, 61, 10),
 		pieceGrams: null,
 		defaultGrams: 60,
+		category: FoodCategory.porridge,
 		source: MyFoodSource.LABEL,
 	},
 	milk: {
@@ -90,6 +95,7 @@ export const DEMO_FOODS: Record<DemoFoodKey, DemoFood> = {
 		per100g: macros(50, 3.4, 2, 4.8),
 		pieceGrams: null,
 		defaultGrams: 200,
+		category: FoodCategory.milk,
 		source: MyFoodSource.LABEL,
 	},
 	banana: {
@@ -100,6 +106,7 @@ export const DEMO_FOODS: Record<DemoFoodKey, DemoFood> = {
 		per100g: macros(89, 1.1, 0.3, 22.8, 2.6),
 		pieceGrams: 120,
 		defaultGrams: 120,
+		category: FoodCategory.banana,
 		source: MyFoodSource.MANUAL,
 	},
 	chicken: {
@@ -110,6 +117,7 @@ export const DEMO_FOODS: Record<DemoFoodKey, DemoFood> = {
 		per100g: macros(110, 23, 1.5, 0),
 		pieceGrams: null,
 		defaultGrams: 150,
+		category: FoodCategory.poultry,
 		source: MyFoodSource.AI,
 	},
 	buckwheat: {
@@ -120,6 +128,7 @@ export const DEMO_FOODS: Record<DemoFoodKey, DemoFood> = {
 		per100g: macros(343, 13.3, 3.4, 71.5, 10),
 		pieceGrams: null,
 		defaultGrams: 70,
+		category: FoodCategory.porridge,
 		source: MyFoodSource.LABEL,
 	},
 	yogurt: {
@@ -131,6 +140,7 @@ export const DEMO_FOODS: Record<DemoFoodKey, DemoFood> = {
 		per100g: macros(73, 9.5, 2, 3.8),
 		pieceGrams: null,
 		defaultGrams: 150,
+		category: FoodCategory.yogurt,
 		source: MyFoodSource.LABEL,
 	},
 	egg: {
@@ -141,6 +151,7 @@ export const DEMO_FOODS: Record<DemoFoodKey, DemoFood> = {
 		per100g: macros(143, 12.6, 9.5, 0.7),
 		pieceGrams: 55,
 		defaultGrams: 110,
+		category: FoodCategory.eggs,
 		source: MyFoodSource.MANUAL,
 	},
 	cottageCheese: {
@@ -151,6 +162,7 @@ export const DEMO_FOODS: Record<DemoFoodKey, DemoFood> = {
 		per100g: macros(121, 17, 5, 1.8),
 		pieceGrams: null,
 		defaultGrams: 200,
+		category: FoodCategory.cottage_cheese,
 		source: MyFoodSource.LABEL,
 	},
 }
@@ -161,6 +173,7 @@ export const DEMO_RECIPES: Record<DemoRecipeKey, DemoRecipe> = {
 		aliases: ['сирнички'],
 		cookedGrams: 480,
 		defaultGrams: 160,
+		category: FoodCategory.pancakes,
 		ingredients: [
 			{ food: 'cottageCheese', grams: 400 },
 			{ food: 'egg', grams: 55 },
@@ -172,6 +185,7 @@ export const DEMO_RECIPES: Record<DemoRecipeKey, DemoRecipe> = {
 		aliases: ['омлет'],
 		cookedGrams: 240,
 		defaultGrams: 240,
+		category: FoodCategory.eggs,
 		ingredients: [
 			{ food: 'egg', grams: 165 },
 			{ food: 'milk', grams: 80 },
@@ -250,6 +264,7 @@ export const DEMO_PAST_MEALS: DemoMeal[] = [
 			{
 				kind: 'estimate',
 				name: 'Борщ з куркою',
+				category: FoodCategory.borscht,
 				grams: 350,
 				macros: macros(210, 12, 7, 24, 4),
 				confidence: 0.6,

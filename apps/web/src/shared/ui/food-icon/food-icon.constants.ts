@@ -71,3 +71,8 @@ export const FOOD_ICON_SIZE: Record<
 	meal: { tileClassName: 'size-11 rounded-tile-sm', iconPx: 28, hasGroupTile: true },
 	recipe: { tileClassName: 'size-13 rounded-tile bg-surface', iconPx: 38, hasGroupTile: false },
 }
+
+/** i18n key of a category's short name, e.g. «Каша» (food.category.* in the locale). */
+export const getFoodCategoryLabelKey = <TCategory extends FoodCategory>(
+	category: TCategory,
+): `food.category.${TCategory}` => `food.category.${category}`

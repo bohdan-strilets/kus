@@ -23,6 +23,7 @@ export {
 	FoodIcon,
 	type FoodIconProps,
 	type FoodIconSize,
+	getFoodCategoryLabelKey,
 } from './food-icon'
 export { type FormFieldControlProps, FormField, type FormFieldProps } from './form-field'
 export {

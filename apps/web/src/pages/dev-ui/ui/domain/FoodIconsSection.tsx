@@ -6,6 +6,7 @@ import {
 	type FoodCategory,
 	FoodIcon,
 	type FoodIconSize,
+	getFoodCategoryLabelKey,
 	Text,
 } from '@/shared/ui'
 
@@ -26,9 +27,8 @@ export const FoodIconsSection = () => {
 						{SIZES.map((size) => (
 							<FoodIcon key={size} category={category} size={size} />
 						))}
-						{/* category values are code identifiers, shown as-is */}
 						<Text as="span" variant="small" tone="muted">
-							{category ?? FALLBACK_FOOD_CATEGORY}
+							{t(getFoodCategoryLabelKey(category ?? FALLBACK_FOOD_CATEGORY))}
 						</Text>
 					</div>
 				))}
@@ -37,8 +37,8 @@ export const FoodIconsSection = () => {
 				{FOOD_CATEGORIES.map((category) => (
 					<div key={category} className="flex flex-col items-center gap-1 py-1">
 						<FoodIcon category={category} size="meal" />
-						<Text as="span" variant="small" tone="muted" className="text-center break-all">
-							{category}
+						<Text as="span" variant="small" tone="muted" className="text-center">
+							{t(getFoodCategoryLabelKey(category))}
 						</Text>
 					</div>
 				))}

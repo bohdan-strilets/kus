@@ -80,6 +80,16 @@
 	--color-fat-ink: #6b4a33;
 	--color-fat-bar: #b05a26;
 
+	/* tiles under food icons (shared/ui/food-icon), by category group */
+	--color-food-grain: #fff3d6;
+	--color-food-soup: #fde6d3;
+	--color-food-protein: #fde6d3;
+	--color-food-plant: #e6f6c9;
+	--color-food-dairy: #e2f0fb;
+	--color-food-sweet: #fce6d2;
+	--color-food-drink: #f3ece3;
+	--color-food-neutral: #f7f1e9;
+
 	--color-logo-from: #ffb877;
 	--color-logo-to: #d45f22;
 	--color-logo-letter: #fff4e6;

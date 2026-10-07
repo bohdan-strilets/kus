@@ -1,7 +1,7 @@
 import { motion } from 'motion/react'
 
 import { formatInteger, PRESS } from '@/shared/lib'
-import { FoodIcon, type FoodIconKind, Text } from '@/shared/ui'
+import { type FoodCategory, FoodIcon, Text } from '@/shared/ui'
 
 export interface MealRowProps {
 	/** «Сніданок» */
@@ -11,19 +11,20 @@ export interface MealRowProps {
 	/** «Яйця, гречка, кава з молоком» */
 	summary: string
 	kcal: number
-	icon?: FoodIconKind
+	/** getMealCategory(entries): the most caloric entry picks the icon. */
+	category: FoodCategory
 	onOpen?: () => void
 }
 
-/** A meal in the «Сьогодні» list (mockups/today.html): 44 pictogram, title 15/700 + time, kcal 15/800. */
-export const MealRow = ({ mealLabel, time, summary, kcal, icon, onOpen }: MealRowProps) => (
+/** A meal in the «Сьогодні» list (mockups/today.html): 44 food icon, title 15/700 + time, kcal 15/800. */
+export const MealRow = ({ mealLabel, time, summary, kcal, category, onOpen }: MealRowProps) => (
 	<motion.button
 		type="button"
 		onClick={onOpen}
 		{...PRESS}
 		className="flex w-full cursor-pointer items-center gap-3 rounded-bubble bg-surface/85 py-2.5 pr-3.5 pl-2.5 text-left"
 	>
-		<FoodIcon kind={icon} size="meal" />
+		<FoodIcon category={category} size="meal" />
 		<span className="flex min-w-0 flex-1 flex-col gap-px">
 			<Text as="span" weight="bold">
 				{mealLabel}{' '}

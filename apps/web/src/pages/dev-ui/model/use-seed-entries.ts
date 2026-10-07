@@ -13,14 +13,14 @@ export const useSeedEntries = () => {
 		name: t('devUi.seed.eggs'),
 		amount: t('devUi.seed.eggsAmount'),
 		kcal: SEED_BREAKFAST.eggsKcal,
-		icon: 'egg',
+		category: 'eggs',
 	}
 	const buckwheat: FoodEntryView = {
 		id: 'buckwheat',
 		name: t('devUi.seed.buckwheat'),
 		amount: t('devUi.seed.buckwheatAmount'),
 		kcal: SEED_BREAKFAST.buckwheatKcal,
-		icon: 'buckwheat',
+		category: 'porridge',
 		captionState: 'hint',
 		hint: t('devUi.seed.buckwheatHint'),
 	}
@@ -29,7 +29,7 @@ export const useSeedEntries = () => {
 		name: t('devUi.seed.coffee'),
 		amount: t('devUi.seed.coffeeAmount'),
 		kcal: SEED_BREAKFAST.coffeeKcal,
-		icon: 'coffee',
+		category: 'coffee',
 		captionState: 'usual',
 	}
 	const unknown: FoodEntryView = {
@@ -37,6 +37,7 @@ export const useSeedEntries = () => {
 		name: t('devUi.seed.unknownFood'),
 		amount: t('devUi.seed.unknownAmount'),
 		kcal: 280,
+		category: null,
 	}
 
 	return { eggs, buckwheat, coffee, unknown }

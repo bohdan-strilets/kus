@@ -2,7 +2,7 @@ import { PlusIcon } from '@phosphor-icons/react'
 import { useTranslation } from 'react-i18next'
 
 import { formatInteger } from '@/shared/lib'
-import { FoodIcon, type FoodIconKind, IconButton, Surface, Text } from '@/shared/ui'
+import { type FoodCategory, FoodIcon, IconButton, Surface, Text } from '@/shared/ui'
 
 export interface RecipeSuggestionProps {
 	name: string
@@ -10,7 +10,7 @@ export interface RecipeSuggestionProps {
 	proteinGrams: number
 	/** «Вечеря» — the meal the «+» adds it to. */
 	mealLabel: string
-	icon?: FoodIconKind
+	category: FoodCategory | null
 	onAdd?: () => void
 }
 
@@ -25,14 +25,14 @@ export const RecipeSuggestion = ({
 	kcal,
 	proteinGrams,
 	mealLabel,
-	icon,
+	category,
 	onAdd,
 }: RecipeSuggestionProps) => {
 	const { t } = useTranslation()
 
 	return (
 		<Surface variant="soft" radius="chip" shadow="none" className="flex items-center gap-3 p-2">
-			<FoodIcon kind={icon} size="recipe" />
+			<FoodIcon category={category} size="recipe" />
 			<div className="flex min-w-0 flex-1 flex-col gap-px">
 				<Text as="span" variant="cardTitle">
 					{name}

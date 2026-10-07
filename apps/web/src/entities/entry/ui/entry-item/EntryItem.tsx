@@ -52,10 +52,10 @@ const EntryCaption = ({ entry, onHintClick }: EntryItemProps) => {
 	)
 }
 
-/** One food line in a meal card (mockups/chat.html): pictogram, name 14/600, caption, kcal 14/700. */
+/** One food line in a meal card (mockups/chat.html): food icon, name 14/600, caption, kcal 14/700. */
 export const EntryItem = ({ entry, onHintClick }: EntryItemProps) => (
 	<div className="flex items-center gap-2.5 px-1.5 py-1">
-		<FoodIcon kind={entry.icon} />
+		<FoodIcon category={entry.category} />
 		<div className="flex min-w-0 flex-1 flex-col">
 			<Text as="span" variant="cardTitle" weight="semibold">
 				{entry.name}

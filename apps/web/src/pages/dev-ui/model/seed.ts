@@ -1,4 +1,4 @@
-import type { MacroAmounts } from '@/entities/entry'
+import type { CategorizedEntry, MacroAmounts } from '@/entities/entry'
 import type { MacroProgressSet, WeekDay } from '@/entities/stats'
 
 /** Seed numbers agreed across the mockups (design/docs/screens.md). Strings live in uk.dev.json. */
@@ -35,12 +35,42 @@ export const SEED_CLARIFY = { boiledKcal: 110, dryKcal: 343 }
 
 export const SEED_RECIPE = { kcal: 540, proteinGrams: 52 }
 
+/**
+ * The «Сьогодні» meals. Entries carry a category so the row icon comes from getMealCategory
+ * (the most caloric entry); the split inside lunch and snack is made up, the totals are the mockup's.
+ */
 export const SEED_MEALS = {
-	breakfast: { time: '08:40', kcal: 370 },
-	lunch: { time: '13:15', kcal: 620 },
-	snack: { time: '16:30', kcal: 380 },
-	dinner: { time: '19:40', kcal: 1010 },
-}
+	breakfast: {
+		time: '08:40',
+		kcal: 370,
+		entries: [
+			{ category: 'eggs', kcal: 215 },
+			{ category: 'porridge', kcal: 110 },
+			{ category: 'coffee', kcal: 45 },
+		],
+	},
+	lunch: {
+		time: '13:15',
+		kcal: 620,
+		entries: [
+			{ category: 'soup', kcal: 340 },
+			{ category: 'bread', kcal: 160 },
+			{ category: 'salad', kcal: 120 },
+		],
+	},
+	snack: {
+		time: '16:30',
+		kcal: 380,
+		entries: [
+			{ category: 'cottage_cheese', kcal: 280 },
+			{ category: 'banana', kcal: 100 },
+		],
+	},
+	dinner: { time: '19:40', kcal: 1010, entries: [{ category: 'pizza', kcal: 1010 }] },
+} as const satisfies Record<
+	string,
+	{ time: string; kcal: number; entries: readonly CategorizedEntry[] }
+>
 
 /** Monday 5 October 2026, the day every mockup shows. */
 export const SEED_TODAY = new Date(2026, 9, 5)

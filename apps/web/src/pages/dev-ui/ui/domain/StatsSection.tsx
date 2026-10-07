@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { MealRow } from '@/entities/entry'
+import { getMealCategory, MealRow } from '@/entities/entry'
 import { RecipeTip } from '@/entities/recipe'
 import {
 	CalorieGauge,
@@ -75,13 +75,14 @@ export const StatsSection = () => {
 					time={SEED_MEALS.breakfast.time}
 					summary={t('devUi.seed.breakfastSummary')}
 					kcal={SEED_MEALS.breakfast.kcal}
-					icon="egg"
+					category={getMealCategory(SEED_MEALS.breakfast.entries)}
 				/>
 				<MealRow
 					mealLabel={t('meal.snack')}
 					time={SEED_MEALS.snack.time}
 					summary={t('devUi.seed.unknownFood')}
 					kcal={SEED_MEALS.snack.kcal}
+					category={getMealCategory([{ category: null, kcal: SEED_MEALS.snack.kcal }])}
 				/>
 				<RecipeTip
 					mealLabel={t('meal.dinner')}

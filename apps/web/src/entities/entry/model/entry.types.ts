@@ -1,4 +1,4 @@
-import type { FoodIconKind } from '@/shared/ui'
+import type { FoodCategory } from '@/shared/ui'
 
 /** Grams of protein / carbs / fat — always shown in this order (Б → В → Ж). */
 export interface MacroAmounts {
@@ -20,7 +20,8 @@ export interface FoodEntryView {
 	/** Amount as the AI wrote it, e.g. «3 шт · 150 г». */
 	amount: string
 	kcal: number
-	icon?: FoodIconKind
+	/** Picks the icon; null until the AI sets one (shown as the plate). */
+	category: FoodCategory | null
 	captionState?: EntryCaptionState
 	/** The question for the `hint` state, e.g. «суха?». */
 	hint?: string

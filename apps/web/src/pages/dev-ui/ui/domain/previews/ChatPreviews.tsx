@@ -76,7 +76,7 @@ export const ChatPreviews = () => {
 								kcal={SEED_RECIPE.kcal}
 								proteinGrams={SEED_RECIPE.proteinGrams}
 								mealLabel={t('meal.dinner')}
-								icon="chickenBuckwheat"
+								category="poultry"
 							/>
 						</MessageBubble>
 					</KusikRow>

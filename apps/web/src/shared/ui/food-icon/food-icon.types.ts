@@ -1,16 +1,58 @@
-import type { ReactNode } from 'react'
+// Dish categories for icons (design/src/food). The same list becomes the FoodCategory enum in
+// packages/shared and Prisma — keep them in sync (CLAUDE.md §5).
+export const FOOD_CATEGORIES = [
+	'eggs',
+	'porridge',
+	'cereal',
+	'pancakes',
+	'toast',
+	'bread',
+	'pastry',
+	'dumplings',
+	'pasta',
+	'pizza',
+	'soup',
+	'borscht',
+	'meat',
+	'poultry',
+	'sausage',
+	'fish',
+	'seafood',
+	'potatoes',
+	'salad',
+	'vegetables',
+	'legumes',
+	'milk',
+	'yogurt',
+	'cottage_cheese',
+	'cheese',
+	'fruit',
+	'banana',
+	'berries',
+	'dried_fruit',
+	'nuts',
+	'snacks',
+	'protein_bar',
+	'chocolate',
+	'cake',
+	'ice_cream',
+	'cookies',
+	'coffee',
+	'tea',
+	'juice',
+	'soda',
+	'alcohol',
+	'protein_shake',
+	'fast_food',
+	'sauce',
+	'plate',
+] as const
 
-/** Pictograms drawn in the chat and «Сьогодні» mockups; `plate` is the neutral fallback. */
-export type FoodIconKind =
-	'egg' | 'buckwheat' | 'coffee' | 'chickenBuckwheat' | 'soup' | 'banana' | 'pizza' | 'plate'
+export type FoodCategory = (typeof FOOD_CATEGORIES)[number]
 
-/** row — meal card line (36 tile, chat); meal — day list (44 tile, today); recipe — tip (52 white). */
+/** The group picks the tile colour (bg-food-*). */
+export type FoodGroup =
+	'grain' | 'soup' | 'protein' | 'plant' | 'dairy' | 'sweet' | 'drink' | 'neutral'
+
+/** row — food line in the chat card (36); meal — «Сьогодні» list (44); recipe — white tip tile (52). */
 export type FoodIconSize = 'row' | 'meal' | 'recipe'
-
-export interface FoodArtwork {
-	/** Square viewBox side, as drawn in the mockup. */
-	viewBox: number
-	/** Tile colour behind the pictogram (illustration palette, not a UI token). */
-	tile: string
-	body: ReactNode
-}

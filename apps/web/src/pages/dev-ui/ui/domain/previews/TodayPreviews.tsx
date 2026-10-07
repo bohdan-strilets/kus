@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { MealRow } from '@/entities/entry'
+import { getMealCategory, MealRow } from '@/entities/entry'
 import { RecipeTip } from '@/entities/recipe'
 import { DayStatsCard, type MacroProgressSet, SupportCard, WeekStrip } from '@/entities/stats'
 
@@ -43,21 +43,21 @@ const DayMeals = () => {
 				time={SEED_MEALS.breakfast.time}
 				summary={t('devUi.seed.breakfastSummary')}
 				kcal={SEED_MEALS.breakfast.kcal}
-				icon="egg"
+				category={getMealCategory(SEED_MEALS.breakfast.entries)}
 			/>
 			<MealRow
 				mealLabel={t('meal.lunch')}
 				time={SEED_MEALS.lunch.time}
 				summary={t('devUi.seed.lunchSummary')}
 				kcal={SEED_MEALS.lunch.kcal}
-				icon="soup"
+				category={getMealCategory(SEED_MEALS.lunch.entries)}
 			/>
 			<MealRow
 				mealLabel={t('meal.snack')}
 				time={SEED_MEALS.snack.time}
 				summary={t('devUi.seed.snackSummary')}
 				kcal={SEED_MEALS.snack.kcal}
-				icon="banana"
+				category={getMealCategory(SEED_MEALS.snack.entries)}
 			/>
 		</>
 	)
@@ -90,7 +90,7 @@ export const TodayPreviews = () => {
 						time={SEED_MEALS.dinner.time}
 						summary={t('devUi.seed.dinnerSummary')}
 						kcal={SEED_MEALS.dinner.kcal}
-						icon="pizza"
+						category={getMealCategory(SEED_MEALS.dinner.entries)}
 					/>
 					<SupportCard message={t('devUi.seed.supportMessage')} />
 				</div>

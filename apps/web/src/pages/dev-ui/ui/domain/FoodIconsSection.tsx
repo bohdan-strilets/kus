@@ -1,21 +1,19 @@
 import { useTranslation } from 'react-i18next'
 
-import { FoodIcon, type FoodIconKind, type FoodIconSize, Text } from '@/shared/ui'
+import {
+	FALLBACK_FOOD_CATEGORY,
+	FOOD_CATEGORIES,
+	type FoodCategory,
+	FoodIcon,
+	type FoodIconSize,
+	Text,
+} from '@/shared/ui'
 
 import { DevSection } from '../DevSection'
 
-// kind names are code identifiers, shown as-is
-const KINDS: readonly FoodIconKind[] = [
-	'egg',
-	'buckwheat',
-	'coffee',
-	'chickenBuckwheat',
-	'soup',
-	'banana',
-	'pizza',
-	'plate',
-]
 const SIZES: readonly FoodIconSize[] = ['row', 'meal', 'recipe']
+/** A few categories in every size, the rest of the pack at the day-list size below. */
+const SIZE_SAMPLES: readonly (FoodCategory | null)[] = ['eggs', 'soup', 'pizza', null]
 
 export const FoodIconsSection = () => {
 	const { t } = useTranslation()
@@ -23,13 +21,24 @@ export const FoodIconsSection = () => {
 	return (
 		<DevSection title={t('devUi.sections.foodIcons')}>
 			<div className="flex flex-col gap-3 rounded-card bg-surface p-4 shadow-card">
-				{KINDS.map((kind) => (
-					<div key={kind} className="flex items-center gap-3">
+				{SIZE_SAMPLES.map((category) => (
+					<div key={category ?? 'null'} className="flex items-center gap-3">
 						{SIZES.map((size) => (
-							<FoodIcon key={size} kind={kind} size={size} />
+							<FoodIcon key={size} category={category} size={size} />
 						))}
+						{/* category values are code identifiers, shown as-is */}
 						<Text as="span" variant="small" tone="muted">
-							{kind}
+							{category ?? FALLBACK_FOOD_CATEGORY}
+						</Text>
+					</div>
+				))}
+			</div>
+			<div className="grid grid-cols-5 gap-2 rounded-card bg-surface p-3 shadow-card">
+				{FOOD_CATEGORIES.map((category) => (
+					<div key={category} className="flex flex-col items-center gap-1 py-1">
+						<FoodIcon category={category} size="meal" />
+						<Text as="span" variant="small" tone="muted" className="text-center break-all">
+							{category}
 						</Text>
 					</div>
 				))}

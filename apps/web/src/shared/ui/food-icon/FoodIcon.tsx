@@ -1,39 +1,48 @@
+import type { ReactNode } from 'react'
+
 import { cn } from '@/shared/lib'
 
-import { FOOD_ARTWORK } from './food-icon.artwork'
-import { FOOD_ICON_SIZE, RECIPE_TILE_COLOR } from './food-icon.constants'
-import type { FoodIconKind, FoodIconSize } from './food-icon.types'
+import {
+	FALLBACK_FOOD_CATEGORY,
+	FOOD_CATEGORY_GROUP,
+	FOOD_GROUP_TILE_CLASS,
+	FOOD_ICON_SIZE,
+} from './food-icon.constants'
+import type { FoodCategory, FoodIconSize } from './food-icon.types'
+import { FOOD_ICON_PATHS } from './food-icons.generated'
+
+// Record<FoodCategory, …> makes every category need an SVG: a missing file fails typecheck
+const ICONS: Record<FoodCategory, ReactNode> = FOOD_ICON_PATHS
 
 export interface FoodIconProps {
-	/** Unknown dishes get `plate`. */
-	kind?: FoodIconKind
+	/** Unknown or missing category shows the plate. */
+	category: FoodCategory | null | undefined
 	size?: FoodIconSize
 	className?: string
 }
 
+const isFoodCategory = (value: string): value is FoodCategory => value in ICONS
+
 /**
- * A food pictogram on its coloured tile. Always decorative: the dish name sits next to it.
- * In the day list a pictogram drawn larger than 28 (soup, 30) keeps its own size, as in today.
+ * A dish category icon on its group's tile (design/src/food). Always decorative: the dish name
+ * is next to it as text.
  */
-export const FoodIcon = ({ kind = 'plate', size = 'row', className }: FoodIconProps) => {
-	const artwork = FOOD_ARTWORK[kind]
-	const { tileClassName, iconPx } = FOOD_ICON_SIZE[size]
-	const pictogramPx = size === 'meal' ? Math.max(iconPx, artwork.viewBox) : iconPx
-	const tileColor = size === 'recipe' ? RECIPE_TILE_COLOR : artwork.tile
+export const FoodIcon = ({ category, size = 'row', className }: FoodIconProps) => {
+	const safeCategory = category && isFoodCategory(category) ? category : FALLBACK_FOOD_CATEGORY
+	const { tileClassName, iconPx, hasGroupTile } = FOOD_ICON_SIZE[size]
 
 	return (
 		<span
 			aria-hidden="true"
-			className={cn('flex shrink-0 items-center justify-center', tileClassName, className)}
-			// illustration palette per dish, so it is a dynamic value rather than a token class
-			style={{ backgroundColor: tileColor }}
+			className={cn(
+				'flex shrink-0 items-center justify-center',
+				hasGroupTile && FOOD_GROUP_TILE_CLASS[FOOD_CATEGORY_GROUP[safeCategory]],
+				tileClassName,
+				className,
+			)}
 		>
-			<svg
-				width={pictogramPx}
-				height={pictogramPx}
-				viewBox={`0 0 ${artwork.viewBox} ${artwork.viewBox}`}
-			>
-				{artwork.body}
+			<svg width={iconPx} height={iconPx} viewBox="0 0 32 32" data-food={safeCategory}>
+				{ICONS[safeCategory]}
 			</svg>
 		</span>
 	)

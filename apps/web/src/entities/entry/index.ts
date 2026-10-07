@@ -1,3 +1,4 @@
+export { type CategorizedEntry, getMealCategory } from './lib/get-meal-category'
 export type { EntryCaptionState, FoodEntryView, MacroAmounts } from './model/entry.types'
 export {
 	type ClarifyCardProps,

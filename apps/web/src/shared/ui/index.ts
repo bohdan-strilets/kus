@@ -14,7 +14,16 @@ export {
 export { Button, type ButtonProps } from './button'
 export { Chip, type ChipProps } from './chip'
 export { ConfirmDialog, type ConfirmDialogProps } from './confirm-dialog'
-export { FoodIcon, type FoodIconKind, type FoodIconProps, type FoodIconSize } from './food-icon'
+export {
+	FALLBACK_FOOD_CATEGORY,
+	FOOD_CATEGORIES,
+	FOOD_CATEGORY_GROUP,
+	type FoodCategory,
+	type FoodGroup,
+	FoodIcon,
+	type FoodIconProps,
+	type FoodIconSize,
+} from './food-icon'
 export { type FormFieldControlProps, FormField, type FormFieldProps } from './form-field'
 export {
 	Hamster,

@@ -28,6 +28,15 @@ export {
 export { Heading, type HeadingProps } from './heading'
 export { IconButton, type IconButtonProps } from './icon-button'
 export {
+	Icon,
+	ICON_NAMES,
+	ICON_SIZE,
+	type IconName,
+	type IconProps,
+	ProgressRingIcon,
+	type ProgressRingIconProps,
+} from './icon'
+export {
 	BRAND_ICON_SIZE,
 	type BrandIconProps,
 	CameraIcon,

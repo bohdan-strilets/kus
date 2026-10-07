@@ -2,6 +2,8 @@ pnpm-lock.yaml
 dist
 coverage
 apps/api/src/generated
+*.generated.tsx
+*.preview.html
 CLAUDE.md
 .playwright-mcp
 design/

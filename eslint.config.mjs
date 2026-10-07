@@ -44,7 +44,15 @@ const createFsdBoundaries = (layer, index) => {
 export default tseslint.config(
 	{ ignores: ['design/**'] },
 	{
-		ignores: ['**/dist/**', '**/coverage/**', '**/node_modules/**', 'apps/api/src/generated/**'],
+		ignores: [
+			'**/dist/**',
+			'**/coverage/**',
+			'**/node_modules/**',
+			'apps/api/src/generated/**',
+			// icon packs built by apps/web/scripts/build-icons.mjs
+			'**/*.generated.tsx',
+			'**/*.preview.html',
+		],
 	},
 	js.configs.recommended,
 	...tseslint.configs.strictTypeChecked,
@@ -80,6 +88,11 @@ export default tseslint.config(
 		files: ['**/*.{js,mjs,cjs}'],
 		extends: [tseslint.configs.disableTypeChecked],
 		languageOptions: { globals: globals.node },
+	},
+	{
+		// CLI scripts report to the terminal
+		files: ['apps/web/scripts/**/*.mjs'],
+		rules: { 'no-console': 'off' },
 	},
 	{
 		files: ['apps/api/**/*.ts'],

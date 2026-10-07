@@ -5,6 +5,13 @@ import type { Prisma, User } from '../../generated/prisma/client'
 import { UserNotFoundException } from './users.exceptions'
 import { type CreateUserData, UsersRepository } from './users.repository'
 
+export interface DailyGoal {
+	dailyKcal: number
+	protein: number
+	fat: number
+	carbs: number
+}
+
 /** Whitelist mapping: credentials, lockout state and sessions never leave the backend. */
 const toAuthUser = (user: User): AuthUser => ({
 	id: user.id,
@@ -33,5 +40,16 @@ export class UsersService {
 		const user = await this.usersRepository.findById(userId)
 		if (!user) throw new UserNotFoundException()
 		return toAuthUser(user)
+	}
+
+	async getGoalForDate(userId: string, localDate: Date): Promise<DailyGoal | null> {
+		const goal = await this.usersRepository.findGoalForDate(userId, localDate)
+		if (!goal) return null
+		return {
+			dailyKcal: goal.dailyKcal,
+			protein: goal.proteinG,
+			fat: goal.fatG,
+			carbs: goal.carbsG,
+		}
 	}
 }

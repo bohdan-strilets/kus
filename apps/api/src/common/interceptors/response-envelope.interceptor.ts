@@ -1,8 +1,8 @@
 import { CallHandler, ExecutionContext, Injectable, NestInterceptor } from '@nestjs/common'
-import type { PaginationMeta } from '@kus/shared'
+import type { CursorMeta, PaginationMeta } from '@kus/shared'
 import { map, Observable } from 'rxjs'
 
-import { PaginatedResult } from '../pagination'
+import { CursorPaginatedResult, PaginatedResult } from '../pagination'
 
 export interface DataEnvelope<T> {
 	data: T
@@ -10,13 +10,15 @@ export interface DataEnvelope<T> {
 
 export interface PaginatedEnvelope<T> {
 	data: T[]
-	meta: PaginationMeta
+	meta: PaginationMeta | CursorMeta
 }
 
 type Envelope<T> = DataEnvelope<T> | PaginatedEnvelope<unknown>
 
 const toEnvelope = <T>(result: T): Envelope<T> => {
-	if (result instanceof PaginatedResult) return { data: result.items, meta: result.meta }
+	if (result instanceof PaginatedResult || result instanceof CursorPaginatedResult) {
+		return { data: result.items, meta: result.meta }
+	}
 	return { data: result }
 }
 

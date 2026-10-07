@@ -101,6 +101,7 @@ export const FormsSection = () => {
 					<Icon name="camera" size={ICON_SIZE.control} />
 				</IconButton>
 				<Textarea
+					name="message"
 					aria-label={t('devUi.level0.composerPlaceholder')}
 					placeholder={t('devUi.level0.composerPlaceholder')}
 					value={message}

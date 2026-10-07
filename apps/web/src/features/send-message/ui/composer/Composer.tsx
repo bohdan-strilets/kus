@@ -46,6 +46,7 @@ export const Composer = ({
 			</IconButton>
 			<Textarea
 				ref={textareaRef}
+				name="message"
 				aria-label={t('composer.label')}
 				placeholder={t('composer.placeholder')}
 				value={value}

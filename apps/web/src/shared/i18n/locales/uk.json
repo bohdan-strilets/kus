@@ -61,5 +61,71 @@
 			"oops": "Хом'як збентежений",
 			"sleepy": "Хом'як сонний"
 		}
+	},
+	"user": {
+		"profile": "Профіль і пам'ять"
+	},
+	"chat": {
+		"typing": "Kusik рахує…",
+		"notSent": "Не надіслано",
+		"retry": "Спробувати ще"
+	},
+	"meal": {
+		"breakfast": "Сніданок",
+		"lunch": "Обід",
+		"snack": "Перекус",
+		"dinner": "Вечеря"
+	},
+	"entry": {
+		"kcal": "{{kcal}} ккал",
+		"macroLine": "Б {{protein}} · В {{carbs}} · Ж {{fat}}",
+		"edit": "Редагувати",
+		"usual": "як завжди",
+		"clarifyingCaption": "{{amount}} · уточнюємо",
+		"remember": "Запам'ятати для {{name}}"
+	},
+	"macro": {
+		"protein": "Білки",
+		"carbs": "Вуглеводи",
+		"carbsShort": "Вугл.",
+		"fat": "Жири",
+		"ofGoalShort": "/{{goal}}",
+		"ofGoalGrams": " / {{goal}} г",
+		"proteinShort": "Б {{value}}/{{goal}}"
+	},
+	"gauge": {
+		"label": "Калорії: {{eaten}} з {{goal}} ккал",
+		"left": "ккал лишилось",
+		"eaten": "з'їдено",
+		"goal": "ціль",
+		"goalClosed": "ціль дня закрита",
+		"overGoal": "ккал понад ціль",
+		"ofGoal": "з {{goal}} ккал",
+		"ofGoalSlash": "/ {{goal}}",
+		"overShort": "{{over}} понад",
+		"compactLabel": "Сьогодні: {{eaten}} з {{goal}} ккал, білок {{protein}} з {{proteinGoal}} г"
+	},
+	"week": {
+		"label": "Тиждень",
+		"dayNormal": "{{day}}, у нормі",
+		"dayOver": "{{day}}, понад ціль",
+		"dayEmpty": "{{day}}, без записів"
+	},
+	"recipe": {
+		"nutrition": "{{kcal}} ккал · {{protein}} г білка",
+		"dinnerTip": "Порада: {{name}} · {{kcal}}",
+		"addToMeal": "Додати в «{{meal}}»"
+	},
+	"composer": {
+		"label": "Повідомлення",
+		"placeholder": "Напиши, що з'їв, або спитай…",
+		"addPhoto": "Додати фото їжі",
+		"voice": "Голосове повідомлення",
+		"send": "Надіслати",
+		"cancelRecording": "Скасувати запис",
+		"stopAndSend": "Зупинити й надіслати",
+		"recording": "Йде запис голосу",
+		"voiceHint": "Говори, як у месенджері: «на вечерю курка з гречкою…»",
+		"longHint": "Kusik розбере все на окремі продукти"
 	}
 }

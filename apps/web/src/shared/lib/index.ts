@@ -1,5 +1,15 @@
 export { cn } from './cn'
-export { formatInteger } from './format'
+export {
+	formatDayHeading,
+	formatDecimal,
+	formatInteger,
+	formatSignedDecimal,
+	formatSignedInteger,
+	formatTime,
+	formatWeekdayShort,
+	INTL_LOCALE,
+	MINUS_SIGN,
+} from './format'
 export {
 	BAR_DELAY_MS,
 	BAR_FILL_MS,

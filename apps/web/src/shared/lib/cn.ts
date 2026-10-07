@@ -11,6 +11,8 @@ const twMerge = extendTailwindMerge({
 			text: [
 				'screen-title',
 				'big-number',
+				'gauge',
+				'stat',
 				'title',
 				'input',
 				'body',
@@ -41,7 +43,7 @@ const twMerge = extendTailwindMerge({
 		},
 		classGroups: {
 			// gradient utilities from tokens.css are background images, not background colours
-			'bg-image': ['bg-app', 'bg-soft-card', 'bg-dark-card'],
+			'bg-image': ['bg-app', 'bg-soft-card', 'bg-dark-card', 'bg-avatar'],
 		},
 	},
 })

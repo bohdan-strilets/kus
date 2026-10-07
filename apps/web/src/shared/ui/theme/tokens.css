@@ -100,6 +100,15 @@
 	--text-title--line-height: 1.25;
 	--text-title--letter-spacing: -0.02em;
 	--text-title--font-weight: 800;
+	/* added: the number in the large calorie gauge, 28/800 (today, today-over, ring states) */
+	--text-gauge: 28px;
+	--text-gauge--line-height: 1;
+	--text-gauge--letter-spacing: -0.03em;
+	--text-gauge--font-weight: 800;
+	/* added: eaten / goal numbers beside the large gauge, 17/800 (today, today-over) */
+	--text-stat: 17px;
+	--text-stat--line-height: 1.25;
+	--text-stat--font-weight: 800;
 	/* added: form inputs — 16px so iOS doesn't zoom (CLAUDE-design rule 4, auth and onboarding mockups) */
 	--text-input: 16px;
 	--text-input--line-height: 1.5;
@@ -192,6 +201,8 @@
 	--bg-app: linear-gradient(165deg, #fcebd8 0%, #fbf6ee 50%, #eef4e8 100%);
 	--bg-soft-card: linear-gradient(120deg, #fdebdb, #fbf3e6);
 	--bg-dark-card: linear-gradient(120deg, #2a2118, #3d2d20);
+	/* added: the user's initial avatar in every chat header (15 mockups) */
+	--bg-avatar: linear-gradient(140deg, #ffe1c4, #f6c79b);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -214,4 +225,8 @@
 
 @utility bg-dark-card {
 	background-image: var(--bg-dark-card);
+}
+
+@utility bg-avatar {
+	background-image: var(--bg-avatar);
 }

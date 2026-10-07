@@ -1,86 +1,85 @@
 # Kusik — дизайн для реалізації
 
-Чат-перший трекер харчування (PWA). Пишеш, що їв, звичайними словами, Kusik рахує калорії й БЖВ.
-Цей архів — усе, що треба, щоб перенести дизайн у код і нічого не загубити.
+Чат-перший трекер харчування (PWA). Пишеш, що їв, звичайними словами — Kusik рахує калорії й БЖВ.
+Цей архів — усе, щоб перенести дизайн у код і нічого не загубити.
 
-> Покласти в репозиторій як `design/` у корені. Нічого звідси не імпортується «як є» в прод,
-> крім `tokens/` і `src/` — решта це еталон, з яким звіряєшся.
+> Поклади в корінь монорепо як `design/`. Сюди дивляться як на еталон;
+> у `apps/web` копіюються лише `tokens/theme.css`, `src/*` і `assets/*` (куди саме — таблиця в `CLAUDE-design.md`).
 
 ## Що всередині
 
 ```
 design/
 ├─ README.md               ← ти тут
-├─ CLAUDE-design.md        ← правила для Claude Code (підключи з кореневого CLAUDE.md)
+├─ CLAUDE-design.md        ← правила дизайну для Claude Code (на нього посилається кореневий CLAUDE.md)
+├─ CHANGELOG.md            ← журнал дизайн-рішень: що й чому змінено (нове — зверху)
 ├─ tokens/
-│  ├─ tokens.json          ← джерело правди: кольори, шрифт, радіуси, тіні, рух + коли що вживати
-│  ├─ tokens.css           ← ті самі значення як CSS-змінні --k-*
-│  └─ tailwind.preset.js   ← preset для Tailwind, що читає --k-* змінні
+│  ├─ theme.css            ← Tailwind v4 @theme: кольори, шрифт, радіуси, тіні, криві, тривалості, градієнти
+│  └─ tokens.json          ← ті самі значення + коли що вживати
 ├─ docs/
-│  ├─ screens.md           ← маршрут → екран → стани → файл макета
-│  ├─ components.md        ← список компонентів з розмірами й станами
-│  ├─ brand.md             ← назва, лого, хом'як, голос і тон, рішення
-│  ├─ motion.md            ← анімації: тривалості, криві, що де рухається
-│  └─ sounds.md            ← звуки й вібрація: коли грає, коли мовчить
-├─ mockups/                ← 48 HTML-макетів, відкриваються в браузері без сервера
-├─ screenshots/            ← PNG тих самих макетів (зручно кидати в чат з Claude Code)
+│  ├─ screens.md           ← маршрут → екран → стани → файл макета + сід-дані
+│  ├─ components.md        ← компоненти з розмірами й станами
+│  ├─ brand.md             ← назва, лого, хом'як, палітра, голос і тон, ухвалені рішення
+│  ├─ motion.md            ← рух: тривалості, криві, що де рухається, 3 рівні успіху
+│  ├─ sounds.md            ← звуки й вібрація: коли грає, коли мовчить
+│  └─ food-categories.md   ← 45 категорій страв: список, zod/Prisma, текст для промпту AI
+├─ mockups/                ← 52 HTML-макети, відкриваються в браузері без сервера
+├─ screenshots/            ← PNG тих самих макетів (зручно давати Claude Code для порівняння)
 ├─ interactive/
-│  ├─ motion.html          ← живе демо всіх анімацій (є режим «уповільнити ×3»)
+│  ├─ motion.html          ← живе демо анімацій (є «уповільнити ×3»)
 │  └─ sounds.html          ← прослухати всі звуки
-├─ src/                    ← готовий код, копіюй у frontend/src
-│  ├─ brand/Logo.tsx, Loader.tsx, loader.css
-│  ├─ hamster/Hamster.tsx, hamster.css   ← 12 настроїв + голова для чату
-│  ├─ sound/sounds.ts      ← Web Audio синтез, 10 звуків, без файлів
-│  └─ motion/motion.ts, motion.css       ← хелпери WAAPI + частинки успіху
-└─ assets/                 ← SVG/PNG: лого, favicon, іконки PWA 192/512/maskable, apple-touch
+├─ src/                    ← готовий код за правилами CLAUDE.md (стрілкові функції, без хардкоду рядків, Motion)
+│  ├─ brand/               ← LogoMark, Logo, Loader, useDelayedFlag
+│  ├─ hamster/             ← Hamster (12 настроїв), HamsterHead (8 виразів для чату, 1:1 з макетів)
+│  ├─ motion/              ← токени й варіанти Motion, countUp, fillArc, частинки успіху, useBlink
+│  ├─ sound/               ← playSound: 10 звуків Web Audio, без файлів
+│  ├─ icon/                ← Icon: 51 іконка інтерфейсу (svg/ → icon.generated.tsx), ProgressRingIcon
+│  ├─ food/                ← FoodIcon: 45 іконок страв (svg/ → food-icons.generated.tsx), getMealCategory
+│  ├─ i18n/uk.json         ← рядки, які потрібні цим компонентам
+│  └─ lib/cx.ts            ← тимчасовий cx(); при перенесенні заміни на cn()
+├─ scripts/build-icons.mjs  ← генератор: SVG → типізований TSX + сторінка-перегляд (без залежностей)
+└─ assets/                 ← SVG-лого (кольорове, без літери, mono, горизонтальне), favicon, іконки PWA 192/512/maskable, apple-touch
 ```
 
-## Як підключити (React + Vite + Tailwind)
+Код перевірений: `tsc --strict` без помилок, компоненти відрендерені в браузері, пакет `motion` (перевірено на версії 14).
 
-1. Скопіюй `design/` у корінь репозиторію.
-2. `frontend/src/main.css`:
+## Підключення (apps/web)
+
+1. `tokens/theme.css` → `apps/web/src/shared/ui/theme/tokens.css`, у глобальних стилях:
    ```css
-   @import "../../design/tokens/tokens.css";
-   @import "../../design/src/motion/motion.css";
+   @import "tailwindcss";
+   @import "./shared/ui/theme/tokens.css";
    ```
-3. `tailwind.config.js`:
-   ```js
-   presets: [require('../design/tokens/tailwind.preset.js')],
-   ```
-4. Шрифт Manrope: `npm i @fontsource/manrope` і в `main.tsx`
-   `import '@fontsource/manrope/500.css'; …/600.css; …/700.css; …/800.css;` (без Google Fonts — швидше й офлайн для PWA).
-5. Скопіюй `design/src/*` у `frontend/src/design/` (або налаштуй alias `@design`).
-6. Іконки з `assets/` — у `frontend/public/`, і в `manifest.webmanifest`:
-   ```json
-   "icons": [
-     { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
-     { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" },
-     { "src": "/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+   Класи з'являються самі: `bg-primary`, `text-muted`, `rounded-card`, `shadow-card`, `ease-spring`, `bg-app`.
+2. Шрифт: `pnpm --filter web add @fontsource/manrope` і в `main.tsx` — `@fontsource/manrope/{500,600,700,800}.css`.
+3. `src/*` → у `shared/ui` і `shared/lib` за таблицею з `CLAUDE-design.md`; `cx` → `cn`.
+4. Залежності для коду: `motion` (вже у стеку). Іконки, звук і хом'як — без залежностей; Phosphor зі стеку прибрати.
+5. Рядки з `src/i18n/uk.json` — злити в локаль `uk`.
+6. `assets/*.png`, `favicon.svg` → `apps/web/public/`; у `vite-plugin-pwa`:
+   ```ts
+   icons: [
+     { src: 'icon-192.png', sizes: '192x192', type: 'image/png' },
+     { src: 'icon-512.png', sizes: '512x512', type: 'image/png' },
+     { src: 'icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
    ],
-   "theme_color": "#FBF6EE", "background_color": "#FBF6EE"
+   theme_color: '#FBF6EE', background_color: '#FBF6EE',
    ```
-7. У кореневий `CLAUDE.md` додай рядок: `Дизайн: дотримуйся design/CLAUDE-design.md`.
+7. У корені застосунку: `<MotionConfig reducedMotion="user">`.
+8. Іконки: `scripts/build-icons.mjs` → `apps/web/scripts/`, у `PACKS` поправ шляхи на `../src/shared/ui/icon/…` і `../src/shared/ui/food-icon/…`,
+   у `apps/web/package.json` → `"icons": "node scripts/build-icons.mjs"`. Запуск: `pnpm --filter web icons`.
+   Згенеровані `*.generated.tsx` і `*.preview.html` комітяться; додай їх у ignores ESLint/Prettier, бо їх пише скрипт.
+9. Скіли: тека `.claude/skills/` з архіву скілів → у корінь репозиторію (поруч із `verify`).
 
-## Порядок реалізації (рекомендований)
-
-1. Токени + шрифт + `AppShell` (градієнтне тло, safe-area, нижня панель).
-2. Базові компоненти з `docs/components.md`: Button, Field, Chip, Toggle, Sheet, Loader, Logo, Hamster.
-3. Чат: бульбашки, картка страви, поле вводу. Це серце продукту.
-4. Онбординг (4 кроки + план) → Сьогодні → Прогрес → Рецепти → Профіль/Налаштування/Пам'ять.
-5. Авторизація (7 екранів).
-6. Рух і звуки — коли екрани вже стоять. `motion.ts` і `sounds.ts` готові.
-7. Лендинг — **окрема статична сторінка** (SEO), не частина SPA. Застосунок живе на `/app`.
-
-## Як перевіряти, що «як у макеті»
+## Як перевіряти «як у макеті»
 
 - Відкрий `mockups/<екран>.html` поруч із застосунком у DevTools на 390×844.
-- Або дай Claude Code скриншот з `screenshots/` і скажи: «порівняй з моїм екраном, перелічи розбіжності в px і кольорах».
-- Числа в макетах узгоджені між собою (2 200 ккал, Б 140 / В 225 / Ж 80, вага 84 → 78 кг, зараз 82,4) — використовуй їх як сід-дані для розробки.
+- Або дай Claude Code `screenshots/<екран>.png` і скриншот свого екрана: «перелічи розбіжності в px, кольорах і текстах».
+- Числа в макетах узгоджені між собою (2 200 ккал, Б 140 / В 225 / Ж 80, вага 84 → 78 кг, зараз 82,4) — бери їх як сід-дані.
 
 ## Чого тут свідомо немає
 
-- Темної теми (відкладено). Не додавай `dark:` класи, поки не буде макетів.
-- Вигаданих пунктів меню чи фіч. Якщо екрану немає в `docs/screens.md` — його не робимо.
-- Домену. Робоча назва домену в макетах відсутня; рекомендовано `kusik.app`.
+- Темної теми (відкладено).
+- Сторінок політики конфіденційності й умов — це текст у стилі лендингу, окремого макета не треба.
+- Екрана дозволу на push — потрібен, лише якщо нагадування будуть у першій версії.
 
 `archive-palettes.html` — історія вибору палітри (м'ятна vs «Хом'як»). Не для реалізації.

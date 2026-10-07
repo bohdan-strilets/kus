@@ -128,6 +128,9 @@
 		"voiceHint": "Говори, як у месенджері: «на вечерю курка з гречкою…»",
 		"longHint": "Kusik розбере все на окремі продукти"
 	},
+	"onboarding": {
+		"composerPlaceholder": "Наприклад: вівсянка і кава"
+	},
 	"food": {
 		"category": {
 			"eggs": "Яйця",

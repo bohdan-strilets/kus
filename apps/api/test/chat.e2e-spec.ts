@@ -22,6 +22,7 @@ import {
 	logFoodCall,
 	SOUP_ITEM,
 	soupClarifyCall,
+	TRUNCATED_COMPLETION,
 } from '../src/modules/ai/ai.test-utils'
 import type { PrismaService } from '../src/prisma'
 import { createDbTestApp } from './create-db-test-app'
@@ -152,6 +153,20 @@ describe('chat messages (e2e, real DB, fake model)', () => {
 
 		expect(sendResponseSchema.parse(retried.body).data.userMessage.id).toBe(message.id)
 		expect(await prisma.message.count({ where: { role: 'USER' } })).toBe(1)
+	})
+
+	it('a cut-off answer: 422 MESSAGE_TOO_LONG at once, message FAILED, run marked OUTPUT_TRUNCATED', async () => {
+		await start()
+		const owner = await registerUser('owner@kus.app')
+		fake.respond(TRUNCATED_COMPLETION)
+
+		const response = await send(owner, 'цілий день їжі').expect(422)
+
+		expect(apiErrorResponseSchema.parse(response.body).errorCode).toBe('MESSAGE_TOO_LONG')
+		expect(fake.bodies).toHaveLength(1)
+		const runs = await prisma.aiRun.findMany()
+		expect(runs.map((run) => [run.status, run.errorCode])).toEqual([['FAILED', 'OUTPUT_TRUNCATED']])
+		expect(await prisma.message.count({ where: { status: 'FAILED' } })).toBe(1)
 	})
 
 	it('not_food and reply log nothing', async () => {

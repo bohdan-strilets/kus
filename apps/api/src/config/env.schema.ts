@@ -3,7 +3,8 @@ import { z } from 'zod'
 const DEFAULT_PORT = 3000
 // HS256 key: 32+ chars so a captured token can't be brute-forced offline
 const JWT_SECRET_MIN_LENGTH = 32
-const DEFAULT_AI_TIMEOUT_MS = 25_000
+// 8000 output tokens at ~180–200 tokens/s ≈ 45 s: a long answer must hit max_tokens, not the timeout
+const DEFAULT_AI_TIMEOUT_MS = 60_000
 const MAX_AI_TIMEOUT_MS = 120_000
 const DEFAULT_AI_DAILY_MESSAGE_LIMIT = 100
 

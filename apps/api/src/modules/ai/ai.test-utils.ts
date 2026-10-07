@@ -12,11 +12,13 @@ export interface FakeToolCall {
 interface CompletionOptions {
 	costUsd?: number
 	content?: string | null
+	/** "length" fakes an answer cut at max_tokens. */
+	finishReason?: string
 }
 
 export const createCompletion = (
 	calls: FakeToolCall[],
-	{ costUsd = 0.002, content = null }: CompletionOptions = {},
+	{ costUsd = 0.002, content = null, finishReason = 'tool_calls' }: CompletionOptions = {},
 ) => ({
 	model: 'test/model',
 	choices: [
@@ -32,6 +34,7 @@ export const createCompletion = (
 					},
 				})),
 			},
+			finish_reason: finishReason,
 		},
 	],
 	usage: {
@@ -108,6 +111,11 @@ export const soupClarifyCall: FakeToolCall = {
 		],
 	},
 }
+
+/** What a long day message looked like at max_tokens 2000: the arguments cut down to `{}`. */
+export const TRUNCATED_COMPLETION = createCompletion([{ name: 'log_food', args: {} }], {
+	finishReason: 'length',
+})
 
 /** Kcal far from 4/4/9 of the macros — the backend must reject it. */
 export const INVALID_ITEM = { ...SOUP_ITEM, kcal: 900 }

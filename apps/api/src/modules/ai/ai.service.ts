@@ -11,6 +11,7 @@ import {
 	type FoodParseContext,
 	type FoodParseDecision,
 	getRawToolCalls,
+	isOutputTruncated,
 	type ParsedToolCall,
 	parseToolCalls,
 } from '@kus/shared'
@@ -20,12 +21,24 @@ import type { Env } from '../../config'
 import { AiRunPurpose, AiRunStatus, type Prisma } from '../../generated/prisma/client'
 import type { AiClient } from './ai-client'
 import { AI_CLIENT, AI_PARSE_DEADLINE_MS } from './ai.constants'
-import { AiUnavailableException } from './ai.exceptions'
+import { AiUnavailableException, MessageTooLongException } from './ai.exceptions'
 import { AiRepository } from './ai.repository'
 
 const CHAT_COMPLETIONS_PATH = '/chat/completions'
 const INVALID_TOOL_CALLS = 'INVALID_TOOL_CALLS'
 const BAD_RESPONSE = 'BAD_RESPONSE'
+const OUTPUT_TRUNCATED = 'OUTPUT_TRUNCATED'
+
+const getRunErrorCode = ({
+	isTruncated,
+	isValid,
+}: {
+	isTruncated: boolean
+	isValid: boolean
+}): string | null => {
+	if (isTruncated) return OUTPUT_TRUNCATED
+	return isValid ? null : INVALID_TOOL_CALLS
+}
 
 export interface ParseFoodParams {
 	userId: string
@@ -93,12 +106,15 @@ export class AiService {
 		for (let attempt = 0; attempt <= AI_VALIDATION_RETRY_COUNT; attempt += 1) {
 			const { completion, durationMs } = await this.requestCompletion(params, messages, signal)
 			const result = parseToolCalls(getRawToolCalls(completion), { memoryRefs: params.memoryRefs })
+			const isTruncated = isOutputTruncated(completion)
 			await this.recordRun(params, {
 				completion,
 				durationMs,
 				calls: result.calls,
-				errorCode: result.ok ? null : INVALID_TOOL_CALLS,
+				errorCode: getRunErrorCode({ isTruncated, isValid: result.ok }),
 			})
+			// the same request would be cut at the same place — retrying only burns money
+			if (isTruncated) throw new MessageTooLongException()
 			if (result.ok) return result.decision
 			messages = [...messages, ...buildRetryMessages(completion, result.errors)]
 		}
@@ -168,7 +184,8 @@ export class AiService {
 			costUsd,
 		})
 		// metadata only — never message text or food (CLAUDE.md §10.1)
-		this.logger.log(
+		const log = errorCode === OUTPUT_TRUNCATED ? 'warn' : 'log'
+		this.logger[log](
 			`AI run ${status} purpose=PARSE_FOOD user=${params.userId} message=${params.messageId} ` +
 				`model=${model} in=${usage?.prompt_tokens ?? 0} cached=${usage?.prompt_tokens_details?.cached_tokens ?? 0} ` +
 				`out=${usage?.completion_tokens ?? 0} cost=${costUsd} ms=${durationMs} toolCalls=${calls.length}` +

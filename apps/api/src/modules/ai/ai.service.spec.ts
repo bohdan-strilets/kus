@@ -4,7 +4,7 @@ import { APIConnectionError } from 'openai'
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { Env } from '../../config'
-import { AiUnavailableException } from './ai.exceptions'
+import { AiUnavailableException, MessageTooLongException } from './ai.exceptions'
 import type { AiRepository } from './ai.repository'
 import { AiService, type ParseFoodParams } from './ai.service'
 import {
@@ -13,6 +13,7 @@ import {
 	EMPTY_CONTEXT,
 	INVALID_ITEM,
 	logFoodCall,
+	TRUNCATED_COMPLETION,
 } from './ai.test-utils'
 
 const config = { get: () => 'test/model' } as unknown as ConfigService<Env, true>
@@ -76,6 +77,7 @@ describe('AiService.parseFood', () => {
 		expect(fake.bodies[0]).toMatchObject({
 			model: 'test/model',
 			temperature: 0,
+			max_tokens: 8000,
 			tool_choice: 'auto',
 			provider: { data_collection: 'deny' },
 		})
@@ -117,6 +119,18 @@ describe('AiService.parseFood', () => {
 
 		await expect(service.parseFood(params)).resolves.toMatchObject({ kind: 'log' })
 		expect(JSON.stringify(fake.bodies[1])).toContain('always answer with a tool call')
+	})
+
+	it('fails a cut-off answer with OUTPUT_TRUNCATED and does not retry it', async () => {
+		fake.respond(TRUNCATED_COMPLETION, createCompletion([logFoodCall()]))
+
+		await expect(service.parseFood(params)).rejects.toBeInstanceOf(MessageTooLongException)
+		expect(fake.bodies).toHaveLength(1)
+		expect(repository.createRun).toHaveBeenCalledTimes(1)
+		expect(repository.createRun).toHaveBeenCalledWith(
+			expect.objectContaining({ status: 'FAILED', errorCode: 'OUTPUT_TRUNCATED' }),
+		)
+		expect(JSON.stringify(logSpies[1]?.mock.calls)).toContain('error=OUTPUT_TRUNCATED')
 	})
 
 	it('records a network failure and throws AI_UNAVAILABLE', async () => {

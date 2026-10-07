@@ -201,9 +201,9 @@ apps/api/src/
 
 ## 6. AI-модуль
 
-- Інструменти: `log_food`, `clarify`, `not_food`; далі `get_stats`, `save_recipe`, `save_fact`, `suggest_meal`. Опис — `packages/shared/src/ai/tools.ts`, промпт — `packages/shared/src/ai/prompt.ts`
+- Інструменти: `log_food`, `clarify`, `not_food` (лише «з'їв неїстівне»), `reply` (розмова й питання); далі `get_stats`, `save_recipe`, `save_fact`, `suggest_meal`. Опис — `packages/shared/src/ai/tools.ts`, промпт — `packages/shared/src/ai/prompt.ts`, потік — `docs/architecture.md` («AI-ядро»)
 - Кожен запис має `source` (`label` | `memory` | `reference` | `estimate`), `confidence` і `assumption`
-- Уточнення — не більше 2 за раз і лише коли впливають на результат понад ~100 ккал. Навіть коли питає, AI записує найкращу оцінку
+- Уточнення — не більше 2 за раз і лише коли відповідь змінює ккал позицій на ≥ 80 ккал і ≥ 15 % (пороги в `packages/shared/src/ai/clarifications.ts`, бекенд відкидає решту). Навіть коли питає, AI записує найкращу оцінку
 - Фото: JPEG/PNG/WebP/HEIC; HEIC → JPEG, ресайз до ~1600 px (sharp) на бекенді; на клієнті — стиснення перед завантаженням. Оригінали у v0.1 не зберігаються
 - Контекст моделі: промпт + релевантна пам'ять + підсумок дня + кілька останніх повідомлень. Ніколи вся історія
 - Логувати токени й вартість кожного запиту; денний ліміт повідомлень на користувача
@@ -311,6 +311,7 @@ pnpm --filter web icons               # зібрати іконки з SVG (UI +
 - Conventional commits англійською (`feat:`, `fix:`, `chore:`, `refactor:`, `docs:`), розбиті по логічних групах
 - **Кожен коміт компілюється сам по собі:** lint + typecheck проходять на вмісті саме цього коміту, а не всього робочого дерева. Файли, що залежать один від одного (імпорт, тип, i18n-ключ, токен-клас), — в одному коміті або в порядку залежностей: спершу те, від чого залежать
   - Husky перевіряє робоче дерево, тож незакомічені файли маскують поламаний коміт. Перевіряй вміст індексу: `git stash push --keep-index --include-untracked` → `pnpm lint && pnpm typecheck` → `git stash pop`
+- **Не запускай `build` у `apps/api/dist`, поки працює dev-сервер** (`pnpm dev` / `nest start --watch` бере код звідти, і `nest build` його валить). Для перевірки — лише `pnpm typecheck`; якщо потрібен зібраний API — `pnpm --filter api exec tsc -p tsconfig.build.json --outDir <тимчасова тека поза репо>`
 - Перед `git add` — `git status`, свідомо обирати файли (не `add .` наосліп)
 - Після заміни `design/` новим архівом — `design/` комітиться **окремим** комітом `chore(design): <що змінилось за верхнім записом design/CHANGELOG.md>`, ніколи не разом з кодом (і, як завжди, лише за командою)
 - Husky + lint-staged блокують коміт з помилками lint/typecheck

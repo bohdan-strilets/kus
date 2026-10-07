@@ -32,7 +32,7 @@
 - **react-i18next** — i18n (зараз `uk`)
 - **React Router**, **axios**
 - **Radix UI Primitives** — headless-логіка базових компонентів, стилі наші
-- **Phosphor Icons** — єдина бібліотека іконок
+- **Власний пак іконок** — `<Icon>` з `shared/ui/icon` (SVG → TSX генератором `apps/web/scripts/build-icons.mjs`); сторонніх бібліотек іконок немає
 - **Motion** — анімації
 - **date-fns** — дати
 - **Recharts** — графіки (лише лінькові екрани)
@@ -58,6 +58,7 @@
 **Дизайн уже готовий і лежить у `design/`.** Перед будь-якою UI-задачею прочитай `design/CLAUDE-design.md` і відкрий макет екрана з `design/docs/screens.md`. Не вигадуй вигляд, тексти, стани чи пункти меню, яких немає в макетах; бракує — запитай.
 
 `design/` — лише для читання: не форматувати, не лінтити, не редагувати. Код звідти копіюється в `apps/web` і правиться вже там.
+Єдиний виняток — каталоги, які доповнюють скіли `add-*` (таблиці в `design/docs/*.md`, `design/tokens/tokens.json`): так дизайн-документація не відстає від коду.
 
 | Що | Де |
 |---|---|
@@ -68,7 +69,9 @@
 | Рух / звуки | `design/docs/motion.md`, `design/docs/sounds.md` |
 | Макети (еталон) | `design/mockups/*.html`, `design/screenshots/*.png` |
 | Токени | `design/tokens/theme.css` → `shared/ui/theme/tokens.css`; пояснення — `design/tokens/tokens.json` |
-| Готовий код бренду | `design/src/` (лого, лоадер, хом'як, Motion-пресети, звуки) — переносити в `shared/ui` / `shared/lib` |
+| Готовий код бренду | `design/src/` (іконки, іконки страв, лого, лоадер, хом'як, Motion-пресети, звуки) — переносити в `shared/ui` / `shared/lib` |
+| Іконки | `design/src/icon/svg/` (51) і `design/src/food/svg/` (45) → `shared/ui/icon`, `shared/ui/food-icon`; генератор `design/scripts/build-icons.mjs` → `apps/web/scripts/` |
+| Категорії страв | `design/docs/food-categories.md` — список, zod/Prisma, текст для промпту |
 
 Перш ніж хардкодити колір, відступ чи шрифт — перевір, чи це вже токен. Токени — у `shared/ui/theme/tokens.css` через `@theme` Tailwind v4, класи генеруються з них (`bg-primary`, `rounded-card`, `shadow-card`). Значення — лише з `design/tokens/theme.css`; змінюєш токен — синхронізуй `tokens.json`.
 
@@ -89,11 +92,12 @@
 - Кольори, типографіка, відступи (spacing-скейл), радіуси, тіні, transition — лише через токени
 - Breakpoints: mobile (основний, макети 390×844); на ширших — колонка max-width 480px по центру
 - Нижня навігація: Чат · Сьогодні · Прогрес · Рецепти; Профіль і Пам'ять — через аватар
-- Іконки — за `design/CLAUDE-design.md` п. 6: Phosphor для всього, крім брендових SVG з макетів (у `shared/ui/icons/brand/`)
+- Іконки — лише `<Icon name>` (інтерфейс) і `<FoodIcon category>` (страви). Бракує іконки — скіл `add-icon`; емодзі й сторонні бібліотеки іконок заборонені
+- Вкладка «Сьогодні» — `ProgressRingIcon` (кільце заповнюється разом з днем)
 - Хом'як-маскот — лише компонент `Hamster` / `HamsterHead`, лого — `LogoMark` / `Logo`
 
 ### Базові компоненти (Рівень 0 — не дублювати)
-`Surface`, `Text`, `Heading`, `Button`, `IconButton`, `Input`, `Chip`, `Badge`, `Loader` (це і є Spinner, `shared/ui/brand`), `Skeleton`, `BaseBottomSheet`, `BaseModal`, `FormField`, `AppLayout`, `BottomNav`.
+`Surface`, `Text`, `Heading`, `Button`, `IconButton`, `Input`, `Chip`, `Badge`, `Spinner` (= `Loader` з `design/src/brand`), `Skeleton`, `BaseBottomSheet`, `BaseModal`, `FormField`, `AppLayout`, `BottomNav`.
 
 Предметні компоненти (у своїх entities/features): `MacroTile`, `Gauge`, `EntryCard`, `ClarifyCard`, `MessageBubble`, `Composer`.
 
@@ -263,6 +267,27 @@ apps/api/src/
 - Для задач більше ~1 години або тих, що зачіпають auth, дані користувача чи AI-промпт — після власної перевірки запусти субагента **`reviewer`** (`.claude/agents/reviewer.md`): він дивиться на diff свіжим поглядом
 - Завершуй задачу звітом у форматі зі скіла `/verify`
 
+### Скіли для повторюваних задач
+
+Перед типовою задачею перевір, чи є для неї скіл у `.claude/skills/`, і йди за ним — там порядок дій і чекліст «Готово, коли». Після скіла — як завжди `/verify`.
+
+| Скіл | Коли |
+|---|---|
+| `screen-from-mockup` | реалізувати чи виправити екран або стан за макетом |
+| `new-ui-component` | новий компонент Рівня 0 або предметний |
+| `new-fsd-slice` | новий page / widget / feature / entity |
+| `add-empty-state` | будь-який «тут поки нічого немає» |
+| `add-icon` | бракує іконки інтерфейсу або треба перемалювати |
+| `add-food-category` | нова категорія страви (іконка + enum + промпт + eval) |
+| `add-hamster-mood` | новий настрій хом'яка |
+| `add-sound` | новий звук чи вібрація для події |
+| `add-design-token` | хочеться hex / px, якого немає в токенах |
+| `new-api-endpoint` | новий маршрут чи модуль NestJS |
+| `add-prisma-model` | зміна `schema.prisma`: модель, поле, enum |
+| `add-ai-tool` | новий AI-інструмент, зміна промпту чи моделі |
+
+Повторюєш ту саму послідовність кроків утретє, а скіла немає — запропонуй створити новий.
+
 ### Команди
 ```bash
 pnpm install
@@ -274,6 +299,7 @@ pnpm dev                              # api + web
 pnpm lint && pnpm typecheck && pnpm test
 pnpm --filter api prisma migrate dev
 pnpm --filter ai-eval eval
+pnpm --filter web icons               # зібрати іконки з SVG (UI + страви)
 ```
 
 ---

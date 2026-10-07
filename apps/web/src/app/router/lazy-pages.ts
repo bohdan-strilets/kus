@@ -9,3 +9,7 @@ export const ProgressPage = lazy(() =>
 export const RecipesPage = lazy(() =>
 	import('@/pages/recipes').then((m) => ({ default: m.RecipesPage })),
 )
+export const LoginPage = lazy(() => import('@/pages/auth').then((m) => ({ default: m.LoginPage })))
+export const RegisterPage = lazy(() =>
+	import('@/pages/auth').then((m) => ({ default: m.RegisterPage })),
+)

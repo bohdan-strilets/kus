@@ -23,6 +23,8 @@ export const BottomNavItem = ({
 }: BottomNavItemProps) => (
 	<NavLink
 		to={item.to}
+		// «Чат» is /app itself: without `end` it would be active under every /app/* tab
+		end
 		aria-label={hasUpdate ? updateLabel : undefined}
 		className={({ isActive }) => navTabVariants({ isActive })}
 	>

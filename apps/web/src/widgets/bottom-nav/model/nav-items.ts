@@ -1,11 +1,11 @@
-import { type RoutePath, ROUTES } from '@/shared/config'
+import { ROUTES, type TabRoutePath } from '@/shared/config'
 import type { IconName } from '@/shared/ui'
 
 /** A pack icon with its `-filled` active variant, or the «Сьогодні» ring that fills with the day. */
 export type NavItemIcon = { name: IconName; activeName: IconName } | 'progressRing'
 
 export interface NavItem {
-	to: RoutePath
+	to: TabRoutePath
 	labelKey: 'nav.chat' | 'nav.today' | 'nav.progress' | 'nav.recipes'
 	icon: NavItemIcon
 }

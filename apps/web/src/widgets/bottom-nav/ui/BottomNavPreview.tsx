@@ -1,4 +1,4 @@
-import type { RoutePath } from '@/shared/config'
+import type { TabRoutePath } from '@/shared/config'
 
 import { NAV_ITEMS } from '../model/nav-items'
 import { navBarVariants, navTabVariants } from './bottom-nav.variants'
@@ -6,7 +6,7 @@ import { NavTabContent } from './NavTabContent'
 
 interface BottomNavPreviewProps {
 	/** The tab drawn as active, whatever the current route. */
-	activeTo: RoutePath
+	activeTo: TabRoutePath
 	todayProgress: number
 }
 

@@ -98,6 +98,14 @@ describe('parseToolCalls', () => {
 		expect(result).toMatchObject({ ok: false })
 	})
 
+	it('rejects a memory ref on a corrected estimate, so the correction is not overwritten', () => {
+		const item = { ...egg, source: 'ESTIMATE', memoryRef: 'm1' }
+		const result = parseToolCalls([logFood([item])], options)
+		expect(result.ok).toBe(false)
+		if (result.ok) return
+		expect(result.errors[0]).toContain('has memoryRef but source ESTIMATE')
+	})
+
 	it('accepts a memory ref from the context', () => {
 		const item = { ...egg, source: 'MEMORY', memoryRef: 'm1' }
 		expect(parseToolCalls([logFood([item])], options).ok).toBe(true)

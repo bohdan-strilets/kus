@@ -8,7 +8,11 @@ import { getAiFunctionTools } from './tools.js'
 
 /** Deterministic parsing: the same message should give the same numbers (reasoning models ignore it). */
 export const FOOD_PARSE_TEMPERATURE = 0
-export const FOOD_PARSE_MAX_OUTPUT_TOKENS = 2000
+/**
+ * Room for a whole day of food (10+ items) plus the model's reasoning; billed only for what is used.
+ * At 2000 a long message was cut mid-answer and came back as `log_food({})`.
+ */
+export const FOOD_PARSE_MAX_OUTPUT_TOKENS = 8000
 /** One more model call when the tool calls fail validation, with the errors fed back. */
 export const AI_VALIDATION_RETRY_COUNT = 1
 
@@ -24,6 +28,24 @@ export const AI_PROVIDER_PREFERENCES = { data_collection: 'deny' } as const
  */
 const TOOL_CHOICE = 'auto'
 
+/**
+ * OpenRouter `reasoning` variants (a share of max_tokens, works with adaptive thinking too).
+ * No "off": Claude Sonnet 5.5 endpoints answer 400 "Reasoning is mandatory … cannot be disabled".
+ */
+export const AI_REASONING_MODES = {
+	minimal: { effort: 'minimal' },
+	low: { effort: 'low' },
+} as const
+
+export type AiReasoningMode = keyof typeof AI_REASONING_MODES
+
+/** low vs minimal on 2026-10-07: same kcal error, more right decisions, ~2× faster on long days (PROMPT_CHANGELOG.md). */
+export const FOOD_PARSE_REASONING: AiReasoningMode = 'low'
+
+interface FoodParseRequestOptions {
+	reasoning?: AiReasoningMode
+}
+
 export type AiRequestMessage =
 	| AiChatMessage
 	| {
@@ -35,7 +57,11 @@ export type AiRequestMessage =
 
 const tools = getAiFunctionTools()
 
-export const createFoodParseRequest = (model: string, messages: AiRequestMessage[]) => ({
+export const createFoodParseRequest = (
+	model: string,
+	messages: AiRequestMessage[],
+	{ reasoning = FOOD_PARSE_REASONING }: FoodParseRequestOptions = {},
+) => ({
 	model,
 	messages,
 	tools,
@@ -43,6 +69,7 @@ export const createFoodParseRequest = (model: string, messages: AiRequestMessage
 	parallel_tool_calls: true,
 	temperature: FOOD_PARSE_TEMPERATURE,
 	max_tokens: FOOD_PARSE_MAX_OUTPUT_TOKENS,
+	reasoning: AI_REASONING_MODES[reasoning],
 	provider: AI_PROVIDER_PREFERENCES,
 })
 
@@ -63,6 +90,8 @@ export const aiCompletionSchema = z.object({
 						)
 						.nullish(),
 				}),
+				// "length" = the answer hit max_tokens and its tool arguments are cut off
+				finish_reason: z.string().nullish(),
 			}),
 		)
 		.min(1),
@@ -80,6 +109,13 @@ export const aiCompletionSchema = z.object({
 })
 
 export type AiCompletion = z.infer<typeof aiCompletionSchema>
+
+/**
+ * The answer was cut at max_tokens: its arguments are partial or `{}`. A retry with the same
+ * request would be cut the same way, so the caller fails with OUTPUT_TRUNCATED instead.
+ */
+export const isOutputTruncated = (completion: AiCompletion): boolean =>
+	completion.choices[0]?.finish_reason === 'length'
 
 export const getRawToolCalls = (completion: AiCompletion): RawToolCall[] =>
 	(completion.choices[0]?.message.tool_calls ?? []).map((call) => call.function)

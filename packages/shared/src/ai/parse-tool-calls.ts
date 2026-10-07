@@ -143,6 +143,13 @@ const checkLogReferences = (
 		if (item.source === 'MEMORY' && item.memoryRef === null) {
 			errors.push(`log_food: items.${index} has source MEMORY but no memoryRef`)
 		}
+		// the backend rescales a memoryRef item from the saved food, which would silently drop an
+		// estimate the model corrected for the user's words ("без гущі")
+		if (item.source !== 'MEMORY' && item.memoryRef !== null) {
+			errors.push(
+				`log_food: items.${index} has memoryRef but source ${item.source} — set memoryRef only for unchanged saved foods (source MEMORY)`,
+			)
+		}
 	})
 	for (const clarify of clarifications) {
 		const outOfRange = clarify.itemIndexes.filter((index) => index >= log.items.length)

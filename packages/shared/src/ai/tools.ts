@@ -50,7 +50,7 @@ export const aiFoodItemSchema = foodEntryBaseSchema
 			'0..1 — how sure you are about kcal (weighed product ~0.9, "a plate of soup" ~0.4)',
 		),
 		assumption: foodEntryBaseSchema.shape.assumption.describe(
-			'What you assumed, short, in the language of the user ("варена, без олії"); null if nothing',
+			'What you assumed, in the language of the user, at most ~60 characters ("варена, без олії"); null if nothing',
 		),
 		memoryRef: foodEntryBaseSchema.shape.memoryRef.describe(
 			'Ref of the saved food used ("m1"), only when source is MEMORY; else null',
@@ -68,7 +68,7 @@ export const logFoodInputSchema = z.object({
 		.default(null)
 		.describe('Only if the user named the meal ("на обід") — else null, the backend uses the time'),
 	reply: replyTextSchema.describe(
-		'One short warm sentence for the chat in the language of the user. No totals or day sums — the app shows them',
+		'1–2 short warm sentences for the chat in the language of the user. No totals or day sums — the app shows them',
 	),
 })
 
@@ -107,13 +107,13 @@ export const clarifyInputSchema = z.object({
 export type ClarifyInput = z.infer<typeof clarifyInputSchema>
 
 export const notFoodInputSchema = z.object({
-	reply: replyTextSchema.describe('Friendly short answer in the language of the user'),
+	reply: replyTextSchema.describe('1–2 friendly short sentences in the language of the user'),
 })
 
 export type NotFoodInput = z.infer<typeof notFoodInputSchema>
 
 export const replyInputSchema = z.object({
-	text: replyTextSchema.describe('Short answer in the language of the user'),
+	text: replyTextSchema.describe('1–2 short sentences in the language of the user'),
 })
 
 export type ReplyInput = z.infer<typeof replyInputSchema>

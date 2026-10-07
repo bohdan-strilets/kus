@@ -379,6 +379,7 @@ model Message {
   clarifications     Clarification[]     @relation("ClarificationQuestion")
   clarificationReply Clarification[]     @relation("ClarificationAnswer")
   meals              Meal[]
+  foodEntries        FoodEntry[]
   facts              UserFact[]
   exerciseEntries    ExerciseEntry[]
 
@@ -444,6 +445,8 @@ model AiToolCall {
   aiRun AiRun @relation(fields: [aiRunId], references: [id], onDelete: Cascade)
 
   @@index([aiRunId])
+  // daily cleanup of rows older than 30 days (they hold food data, docs/database.md)
+  @@index([createdAt])
   @@map("ai_tool_calls")
 }
 
@@ -513,33 +516,36 @@ model Meal {
 
 // Nutrition values are a snapshot: editing MyFood/Recipe later never changes past days
 model FoodEntry {
-  id         String       @id @default(uuid(7)) @db.Uuid
-  userId     String       @map("user_id") @db.Uuid
-  mealId     String       @map("meal_id") @db.Uuid
-  name       String
-  grams      Float
-  quantity   Float?
-  kcal       Float
-  proteinG   Float        @map("protein_g")
-  fatG       Float        @map("fat_g")
-  carbsG     Float        @map("carbs_g")
-  fiberG     Float?       @map("fiber_g")
+  id              String       @id @default(uuid(7)) @db.Uuid
+  userId          String       @map("user_id") @db.Uuid
+  mealId          String       @map("meal_id") @db.Uuid
+  name            String
+  grams           Float
+  quantity        Float?
+  kcal            Float
+  proteinG        Float        @map("protein_g")
+  fatG            Float        @map("fat_g")
+  carbsG          Float        @map("carbs_g")
+  fiberG          Float?       @map("fiber_g")
   // a snapshot like the numbers: copied from MyFood / Recipe when logged from memory
-  category   FoodCategory @default(plate)
-  source     FoodSource
-  confidence Float
-  assumption String?
-  myFoodId   String?      @map("my_food_id") @db.Uuid
-  recipeId   String?      @map("recipe_id") @db.Uuid
-  isEdited   Boolean      @default(false) @map("is_edited")
-  createdAt  DateTime     @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt  DateTime     @updatedAt @map("updated_at") @db.Timestamptz
-  deletedAt  DateTime?    @map("deleted_at") @db.Timestamptz
+  category        FoodCategory @default(plate)
+  source          FoodSource
+  confidence      Float
+  assumption      String?
+  myFoodId        String?      @map("my_food_id") @db.Uuid
+  recipeId        String?      @map("recipe_id") @db.Uuid
+  isEdited        Boolean      @default(false) @map("is_edited")
+  // user message the entry came from: a meal is shared per day + type, so the meal alone can't tell
+  sourceMessageId String?      @map("source_message_id") @db.Uuid
+  createdAt       DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime     @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt       DateTime?    @map("deleted_at") @db.Timestamptz
 
   user           User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
   meal           Meal                 @relation(fields: [mealId], references: [id], onDelete: Cascade)
   myFood         MyFood?              @relation(fields: [myFoodId], references: [id], onDelete: SetNull)
   recipe         Recipe?              @relation(fields: [recipeId], references: [id], onDelete: SetNull)
+  sourceMessage  Message?             @relation(fields: [sourceMessageId], references: [id], onDelete: SetNull)
   clarifications ClarificationEntry[]
   corrections    Correction[]
 
@@ -547,6 +553,7 @@ model FoodEntry {
   @@index([userId, createdAt])
   @@index([myFoodId])
   @@index([recipeId])
+  @@index([sourceMessageId])
   @@map("food_entries")
 }
 

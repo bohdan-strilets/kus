@@ -10,7 +10,7 @@
 { "rewrites": [{ "source": "/api/:path*", "destination": "https://<railway-domain>/api/:path*" }] }
 ```
 
-Файл з'явиться на етапі деплою. Локально те саме має робити `server.proxy` у Vite (`/api` → `http://localhost:3000`) — додається разом з фронтом auth.
+Файл з'явиться на етапі деплою. Локально те саме робить `server.proxy` у Vite (`apps/web/vite.config.ts`: `/api` → `http://localhost:3000`); базова адреса клієнта — стала `/api/v1` (`shared/config/api.ts`), без `VITE_API_URL` і без `withCredentials`.
 
 **Чому:** auth-cookie мають `SameSite=Lax`. `*.vercel.app` і `*.up.railway.app` — різні сайти, тож без rewrite браузер не відправляє такі cookie у `fetch` між ними. З `SameSite=None` їх однаково блокує Safari (ITP), а на iPhone — головна платформа. З rewrite браузер бачить один origin: cookie first-party, CORS для браузера не потрібен, а `Lax` разом з JSON-only API закриває CSRF.
 
@@ -55,6 +55,13 @@
 
 - Будь-який 401 на звичайному роуті → один `POST /auth/refresh` → повторити запит. Refresh-запити все одно робити **single-flight** (один на застосунок): grace-вікно — страховка, а не звичайний шлях.
 - 401 від самого `/auth/refresh` → на екран входу.
+
+**Як це зроблено у web:**
+
+- `shared/api/attach-refresh-interceptor.ts` — single-flight refresh: паралельні 401 чекають один `POST /auth/refresh`, потім кожен запит повторюється один раз (`isAuthRetry`). 401 від `/auth/login|register|refresh|logout` refresh не запускає. Refresh упав з мережею чи 5xx — сесія не скидається.
+- Сесія — запит `['session', 'me']` (`entities/session`): `GET /users/me`, 401 після refresh = `null` («анонім» як стан, не помилка).
+- Мертвий refresh → `endSession`: прибрати всі інші запити з кешу й записати сесію як `null`. Не `queryClient.clear()`: інакше guard знову спитає `/users/me` і почнеться коло refresh. Перехід на /login робить лише guard захищених маршрутів; на /login і /register — нічого.
+- `SessionGuard` (`app/router`): поки сесія невідома — лише `Loader`; `/app/*` без сесії → /login зі `state.from`; з сесією /login і /register → `from` (лише шлях усередині `/app`) або `/app`. Мережева помилка перевірки на `/app` — екран «Повторити», не вихід.
 
 **Grace-вікно для refresh — 20 с** (`REFRESH_REUSE_GRACE_MS`, `SessionService.reissueWithinGrace`). Закриває два випадки, яких не закриває single-flight: (1) refresh дійшов і закомітився, а відповідь загубилась у мобільній мережі, і клієнт повторює зі старим токеном; (2) PWA і вкладка Safari на iPhone ділять cookie, але не single-flight. Повтор використаного токена — **не** reuse, якщо одночасно:
 

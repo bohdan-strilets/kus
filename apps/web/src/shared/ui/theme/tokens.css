@@ -90,6 +90,12 @@
 	--color-food-drink: #f3ece3;
 	--color-food-neutral: #f7f1e9;
 
+	/* added: decorative backgrounds only — blurred circles and crumbs (docs/motion.md «Декоративні фони»).
+	   Never text or meaning: decor is aria-hidden */
+	--color-decor-peach: #f7c59a;
+	--color-decor-mint: #d9efe2;
+	--color-crumb: #e58a45;
+
 	--color-logo-from: #ffb877;
 	--color-logo-to: #d45f22;
 	--color-logo-letter: #fff4e6;
@@ -153,6 +159,8 @@
 	--radius-field: 16px;
 	--radius-chip: 18px;
 	--radius-icon: 12px;
+	/* added: the 22px consent checkbox (docs Consent card) */
+	--radius-checkbox: 6px;
 	--radius-button: 24px;
 	/* added: kcal badge, time divider (mockups chat) */
 	--radius-badge: 10px;

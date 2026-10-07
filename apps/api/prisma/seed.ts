@@ -118,6 +118,7 @@ const seedUser = async (
 			email: DEMO_EMAIL,
 			name: 'Демо',
 			timezone: DEMO_TIMEZONE,
+			consentAt: new Date(),
 			...(passwordHash && { credentials: { create: { passwordHash } } }),
 			profile: {
 				create: { heightCm: 178, birthYear: 1992, activityLevel: ActivityLevel.MODERATE },

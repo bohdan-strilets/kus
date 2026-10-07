@@ -87,11 +87,13 @@ describe('AuthService', () => {
 			mocks.usersService.createUser.mockResolvedValue(user)
 
 			const result = await mocks.service.register(
-				{ email: user.email, password: PASSWORD, name: 'Me' },
+				{ email: user.email, password: PASSWORD, name: 'Me', consent: true },
 				META,
 			)
 
 			expect(result.user).toEqual(user)
+			const [createdUser] = mocks.usersService.createUser.mock.lastCall ?? []
+			expect(createdUser?.consentAt).toBeInstanceOf(Date)
 			const [{ passwordHash }] = mocks.authRepository.createCredentials.mock.lastCall as [
 				{ passwordHash: string },
 			]
@@ -109,7 +111,10 @@ describe('AuthService', () => {
 			mocks.usersService.findByEmail.mockResolvedValue(user)
 
 			await expect(
-				mocks.service.register({ email: user.email, password: PASSWORD, name: 'Me' }, META),
+				mocks.service.register(
+					{ email: user.email, password: PASSWORD, name: 'Me', consent: true },
+					META,
+				),
 			).rejects.toMatchObject({ errorCode: ErrorCodes.EMAIL_TAKEN })
 			expect(mocks.usersService.createUser).not.toHaveBeenCalled()
 		})

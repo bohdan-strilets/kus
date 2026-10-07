@@ -2,7 +2,12 @@ import { describe, expect, it } from 'vitest'
 
 import { loginRequestSchema, PASSWORD_MAX_LENGTH, registerRequestSchema } from './auth.js'
 
-const validRegister = { email: 'me@kus.app', password: 'correct-horse', name: 'Богдан' }
+const validRegister = {
+	email: 'me@kus.app',
+	password: 'correct-horse',
+	name: 'Богдан',
+	consent: true,
+}
 
 describe('registerRequestSchema', () => {
 	it('normalizes email to trimmed lowercase', () => {
@@ -25,6 +30,15 @@ describe('registerRequestSchema', () => {
 
 	it('rejects a blank name', () => {
 		expect(registerRequestSchema.safeParse({ ...validRegister, name: '   ' }).success).toBe(false)
+	})
+
+	it('requires consent to data processing', () => {
+		const { consent: _consent, ...withoutConsent } = validRegister
+
+		expect(registerRequestSchema.safeParse(withoutConsent).success).toBe(false)
+		expect(registerRequestSchema.safeParse({ ...validRegister, consent: false }).success).toBe(
+			false,
+		)
 	})
 
 	it('rejects an invalid email', () => {

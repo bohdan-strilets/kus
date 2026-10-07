@@ -17,7 +17,12 @@ import { createDbTestApp } from './create-db-test-app'
 const ACCESS_COOKIE = 'kus_access'
 const REFRESH_COOKIE = 'kus_refresh'
 
-const credentials = { email: 'Owner@Kus.App', password: 'correct-horse-battery', name: 'Owner' }
+const credentials = {
+	email: 'Owner@Kus.App',
+	password: 'correct-horse-battery',
+	name: 'Owner',
+	consent: true,
+}
 const normalizedEmail = 'owner@kus.app'
 
 const meResponseSchema = createDataResponseSchema(authUserSchema)
@@ -68,6 +73,8 @@ describe('auth (e2e, real DB)', () => {
 
 		const registered = await agent.post('/api/v1/auth/register').send(credentials).expect(201)
 		expect(sessionResponseSchema.parse(registered.body).data.user.email).toBe(normalizedEmail)
+		const stored = await prisma.user.findUniqueOrThrow({ where: { email: normalizedEmail } })
+		expect(stored.consentAt).toBeInstanceOf(Date)
 
 		const loggedIn = await agent
 			.post('/api/v1/auth/login')
@@ -231,13 +238,14 @@ describe('auth (e2e, real DB)', () => {
 	it('validates the register body with field codes', async () => {
 		const response = await request(app.getHttpServer())
 			.post('/api/v1/auth/register')
-			.send({ email: 'not-an-email', password: 'short', name: '' })
+			.send({ email: 'not-an-email', password: 'short', name: '', consent: false })
 			.expect(422)
 
 		expect(parseError(response).details.fields).toMatchObject({
 			email: 'INVALID_FORMAT',
 			password: 'TOO_SMALL',
 			name: 'TOO_SMALL',
+			consent: 'INVALID_VALUE',
 		})
 	})
 

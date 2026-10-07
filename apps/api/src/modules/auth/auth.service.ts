@@ -42,7 +42,11 @@ export class AuthService {
 		const passwordHash = await this.passwordService.hash(password)
 		const user = await this.prisma
 			.$transaction(async (tx) => {
-				const created = await this.usersService.createUser({ email, name }, tx)
+				// the client only says «yes»; the time is ours, never taken from the request
+				const created = await this.usersService.createUser(
+					{ email, name, consentAt: new Date() },
+					tx,
+				)
 				await this.authRepository.createCredentials({ userId: created.id, passwordHash }, tx)
 				return created
 			})

@@ -229,6 +229,8 @@ model User {
   // IANA zone; defines the user's "day" for localDate
   timezone        String    @default("Europe/Warsaw")
   emailVerifiedAt DateTime? @map("email_verified_at") @db.Timestamptz
+  // when the user accepted processing of their food and weight data; set by the server at registration
+  consentAt       DateTime? @map("consent_at") @db.Timestamptz
   createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz
 

@@ -6,6 +6,7 @@ import { PrismaService } from '../../prisma'
 export interface CreateUserData {
 	email: string
 	name: string
+	consentAt: Date
 }
 
 @Injectable()

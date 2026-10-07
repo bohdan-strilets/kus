@@ -10,10 +10,13 @@ export {
 	type LogoMarkProps,
 	type LogoProps,
 	WORDMARK,
+	Wordmark,
+	type WordmarkProps,
 } from './brand'
 export { Button, type ButtonProps } from './button'
 export { Chip, type ChipProps } from './chip'
 export { ConfirmDialog, type ConfirmDialogProps } from './confirm-dialog'
+export { DecorBackdrop } from './decor-backdrop'
 export {
 	FALLBACK_FOOD_CATEGORY,
 	FOOD_CATEGORIES,

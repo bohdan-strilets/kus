@@ -1,7 +1,8 @@
 import { cn } from '@/shared/lib'
 
-import { WORDMARK, WORDMARK_GAP_SCALE, WORDMARK_SCALE } from './brand.constants'
+import { WORDMARK_GAP_SCALE, WORDMARK_SCALE } from './brand.constants'
 import { LogoMark } from './LogoMark'
+import { Wordmark } from './Wordmark'
 
 export interface LogoProps {
 	size?: number
@@ -15,11 +16,6 @@ export const Logo = ({ size = 32, className }: LogoProps) => (
 		style={{ gap: size * WORDMARK_GAP_SCALE }}
 	>
 		<LogoMark size={size} isLabelled={false} />
-		<span
-			className="text-wordmark text-ink"
-			style={{ fontSize: Math.round(size * WORDMARK_SCALE) }}
-		>
-			{WORDMARK}
-		</span>
+		<Wordmark size={Math.round(size * WORDMARK_SCALE)} />
 	</span>
 )

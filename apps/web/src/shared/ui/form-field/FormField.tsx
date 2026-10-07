@@ -15,6 +15,7 @@ const ERROR_ENTER_OFFSET_PX = -4
 export const FormField = ({
 	label,
 	error,
+	hint,
 	attemptCount = 0,
 	endSlot,
 	children,
@@ -22,7 +23,9 @@ export const FormField = ({
 }: FormFieldProps) => {
 	const id = useId()
 	const errorId = `${id}-error`
+	const hintId = `${id}-hint`
 	const hasError = Boolean(error)
+	const describedBy = hasError ? errorId : hint ? hintId : undefined
 	const [cardRef, animate] = useAnimate<HTMLDivElement>()
 	const shouldReduceMotion = useReducedMotion()
 
@@ -51,7 +54,7 @@ export const FormField = ({
 					{children({
 						id,
 						'aria-invalid': hasError,
-						'aria-describedby': hasError ? errorId : undefined,
+						'aria-describedby': describedBy,
 					})}
 				</div>
 				{endSlot}
@@ -73,6 +76,11 @@ export const FormField = ({
 					</motion.p>
 				)}
 			</AnimatePresence>
+			{hint && !error && (
+				<p id={hintId} className="text-small text-muted">
+					{hint}
+				</p>
+			)}
 		</div>
 	)
 }

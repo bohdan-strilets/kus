@@ -1,8 +1,5 @@
 import type { FoodCategory, FoodGroup, FoodIconSize } from './food-icon.types'
 
-/** Unknown or missing category is drawn as a plate. */
-export const FALLBACK_FOOD_CATEGORY: FoodCategory = 'plate'
-
 export const FOOD_CATEGORY_GROUP: Record<FoodCategory, FoodGroup> = {
 	eggs: 'grain',
 	porridge: 'grain',

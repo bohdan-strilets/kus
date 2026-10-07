@@ -1,5 +1,6 @@
-export { FALLBACK_FOOD_CATEGORY, FOOD_CATEGORY_GROUP } from './food-icon.constants'
+export { FOOD_CATEGORY_GROUP } from './food-icon.constants'
 export {
+	FALLBACK_FOOD_CATEGORY,
 	FOOD_CATEGORIES,
 	type FoodCategory,
 	type FoodGroup,

@@ -61,3 +61,60 @@ export type FactStatus = z.infer<typeof factStatusSchema>
 
 export const exerciseSourceSchema = z.enum(['MANUAL', 'AI_ESTIMATE', 'DEVICE'])
 export type ExerciseSource = z.infer<typeof exerciseSourceSchema>
+
+/**
+ * Dish category — picks the icon only, never the numbers (design/docs/food-categories.md).
+ * The single source of the list: the web icon pack and the AI tool take it from here.
+ * Lowercase snake_case, as in the Prisma enum and the icon file names.
+ */
+export const FOOD_CATEGORIES = [
+	'eggs',
+	'porridge',
+	'cereal',
+	'pancakes',
+	'toast',
+	'bread',
+	'pastry',
+	'dumplings',
+	'pasta',
+	'pizza',
+	'soup',
+	'borscht',
+	'meat',
+	'poultry',
+	'sausage',
+	'fish',
+	'seafood',
+	'potatoes',
+	'salad',
+	'vegetables',
+	'legumes',
+	'milk',
+	'yogurt',
+	'cottage_cheese',
+	'cheese',
+	'fruit',
+	'banana',
+	'berries',
+	'dried_fruit',
+	'nuts',
+	'snacks',
+	'protein_bar',
+	'chocolate',
+	'cake',
+	'ice_cream',
+	'cookies',
+	'coffee',
+	'tea',
+	'juice',
+	'soda',
+	'alcohol',
+	'protein_shake',
+	'fast_food',
+	'sauce',
+	'plate',
+] as const
+export const foodCategorySchema = z.enum(FOOD_CATEGORIES)
+export type FoodCategory = z.infer<typeof foodCategorySchema>
+/** Unknown or unsure → plate, never empty (the DB default too). */
+export const FALLBACK_FOOD_CATEGORY: FoodCategory = 'plate'

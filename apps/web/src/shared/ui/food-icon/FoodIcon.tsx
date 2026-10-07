@@ -2,13 +2,8 @@ import type { ReactNode } from 'react'
 
 import { cn } from '@/shared/lib'
 
-import {
-	FALLBACK_FOOD_CATEGORY,
-	FOOD_CATEGORY_GROUP,
-	FOOD_GROUP_TILE_CLASS,
-	FOOD_ICON_SIZE,
-} from './food-icon.constants'
-import type { FoodCategory, FoodIconSize } from './food-icon.types'
+import { FOOD_CATEGORY_GROUP, FOOD_GROUP_TILE_CLASS, FOOD_ICON_SIZE } from './food-icon.constants'
+import { FALLBACK_FOOD_CATEGORY, type FoodCategory, type FoodIconSize } from './food-icon.types'
 import { FOOD_ICON_PATHS } from './food-icons.generated'
 
 // Record<FoodCategory, …> makes every category need an SVG: a missing file fails typecheck

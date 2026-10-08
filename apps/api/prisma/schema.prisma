@@ -451,19 +451,21 @@ model AiToolCall {
 }
 
 model Clarification {
-  id              String              @id @default(uuid(7)) @db.Uuid
-  userId          String              @map("user_id") @db.Uuid
+  id                String              @id @default(uuid(7)) @db.Uuid
+  userId            String              @map("user_id") @db.Uuid
   // assistant message that asked the question
-  messageId       String              @map("message_id") @db.Uuid
-  answerMessageId String?             @map("answer_message_id") @db.Uuid
-  question        String
-  options         Json
-  impactKcal      Float?              @map("impact_kcal")
-  status          ClarificationStatus @default(OPEN)
-  answer          String?
-  answeredAt      DateTime?           @map("answered_at") @db.Timestamptz
-  createdAt       DateTime            @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt       DateTime            @updatedAt @map("updated_at") @db.Timestamptz
+  messageId         String              @map("message_id") @db.Uuid
+  answerMessageId   String?             @map("answer_message_id") @db.Uuid
+  question          String
+  options           Json
+  impactKcal        Float?              @map("impact_kcal")
+  status            ClarificationStatus @default(OPEN)
+  answer            String?
+  // the tapped option (POST /clarifications/:id/answer); answers in words (stage 3C) will leave it null
+  answerOptionIndex Int?                @map("answer_option_index")
+  answeredAt        DateTime?           @map("answered_at") @db.Timestamptz
+  createdAt         DateTime            @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt         DateTime            @updatedAt @map("updated_at") @db.Timestamptz
 
   user          User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
   message       Message              @relation("ClarificationQuestion", fields: [messageId], references: [id], onDelete: Cascade)

@@ -20,7 +20,7 @@ import { ChatFeedService } from './chat-feed.service'
 import { STALE_PENDING_MS } from './chat.constants'
 import { ClientMessageIdReusedException, MessageInProgressException } from './chat.exceptions'
 import { ChatRepository } from './chat.repository'
-import { getMealTypeByHour } from './meal-type'
+import { getMealEatenAt, getMealTypeByHour } from './meal-type'
 
 const UNIQUE_VIOLATION = 'P2002'
 
@@ -161,12 +161,22 @@ export class ChatService {
 			// an item's own meal, else the message's, else the clock
 			const fallbackMealType =
 				decision.log.mealType ?? getMealTypeByHour(getLocalHour(now, timezone))
+			const namedMealTypes = new Set(
+				decision.log.items.flatMap((item) => item.mealType ?? decision.log.mealType ?? []),
+			)
 			const entries = decision.log.items.map((item) => ({
 				mealType: item.mealType ?? fallbackMealType,
 				entry: this.toNewEntry(item, memory),
 			}))
 			const { entryIds } = await this.entriesService.logEntries(
-				{ userId, sourceMessageId: message.id, eatenAt: now, localDate, entries },
+				{
+					userId,
+					sourceMessageId: message.id,
+					getEatenAt: (mealType) =>
+						getMealEatenAt({ mealType, isNamed: namedMealTypes.has(mealType), now, timezone }),
+					localDate,
+					entries,
+				},
 				tx,
 			)
 			const usedFoodIds = [...new Set(entries.flatMap(({ entry }) => entry.myFoodId ?? []))]

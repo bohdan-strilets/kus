@@ -5,4 +5,5 @@ export {
 	getLocalDate,
 	getLocalDateString,
 	getLocalHour,
+	getZonedMoment,
 } from './local-date'

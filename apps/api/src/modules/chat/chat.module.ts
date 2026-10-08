@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common'
 
 import { AiModule } from '../ai/ai.module'
 import { EntriesModule } from '../entries/entries.module'
+import { GoalsModule } from '../goals/goals.module'
 import { MemoryModule } from '../memory/memory.module'
 import { UsersModule } from '../users/users.module'
 import { ChatContextService } from './chat-context.service'
@@ -11,7 +12,7 @@ import { ChatRepository } from './chat.repository'
 import { ChatService } from './chat.service'
 
 @Module({
-	imports: [AiModule, EntriesModule, MemoryModule, UsersModule],
+	imports: [AiModule, EntriesModule, GoalsModule, MemoryModule, UsersModule],
 	controllers: [ChatController],
 	providers: [ChatService, ChatFeedService, ChatContextService, ChatRepository],
 })

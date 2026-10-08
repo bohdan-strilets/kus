@@ -10,6 +10,7 @@ import { AppConfigModule } from './config'
 import { AuthModule } from './modules/auth/auth.module'
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard'
 import { ChatModule } from './modules/chat/chat.module'
+import { DaysModule } from './modules/days/days.module'
 import { HealthModule } from './modules/health/health.module'
 import { UsersModule } from './modules/users/users.module'
 import { PrismaModule } from './prisma'
@@ -28,6 +29,7 @@ const DEFAULT_THROTTLE = { ttl: minutes(1), limit: 100 }
 		AuthModule,
 		UsersModule,
 		ChatModule,
+		DaysModule,
 	],
 	providers: [
 		// order matters: rate limiting runs before auth, so unauthenticated floods are limited too

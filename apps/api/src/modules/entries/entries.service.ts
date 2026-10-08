@@ -2,8 +2,14 @@ import { Injectable } from '@nestjs/common'
 import type { DayMealContext, LoggedMeal, NutritionTotals } from '@kus/shared'
 
 import type { Prisma } from '../../generated/prisma/client'
-import { roundNutrition, sumEntries, toDayMealContext, toLoggedMeal } from './entries.mapper'
-import { EntriesRepository } from './entries.repository'
+import {
+	roundNutrition,
+	sumEntries,
+	toDayMeal,
+	toDayMealContext,
+	toLoggedMeal,
+} from './entries.mapper'
+import { EntriesRepository, type MealWithEntries } from './entries.repository'
 import { getMealRank, MEAL_TYPE_ORDER } from './entries.constants'
 import type { LogEntriesParams, NewFoodEntry } from './entries.types'
 
@@ -31,7 +37,7 @@ export class EntriesService {
 	 * caller's tx. `entryIds` follow the input order, so clarify item indexes still map.
 	 */
 	async logEntries(
-		{ userId, sourceMessageId, eatenAt, localDate, entries }: LogEntriesParams,
+		{ userId, sourceMessageId, getEatenAt, localDate, entries }: LogEntriesParams,
 		tx: Prisma.TransactionClient,
 	): Promise<{ meals: LoggedMeal[]; entryIds: string[] }> {
 		const entryIds: string[] = []
@@ -42,7 +48,7 @@ export class EntriesService {
 			)
 			if (group.length === 0) continue
 			const meal = await this.entriesRepository.findOrCreateMeal(
-				{ userId, type: mealType, localDate, eatenAt, sourceMessageId },
+				{ userId, type: mealType, localDate, eatenAt: getEatenAt(mealType), sourceMessageId },
 				tx,
 			)
 			const created = await this.entriesRepository.createEntries(
@@ -72,15 +78,31 @@ export class EntriesService {
 	}
 
 	async getDaySummary(userId: string, localDate: Date): Promise<DaySummary> {
-		const meals = await this.entriesRepository.findDayMeals({ userId, localDate })
+		const meals = await this.findDayMealsInOrder(userId, localDate)
 		return {
 			totals: sumEntries(meals.flatMap((meal) => meal.entries)),
-			// by the day's course: a whole day logged at once gives several meals with the same eatenAt
-			meals: meals
-				.filter((meal) => meal.entries.length > 0)
-				.sort((a, b) => getMealRank(a.type) - getMealRank(b.type))
-				.map(toDayMealContext),
+			meals: meals.map(toDayMealContext),
 		}
+	}
+
+	/** «Сьогодні»: the day's meals with all their entries and the day totals. */
+	async getDayMeals(
+		userId: string,
+		localDate: Date,
+	): Promise<{ meals: LoggedMeal[]; totals: NutritionTotals }> {
+		const meals = await this.findDayMealsInOrder(userId, localDate)
+		return {
+			meals: meals.map(toDayMeal),
+			totals: sumEntries(meals.flatMap((meal) => meal.entries)),
+		}
+	}
+
+	/** Non-empty meals by the day's course: a whole day logged at once shares one eatenAt. */
+	private async findDayMealsInOrder(userId: string, localDate: Date): Promise<MealWithEntries[]> {
+		const meals = await this.entriesRepository.findDayMeals({ userId, localDate })
+		return meals
+			.filter((meal) => meal.entries.length > 0)
+			.sort((a, b) => getMealRank(a.type) - getMealRank(b.type))
 	}
 
 	/** Chat cards: for each source message, the meals it logged into, in the day's order. */

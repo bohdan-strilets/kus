@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common'
 import {
+	type DailyGoal,
 	type DayTotals,
 	type FoodParseContext,
 	type GoalContext,
@@ -11,7 +12,7 @@ import {
 import { formatDbDate, formatLocalTime } from '../../common/time'
 import { type Message, MessageRole } from '../../generated/prisma/client'
 import { type DaySummary, EntriesService } from '../entries/entries.service'
-import { type DailyGoal, UsersService } from '../users/users.service'
+import { GoalsService } from '../goals/goals.service'
 import { ChatRepository } from './chat.repository'
 
 export interface DayOverview {
@@ -40,14 +41,14 @@ export class ChatContextService {
 	constructor(
 		private readonly chatRepository: ChatRepository,
 		private readonly entriesService: EntriesService,
-		private readonly usersService: UsersService,
+		private readonly goalsService: GoalsService,
 	) {}
 
 	/** Day totals vs goal; the remainder is computed here, never by the model. */
 	async getDayOverview(userId: string, localDate: Date): Promise<DayOverview> {
 		const [summary, goal] = await Promise.all([
 			this.entriesService.getDaySummary(userId, localDate),
-			this.usersService.getGoalForDate(userId, localDate),
+			this.goalsService.getGoalForDate(userId, localDate),
 		])
 		return {
 			summary,
@@ -55,8 +56,8 @@ export class ChatContextService {
 			totals: {
 				localDate: formatDbDate(localDate),
 				totals: summary.totals,
-				goalKcal: goal?.dailyKcal ?? null,
-				remainingKcal: goal ? Math.round(goal.dailyKcal - summary.totals.kcal) : null,
+				goalKcal: goal?.kcal ?? null,
+				remainingKcal: goal ? Math.round(goal.kcal - summary.totals.kcal) : null,
 			},
 		}
 	}
@@ -79,7 +80,13 @@ export class ChatContextService {
 		])
 		const goalContext: GoalContext | null =
 			goal && totals.remainingKcal !== null
-				? { ...goal, remainingKcal: totals.remainingKcal }
+				? {
+						dailyKcal: goal.kcal,
+						protein: goal.protein,
+						fat: goal.fat,
+						carbs: goal.carbs,
+						remainingKcal: totals.remainingKcal,
+					}
 				: null
 
 		return {

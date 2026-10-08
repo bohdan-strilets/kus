@@ -27,7 +27,8 @@ export interface MealEntryInput {
 export interface LogEntriesParams {
 	userId: string
 	sourceMessageId: string
-	eatenAt: Date
+	/** When a meal created by this log was eaten; an existing meal keeps its time. */
+	getEatenAt: (mealType: LoggableMealType) => Date
 	localDate: Date
 	/** In the model's item order; a whole day may span several meals. */
 	entries: MealEntryInput[]

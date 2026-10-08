@@ -49,16 +49,25 @@ export const toFoodEntryResponse = (entry: FoodEntry): FoodEntryResponse => ({
 	isEdited: entry.isEdited,
 })
 
-/** Totals of the whole meal; entries only those that came from `sourceMessageId`. */
-export const toLoggedMeal = (meal: MealWithEntries, sourceMessageId: string): LoggedMeal => ({
+/** Totals always of the whole meal; `entries` — the ones the caller shows. */
+const toMeal = (meal: MealWithEntries, entries: FoodEntry[]): LoggedMeal => ({
 	id: meal.id,
 	type: meal.type,
 	localDate: formatDbDate(meal.localDate),
+	eatenAt: meal.eatenAt.toISOString(),
 	totals: sumEntries(meal.entries),
-	entries: meal.entries
-		.filter((entry) => entry.sourceMessageId === sourceMessageId)
-		.map(toFoodEntryResponse),
+	entries: entries.map(toFoodEntryResponse),
 })
+
+/** A chat card: only the entries that came from `sourceMessageId`. */
+export const toLoggedMeal = (meal: MealWithEntries, sourceMessageId: string): LoggedMeal =>
+	toMeal(
+		meal,
+		meal.entries.filter((entry) => entry.sourceMessageId === sourceMessageId),
+	)
+
+/** A meal on «Сьогодні»: every entry. */
+export const toDayMeal = (meal: MealWithEntries): LoggedMeal => toMeal(meal, meal.entries)
 
 export const toDayMealContext = (meal: MealWithEntries): DayMealContext => ({
 	type: meal.type,

@@ -70,18 +70,27 @@ export const loggedMealSchema = z.object({
 	type: mealTypeSchema,
 	/** `YYYY-MM-DD`, the user's calendar day. */
 	localDate: z.iso.date(),
+	/** When the meal was eaten: the typical time of a named earlier meal, else the moment it was logged. */
+	eatenAt: z.iso.datetime(),
 	totals: nutritionTotalsSchema,
 	entries: z.array(foodEntryResponseSchema),
 })
 
 export type LoggedMeal = z.infer<typeof loggedMealSchema>
 
+/** What the chat shows of an answer; the full values stay on the backend. */
+export const clarifyOptionViewSchema = clarifyOptionSchema.pick({ label: true, kcal: true })
+
+export type ClarifyOptionView = z.infer<typeof clarifyOptionViewSchema>
+
 export const clarificationResponseSchema = z.object({
 	id: z.uuid(),
 	question: z.string(),
-	options: z.array(clarifyOptionSchema),
+	options: z.array(clarifyOptionViewSchema),
 	impactKcal: z.number().nullable(),
 	status: clarificationStatusSchema,
+	/** The tapped option once ANSWERED by a tap; null while open or answered in words. */
+	answeredOptionIndex: z.int().nonnegative().nullable(),
 	entryIds: z.array(z.uuid()),
 })
 

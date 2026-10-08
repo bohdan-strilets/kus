@@ -1,5 +1,10 @@
 // Which clarify questions are worth asking: the backend decides, not the model.
+import { isMacrosConsistent, MAX_KCAL_PER_GRAM } from '../schemas/food-entry.js'
+import { distributeOptionValues } from './option-values.js'
 import type { ClarifyInput, LogFoodInput } from './tools.js'
+
+/** Drinks with ethanol never add up from macros (see food-entry.ts). */
+const ALCOHOL_CATEGORY = 'alcohol'
 
 /** A clarify question is worth asking only above both thresholds (CLAUDE.md §6). */
 export const CLARIFY_MIN_IMPACT_KCAL = 80
@@ -21,6 +26,37 @@ export interface ClarificationResult extends ClarifyInput {
 const getImpactKcal = (clarify: ClarifyInput): number => {
 	const values = clarify.options.map((option) => option.kcal)
 	return Math.max(...values) - Math.min(...values)
+}
+
+/**
+ * An option is judged like the items it replaces: kcal per gram (its own grams, else the items')
+ * and kcal against macros — with the alcohol exemption and the wider label band of those items.
+ * Indexes must already be in range.
+ */
+export const getClarifyOptionErrors = (log: LogFoodInput, clarify: ClarifyInput): string[] => {
+	const items = clarify.itemIndexes.flatMap((index) => log.items[index] ?? [])
+	const itemsGrams = items.reduce((sum, item) => sum + item.grams, 0)
+	const category = items.find((item) => item.category === ALCOHOL_CATEGORY)?.category ?? 'plate'
+	const source = items.every((item) => item.source === 'LABEL') ? 'LABEL' : 'ESTIMATE'
+	return clarify.options.flatMap((option, index) => {
+		const errors: string[] = []
+		const grams = option.grams ?? itemsGrams
+		if (grams > 0 && option.kcal / grams > MAX_KCAL_PER_GRAM) {
+			errors.push(`clarify: options.${index}.kcal is above ${MAX_KCAL_PER_GRAM} kcal per gram`)
+		}
+		if (!isMacrosConsistent({ ...option, category, source })) {
+			errors.push(
+				`clarify: options.${index}.kcal does not match 4·protein + 4·carbs + 9·fat + 2·fiber`,
+			)
+		}
+		// a tap splits the totals by the items' current kcal: each share must still be a valid entry
+		if (errors.length === 0 && items.length > 1 && !distributeOptionValues(items, option)) {
+			errors.push(
+				`clarify: options.${index} split over items by their kcal makes an item denser than ${MAX_KCAL_PER_GRAM} kcal/g — ask about one item, or keep the items' kcal shares`,
+			)
+		}
+		return errors
+	})
 }
 
 /** Items name their meal, else the message-level one; null (by the clock) counts as one more meal. */

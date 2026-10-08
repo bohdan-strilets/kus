@@ -15,7 +15,11 @@ import {
 	type ReplyInput,
 	replyInputSchema,
 } from './tools.js'
-import { type ClarificationResult, filterClarifications } from './clarifications.js'
+import {
+	type ClarificationResult,
+	filterClarifications,
+	getClarifyOptionErrors,
+} from './clarifications.js'
 
 /** Hints appended to validation errors so the model can fix them on the retry. */
 const ERROR_HINTS: Record<string, string> = {
@@ -155,7 +159,9 @@ const checkLogReferences = (
 		const outOfRange = clarify.itemIndexes.filter((index) => index >= log.items.length)
 		if (outOfRange.length > 0) {
 			errors.push(`clarify: itemIndexes ${outOfRange.join(', ')} are not log_food items`)
+			continue
 		}
+		errors.push(...getClarifyOptionErrors(log, clarify))
 	}
 	return errors
 }

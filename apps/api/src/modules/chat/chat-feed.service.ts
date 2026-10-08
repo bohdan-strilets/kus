@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common'
 import {
 	type ChatMessage,
 	type ClarificationResponse,
-	clarifyOptionSchema,
+	clarifyOptionViewSchema,
 	type ListMessagesQuery,
 	type LoggedMeal,
 } from '@kus/shared'
@@ -15,7 +15,8 @@ import { InvalidCursorException } from './chat.exceptions'
 import { type ClarificationWithEntries, ChatRepository } from './chat.repository'
 import { decodeMessageCursor, encodeMessageCursor } from './message-cursor'
 
-const storedOptionsSchema = z.array(clarifyOptionSchema)
+// only what the chat shows, so rows stored before options carried macros still read
+const storedOptionsSchema = z.array(clarifyOptionViewSchema)
 
 const toClarificationResponse = (
 	clarification: ClarificationWithEntries,
@@ -26,6 +27,7 @@ const toClarificationResponse = (
 	options: storedOptionsSchema.catch([]).parse(clarification.options),
 	impactKcal: clarification.impactKcal,
 	status: clarification.status,
+	answeredOptionIndex: clarification.answerOptionIndex,
 	entryIds: clarification.entries.map((entry) => entry.foodEntryId),
 })
 

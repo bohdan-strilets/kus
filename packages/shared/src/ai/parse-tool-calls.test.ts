@@ -34,6 +34,17 @@ const soup = {
 	confidence: 0.4,
 }
 
+/** A consistent option: all kcal from carbs. */
+const option = (label: string, kcal: number) => ({
+	label,
+	kcal,
+	protein: 0,
+	fat: 0,
+	carbs: kcal / 4,
+	fiber: null,
+	grams: null,
+})
+
 const call = (name: string, input: unknown): RawToolCall => ({
 	name,
 	arguments: JSON.stringify(input),
@@ -84,10 +95,7 @@ describe('parseToolCalls', () => {
 		const clarify = call('clarify', {
 			question: '?',
 			itemIndexes: [0],
-			options: [
-				{ label: 'a', kcal: 100 },
-				{ label: 'b', kcal: 300 },
-			],
+			options: [option('a', 100), option('b', 300)],
 		})
 		expect(parseToolCalls([clarify, call('reply', { text: 'Ок' })], options).ok).toBe(false)
 	})
@@ -115,10 +123,7 @@ describe('parseToolCalls', () => {
 		const clarify = call('clarify', {
 			question: 'Яка тарілка?',
 			itemIndexes: [3],
-			options: [
-				{ label: 'Мала', kcal: 100 },
-				{ label: 'Велика', kcal: 300 },
-			],
+			options: [option('Мала', 100), option('Велика', 300)],
 		})
 		expect(parseToolCalls([logFood([soup]), clarify], options).ok).toBe(false)
 	})
@@ -127,15 +132,84 @@ describe('parseToolCalls', () => {
 		const clarify = call('clarify', {
 			question: 'Яка тарілка?',
 			itemIndexes: [0, 0],
-			options: [
-				{ label: 'Мала', kcal: 100 },
-				{ label: 'Велика', kcal: 300 },
-			],
+			options: [option('Мала', 100), option('Велика', 300)],
 		})
 		const result = parseToolCalls([logFood([soup]), clarify], options)
 		expect(result).toMatchObject({ ok: false })
 		if (result.ok) return
 		expect(result.errors[0]).toContain('itemIndexes must not repeat')
+	})
+
+	it('accepts options whose values add up', () => {
+		const clarify = call('clarify', {
+			question: 'Яка тарілка?',
+			itemIndexes: [0],
+			options: [option('Мала', 100), { ...option('Велика', 300), grams: 500 }],
+		})
+		expect(parseToolCalls([logFood([soup]), clarify], options).ok).toBe(true)
+	})
+
+	it('rejects an option whose kcal does not match its macros', () => {
+		const clarify = call('clarify', {
+			question: 'З олією?',
+			itemIndexes: [0],
+			options: [option('Без олії', 150), { ...option('З олією', 240), fat: 10 }],
+		})
+		const result = parseToolCalls([logFood([soup]), clarify], options)
+		expect(result.ok).toBe(false)
+		if (result.ok) return
+		expect(result.errors[0]).toContain('options.1.kcal does not match')
+	})
+
+	it('rejects an option denser than 9.5 kcal per gram of the items or its own grams', () => {
+		const clarify = call('clarify', {
+			question: 'Яка тарілка?',
+			itemIndexes: [0],
+			options: [option('Мала', 150), { ...option('Велика', 1000), grams: 100 }],
+		})
+		const result = parseToolCalls([logFood([soup]), clarify], options)
+		expect(result.ok).toBe(false)
+		if (result.ok) return
+		expect(result.errors[0]).toContain('options.1.kcal is above 9.5 kcal per gram')
+	})
+
+	it('rejects an option a tap could not split over its items', () => {
+		const salad = { ...soup, name: 'Салат', grams: 200, kcal: 40, protein: 2, fat: 0, carbs: 8 }
+		const oil = { ...soup, name: 'Олія', grams: 10, kcal: 90, protein: 0, fat: 10, carbs: 0 }
+		const clarify = call('clarify', {
+			question: 'Скільки олії?',
+			itemIndexes: [0, 1],
+			// split 40 : 90 by kcal, the oil would get ~173 kcal on its 10 g
+			options: [
+				{ ...option('Мало', 130), protein: 2, fat: 10, carbs: 8 },
+				{ ...option('Багато', 250), protein: 1, fat: 26, carbs: 0 },
+			],
+		})
+		const result = parseToolCalls([logFood([salad, oil]), clarify], options)
+		expect(result.ok).toBe(false)
+		if (result.ok) return
+		expect(result.errors[0]).toContain('options.1 split over items')
+	})
+
+	it('does not check macros of options about a drink with alcohol', () => {
+		const wine = {
+			...soup,
+			name: 'Вино',
+			category: 'alcohol',
+			kcal: 170,
+			protein: 0,
+			fat: 0,
+			carbs: 5,
+		}
+		const clarify = call('clarify', {
+			question: 'Яке вино?',
+			itemIndexes: [0],
+			options: [
+				{ ...option('Сухе', 170), carbs: 5 },
+				{ ...option('Солодке', 300), carbs: 30 },
+			],
+		})
+		expect(parseToolCalls([logFood([wine]), clarify], options).ok).toBe(true)
 	})
 
 	it('returns not_food and reply decisions', () => {
@@ -156,7 +230,7 @@ describe('filterClarifications', () => {
 	const clarify = (itemIndexes: number[], kcals: number[]) => ({
 		question: '?',
 		itemIndexes,
-		options: kcals.map((kcal, index) => ({ label: `o${index}`, kcal })),
+		options: kcals.map((kcal, index) => option(`o${index}`, kcal)),
 	})
 
 	it('keeps a question that changes kcal by 80+ and 15%+', () => {

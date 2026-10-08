@@ -106,11 +106,22 @@ export const soupClarifyCall: FakeToolCall = {
 		question: 'Який суп і яка тарілка?',
 		itemIndexes: [0],
 		options: [
-			{ label: 'Овочевий', kcal: 150 },
-			{ label: 'Харчо', kcal: 330 },
+			{ label: 'Овочевий', kcal: 150, protein: 6, fat: 6, carbs: 18, fiber: null, grams: null },
+			{ label: 'Харчо', kcal: 330, protein: 18, fat: 18, carbs: 24, fiber: null, grams: null },
 		],
 	},
 }
+
+/** A clarify answer whose values add up (all kcal from carbs) — for tests about the flow. */
+export const clarifyOption = (label: string, kcal: number) => ({
+	label,
+	kcal,
+	protein: 0,
+	fat: 0,
+	carbs: kcal / 4,
+	fiber: null,
+	grams: null,
+})
 
 /** What a long day message looked like at max_tokens 2000: the arguments cut down to `{}`. */
 export const TRUNCATED_COMPLETION = createCompletion([{ name: 'log_food', args: {} }], {

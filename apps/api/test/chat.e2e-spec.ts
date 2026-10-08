@@ -15,6 +15,7 @@ import type TestAgent from 'supertest/lib/agent'
 import { afterAll, afterEach, describe, expect, it, vi } from 'vitest'
 
 import {
+	clarifyOption,
 	createCompletion,
 	createFakeAiClient,
 	EGGS_AND_BUCKWHEAT_ITEMS,
@@ -196,10 +197,7 @@ describe('chat messages (e2e, real DB, fake model)', () => {
 			args: {
 				question: 'З хлібом?',
 				itemIndexes: [0],
-				options: [
-					{ label: 'Так', kcal: 150 },
-					{ label: 'Ні', kcal: 200 },
-				],
+				options: [clarifyOption('Так', 150), clarifyOption('Ні', 200)],
 			},
 		}
 		fake.respond(createCompletion([logFoodCall([SOUP_ITEM]), soupClarifyCall, lowImpact]))
@@ -259,10 +257,7 @@ describe('chat messages (e2e, real DB, fake model)', () => {
 			args: {
 				question: 'Який суп?',
 				itemIndexes: [0],
-				options: [
-					{ label: 'Бульйон', kcal: 60 },
-					{ label: 'Густий', kcal: 330 },
-				],
+				options: [clarifyOption('Бульйон', 60), clarifyOption('Густий', 330)],
 			},
 		}
 		fake.respond(createCompletion([day, soupQuestion]))

@@ -1,6 +1,11 @@
 import { z } from 'zod'
 
-import { FALLBACK_FOOD_CATEGORY, foodCategorySchema, foodSourceSchema } from './enums.js'
+import {
+	FALLBACK_FOOD_CATEGORY,
+	foodCategorySchema,
+	type FoodSource,
+	foodSourceSchema,
+} from './enums.js'
 
 /** Fat is the densest macro (~9 kcal/g); anything above this is an AI or input error. */
 export const MAX_KCAL_PER_GRAM = 9.5
@@ -55,13 +60,20 @@ interface Macros {
 	fiber: number | null
 }
 
+/** What the kcal ↔ macros check needs: an entry, or a clarify option judged like its items. */
+export interface MacrosCheckInput extends Macros {
+	kcal: number
+	category: string
+	source: FoodSource
+}
+
 export const getKcalFromMacros = ({ protein, fat, carbs, fiber }: Macros): number =>
 	protein * KCAL_PER_GRAM.protein +
 	carbs * KCAL_PER_GRAM.carbs +
 	fat * KCAL_PER_GRAM.fat +
 	(fiber ?? 0) * KCAL_PER_GRAM.fiber
 
-export const isMacrosConsistent = (entry: FoodEntryBase): boolean => {
+export const isMacrosConsistent = (entry: MacrosCheckInput): boolean => {
 	if (MACROS_CHECK_EXEMPT_CATEGORIES.has(entry.category)) return true
 	const rate = entry.source === 'LABEL' ? MACROS_TOLERANCE.label : MACROS_TOLERANCE.default
 	const tolerance = Math.max(entry.kcal * rate, MACROS_TOLERANCE.minKcal)

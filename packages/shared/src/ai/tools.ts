@@ -3,7 +3,12 @@
 import { z } from 'zod'
 
 import { mealTypeSchema } from '../schemas/enums.js'
-import { foodEntryBaseSchema, refineFoodEntry } from '../schemas/food-entry.js'
+import {
+	foodEntryBaseSchema,
+	MAX_ENTRY_GRAMS,
+	MIN_ENTRY_GRAMS,
+	refineFoodEntry,
+} from '../schemas/food-entry.js'
 import { CATEGORY_DESCRIPTION } from './category-description.js'
 
 export const AI_TOOL_NAMES = {
@@ -19,6 +24,8 @@ export const MAX_ITEMS_PER_MESSAGE = 20
 export const REPLY_MAX_LENGTH = 500
 export const CLARIFY_OPTIONS = { min: 2, max: 4 } as const
 const MAX_OPTION_KCAL = 20_000
+/** Every item of a message at its maximum weight. */
+const MAX_OPTION_GRAMS = MAX_ENTRY_GRAMS * MAX_ITEMS_PER_MESSAGE
 
 const replyTextSchema = z.string().trim().min(1).max(REPLY_MAX_LENGTH)
 
@@ -86,6 +93,12 @@ export const logFoodInputSchema = z.object({
 
 export type LogFoodInput = z.infer<typeof logFoodInputSchema>
 
+const optionMacroSchema = z.number().nonnegative().max(MAX_OPTION_GRAMS)
+
+/**
+ * An answer carries the full values of the referenced items if it is true, so tapping it
+ * re-logs them without another model call. Checked against the items in clarifications.ts.
+ */
 export const clarifyOptionSchema = z.object({
 	label: z.string().trim().min(1).max(60).describe('Short answer chip, e.g. "Варена"'),
 	kcal: z
@@ -93,6 +106,24 @@ export const clarifyOptionSchema = z.object({
 		.nonnegative()
 		.max(MAX_OPTION_KCAL)
 		.describe('Total kcal of the referenced items if this answer is true'),
+	protein: optionMacroSchema.describe('Total protein of the referenced items for this answer, g'),
+	fat: optionMacroSchema.describe('Total fat of the referenced items for this answer, g'),
+	carbs: optionMacroSchema.describe(
+		'Total carbohydrates excluding fiber of the referenced items for this answer, g',
+	),
+	fiber: optionMacroSchema
+		.nullable()
+		.default(null)
+		.describe('Total fiber of the referenced items for this answer, g; null if unknown'),
+	grams: z
+		.number()
+		.min(MIN_ENTRY_GRAMS)
+		.max(MAX_OPTION_GRAMS)
+		.nullable()
+		.default(null)
+		.describe(
+			'Total grams of the referenced items only if this answer changes the portion weight ("маленька / велика тарілка"); else null',
+		),
 })
 
 export type ClarifyOption = z.infer<typeof clarifyOptionSchema>

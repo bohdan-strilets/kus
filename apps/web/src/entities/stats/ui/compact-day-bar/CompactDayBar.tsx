@@ -6,6 +6,7 @@ import { ROUTES } from '@/shared/config'
 import { formatInteger } from '@/shared/lib'
 import { Text } from '@/shared/ui'
 
+import { getGaugeState } from '../../lib/get-gauge-state'
 import type { MacroProgress } from '../../model/macro.types'
 import { MiniRing } from './MiniRing'
 
@@ -43,7 +44,7 @@ export const CompactDayBar = ({ eaten, goal, protein, onExpand }: CompactDayBarP
 
 	const content: ReactNode = (
 		<>
-			<MiniRing ratio={goal !== null && goal > 0 ? eaten / goal : 0} />
+			<MiniRing state={getGaugeState(eaten, goal ?? 0)} />
 			<Text as="span" weight="extrabold" isTabular className="whitespace-nowrap">
 				{eatenText}{' '}
 				<Text as="span" variant="small" tone="muted">

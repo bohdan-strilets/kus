@@ -9,7 +9,7 @@ import { MacroTiles } from '../macro-tiles/MacroTiles'
 
 export interface DaySummaryCardProps {
 	eaten: number
-	goal: number
+	goal: number | null
 	macros: MacroProgressSet
 }
 

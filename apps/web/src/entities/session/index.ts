@@ -8,3 +8,4 @@ export {
 	setSessionUser,
 } from './model/session-query'
 export { type Session, useSession } from './model/use-session'
+export { useSessionUser } from './model/use-session-user'

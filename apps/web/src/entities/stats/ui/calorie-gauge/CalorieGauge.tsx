@@ -9,7 +9,8 @@ import { GaugeArcs } from './GaugeArcs'
 
 export interface CalorieGaugeProps {
 	eaten: number
-	goal: number
+	/** null without a goal: the empty track and only what was eaten. */
+	goal: number | null
 	/** compact — chat header; large — «Сьогодні». */
 	size?: GaugeSize
 }
@@ -23,13 +24,29 @@ const CLOSED_ICON_SIZE = 30
  */
 export const CalorieGauge = ({ eaten, goal, size = 'large' }: CalorieGaugeProps) => {
 	const { t } = useTranslation()
-	const state = getGaugeState(eaten, goal)
+	const state = getGaugeState(eaten, goal ?? 0)
 	const { frameClass } = GAUGE_GEOMETRY[size]
 	const isLarge = size === 'large'
-	const centreNumber = isLarge ? state.remaining : eaten
+	const hasGoal = goal !== null
+	const centreNumber = isLarge && hasGoal ? state.remaining : eaten
 	const countRef = useCountUp<HTMLSpanElement>(centreNumber, { durationMs: RING_FILL_MS })
 
 	const renderCentre = () => {
+		if (!hasGoal) {
+			return (
+				<>
+					<span
+						ref={countRef}
+						className={cn('tabular-nums', isLarge ? 'text-gauge' : 'text-title')}
+					>
+						{formatInteger(eaten)}
+					</span>
+					<Text as="span" variant="small" weight="regular" tone="muted">
+						{t('gauge.eaten')}
+					</Text>
+				</>
+			)
+		}
 		if (isLarge && state.status === 'closed') {
 			return (
 				<>
@@ -80,7 +97,11 @@ export const CalorieGauge = ({ eaten, goal, size = 'large' }: CalorieGaugeProps)
 	return (
 		<div
 			role="img"
-			aria-label={t('gauge.label', { eaten: formatInteger(eaten), goal: formatInteger(goal) })}
+			aria-label={
+				hasGoal
+					? t('gauge.label', { eaten: formatInteger(eaten), goal: formatInteger(goal) })
+					: t('gauge.labelNoGoal', { eaten: formatInteger(eaten) })
+			}
 			className={cn('relative shrink-0', frameClass)}
 		>
 			<GaugeArcs size={size} state={state} />

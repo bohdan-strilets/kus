@@ -32,6 +32,10 @@
 		"recipes": {
 			"title": "Рецепти",
 			"placeholder": "Тут будуть твої збережені рецепти."
+		},
+		"profile": {
+			"title": "Профіль",
+			"placeholder": "Тут будуть цілі, пам'ять і налаштування."
 		}
 	},
 	"health": {
@@ -63,7 +67,10 @@
 			"CLIENT_MESSAGE_ID_REUSED": "Не вдалося надіслати. Спробуй ще раз.",
 			"NETWORK": "Немає зв'язку з сервером. Перевір інтернет і спробуй ще раз.",
 			"SERVER": "Щось зламалося на нашому боці. Спробуй трохи пізніше.",
-			"UNKNOWN": "Не вдалося. Спробуй ще раз."
+			"UNKNOWN": "Не вдалося. Спробуй ще раз.",
+			"CLARIFICATION_NOT_FOUND": "Не знайшов це питання. Онови чат.",
+			"CLARIFICATION_ALREADY_ANSWERED": "На це питання вже є відповідь.",
+			"CLARIFICATION_NOT_APPLICABLE": "Цю відповідь уже не застосувати — напиши уточнення в чат."
 		},
 		"validation": {
 			"REQUIRED": "Заповни це поле",
@@ -125,13 +132,35 @@
 	"chat": {
 		"typing": "Kusik рахує…",
 		"notSent": "Не надіслано",
-		"retry": "Спробувати ще"
+		"retry": "Спробувати ще",
+		"feedLabel": "Розмова з Kusik",
+		"loadError": "Не вдалося завантажити повідомлення.",
+		"loadingOlder": "Завантажую старіші повідомлення",
+		"today": "Сьогодні",
+		"yesterday": "Вчора",
+		"greeting": {
+			"morning": "Доброго ранку",
+			"day": "Добрий день",
+			"evening": "Добрий вечір"
+		},
+		"greetingWithName": "{{greeting}}, {{name}}",
+		"newDay": "{{greeting}}! Пиши, що їси, звичайними словами — я все порахую.",
+		"networkError": "Ой, не вдалося надіслати: немає зв'язку з інтернетом. Спробуй ще раз, коли зв'язок з'явиться.",
+		"dayRecap": {
+			"title": "Підсумок дня: {{kcal}} ккал",
+			"protein": "Білок {{protein}} г з {{goal}}",
+			"proteinNearGoal": "Білок {{protein}} г з {{goal}} — майже в цілі",
+			"proteinAtGoal": "Білок {{protein}} г з {{goal}} — в цілі",
+			"proteinNoGoal": "Білок {{protein}} г"
+		},
+		"dayLoadError": "Не вдалося завантажити підсумок дня"
 	},
 	"meal": {
 		"breakfast": "Сніданок",
 		"lunch": "Обід",
 		"snack": "Перекус",
-		"dinner": "Вечеря"
+		"dinner": "Вечеря",
+		"other": "Прийом їжі"
 	},
 	"entry": {
 		"kcal": "{{kcal}} ккал",
@@ -139,7 +168,10 @@
 		"edit": "Редагувати",
 		"usual": "як завжди",
 		"clarifyingCaption": "{{amount}} · уточнюємо",
-		"remember": "Запам'ятати для {{name}}"
+		"remember": "Запам'ятати для {{name}}",
+		"amountGrams": "{{grams}} г",
+		"amountPieces": "{{count}} шт · {{grams}} г",
+		"answeredCaption": "{{amount}} · {{answer}}"
 	},
 	"macro": {
 		"protein": "Білки",
@@ -148,7 +180,9 @@
 		"fat": "Жири",
 		"ofGoalShort": "/{{goal}}",
 		"ofGoalGrams": " / {{goal}} г",
-		"proteinShort": "Б {{value}}/{{goal}}"
+		"proteinShort": "Б {{value}}/{{goal}}",
+		"grams": " г",
+		"proteinOnly": "Б {{value}}"
 	},
 	"gauge": {
 		"label": "Калорії: {{eaten}} з {{goal}} ккал",
@@ -160,7 +194,10 @@
 		"ofGoal": "з {{goal}} ккал",
 		"ofGoalSlash": "/ {{goal}}",
 		"overShort": "{{over}} понад",
-		"compactLabel": "Сьогодні: {{eaten}} з {{goal}} ккал, білок {{protein}} з {{proteinGoal}} г"
+		"compactLabel": "Сьогодні: {{eaten}} з {{goal}} ккал, білок {{protein}} з {{proteinGoal}} г",
+		"labelNoGoal": "Калорії: з'їдено {{eaten}} ккал",
+		"compactLabelNoGoal": "Сьогодні: {{eaten}} ккал, білок {{protein}} г",
+		"kcal": "ккал"
 	},
 	"week": {
 		"label": "Тиждень",

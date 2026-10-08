@@ -14,6 +14,12 @@ export interface ComposerProps {
 	onSubmit: () => void
 	onPhotoClick?: () => void
 	onVoiceStart?: () => void
+	/** Off: no camera button (FEATURES.photo). */
+	isPhotoEnabled?: boolean
+	/** Off: the right slot is always «Надіслати», inactive while the field is empty (FEATURES.voice). */
+	isVoiceEnabled?: boolean
+	/** The API limit for one message. */
+	maxLength?: number
 	/** While recording, the field becomes the wave (mockups/chat-voice.html). */
 	voice?: ComposerVoiceState
 }

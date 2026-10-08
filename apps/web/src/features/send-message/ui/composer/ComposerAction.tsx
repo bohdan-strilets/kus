@@ -7,6 +7,8 @@ interface ComposerActionProps {
 	/** There is text to send: the mic becomes «надіслати». */
 	canSend: boolean
 	onVoiceStart?: () => void
+	/** Without voice the slot is «надіслати» all the time, inactive while there's nothing to send. */
+	isVoiceEnabled: boolean
 }
 
 // --duration-fast drops to 0 under prefers-reduced-motion (tokens.css), so no animation there
@@ -18,8 +20,22 @@ const ICON_LAYER_CLASS =
  * the mic while the field is empty and «надіслати» once there is text. The button itself stays,
  * so its width and the focus never jump; only the icons cross-fade.
  */
-export const ComposerAction = ({ canSend, onVoiceStart }: ComposerActionProps) => {
+export const ComposerAction = ({ canSend, onVoiceStart, isVoiceEnabled }: ComposerActionProps) => {
 	const { t } = useTranslation()
+
+	if (!isVoiceEnabled) {
+		return (
+			<IconButton
+				type="submit"
+				variant="primary"
+				size="sm"
+				label={t('composer.send')}
+				disabled={!canSend}
+			>
+				<Icon name="send" size={ICON_SIZE.control} />
+			</IconButton>
+		)
+	}
 
 	return (
 		<IconButton

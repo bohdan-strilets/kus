@@ -1,4 +1,5 @@
 export { cn } from './cn'
+export { getLocalDateString, getLocalHour, shiftLocalDate, toCalendarDate } from './date'
 export {
 	formatDayHeading,
 	formatDecimal,
@@ -56,3 +57,4 @@ export { DEFAULT_FLAG_DELAY_MS, useDelayedFlag } from './use-delayed-flag'
 export { useAutoHeight } from './use-auto-height'
 export { COARSE_POINTER_QUERY, useMediaQuery } from './use-media-query'
 export { useSvgId } from './use-svg-id'
+export { getVocative } from './vocative'

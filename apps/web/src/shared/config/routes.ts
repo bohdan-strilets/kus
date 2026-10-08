@@ -11,7 +11,12 @@ export const AUTH_ROUTES = {
 	register: '/register',
 } as const
 
-export const ROUTES = { ...TAB_ROUTES, ...AUTH_ROUTES } as const
+/** Behind the avatar, not a tab. */
+export const PROFILE_ROUTES = {
+	profile: '/app/profile',
+} as const
+
+export const ROUTES = { ...TAB_ROUTES, ...PROFILE_ROUTES, ...AUTH_ROUTES } as const
 
 export type TabRoutePath = (typeof TAB_ROUTES)[keyof typeof TAB_ROUTES]
 

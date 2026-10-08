@@ -46,9 +46,12 @@ export const EntryCard = ({ mealLabel, time, kcal, macros, children, onEdit }: E
 						fat: formatInteger(macros.fat),
 					})}
 				</Text>
-				<Button variant="secondary" size="sm" onClick={onEdit}>
-					{t('entry.edit')}
-				</Button>
+				{/* hidden until editing exists (stage 5): a button that does nothing is worse than none */}
+				{onEdit && (
+					<Button variant="secondary" size="sm" onClick={onEdit}>
+						{t('entry.edit')}
+					</Button>
+				)}
 			</footer>
 		</article>
 	)

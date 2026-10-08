@@ -8,6 +8,7 @@ export interface ChoiceOptionProps {
 	/** «110 ккал», already formatted. */
 	detail: string
 	isSelected: boolean
+	isDisabled?: boolean
 	onSelect: () => void
 }
 
@@ -15,14 +16,21 @@ export interface ChoiceOptionProps {
  * An answer in a clarification (mockups/chat-clarify.html): 52 tall, radius 14; the chosen one has a
  * 2px primary border on primary-selected, the other is white.
  */
-export const ChoiceOption = ({ label, detail, isSelected, onSelect }: ChoiceOptionProps) => (
+export const ChoiceOption = ({
+	label,
+	detail,
+	isSelected,
+	isDisabled = false,
+	onSelect,
+}: ChoiceOptionProps) => (
 	<motion.button
 		type="button"
 		aria-pressed={isSelected}
+		disabled={isDisabled}
 		onClick={onSelect}
 		{...PRESS}
 		className={cn(
-			'flex min-h-13 cursor-pointer flex-col items-center justify-center rounded-tile-sm border-2 transition-colors duration-(--duration-base)',
+			'flex min-h-13 cursor-pointer flex-col items-center justify-center rounded-tile-sm border-2 transition-colors duration-(--duration-base) disabled:cursor-wait',
 			isSelected ? 'border-primary bg-primary-selected' : 'border-transparent bg-surface',
 		)}
 	>

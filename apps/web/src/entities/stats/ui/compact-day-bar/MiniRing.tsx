@@ -16,16 +16,19 @@ export const MiniRing = ({ ratio }: { ratio: number }) => {
 			className="shrink-0"
 		>
 			<circle cx="12" cy="12" r={RADIUS} className="stroke-track" strokeWidth={STROKE_WIDTH} />
-			<circle
-				cx="12"
-				cy="12"
-				r={RADIUS}
-				className="stroke-success"
-				strokeWidth={STROKE_WIDTH}
-				strokeLinecap="round"
-				strokeDasharray={`${filled} ${CIRCUMFERENCE}`}
-				transform="rotate(-90 12 12)"
-			/>
+			{/* a round cap would draw a dot at zero */}
+			{filled > 0 && (
+				<circle
+					cx="12"
+					cy="12"
+					r={RADIUS}
+					className="stroke-success"
+					strokeWidth={STROKE_WIDTH}
+					strokeLinecap="round"
+					strokeDasharray={`${filled} ${CIRCUMFERENCE}`}
+					transform="rotate(-90 12 12)"
+				/>
+			)}
 		</svg>
 	)
 }

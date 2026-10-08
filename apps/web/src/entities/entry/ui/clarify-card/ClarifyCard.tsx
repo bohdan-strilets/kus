@@ -16,14 +16,20 @@ export interface ClarifyOption {
 export interface ClarifyCardProps {
 	/** «100 г — це вага якої гречки?» */
 	question: string
-	/** Two answers (CLAUDE.md §6: at most 2 questions, each with its kcal). */
-	options: readonly [ClarifyOption, ClarifyOption]
-	selectedId: string
+	/** 2–4 answers, each with the kcal it would give. */
+	options: readonly ClarifyOption[]
+	/** null until one is tapped. */
+	selectedId: string | null
 	onSelect: (id: string) => void
-	/** «гречки» — the product named in «Запам'ятати для …». */
-	productName: string
-	isRemembered: boolean
-	onRememberChange: (isRemembered: boolean) => void
+	/** While the answer is being saved: the options don't take another tap. */
+	isPending?: boolean
+	/** «Запам'ятати для гречки» — shown only with memory (stage 5). */
+	remember?: {
+		/** «гречки» */
+		productName: string
+		isRemembered: boolean
+		onChange: (isRemembered: boolean) => void
+	}
 	/** Opened by a tap on the hint: the hint button is gone, so focus moves into the card. */
 	shouldFocusOnMount?: boolean
 }
@@ -37,9 +43,8 @@ export const ClarifyCard = ({
 	options,
 	selectedId,
 	onSelect,
-	productName,
-	isRemembered,
-	onRememberChange,
+	isPending = false,
+	remember,
 	shouldFocusOnMount = false,
 }: ClarifyCardProps) => {
 	const { t } = useTranslation()
@@ -64,6 +69,7 @@ export const ClarifyCard = ({
 				tabIndex={-1}
 				role="group"
 				aria-label={question}
+				aria-busy={isPending}
 				className="mx-1.5 mt-0.5 mb-1.5 flex flex-col gap-2 rounded-tile bg-primary-selected p-2.5 focus-visible:outline-none"
 			>
 				<Text as="span" variant="caption" weight="bold">
@@ -76,28 +82,31 @@ export const ClarifyCard = ({
 							label={option.label}
 							detail={t('entry.kcal', { kcal: formatInteger(option.kcal) })}
 							isSelected={option.id === selectedId}
+							isDisabled={isPending}
 							onSelect={() => {
 								onSelect(option.id)
 							}}
 						/>
 					))}
 				</div>
-				{/* a native checkbox is already accessible; accent-primary paints it like the mockup */}
-				<label
-					htmlFor={rememberId}
-					className="flex min-h-tap cursor-pointer items-center gap-2 text-caption"
-				>
-					<input
-						id={rememberId}
-						type="checkbox"
-						checked={isRemembered}
-						onChange={(event) => {
-							onRememberChange(event.target.checked)
-						}}
-						className="size-4.5 accent-primary"
-					/>
-					{t('entry.remember', { name: productName })}
-				</label>
+				{remember && (
+					// a native checkbox is already accessible; accent-primary paints it like the mockup
+					<label
+						htmlFor={rememberId}
+						className="flex min-h-tap cursor-pointer items-center gap-2 text-caption"
+					>
+						<input
+							id={rememberId}
+							type="checkbox"
+							checked={remember.isRemembered}
+							onChange={(event) => {
+								remember.onChange(event.target.checked)
+							}}
+							className="size-4.5 accent-primary"
+						/>
+						{t('entry.remember', { name: remember.productName })}
+					</label>
+				)}
 			</div>
 		</motion.div>
 	)

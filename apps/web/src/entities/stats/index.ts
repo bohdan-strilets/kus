@@ -1,3 +1,4 @@
+export { type DayStats, getDayStats } from './lib/get-day-stats'
 export { type GaugeState, getGaugeState, type GaugeStatus } from './lib/get-gauge-state'
 export {
 	MACRO_ORDER,
@@ -7,6 +8,7 @@ export {
 } from './model/macro.types'
 export { CalorieGauge, type CalorieGaugeProps } from './ui/calorie-gauge/CalorieGauge'
 export { CompactDayBar, type CompactDayBarProps } from './ui/compact-day-bar/CompactDayBar'
+export { DayRecapCard, type DayRecapCardProps } from './ui/day-recap-card/DayRecapCard'
 export { DayStatsCard, type DayStatsCardProps } from './ui/day-stats-card/DayStatsCard'
 export { DaySummaryCard, type DaySummaryCardProps } from './ui/day-summary-card/DaySummaryCard'
 export { MacroTile, type MacroTileProps } from './ui/macro-tile/MacroTile'

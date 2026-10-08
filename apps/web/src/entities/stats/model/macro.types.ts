@@ -6,8 +6,8 @@ export type MacroKey = (typeof MACRO_ORDER)[number]
 export interface MacroProgress {
 	/** grams eaten */
 	value: number
-	/** grams per day */
-	goal: number
+	/** grams per day; null without a goal — only what was eaten is shown */
+	goal: number | null
 }
 
 export type MacroProgressSet = Record<MacroKey, MacroProgress>

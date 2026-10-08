@@ -27,6 +27,7 @@ export const BreakfastCard = ({ isClarifyOpen = false }: BreakfastCardProps) => 
 			time={SEED_BREAKFAST.time}
 			kcal={SEED_BREAKFAST.kcal}
 			macros={SEED_BREAKFAST.macros}
+			onEdit={() => undefined}
 		>
 			<EntryItem entry={eggs} />
 			<EntryItem
@@ -52,9 +53,11 @@ export const BreakfastCard = ({ isClarifyOpen = false }: BreakfastCardProps) => 
 					]}
 					selectedId={selectedId}
 					onSelect={setSelectedId}
-					productName={t('devUi.seed.clarifyProduct')}
-					isRemembered={isRemembered}
-					onRememberChange={setIsRemembered}
+					remember={{
+						productName: t('devUi.seed.clarifyProduct'),
+						isRemembered,
+						onChange: setIsRemembered,
+					}}
 					shouldFocusOnMount={!isClarifyOpen}
 				/>
 			)}

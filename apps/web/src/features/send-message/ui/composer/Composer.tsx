@@ -26,6 +26,9 @@ export const Composer = ({
 	onPhotoClick,
 	onVoiceStart,
 	voice,
+	isPhotoEnabled = true,
+	isVoiceEnabled = true,
+	maxLength,
 }: ComposerProps) => {
 	const { t } = useTranslation()
 	const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -63,21 +66,27 @@ export const Composer = ({
 				isMultiline ? 'rounded-card pt-3 pr-1.5 pb-1.5 pl-4' : 'rounded-panel p-1.5',
 			)}
 		>
-			<IconButton size="sm" label={t('composer.addPhoto')} onClick={onPhotoClick}>
-				<Icon name="camera" size={ICON_SIZE.control} />
-			</IconButton>
+			{isPhotoEnabled && (
+				<IconButton size="sm" label={t('composer.addPhoto')} onClick={onPhotoClick}>
+					<Icon name="camera" size={ICON_SIZE.control} />
+				</IconButton>
+			)}
 			<Textarea
 				ref={textareaRef}
 				name="message"
 				aria-label={t('composer.label')}
 				placeholder={placeholder ?? t('composer.placeholder')}
 				value={value}
+				maxLength={maxLength}
 				onKeyDown={handleKeyDown}
 				onChange={(event) => {
 					onValueChange(event.target.value)
 					measure()
 				}}
-				className={cn(isMultiline ? 'order-first basis-full pr-2.5' : 'flex-1 py-2')}
+				className={cn(
+					isMultiline ? 'order-first basis-full pr-2.5' : 'flex-1 py-2',
+					!isPhotoEnabled && !isMultiline && 'pl-2.5',
+				)}
 			/>
 			{isMultiline ? (
 				<>
@@ -89,7 +98,11 @@ export const Composer = ({
 					</IconButton>
 				</>
 			) : (
-				<ComposerAction canSend={canSend} onVoiceStart={onVoiceStart} />
+				<ComposerAction
+					canSend={canSend}
+					onVoiceStart={isVoiceEnabled ? onVoiceStart : undefined}
+					isVoiceEnabled={isVoiceEnabled}
+				/>
 			)}
 		</form>
 	)

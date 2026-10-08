@@ -30,7 +30,20 @@ export const MacroTile = ({ macro, progress, variant = 'bar', index = 0 }: Macro
 	const isCompact = variant === 'compact'
 	const label = isCompact && macro === 'carbs' ? t('macro.carbsShort') : t(LABEL_KEY[macro])
 	const value = formatInteger(progress.value)
-	const goal = formatInteger(progress.goal)
+	const goal = progress.goal === null ? null : formatInteger(progress.goal)
+
+	const renderGoal = () => {
+		if (goal === null) {
+			return isCompact ? null : (
+				<span className={cn('text-small font-medium', ink)}>{t('macro.grams')}</span>
+			)
+		}
+		return (
+			<span className={cn('font-medium', ink, !isCompact && 'text-small')}>
+				{isCompact ? t('macro.ofGoalShort', { goal }) : t('macro.ofGoalGrams', { goal })}
+			</span>
+		)
+	}
 
 	return (
 		<div className={macroTileVariants({ macro, variant })}>
@@ -39,11 +52,9 @@ export const MacroTile = ({ macro, progress, variant = 'bar', index = 0 }: Macro
 			</Text>
 			<Text as="span" variant={isCompact ? 'caption' : 'body'} weight="extrabold" isTabular>
 				{value}
-				<span className={cn('font-medium', ink, !isCompact && 'text-small')}>
-					{isCompact ? t('macro.ofGoalShort', { goal }) : t('macro.ofGoalGrams', { goal })}
-				</span>
+				{renderGoal()}
 			</Text>
-			{!isCompact && (
+			{!isCompact && progress.goal !== null && (
 				<ProgressBar
 					label={label}
 					value={progress.value}

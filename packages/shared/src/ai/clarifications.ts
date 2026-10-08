@@ -68,8 +68,9 @@ export const isMultiMealLog = (log: LogFoodInput): boolean =>
 
 /**
  * «Курячі крильця / Свинячі ребра» for «свинячі крильця»: which food it was, not how much of it.
- * Checked on the shape, not only the model's word: one item, and every option names its own food —
- * so a cooked / dry question about 10 g of pasta can't slip past the thresholds as a "rename".
+ * Besides the model's `kind`, the shape must fit: one item, every option names its own food. That
+ * stops a rename without names or over several items; a cooked / dry question with both options
+ * named and wrongly marked "rename" still passes — only the prompt and eval guard against that.
  */
 export const isRenameClarification = (clarify: ClarifyInput): boolean => {
 	if (clarify.kind !== 'rename' || clarify.itemIndexes.length !== 1) return false

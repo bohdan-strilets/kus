@@ -18,13 +18,15 @@
 Ланцюжок у проді: клієнт → Vercel → edge Railway → API. `req.ip` там — вихідний IP Vercel, спільний для всіх, а `X-Real-IP` Railway перезаписує тим самим IP Vercel. Довіряти `X-Forwarded-For` не можна: домен Railway відкритий напряму, і заголовок підробляється.
 
 - **Секрет проксі.** `vercel.json` (`routes[].transforms`, `request.headers` / `set`) додає до кожного `/api` запиту `x-kus-proxy-secret` зі змінної Vercel `API_PROXY_SECRET` — у git секрету немає. API з `API_PROXY_SECRET` (обов'язкова в production, ≥ 32 символи) відповідає `404 NOT_FOUND` на все без правильного заголовка (порівняння SHA-256 у постійному часі, `common/proxy`), крім `GET /api/v1/health` для healthcheck Railway. Саме тому не `vercel.ts` з `deploymentEnv`: у документації vercel.com заголовки з env задокументовані лише для `transforms`.
-- **IP для throttler** — перше значення `x-vercel-forwarded-for` (Vercel перезаписує його й не пропускає чужі значення), і лише коли секрет налаштований, тобто запит гарантовано пройшов через Vercel. Без секрету (локально, тести) заголовок ігнорується. `trust proxy` вимкнено.
+- **IP для throttler** — `x-vercel-forwarded-for` (Vercel перезаписує його й не пропускає чужі значення; якщо раптом прийде список — останнє значення), і лише для запитів, які пройшли шлюз із правильним секретом. Відкритий `/health`, локальні запуски й тести беруть `req.ip`, тож підроблений заголовок не дає нового кошика. Без заголовка за проксі — один `warn` у лозі (усі ділять один кошик). `helmet()` стоїть перед шлюзом, тож його 404 мають ті самі заголовки. `trust proxy` вимкнено.
 - **Перевірити на preview до проду:** запит на домен Railway без заголовка → 404; health → 200; вхід з Wi-Fi і з мобільного інтернету не ділить ліміт (тобто `x-vercel-forwarded-for` доходить до зовнішнього origin — це єдине, чого документація прямо не каже; якщо ні — Routing Middleware з `ipAddress()` і власним заголовком).
 
 ### Деплой
 
 - **Railway** (`railway.json`): збірка з кореня монорепо (`--prod=false`, бо з `NODE_ENV=production` pnpm пропустив би devDependencies), `prisma migrate deploy` як pre-deploy, healthcheck `/api/v1/health` — він робить `SELECT 1`, тож деплой з недоступною БД не стає живим (`503 SERVICE_UNAVAILABLE`). Регіон EU West.
 - **Vercel** (`apps/web/vercel.json`): CSP (`default-src 'self'`, `style-src 'unsafe-inline'` для inline-стилів Motion, шрифти власні), `/assets/*` — `immutable`, оболонка й service worker — `no-cache`, SPA-fallback після файлової системи.
+- **Що CSP і `Permissions-Policy` ще закривають:** `microphone=()` зламає справжній голосовий ввід, а `connect-src 'self'` — Sentry (`*.ingest.sentry.io`); з появою кожного — розширити. Фото через `<input type="file" capture>` під `camera=()` не підпадає. Відсутній файл у `/assets` — 404 з `no-store`, не SPA-оболонка.
+- **Preview-деплої Vercel** ходять у той самий продакшн API (`dest` фіксований): гілка з поламаним фронтом працює з живими даними.
 - **Застаріла версія PWA:** після деплою старі чанки зникають; `vite:preloadError` → одне автоматичне перезавантаження (10 с захисту від циклу), далі — `RouteErrorPage` з кнопкою.
 - **Таймаут:** проксі Vercel обриває зовнішній запит через 120 с, а `AI_PARSE_DEADLINE_MS` — теж 120 с (2 спроби × 60 с) плюс робота з БД. Відкрите питання, рішення — за власником (див. звіт до етапу 5).
 

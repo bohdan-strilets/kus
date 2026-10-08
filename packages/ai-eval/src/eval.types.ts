@@ -1,3 +1,5 @@
+import type { ClarifyKind } from '@kus/shared'
+
 export type ActualDecision = 'log' | 'clarify' | 'edit' | 'not_food' | 'reply' | 'error'
 
 export interface CaseResult {
@@ -35,7 +37,9 @@ export interface ClarifyCall {
 	question: string
 	options: { label: string; kcal: number; name: string | null }[]
 	impactKcal: number
-	/** Passed the thresholds (≥ 80 kcal and ≥ 15 %, max 2) and would reach the user. */
+	/** rename — which food it was: kept without the kcal thresholds when its shape fits. */
+	kind: ClarifyKind
+	/** Passed the thresholds (≥ 80 kcal and ≥ 15 %, or a rename; max 2) and would reach the user. */
 	isKept: boolean
 }
 

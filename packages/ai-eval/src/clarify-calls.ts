@@ -28,6 +28,7 @@ export const getClarifyCalls = (
 					question: parsed.data.question,
 					options: parsed.data.options,
 					impactKcal: Math.max(...kcal) - Math.min(...kcal),
+					kind: parsed.data.kind,
 					isKept: kept.some((item) => item.question === parsed.data.question),
 				},
 			]

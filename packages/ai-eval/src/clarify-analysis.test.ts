@@ -65,6 +65,7 @@ const lowImpactCall: ClarifyCall = {
 		{ label: 'Великі', kcal: 170, name: null },
 	],
 	impactKcal: 50,
+	kind: 'value',
 	isKept: false,
 }
 

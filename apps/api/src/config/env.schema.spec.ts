@@ -82,7 +82,7 @@ describe('envSchema AI', () => {
 
 	it('defaults the timeout and the daily limit, and rejects a zero limit', () => {
 		const env = envSchema.parse(baseEnv)
-		expect(env.AI_TIMEOUT_MS).toBe(60_000)
+		expect(env.AI_TIMEOUT_MS).toBe(45_000)
 		expect(env.AI_DAILY_MESSAGE_LIMIT).toBe(100)
 		expect(envSchema.safeParse({ ...baseEnv, AI_DAILY_MESSAGE_LIMIT: '0' }).success).toBe(false)
 	})

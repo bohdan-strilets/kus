@@ -1,9 +1,10 @@
 import { Logger } from '@nestjs/common'
 import type { ConfigService } from '@nestjs/config'
-import { APIConnectionError } from 'openai'
+import { APIConnectionError, APIUserAbortError } from 'openai'
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { Env } from '../../config'
+import { AI_PARSE_DEADLINE_MS } from './ai.constants'
 import { AiUnavailableException, MessageTooLongException } from './ai.exceptions'
 import type { AiRepository } from './ai.repository'
 import { AiService, type ParseFoodParams } from './ai.service'
@@ -139,6 +140,32 @@ describe('AiService.parseFood', () => {
 		expect(repository.createRun).toHaveBeenCalledWith(
 			expect.objectContaining({ status: 'FAILED', errorCode: 'NETWORK', costUsd: 0 }),
 		)
+	})
+
+	it('gives up at the whole-parse deadline, so the turn answers before the Vercel proxy cuts it', async () => {
+		const deadline = new AbortController()
+		const timeoutSpy = vi.spyOn(AbortSignal, 'timeout').mockReturnValue(deadline.signal)
+		// the model never answers; only the deadline ends the call, as the real SDK does
+		vi.mocked(fake.client.post).mockImplementationOnce(
+			(_path, { signal }) =>
+				new Promise((_resolve, reject) => {
+					signal.addEventListener('abort', () => {
+						reject(new APIUserAbortError())
+					})
+				}),
+		)
+		try {
+			const parsing = service.parseFood(params)
+			deadline.abort()
+
+			await expect(parsing).rejects.toBeInstanceOf(AiUnavailableException)
+			expect(timeoutSpy).toHaveBeenCalledWith(AI_PARSE_DEADLINE_MS)
+			expect(repository.createRun).toHaveBeenCalledWith(
+				expect.objectContaining({ status: 'FAILED', errorCode: 'DEADLINE' }),
+			)
+		} finally {
+			timeoutSpy.mockRestore()
+		}
 	})
 
 	it('rejects a response that is not a chat completion', async () => {

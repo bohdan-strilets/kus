@@ -3,9 +3,11 @@ import { z } from 'zod'
 const DEFAULT_PORT = 3000
 // HS256 key: 32+ chars so a captured token can't be brute-forced offline
 const JWT_SECRET_MIN_LENGTH = 32
-// 8000 output tokens at ~180–200 tokens/s ≈ 45 s: a long answer must hit max_tokens, not the timeout
-const DEFAULT_AI_TIMEOUT_MS = 60_000
-const MAX_AI_TIMEOUT_MS = 120_000
+// 8000 output tokens at ~180–200 tokens/s ≈ 40–45 s: a long answer just fits; 2 attempts stay
+// inside the whole-parse deadline (AI_PARSE_DEADLINE_MS, 95 s, under Vercel's 120 s proxy limit)
+const DEFAULT_AI_TIMEOUT_MS = 45_000
+// one attempt can't usefully run past the whole-parse deadline
+const MAX_AI_TIMEOUT_MS = 95_000
 const DEFAULT_AI_DAILY_MESSAGE_LIMIT = 100
 // a shared secret between Vercel and the API: as long as a JWT key, for the same reason
 const PROXY_SECRET_MIN_LENGTH = 32

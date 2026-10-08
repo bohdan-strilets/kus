@@ -7,6 +7,8 @@ const JWT_SECRET_MIN_LENGTH = 32
 const DEFAULT_AI_TIMEOUT_MS = 60_000
 const MAX_AI_TIMEOUT_MS = 120_000
 const DEFAULT_AI_DAILY_MESSAGE_LIMIT = 100
+// a shared secret between Vercel and the API: as long as a JWT key, for the same reason
+const PROXY_SECRET_MIN_LENGTH = 32
 
 /** Empty or unset → undefined; the transform below then falls back to AI_MODEL. */
 const optionalModelSchema = z
@@ -56,6 +58,13 @@ export const envSchema = z
 		ALLOW_REGISTRATION: z.stringbool().default(false),
 		// unset = host-only cookies; the web app reaches the API via a same-origin rewrite (docs/architecture.md)
 		COOKIE_DOMAIN: z.string().trim().min(1).optional(),
+		// Vercel's rewrite adds it to every /api request; without it the API answers 404. Required in
+		// production, so the Railway domain can't be called directly with a forged client IP
+		API_PROXY_SECRET: z.string().trim().min(PROXY_SECRET_MIN_LENGTH).optional(),
+	})
+	.refine((env) => env.NODE_ENV !== 'production' || env.API_PROXY_SECRET !== undefined, {
+		path: ['API_PROXY_SECRET'],
+		message: 'Required in production',
 	})
 	.transform((env) => ({
 		...env,

@@ -1,12 +1,15 @@
 import { Module } from '@nestjs/common'
+import { ConfigService } from '@nestjs/config'
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core'
 import { ScheduleModule } from '@nestjs/schedule'
 import { minutes, ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler'
+import type { Request } from 'express'
 
 import { AllExceptionsFilter } from './common/filters'
 import { ResponseEnvelopeInterceptor } from './common/interceptors'
 import { AppValidationPipe } from './common/pipes'
-import { AppConfigModule } from './config'
+import { getClientIp } from './common/proxy'
+import { AppConfigModule, type Env } from './config'
 import { AuthModule } from './modules/auth/auth.module'
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard'
 import { ChatModule } from './modules/chat/chat.module'
@@ -22,7 +25,18 @@ const DEFAULT_THROTTLE = { ttl: minutes(1), limit: 100 }
 	imports: [
 		AppConfigModule,
 		PrismaModule,
-		ThrottlerModule.forRoot([DEFAULT_THROTTLE]),
+		ThrottlerModule.forRootAsync({
+			inject: [ConfigService],
+			useFactory: (config: ConfigService<Env, true>) => {
+				const isBehindProxy = config.get('API_PROXY_SECRET', { infer: true }) !== undefined
+				return {
+					throttlers: [DEFAULT_THROTTLE],
+					// the throttler types the request loosely; on the Express platform it is Express's Request
+					getTracker: (request: Record<string, unknown>) =>
+						getClientIp(request as unknown as Request, { isBehindProxy }),
+				}
+			},
+		}),
 		// daily cleanup of old AI tool calls
 		ScheduleModule.forRoot(),
 		HealthModule,

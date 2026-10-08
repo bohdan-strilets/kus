@@ -3,21 +3,22 @@ import type { NestExpressApplication } from '@nestjs/platform-express'
 import cookieParser from 'cookie-parser'
 import helmet from 'helmet'
 
+import { createProxyGate } from './common/proxy'
 import type { Env } from './config'
 
 export const API_PREFIX = 'api/v1'
-const TRUSTED_PROXY_HOPS = 1
+const HEALTH_PATH = `/${API_PREFIX}/health`
 
 /** HTTP-level setup shared by main.ts and e2e tests, so tests hit the same pipeline as prod. */
 export const setupApp = (app: NestExpressApplication): void => {
 	const config = app.get<ConfigService<Env, true>>(ConfigService)
 
 	app.setGlobalPrefix(API_PREFIX)
-	if (config.get('NODE_ENV', { infer: true }) === 'production') {
-		// Without it every client shares the proxy IP in the throttler. 1 hop fits only a direct
-		// client → Railway path; behind the planned Vercel rewrite req.ip is Vercel's egress IP.
-		// Deploy blocker, see docs/architecture.md («Відкрите перед деплоєм»)
-		app.set('trust proxy', TRUSTED_PROXY_HOPS)
+	// The client IP for the throttler comes from Vercel's header (common/proxy), not from
+	// X-Forwarded-For, so `trust proxy` stays off: Railway's own hop must not decide req.ip
+	const proxySecret = config.get('API_PROXY_SECRET', { infer: true })
+	if (proxySecret !== undefined) {
+		app.use(createProxyGate({ secret: proxySecret, exemptPaths: [HEALTH_PATH] }))
 	}
 	app.use(helmet())
 	app.use(cookieParser())

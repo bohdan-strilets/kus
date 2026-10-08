@@ -51,6 +51,23 @@ describe('envSchema auth', () => {
 	})
 })
 
+describe('envSchema API_PROXY_SECRET', () => {
+	it('is required in production, so the API never runs open behind Railway', () => {
+		expect(envSchema.safeParse({ ...baseEnv, NODE_ENV: 'production' }).success).toBe(false)
+		expect(
+			envSchema.safeParse({ ...baseEnv, NODE_ENV: 'production', API_PROXY_SECRET: 'p'.repeat(32) })
+				.success,
+		).toBe(true)
+	})
+
+	it('stays optional outside production and rejects a short secret', () => {
+		expect(envSchema.parse(baseEnv).API_PROXY_SECRET).toBeUndefined()
+		expect(envSchema.safeParse({ ...baseEnv, API_PROXY_SECRET: 'p'.repeat(31) }).success).toBe(
+			false,
+		)
+	})
+})
+
 describe('envSchema AI', () => {
 	it('falls back to AI_MODEL for empty or unset purpose models', () => {
 		const env = envSchema.parse({ ...baseEnv, AI_MODEL_VISION: '  ' })

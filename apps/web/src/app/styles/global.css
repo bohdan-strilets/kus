@@ -12,6 +12,11 @@
 	}
 }
 
+/* The chat feed fades out under the header instead of a hard cut (mockups/chat-compact.html: 36px) */
+@utility mask-fade-top {
+	mask-image: linear-gradient(to bottom, transparent 0, black --spacing(9));
+}
+
 @layer base {
 	html {
 		-webkit-text-size-adjust: 100%;

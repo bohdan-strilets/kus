@@ -5,6 +5,7 @@ import { DEV_ROUTES, ROUTES } from '@/shared/config'
 import {
 	ChatPage,
 	LoginPage,
+	ProfilePage,
 	ProgressPage,
 	RecipesPage,
 	RegisterPage,
@@ -62,6 +63,7 @@ export const router = createBrowserRouter([
 									{ path: ROUTES.today, element: <TodayPage /> },
 									{ path: ROUTES.progress, element: <ProgressPage /> },
 									{ path: ROUTES.recipes, element: <RecipesPage /> },
+									{ path: ROUTES.profile, element: <ProfilePage /> },
 									{ path: '*', element: <Navigate to={ROUTES.chat} replace /> },
 								],
 							},

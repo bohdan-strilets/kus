@@ -1,20 +1,21 @@
 import { Suspense } from 'react'
-import { Outlet } from 'react-router'
+import { Outlet, useMatch } from 'react-router'
 
-import { LogoutButton } from '@/features/logout'
+import { ROUTES } from '@/shared/config'
 import { AppLayout } from '@/shared/ui'
 import { BottomNav } from '@/widgets/bottom-nav'
 
 import { RouteLoader } from './RouteLoader'
 
-export const RootLayout = () => (
-	<AppLayout bottomNav={<BottomNav />}>
-		{/* temporary: logout moves to the profile screen once it exists (stage 6) */}
-		<div className="flex justify-end px-gutter pt-3">
-			<LogoutButton />
-		</div>
-		<Suspense fallback={<RouteLoader />}>
-			<Outlet />
-		</Suspense>
-	</AppLayout>
-)
+export const RootLayout = () => {
+	// the chat scrolls inside its feed, between the header and the composer
+	const isChat = useMatch({ path: ROUTES.chat, end: true }) !== null
+
+	return (
+		<AppLayout bottomNav={<BottomNav />} isFixedHeight={isChat}>
+			<Suspense fallback={<RouteLoader />}>
+				<Outlet />
+			</Suspense>
+		</AppLayout>
+	)
+}

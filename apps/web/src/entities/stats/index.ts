@@ -1,3 +1,4 @@
+export { getDayProgress } from './lib/get-day-progress'
 export { type DayStats, getDayStats } from './lib/get-day-stats'
 export { type GaugeState, getGaugeState, type GaugeStatus } from './lib/get-gauge-state'
 export {

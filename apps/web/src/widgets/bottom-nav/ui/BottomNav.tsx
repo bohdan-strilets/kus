@@ -9,7 +9,7 @@ import { BottomNavItem } from './BottomNavItem'
 interface BottomNavProps {
 	/** A new weekly summary is ready: dot on «Прогрес». The data source arrives with stage 6. */
 	hasProgressUpdate?: boolean
-	/** eaten / goal, fills the «Сьогодні» tab ring; 0 until the day's stats arrive (stage 4). */
+	/** eaten / goal, fills the «Сьогодні» tab ring (useTodayProgress); 0 without a goal. */
 	todayProgress?: number
 }
 

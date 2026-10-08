@@ -3,6 +3,7 @@ import type { DayResponse } from '@kus/shared'
 import { useTranslation } from 'react-i18next'
 
 import { DaySummaryCard, getDayStats } from '@/entities/stats'
+import { SetGoalLink } from '@/features/set-goal'
 import { Icon, ICON_SIZE, IconButton, Skeleton, Surface, Text } from '@/shared/ui'
 
 /** The day card under the chat header in its three states: loading, failed, the day. */
@@ -39,5 +40,12 @@ export const DaySummarySlot = ({ query }: { query: UseQueryResult<DayResponse> }
 		)
 	}
 	const { eaten, goal, macros } = getDayStats(query.data)
-	return <DaySummaryCard eaten={eaten} goal={goal} macros={macros} />
+	return (
+		<DaySummaryCard
+			eaten={eaten}
+			goal={goal}
+			macros={macros}
+			footer={goal === null ? <SetGoalLink /> : undefined}
+		/>
+	)
 }

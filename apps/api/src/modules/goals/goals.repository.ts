@@ -1,7 +1,15 @@
 import { Injectable } from '@nestjs/common'
 
-import type { Prisma, UserGoal } from '../../generated/prisma/client'
+import type { GoalType, Prisma, UserGoal } from '../../generated/prisma/client'
 import { PrismaService } from '../../prisma'
+
+export interface GoalValues {
+	type: GoalType
+	dailyKcal: number
+	proteinG: number
+	fatG: number
+	carbsG: number
+}
 
 @Injectable()
 export class GoalsRepository {
@@ -15,6 +23,18 @@ export class GoalsRepository {
 		return (tx ?? this.prisma).userGoal.findFirst({
 			where: { userId, validFrom: { lte: localDate } },
 			orderBy: { validFrom: 'desc' },
+		})
+	}
+
+	/** One goal per start day: a second change on the same day rewrites it. */
+	upsertForDate(
+		{ userId, validFrom, values }: { userId: string; validFrom: Date; values: GoalValues },
+		tx?: Prisma.TransactionClient,
+	): Promise<UserGoal> {
+		return (tx ?? this.prisma).userGoal.upsert({
+			where: { userId_validFrom: { userId, validFrom } },
+			create: { userId, validFrom, ...values },
+			update: values,
 		})
 	}
 }

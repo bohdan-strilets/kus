@@ -40,6 +40,53 @@ export const DECISION_CASES: EvalCase[] = [
 		reference: 'Inedible even with a meal named',
 	},
 	{
+		id: 'reply-water',
+		text: 'випив склянку води',
+		expect: { decision: 'reply' },
+		reference: 'Plain water has no kcal → a short reply, nothing logged',
+	},
+	{
+		id: 'reply-mineral-water',
+		text: 'пляшка мінералки 0,5',
+		expect: { decision: 'reply' },
+		reference: 'Mineral water with nothing added → reply, nothing logged',
+	},
+	{
+		id: 'log-water-and-banana',
+		text: "випив склянку води і з'їв банан",
+		expect: { decision: 'log', kcal: range(85, 125), categories: ['banana'] },
+		reference: 'Water is skipped, the banana is still logged (~105 kcal per 120 g edible, USDA)',
+	},
+	{
+		id: 'log-tea-no-sugar',
+		text: 'чашка зеленого чаю без цукру',
+		expect: { decision: 'log', kcal: range(0, 10), categories: ['tea'] },
+		reference: 'Tea without sugar is still logged (~2 kcal per 250 ml, USDA)',
+	},
+	{
+		id: 'odd-pork-wings',
+		text: 'свинячі крильця',
+		expect: {
+			decision: 'clarify',
+			kcal: range(150, 900),
+			clarifyRenames: true,
+		},
+		reference:
+			'Pigs have no wings: log the likely chicken wings and ask chicken wings vs pork ribs, each named',
+	},
+	{
+		id: 'odd-fried-ice',
+		text: 'смажений лід',
+		expect: { decision: 'reply' },
+		reference: 'Nothing plausible to log → reply asking what it was, no invented values',
+	},
+	{
+		id: 'odd-air-cutlet',
+		text: 'котлета з повітря',
+		expect: { decision: 'reply' },
+		reference: 'Nothing plausible to log → reply asking what it was, no invented values',
+	},
+	{
 		id: 'reply-hello',
 		text: 'привіт',
 		expect: { decision: 'reply' },

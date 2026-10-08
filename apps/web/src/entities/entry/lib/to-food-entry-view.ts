@@ -46,15 +46,16 @@ export const toFoodEntryView = (
 	const amount = formatEntryAmount(entry, t)
 	const getCaption = (): { amount: string; captionState: EntryCaptionState } => {
 		if (isClarifying) return { amount, captionState: 'clarifying' }
+		// a text edit closes the entry's open questions, so «змінено» is always the latest change
+		if (entry.isEdited) {
+			return { amount: t('entry.editedCaption', { amount }), captionState: 'plain' }
+		}
 		if (answer !== null) {
 			const answerText = answer.toLocaleLowerCase(INTL_LOCALE)
 			return {
 				amount: t('entry.answeredCaption', { amount, answer: answerText }),
 				captionState: 'plain',
 			}
-		}
-		if (entry.isEdited) {
-			return { amount: t('entry.editedCaption', { amount }), captionState: 'plain' }
 		}
 		if (entry.source === 'MEMORY') return { amount, captionState: 'usual' }
 		return { amount, captionState: 'plain' }

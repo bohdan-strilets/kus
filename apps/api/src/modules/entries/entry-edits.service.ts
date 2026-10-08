@@ -62,6 +62,13 @@ const getSourceMessageIds = (entries: FoodEntry[]): string[] => [
 	...new Set(entries.flatMap((entry) => entry.sourceMessageId ?? [])),
 ]
 
+/**
+ * New numbers for the same food are the user's (MANUAL); for a different food («не борщ, а суп») the
+ * model estimated them. Either way they are no longer a label's or a saved food's.
+ */
+const getValuesSource = (change: EntryChange): 'MANUAL' | 'ESTIMATE' =>
+	change.name === null ? 'MANUAL' : 'ESTIMATE'
+
 export interface EntryCorrection {
 	id: string
 	change: EntryChange
@@ -111,8 +118,7 @@ export class EntryEditsService {
 						category: after.category,
 						quantity: after.quantity,
 						isEdited: true,
-						// new numbers are no longer the saved food's
-						...(change.values && entry.source === 'MEMORY' ? { source: 'ESTIMATE' } : {}),
+						...(change.values ? { source: getValuesSource(change), myFoodId: null } : {}),
 					},
 				},
 				tx,

@@ -114,6 +114,58 @@ describe('chat edits of logged food (e2e, real DB, fake model)', () => {
 		expect(correction.after).toMatchObject({ grams: 600, kcal: 300 })
 	})
 
+	it('marks new values given in the chat as MANUAL, not the label they replaced', async () => {
+		await start()
+		const owner = await registerUser('owner@kus.app')
+		const labelBar = {
+			...BORSCHT_ITEM,
+			name: 'Батончик',
+			grams: 60,
+			kcal: 240,
+			protein: 20,
+			fat: 8,
+			carbs: 22,
+			category: 'protein_bar',
+			source: 'LABEL',
+		}
+		const values = { kcal: 200, protein: 15, fat: 6, carbs: 21.5, fiber: null }
+		fake.respond(
+			createCompletion([logFoodCall([labelBar])]),
+			createCompletion([
+				{ name: 'correct_entry', args: { changes: [{ ref: 'e1', values }] } },
+				reply('Оновив батончик'),
+			]),
+		)
+		await send(owner, 'батончик 60 г, на етикетці 400 ккал на 100 г')
+
+		await send(owner, 'там було 200 ккал')
+
+		const entry = await prisma.foodEntry.findFirstOrThrow()
+		expect(entry).toMatchObject({ kcal: 200, source: 'MANUAL', isEdited: true })
+	})
+
+	it('keeps a different food the model estimated as ESTIMATE, not MANUAL', async () => {
+		await start()
+		const owner = await registerUser('owner@kus.app')
+		const values = { kcal: 120, protein: 8, fat: 4, carbs: 13, fiber: null }
+		fake.respond(
+			createCompletion([logFoodCall([BORSCHT_ITEM])]),
+			createCompletion([
+				{
+					name: 'correct_entry',
+					args: { changes: [{ ref: 'e1', name: 'Суп курячий', category: 'soup', values }] },
+				},
+				reply('Змінив на курячий суп'),
+			]),
+		)
+		await send(owner, 'тарілка борщу')
+
+		await send(owner, 'це був не борщ, а курячий суп')
+
+		const entry = await prisma.foodEntry.findFirstOrThrow()
+		expect(entry).toMatchObject({ name: 'Суп курячий', category: 'soup', source: 'ESTIMATE' })
+	})
+
 	it('deletes an entry by ref and brings it back with restore_entry', async () => {
 		await start()
 		const owner = await registerUser('owner@kus.app')

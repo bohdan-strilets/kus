@@ -26,6 +26,14 @@ export class GoalsRepository {
 		})
 	}
 
+	/** Every goal that started on or before `to`, oldest first — enough to know each day's goal. */
+	findStartedBy({ userId, to }: { userId: string; to: Date }): Promise<UserGoal[]> {
+		return this.prisma.userGoal.findMany({
+			where: { userId, validFrom: { lte: to } },
+			orderBy: { validFrom: 'asc' },
+		})
+	}
+
 	/** One goal per start day: a second change on the same day rewrites it. */
 	upsertForDate(
 		{ userId, validFrom, values }: { userId: string; validFrom: Date; values: GoalValues },

@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest'
 
-import { getLocalDateString, getLocalHour, shiftLocalDate, toCalendarDate } from './local-date'
+import {
+	fromCalendarDate,
+	getLocalDateString,
+	getLocalHour,
+	shiftLocalDate,
+	toCalendarDate,
+} from './local-date'
 
 const WARSAW = 'Europe/Warsaw'
 
@@ -21,5 +27,9 @@ describe('local date', () => {
 	it('keeps the calendar day for the date formatters', () => {
 		const date = toCalendarDate('2026-10-05')
 		expect([date.getFullYear(), date.getMonth(), date.getDate()]).toEqual([2026, 9, 5])
+	})
+
+	it('turns a calendar Date back into its day', () => {
+		expect(fromCalendarDate(toCalendarDate('2026-03-09'))).toBe('2026-03-09')
 	})
 })

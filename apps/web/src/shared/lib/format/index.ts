@@ -1,4 +1,4 @@
-export { formatDayHeading, formatTime, formatWeekdayShort } from './format-date'
+export { formatDayHeading, formatTime, formatWeekdayLong, formatWeekdayShort } from './format-date'
 export {
 	formatDecimal,
 	formatInteger,

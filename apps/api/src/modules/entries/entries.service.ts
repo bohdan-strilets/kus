@@ -7,6 +7,7 @@ import {
 	type NutritionTotals,
 } from '@kus/shared'
 
+import { formatDbDate } from '../../common/time'
 import type { Prisma } from '../../generated/prisma/client'
 import {
 	roundNutrition,
@@ -93,6 +94,23 @@ export class EntriesService {
 			totals: sumEntries(meals.flatMap((meal) => meal.entries)),
 			meals: meals.map(toDayMealContext),
 		}
+	}
+
+	/** Per `YYYY-MM-DD` of the range: the kcal summed by the backend and how many entries. */
+	async getDaysKcal(
+		userId: string,
+		{ from, to }: { from: Date; to: Date },
+	): Promise<Map<string, { kcal: number; entryCount: number }>> {
+		const entries = await this.entriesRepository.findRangeEntries({ userId, from, to })
+		const days = new Map<string, { kcal: number; entryCount: number }>()
+		for (const entry of entries) {
+			const localDate = formatDbDate(entry.meal.localDate)
+			const day = days.get(localDate) ?? { kcal: 0, entryCount: 0 }
+			days.set(localDate, { kcal: day.kcal + entry.kcal, entryCount: day.entryCount + 1 })
+		}
+		return new Map(
+			[...days].map(([localDate, day]) => [localDate, { ...day, kcal: roundNutrition(day.kcal) }]),
+		)
 	}
 
 	/** «Сьогодні»: the day's meals with all their entries and the day totals. */

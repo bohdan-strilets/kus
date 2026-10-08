@@ -11,6 +11,10 @@ export const formatTime = (date: Date): string =>
 export const formatDayHeading = (date: Date): string =>
 	capitalize(date.toLocaleDateString(LOCALE, { weekday: 'long', day: 'numeric', month: 'long' }))
 
+/** «Понеділок» — the «Сьогодні» title for a day that is neither today nor yesterday. */
+export const formatWeekdayLong = (date: Date): string =>
+	capitalize(date.toLocaleDateString(LOCALE, { weekday: 'long' }))
+
 /** «Пн» — week strip day labels. */
 export const formatWeekdayShort = (date: Date): string =>
 	capitalize(date.toLocaleDateString(LOCALE, { weekday: 'short' }))

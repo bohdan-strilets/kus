@@ -1,14 +1,19 @@
 import type { UseQueryResult } from '@tanstack/react-query'
 import type { DayResponse } from '@kus/shared'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { DaySummaryCard, getDayStats } from '@/entities/stats'
-import { SetGoalLink } from '@/features/set-goal'
-import { Icon, ICON_SIZE, IconButton, Skeleton, Surface, Text } from '@/shared/ui'
+import { SetGoalLink, SetGoalSheet } from '@/features/set-goal'
+import { InlineError, Skeleton, Surface } from '@/shared/ui'
 
 /** The day card under the chat header in its three states: loading, failed, the day. */
 export const DaySummarySlot = ({ query }: { query: UseQueryResult<DayResponse> }) => {
 	const { t } = useTranslation()
+	const [isGoalOpen, setIsGoalOpen] = useState(false)
+	const openGoal = (): void => {
+		setIsGoalOpen(true)
+	}
 
 	if (query.isPending) {
 		return (
@@ -24,28 +29,19 @@ export const DaySummarySlot = ({ query }: { query: UseQueryResult<DayResponse> }
 		)
 	}
 	if (query.isError) {
-		return (
-			<Surface
-				variant="translucent"
-				role="alert"
-				className="flex items-center justify-between gap-3 py-2 pr-2 pl-4"
-			>
-				<Text variant="caption" tone="muted">
-					{t('chat.dayLoadError')}
-				</Text>
-				<IconButton label={t('common.retry')} onClick={() => void query.refetch()}>
-					<Icon name="retry" size={ICON_SIZE.control} />
-				</IconButton>
-			</Surface>
-		)
+		return <InlineError message={t('chat.dayLoadError')} onRetry={() => void query.refetch()} />
 	}
 	const { eaten, goal, macros } = getDayStats(query.data)
 	return (
-		<DaySummaryCard
-			eaten={eaten}
-			goal={goal}
-			macros={macros}
-			footer={goal === null ? <SetGoalLink /> : undefined}
-		/>
+		<>
+			<DaySummaryCard
+				eaten={eaten}
+				goal={goal}
+				macros={macros}
+				goalAction={goal === null ? undefined : { label: t('goal.change'), onClick: openGoal }}
+				footer={goal === null ? <SetGoalLink onClick={openGoal} /> : undefined}
+			/>
+			<SetGoalSheet isOpen={isGoalOpen} onOpenChange={setIsGoalOpen} goal={query.data.goal} />
+		</>
 	)
 }

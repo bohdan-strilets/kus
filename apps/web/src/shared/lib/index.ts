@@ -1,5 +1,11 @@
 export { cn } from './cn'
-export { getLocalDateString, getLocalHour, shiftLocalDate, toCalendarDate } from './date'
+export {
+	fromCalendarDate,
+	getLocalDateString,
+	getLocalHour,
+	shiftLocalDate,
+	toCalendarDate,
+} from './date'
 export {
 	formatDayHeading,
 	formatDecimal,
@@ -7,6 +13,7 @@ export {
 	formatSignedDecimal,
 	formatSignedInteger,
 	formatTime,
+	formatWeekdayLong,
 	formatWeekdayShort,
 	INTL_LOCALE,
 	MINUS_SIGN,

@@ -40,6 +40,7 @@ export {
 } from './hamster'
 export { Heading, type HeadingProps } from './heading'
 export { IconButton, type IconButtonProps } from './icon-button'
+export { InlineError, type InlineErrorProps } from './inline-error'
 export {
 	Icon,
 	ICON_NAMES,

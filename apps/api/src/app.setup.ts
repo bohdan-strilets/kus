@@ -14,13 +14,14 @@ export const setupApp = (app: NestExpressApplication): void => {
 	const config = app.get<ConfigService<Env, true>>(ConfigService)
 
 	app.setGlobalPrefix(API_PREFIX)
+	// first: the gate's 404s carry the same headers as every other answer
+	app.use(helmet())
 	// The client IP for the throttler comes from Vercel's header (common/proxy), not from
 	// X-Forwarded-For, so `trust proxy` stays off: Railway's own hop must not decide req.ip
 	const proxySecret = config.get('API_PROXY_SECRET', { infer: true })
 	if (proxySecret !== undefined) {
 		app.use(createProxyGate({ secret: proxySecret, exemptPaths: [HEALTH_PATH] }))
 	}
-	app.use(helmet())
 	app.use(cookieParser())
 	app.enableCors({
 		origin: config.get('CORS_ORIGIN', { infer: true }),

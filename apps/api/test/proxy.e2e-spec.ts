@@ -9,6 +9,8 @@ const SECRET = 's'.repeat(40)
 const LOGIN_URL = '/api/v1/auth/login'
 // 5/min on /auth/login (auth.constants): the 6th from one client is throttled
 const LOGIN_LIMIT = 5
+// DEFAULT_THROTTLE in app.module: every other route
+const DEFAULT_LIMIT = 100
 const NOT_FOUND = { statusCode: 404, errorCode: 'NOT_FOUND', details: {} }
 
 const credentials = { email: 'nobody@kus.app', password: 'wrong-password-123' }
@@ -37,6 +39,9 @@ describe('proxy gate and client IP behind Vercel (e2e, real DB)', () => {
 		const wrong = await login({ 'x-kus-proxy-secret': 'x'.repeat(40) }).expect(404)
 
 		expect(missing.body).toEqual(NOT_FOUND)
+		// helmet runs first: the gate's answer looks like any other
+		expect(missing.headers['x-powered-by']).toBeUndefined()
+		expect(missing.headers['x-content-type-options']).toBe('nosniff')
 		expect(apiErrorResponseSchema.parse(wrong.body)).toEqual(NOT_FOUND)
 	})
 
@@ -44,6 +49,50 @@ describe('proxy gate and client IP behind Vercel (e2e, real DB)', () => {
 		await start({ API_PROXY_SECRET: SECRET })
 
 		await request(app.getHttpServer()).get('/api/v1/health').expect(200)
+	})
+
+	it('keeps the exemption to the exact health path', async () => {
+		await start({ API_PROXY_SECRET: SECRET })
+		const server = app.getHttpServer()
+
+		for (const path of [
+			'/api/v1/health/',
+			'/API/V1/HEALTH',
+			'/api/v1/%68ealth',
+			'/api/v1/health/../auth/me',
+		]) {
+			const response = await request(server).get(path)
+			expect({ path, status: response.status }).toEqual({ path, status: 404 })
+		}
+	})
+
+	it('never trusts a client IP header on the open health path', async () => {
+		await start({ API_PROXY_SECRET: SECRET })
+		const server = app.getHttpServer()
+
+		// 100/min by default: a new "IP" per request must not give a new bucket
+		for (let index = 0; index < DEFAULT_LIMIT; index += 1) {
+			await request(server)
+				.get('/api/v1/health')
+				.set('x-vercel-forwarded-for', `198.51.100.${index % 250}`)
+				.expect(200)
+		}
+		await request(server)
+			.get('/api/v1/health')
+			.set('x-vercel-forwarded-for', '198.51.100.251')
+			.expect(429)
+	})
+
+	it('takes the last value if the client IP header ever holds a list', async () => {
+		await start({ API_PROXY_SECRET: SECRET })
+		const forged = (index: number) => ({
+			'x-kus-proxy-secret': SECRET,
+			'x-vercel-forwarded-for': `203.0.113.${index + 50}, 203.0.113.7`,
+		})
+
+		// the client controls the first entries, so changing them doesn't reset the limit
+		for (let index = 0; index < LOGIN_LIMIT; index += 1) await login(forged(index)).expect(401)
+		await login(forged(LOGIN_LIMIT)).expect(429)
 	})
 
 	it('throttles each client by the IP Vercel saw, not by the shared proxy IP', async () => {

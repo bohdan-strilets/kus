@@ -6,6 +6,7 @@ import type { NextFunction, Request, Response } from 'express'
 
 import { ErrorCodes } from '../exceptions'
 import { PROXY_SECRET_HEADER } from './proxy.constants'
+import { markFromProxy } from './proxy-requests'
 
 // equal-length digests: timingSafeEqual needs them, and the length of the secret doesn't leak
 const digest = (value: string): Buffer => createHash('sha256').update(value).digest()
@@ -24,8 +25,9 @@ interface ProxyGateOptions {
 
 /**
  * In production the API is reachable only through the Vercel rewrite, which adds the shared
- * secret. A direct call to the Railway domain gets the same 404 as an unknown route — nothing
- * tells it the API is there. Runs before everything else, so it never reaches the throttler.
+ * secret: a direct call to the Railway domain can't forge the client IP the throttler trusts, and
+ * gets the same 404 as an unknown route. It doesn't hide that an API runs there (the healthcheck
+ * is open). Runs before the throttler, body parsing and CORS.
  */
 export const createProxyGate = ({ secret, exemptPaths }: ProxyGateOptions) => {
 	const expected = digest(secret)
@@ -37,6 +39,7 @@ export const createProxyGate = ({ secret, exemptPaths }: ProxyGateOptions) => {
 		}
 		const received = request.header(PROXY_SECRET_HEADER)
 		if (received !== undefined && timingSafeEqual(digest(received), expected)) {
+			markFromProxy(request)
 			next()
 			return
 		}

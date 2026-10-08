@@ -1,7 +1,14 @@
 import { Injectable } from '@nestjs/common'
-import type { DayMealContext, LoggedMeal, NutritionTotals } from '@kus/shared'
+import {
+	type ClarifyOption,
+	type DayMealContext,
+	distributeOptionValues,
+	type EntryValues,
+	type LoggedMeal,
+	type NutritionTotals,
+} from '@kus/shared'
 
-import type { Prisma } from '../../generated/prisma/client'
+import type { FoodEntry, Prisma } from '../../generated/prisma/client'
 import {
 	roundNutrition,
 	sumEntries,
@@ -22,6 +29,30 @@ const roundEntry = (entry: NewFoodEntry): NewFoodEntry => ({
 	carbs: roundNutrition(entry.carbs),
 	fiber: entry.fiber === null ? null : roundNutrition(entry.fiber),
 })
+
+const toEntryValues = (entry: FoodEntry): EntryValues => ({
+	grams: entry.grams,
+	kcal: entry.kcal,
+	protein: entry.proteinG,
+	fat: entry.fatG,
+	carbs: entry.carbsG,
+	fiber: entry.fiberG,
+})
+
+const ENTRY_VALUE_KEYS = ['grams', 'kcal', 'protein', 'fat', 'carbs', 'fiber'] as const
+
+/** Only the fields that changed, as a Correction stores them; null if nothing did. */
+const getChangedValues = (
+	before: EntryValues,
+	after: EntryValues,
+): { before: Record<string, number | null>; after: Record<string, number | null> } | null => {
+	const keys = ENTRY_VALUE_KEYS.filter((key) => before[key] !== after[key])
+	if (keys.length === 0) return null
+	return {
+		before: Object.fromEntries(keys.map((key) => [key, before[key]])),
+		after: Object.fromEntries(keys.map((key) => [key, after[key]])),
+	}
+}
 
 export interface DaySummary {
 	totals: NutritionTotals
@@ -103,6 +134,35 @@ export class EntriesService {
 		return meals
 			.filter((meal) => meal.entries.length > 0)
 			.sort((a, b) => getMealRank(a.type) - getMealRank(b.type))
+	}
+
+	/**
+	 * Re-logs entries with the values of a tapped clarify answer, keeping a Correction (changed
+	 * fields only) per entry. `false` = nothing to apply: the entries are gone or would break limits.
+	 */
+	async applyOptionValues(
+		{ userId, entryIds, option }: { userId: string; entryIds: string[]; option: ClarifyOption },
+		tx: Prisma.TransactionClient,
+	): Promise<boolean> {
+		const entries = await this.entriesRepository.findActiveEntries({ userId, ids: entryIds }, tx)
+		// the answer's totals cover every entry it asked about: one deleted, the rest can't take it all
+		if (entries.length !== entryIds.length) return false
+		const current = entries.map(toEntryValues)
+		const updated = distributeOptionValues(current, option)
+		if (!updated) return false
+
+		const corrections = []
+		for (const [index, entry] of entries.entries()) {
+			const before = current[index]
+			const after = updated[index]
+			if (!before || !after) continue
+			const changed = getChangedValues(before, after)
+			if (!changed) continue
+			await this.entriesRepository.updateValues({ userId, id: entry.id, values: after }, tx)
+			corrections.push({ userId, foodEntryId: entry.id, ...changed })
+		}
+		await this.entriesRepository.createCorrections(corrections, tx)
+		return true
 	}
 
 	/** Chat cards: for each source message, the meals it logged into, in the day's order. */

@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common'
 
 import type { FoodEntry, Meal, Prisma } from '../../generated/prisma/client'
 import { PrismaService } from '../../prisma'
-import type { LoggableMealType } from '@kus/shared'
+import type { EntryValues, LoggableMealType } from '@kus/shared'
 
 import type { NewFoodEntry } from './entries.types'
 
@@ -76,6 +76,45 @@ export class EntriesRepository {
 			include: { entries: ACTIVE_ENTRIES },
 			orderBy: { eatenAt: 'asc' },
 		})
+	}
+
+	findActiveEntries(
+		{ userId, ids }: { userId: string; ids: string[] },
+		tx: Prisma.TransactionClient,
+	): Promise<FoodEntry[]> {
+		return tx.foodEntry.findMany({
+			where: { id: { in: ids }, userId, deletedAt: null },
+			orderBy: { createdAt: 'asc' },
+		})
+	}
+
+	async updateValues(
+		{ userId, id, values }: { userId: string; id: string; values: EntryValues },
+		tx: Prisma.TransactionClient,
+	): Promise<void> {
+		await tx.foodEntry.updateMany({
+			where: { id, userId, deletedAt: null },
+			data: {
+				grams: values.grams,
+				kcal: values.kcal,
+				proteinG: values.protein,
+				fatG: values.fat,
+				carbsG: values.carbs,
+				fiberG: values.fiber,
+			},
+		})
+	}
+
+	async createCorrections(
+		corrections: {
+			userId: string
+			foodEntryId: string
+			before: Prisma.InputJsonObject
+			after: Prisma.InputJsonObject
+		}[],
+		tx: Prisma.TransactionClient,
+	): Promise<void> {
+		await tx.correction.createMany({ data: corrections })
 	}
 
 	/** Meals that got entries from these messages, with all their active entries. */

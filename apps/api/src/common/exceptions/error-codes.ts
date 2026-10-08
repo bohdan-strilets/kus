@@ -32,6 +32,11 @@ export const ErrorCodes = {
 	MESSAGE_IN_PROGRESS: 'MESSAGE_IN_PROGRESS',
 	/** A clientMessageId was resent with a different text. */
 	CLIENT_MESSAGE_ID_REUSED: 'CLIENT_MESSAGE_ID_REUSED',
+	CLARIFICATION_NOT_FOUND: 'CLARIFICATION_NOT_FOUND',
+	/** Answered already by another tap (answers in words close nothing yet — stage 3C). */
+	CLARIFICATION_ALREADY_ANSWERED: 'CLARIFICATION_ALREADY_ANSWERED',
+	/** Its entries are gone, the option has no values (an older question) or breaks entry limits. */
+	CLARIFICATION_NOT_APPLICABLE: 'CLARIFICATION_NOT_APPLICABLE',
 } as const
 
 export type ErrorCode = (typeof ErrorCodes)[keyof typeof ErrorCodes]

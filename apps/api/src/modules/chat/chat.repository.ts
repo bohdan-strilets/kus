@@ -3,6 +3,7 @@ import type { ClarifyOption } from '@kus/shared'
 
 import {
 	type Clarification,
+	ClarificationStatus,
 	type Message,
 	MessageRole,
 	MessageStatus,
@@ -119,7 +120,15 @@ export class ChatRepository {
 		await tx.clarification.create({
 			data: {
 				...data,
-				options: options.map(({ label, kcal }) => ({ label, kcal })),
+				options: options.map(({ label, kcal, protein, fat, carbs, fiber, grams }) => ({
+					label,
+					kcal,
+					protein,
+					fat,
+					carbs,
+					fiber,
+					grams,
+				})),
 				entries: { create: entryIds.map((foodEntryId) => ({ foodEntryId })) },
 			},
 		})
@@ -180,6 +189,38 @@ export class ChatRepository {
 			orderBy: { id: 'desc' },
 			take,
 		})
+	}
+
+	findClarification(
+		{ userId, id }: { userId: string; id: string },
+		tx: Prisma.TransactionClient,
+	): Promise<ClarificationWithEntries | null> {
+		return tx.clarification.findFirst({
+			where: { id, userId },
+			include: { entries: { select: { foodEntryId: true } } },
+		})
+	}
+
+	/** Conditional on OPEN: `false` = a parallel tap answered it first, the caller rolls back. */
+	async markClarificationAnswered(
+		{
+			userId,
+			id,
+			optionIndex,
+			label,
+		}: { userId: string; id: string; optionIndex: number; label: string },
+		tx: Prisma.TransactionClient,
+	): Promise<boolean> {
+		const { count } = await tx.clarification.updateMany({
+			where: { id, userId, status: ClarificationStatus.OPEN },
+			data: {
+				status: ClarificationStatus.ANSWERED,
+				answerOptionIndex: optionIndex,
+				answer: label,
+				answeredAt: new Date(),
+			},
+		})
+		return count === 1
 	}
 
 	findClarifications({

@@ -10,10 +10,18 @@ import { ChatFeedService } from './chat-feed.service'
 import { ChatController } from './chat.controller'
 import { ChatRepository } from './chat.repository'
 import { ChatService } from './chat.service'
+import { ClarificationsController } from './clarifications.controller'
+import { ClarificationsService } from './clarifications.service'
 
 @Module({
 	imports: [AiModule, EntriesModule, GoalsModule, MemoryModule, UsersModule],
-	controllers: [ChatController],
-	providers: [ChatService, ChatFeedService, ChatContextService, ChatRepository],
+	controllers: [ChatController, ClarificationsController],
+	providers: [
+		ChatService,
+		ChatFeedService,
+		ChatContextService,
+		ChatRepository,
+		ClarificationsService,
+	],
 })
 export class ChatModule {}

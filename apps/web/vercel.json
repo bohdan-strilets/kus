@@ -36,7 +36,7 @@
 			]
 		},
 		{ "handle": "filesystem" },
-		{ "src": "/assets/(.*)", "status": 404 },
+		{ "src": "/assets/(.*)", "status": 404, "headers": { "Cache-Control": "no-store" } },
 		{
 			"src": "/(.*)",
 			"headers": { "Cache-Control": "no-cache" },

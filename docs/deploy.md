@@ -1,0 +1,181 @@
+# Деплой «Кусь»
+
+Як підняти прод з нуля, задеплоїти зміни з міграцією й відновити базу. Чому саме так (секрет шлюзу, IP клієнта, CSP, таймаути) — [`architecture.md`](architecture.md#web--api-один-origin-через-rewrite).
+
+## Прод
+
+| Що       | Де                                                                   |
+| -------- | -------------------------------------------------------------------- |
+| Web      | https://kus-psi.vercel.app (Vercel, `apps/web`)                      |
+| API      | https://kusapi-production.up.railway.app (Railway, сервіс `api`)     |
+| База     | PostgreSQL на Railway, лише приватна мережа                          |
+| Ланцюжок | телефон → Vercel (`/api/*` rewrite + секрет) → edge Railway → NestJS |
+
+Браузер ходить лише на домен Vercel. Прямий запит на домен Railway без секретного заголовка отримує `404` (крім `/api/v1/health`).
+
+## Railway
+
+Налаштування тримаємо **в UI Railway**, не в репо: config as code (`railway.json` / `railway.toml`) deprecated і працює до 2026-12-01. Поле «Config file path» у сервісі лишаємо порожнім.
+
+### Проєкт і база
+
+1. New Project → регіон **EU West (Amsterdam)** — найближче до Польщі. Той самий регіон для обох сервісів.
+2. Add → Database → **PostgreSQL**. Public Networking (TCP proxy) — **вимкнено**: API ходить у базу приватною мережею.
+3. У Postgres → **Backups** увімкнути **Daily** і **Weekly** (див. «Бекапи»).
+
+### Сервіс `api`
+
+Add → GitHub Repo → цей репозиторій, гілка `main`.
+
+| Налаштування        | Значення                                                                      |
+| ------------------- | ----------------------------------------------------------------------------- |
+| Root Directory      | порожньо (корінь репо: потрібен workspace `packages/shared`)                  |
+| Config file path    | порожньо                                                                      |
+| Build Command       | `pnpm install --frozen-lockfile --prod=false && pnpm --filter @kus/api build` |
+| Pre-deploy Command  | `pnpm --filter @kus/api exec prisma migrate deploy`                           |
+| Start Command       | `pnpm --filter @kus/api start`                                                |
+| Healthcheck Path    | `/api/v1/health`                                                              |
+| Healthcheck Timeout | `60`                                                                          |
+| Restart Policy      | On Failure                                                                    |
+| Watch Paths         | `apps/api/**`, `packages/shared/**`, `pnpm-lock.yaml`                         |
+| Networking          | Generate Domain → `kusapi-production.up.railway.app`, порт — той, що в `PORT` |
+
+- `--prod=false` обов'язковий: з `NODE_ENV=production` pnpm пропустив би devDependencies, а без них немає `nest build`, `prisma` і `dotenv` для `prisma.config.ts`.
+- `postinstall` у корені сам збирає `packages/shared` і генерує Prisma Client.
+- Pre-deploy виконується між збіркою й запуском, має доступ до змінних і приватної мережі. Якщо він падає, деплой зупиняється, а стара версія далі обслуговує запити.
+- Healthcheck робить `SELECT 1`: без бази він повертає `503`, і такий деплой не стає живим.
+- Node 22 береться з `.nvmrc` / `engines`.
+
+### Змінні сервісу `api`
+
+Значення секретів не пишемо ні в репо, ні в чат. Генерація секрету: `node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"`.
+
+| Змінна                              | Значення                                                                       |
+| ----------------------------------- | ------------------------------------------------------------------------------ |
+| `NODE_ENV`                          | `production` — вмикає `Secure`-cookie і робить `API_PROXY_SECRET` обов'язковим |
+| `DATABASE_URL`                      | посилання `${{Postgres.DATABASE_URL}}` (приватна адреса)                       |
+| `CORS_ORIGIN`                       | `https://kus-psi.vercel.app`                                                   |
+| `OPENROUTER_API_KEY`                | 🔒 ключ OpenRouter                                                             |
+| `AI_MODEL`                          | `anthropic/claude-sonnet-5.5`                                                  |
+| `JWT_ACCESS_SECRET`                 | 🔒 ≥ 32 символи                                                                |
+| `API_PROXY_SECRET`                  | 🔒 ≥ 32 символи, **те саме значення, що у Vercel**                             |
+| `ALLOW_REGISTRATION`                | `false` (на `true` — лише на час створення власного акаунта)                   |
+| `AI_TIMEOUT_MS`                     | не задавати (45 000; максимум 95 000)                                          |
+| `AI_DAILY_MESSAGE_LIMIT`            | не задавати (100)                                                              |
+| `AI_MODEL_VISION` / `AI_MODEL_CHAT` | не задавати (= `AI_MODEL`)                                                     |
+| `COOKIE_DOMAIN`                     | **не задавати** — cookie host-only на домені Vercel                            |
+| `PORT`                              | не задавати — Railway підставляє сам                                           |
+
+Невалідний або відсутній обов'язковий env → сервер не стартує, у логах — помилка валідації zod з назвою змінної.
+
+## Vercel
+
+New Project → цей репозиторій.
+
+| Налаштування     | Значення                                                            |
+| ---------------- | ------------------------------------------------------------------- |
+| Root Directory   | `apps/web`                                                          |
+| Framework Preset | Vite (збірка й output — за замовчуванням, `dist`)                   |
+| Install          | за замовчуванням (pnpm workspace з кореня)                          |
+| Змінні           | `API_PROXY_SECRET` 🔒 — Production і Preview, те саме, що в Railway |
+
+`apps/web/vercel.json` задає все інше: проксі `/api/*` на домен Railway з заголовком `x-kus-proxy-secret` (значення — зі змінної, у git його немає), CSP та інші заголовки безпеки, `immutable` для `/assets/*`, `no-cache` для оболонки й service worker, 404 для відсутніх файлів `/assets`, SPA-fallback.
+
+- Секрет вставляти **без пробілів і переносу рядка**: Vercel передає значення як є, і будь-яка різниця з Railway дає `404` на всьому API.
+- Новий домен Railway → поміняти `dest` у `vercel.json` (окремий коміт).
+- Preview-деплої ходять у той самий продакшн API: гілка з поламаним фронтом працює з живими даними.
+
+## Перший запуск з нуля
+
+1. Railway: проєкт, Postgres, бекапи, сервіс `api` з налаштуваннями й змінними вище. `ALLOW_REGISTRATION=true`.
+2. Дочекатися деплою: у логах pre-deploy — застосовані міграції, далі `API listening on port …`.
+3. Перевірити напряму:
+   - `curl https://kusapi-production.up.railway.app/api/v1/health` → `{"data":{"status":"ok"}}`;
+   - `curl https://kusapi-production.up.railway.app/api/v1/users/me` → `404` (шлюз працює).
+4. Vercel: проєкт, Root `apps/web`, `API_PROXY_SECRET` → деплой.
+5. З телефона: зареєструвати власний акаунт на домені Vercel.
+6. Railway: `ALLOW_REGISTRATION=false` → redeploy. Перевірка: реєстрація повертає відмову.
+7. Smoke-тест (нижче).
+
+## Деплой змін
+
+Звичайна зміна: push у `main` → Railway збирає `api`, якщо зачеплено watch paths, а Vercel збирає web.
+
+### Зміна з міграцією
+
+1. Локально: `pnpm --filter api prisma migrate dev --name <що_змінилось>` → закомітити теку `apps/api/prisma/migrations/<дата>_<назва>/` разом з кодом.
+2. Міграція має бути сумісна зі старим кодом: між pre-deploy і перемиканням старий API ще працює на новій схемі. Видалення чи перейменування колонки — у два деплої (спершу код перестає її читати, потім міграція її прибирає).
+3. Перед push: Railway → Postgres → Backups → **ручний бекап**.
+4. Push → збірка → pre-deploy `prisma migrate deploy` → healthcheck → нова версія.
+5. Перевірити, що міграції застосовані (нижче).
+
+### Як перевірити, що міграції застосовані
+
+- **Логи деплою → Pre-deploy**: `All migrations have been successfully applied` або `No pending migrations to apply`.
+- **Railway CLI** (`railway link` до проєкту, сервіс `api`):
+  ```bash
+  railway ssh -- pnpm --filter @kus/api exec prisma migrate status
+  ```
+  Очікується `Database schema is up to date!`.
+- **Railway → Postgres → Data → `_prisma_migrations`**: у кожного рядка заповнений `finished_at`, а `rolled_back_at` порожній. Останній рядок — тека з останнього коміту.
+
+Симптом незастосованих міграцій — `P2021` («table … does not exist») у логах API і `500` на запитах. Так було на першому деплої, бо pre-deploy не виконувався.
+
+### Міграція впала
+
+- Деплой зупинився на pre-deploy, стара версія працює далі. Помилка — в логах pre-deploy.
+- Міграцію, що застосувалась наполовину, Prisma позначає як невдалу (`P3009` на наступному `migrate deploy`). Виправити дані чи схему вручну, потім:
+  ```bash
+  railway ssh -- pnpm --filter @kus/api exec prisma migrate resolve --rolled-back <тека_міграції>
+  ```
+  і задеплоїти виправлену міграцію. Якщо щось зіпсовано — відновити ручний бекап з кроку 3.
+
+## Перевірка після деплою
+
+- `GET /api/v1/health` напряму на Railway → `200`; будь-який інший шлях напряму → `404`.
+- Вхід з Wi-Fi і з мобільного інтернету не ділить ліміт входу (5/хв). Якщо в логах API з'явилось `x-vercel-forwarded-for is missing behind the proxy` — Vercel не передав IP клієнта, усі ділять один ліміт (див. `architecture.md`).
+- Smoke-тест з телефона:
+  1. Вхід → чат відкривається, шапка з датою й кільцем.
+  2. «3 варені яйця і 100 г гречки» → картка, суми, уточнення «варена / суха».
+  3. Тап по варіанту → значення оновились, кільце змінилось.
+  4. «зміни гречку на 150 г» → «· змінено», бейдж перераховано.
+  5. «Сьогодні» → прийоми, кільце й тиждень такі самі, як у чаті.
+  6. «На екран Додому» → відкрити, перезапустити.
+  7. Вихід → `/login`, «Назад» не повертає в чат.
+- Логи Railway: лише ідентифікатори (`userId`, `messageId`), без тексту повідомлень, email і їжі.
+
+## Бекапи й відновлення
+
+### Що вмикаємо
+
+- **Volume backups** (Railway → Postgres → Backups): Daily (зберігається 6 днів) і Weekly (1 місяць); за потреби Monthly (3 місяці). Ручний бекап — з тієї ж вкладки, перед кожною міграцією.
+- Обмеження: ручний бекап — не більше 50 % розміру тому; **видалення тому видаляє і всі його бекапи**. Від цього захищає лише логічний дамп.
+- **Логічний дамп** раз на тиждень, на свій диск. Ніколи не в репо: там раціон і вага (RODO, репозиторій публічний).
+  1. Railway → Postgres → тимчасово увімкнути TCP proxy, взяти публічний `DATABASE_URL`.
+  2. `pg_dump --format=custom --no-owner --file kus-<дата>.dump "<публічний DATABASE_URL>"`
+  3. Вимкнути TCP proxy.
+
+### Відновлення
+
+- **З volume backup** (дані зіпсовано, том цілий): Postgres → Backups → вибрати бекап → Restore → застосувати зміну. Відновлення перезаписує поточні дані бази. CLI: `railway postgres pitr backup restore <ID>`.
+- **З логічного дампу** (том втрачено):
+  1. Створити новий сервіс PostgreSQL у тому ж проєкті й регіоні.
+  2. Тимчасово увімкнути йому TCP proxy → `pg_restore --no-owner --dbname "<його публічний DATABASE_URL>" kus-<дата>.dump` → вимкнути TCP proxy.
+  3. У сервісі `api` змінити `DATABASE_URL` на посилання на нову базу → redeploy. Pre-deploy докатить міграції, новіші за дамп.
+  4. Перевірити `migrate status` і smoke-тест.
+
+## Секрети
+
+- **`API_PROXY_SECRET`**: змінити у Vercel і Railway → redeploy обох. Між двома деплоями API відповідає `404`.
+- **`JWT_ACCESS_SECRET`**: змінити в Railway → redeploy. Чинні access-токени стануть недійсними; тихий refresh видасть нові, тож вхід заново не потрібен.
+- **`OPENROUTER_API_KEY`**: новий ключ в OpenRouter → змінна в Railway → redeploy → старий ключ відкликати.
+
+## Типові збої
+
+| Симптом                                         | Причина                                                                |
+| ----------------------------------------------- | ---------------------------------------------------------------------- |
+| `502 Application failed to respond` від Railway | сервер не стартував (env, збірка) або слухає не той порт — логи деплою |
+| `P2021` у логах, `500` на запитах               | міграції не застосовані: pre-deploy не налаштований чи впав            |
+| `404` на всьому API через Vercel                | `API_PROXY_SECRET` у Vercel і Railway відрізняються (пробіл, перенос)  |
+| Деплой не стає живим, healthcheck `503`         | API не дістається бази: `DATABASE_URL`, стан Postgres                  |
+| Усі ділять один ліміт входу                     | немає `x-vercel-forwarded-for` за проксі — warn у логах API            |

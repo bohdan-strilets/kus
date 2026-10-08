@@ -24,7 +24,7 @@
 		},
 		{
 			"src": "/api/(.*)",
-			"dest": "https://__RAILWAY_API_HOST__/api/$1",
+			"dest": "https://kusapi-production.up.railway.app/api/$1",
 			"transforms": [
 				{
 					"type": "request.headers",

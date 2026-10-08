@@ -24,4 +24,14 @@ export class UsersRepository {
 	findByEmail(email: string, tx?: Prisma.TransactionClient): Promise<User | null> {
 		return (tx ?? this.prisma).user.findUnique({ where: { email } })
 	}
+
+	/** null when the user is gone (deleted account, stale token). */
+	async update(
+		{ id, data }: { id: string; data: Prisma.UserUpdateManyMutationInput },
+		tx?: Prisma.TransactionClient,
+	): Promise<User | null> {
+		const client = tx ?? this.prisma
+		const { count } = await client.user.updateMany({ where: { id }, data })
+		return count === 1 ? client.user.findUnique({ where: { id } }) : null
+	}
 }

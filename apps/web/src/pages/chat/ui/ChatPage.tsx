@@ -3,6 +3,7 @@ import { useState } from 'react'
 
 import { useLocalToday } from '@/entities/day'
 import { useSessionUser } from '@/entities/session'
+import type { Addressee } from '@/entities/user'
 import { Composer, useSendMessage } from '@/features/send-message'
 import { FEATURES } from '@/shared/config'
 import { ChatFeed } from '@/widgets/chat-feed'
@@ -15,10 +16,15 @@ export const ChatPage = () => {
 	const user = useSessionUser()
 	// the session guard renders /app only with a user; this keeps the types honest
 	if (!user) return null
-	return <ChatScreen userName={user.name ?? ''} timeZone={user.timezone} />
+	return (
+		<ChatScreen
+			addressee={{ name: user.name, addressAs: user.addressAs }}
+			timeZone={user.timezone}
+		/>
+	)
 }
 
-const ChatScreen = ({ userName, timeZone }: { userName: string; timeZone: string }) => {
+const ChatScreen = ({ addressee, timeZone }: { addressee: Addressee; timeZone: string }) => {
 	const today = useLocalToday(timeZone)
 	const header = useChatHeaderMode()
 	const [text, setText] = useState('')
@@ -27,14 +33,14 @@ const ChatScreen = ({ userName, timeZone }: { userName: string; timeZone: string
 	return (
 		<div className="flex min-h-0 flex-1 flex-col">
 			<ChatHeader
-				userName={userName}
+				addressee={addressee}
 				timeZone={timeZone}
 				today={today}
 				isCompact={header.mode !== 'full'}
 				onExpand={header.mode === 'focused' ? header.expand : undefined}
 			/>
 			<ChatFeed
-				userName={userName}
+				addressee={addressee}
 				timeZone={timeZone}
 				today={today}
 				onCompactChange={header.onScrolledUpChange}

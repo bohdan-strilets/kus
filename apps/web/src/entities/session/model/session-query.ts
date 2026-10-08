@@ -34,6 +34,11 @@ const replaceSession = (queryClient: QueryClient, user: AuthUser | null): void =
 	queryClient.setQueryData(SESSION_QUERY_KEY, user)
 }
 
+/** The same user, new profile fields (PATCH /users/me): the rest of the cache stays. */
+export const updateSessionUser = (queryClient: QueryClient, user: AuthUser): void => {
+	queryClient.setQueryData(SESSION_QUERY_KEY, user)
+}
+
 /** After a login or registration: the guards see the user at once, no extra /users/me. */
 export const setSessionUser = (queryClient: QueryClient, user: AuthUser): void => {
 	replaceSession(queryClient, user)

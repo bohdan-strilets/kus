@@ -1,5 +1,5 @@
-import { Injectable } from '@nestjs/common'
-import type { AuthUser } from '@kus/shared'
+import { Injectable, Logger } from '@nestjs/common'
+import type { AuthUser, UpdateMeRequest } from '@kus/shared'
 
 import type { Prisma, User } from '../../generated/prisma/client'
 import { UserNotFoundException } from './users.exceptions'
@@ -10,6 +10,7 @@ const toAuthUser = (user: User): AuthUser => ({
 	id: user.id,
 	email: user.email,
 	name: user.name,
+	addressAs: user.addressAs,
 	locale: user.locale,
 	timezone: user.timezone,
 	createdAt: user.createdAt.toISOString(),
@@ -17,6 +18,8 @@ const toAuthUser = (user: User): AuthUser => ({
 
 @Injectable()
 export class UsersService {
+	private readonly logger = new Logger(UsersService.name)
+
 	constructor(private readonly usersRepository: UsersRepository) {}
 
 	/** `email` must already be normalized (lowercase) — the DB rejects anything else. */
@@ -32,6 +35,13 @@ export class UsersService {
 	async getMe(userId: string): Promise<AuthUser> {
 		const user = await this.usersRepository.findById(userId)
 		if (!user) throw new UserNotFoundException()
+		return toAuthUser(user)
+	}
+
+	async updateMe(userId: string, { addressAs }: UpdateMeRequest): Promise<AuthUser> {
+		const user = await this.usersRepository.update({ id: userId, data: { addressAs } })
+		if (!user) throw new UserNotFoundException()
+		this.logger.log(`Profile updated user=${userId}`)
 		return toAuthUser(user)
 	}
 }

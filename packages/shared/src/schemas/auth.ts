@@ -34,6 +34,8 @@ export const authUserSchema = z.object({
 	id: z.uuid(),
 	email: z.email(),
 	name: z.string().nullable(),
+	/** How Kusik greets the user; null → the vocative of name, when it is safe. */
+	addressAs: z.string().nullable(),
 	locale: localeSchema,
 	timezone: z.string(),
 	createdAt: z.iso.datetime(),

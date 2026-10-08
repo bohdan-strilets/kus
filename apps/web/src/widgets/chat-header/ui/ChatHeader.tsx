@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router'
 
 import { dayQueryOptions } from '@/entities/day'
 import { CompactDayBar, getDayStats } from '@/entities/stats'
-import { useGreeting, UserAvatar } from '@/entities/user'
+import { type Addressee, useGreeting, UserAvatar } from '@/entities/user'
 import { ROUTES } from '@/shared/config'
 import { formatDayHeading, toCalendarDate, TRANSITION } from '@/shared/lib'
 import { Heading, LogoMark, Text, WORDMARK } from '@/shared/ui'
@@ -12,7 +12,8 @@ import { Heading, LogoMark, Text, WORDMARK } from '@/shared/ui'
 import { DaySummarySlot } from './DaySummarySlot'
 
 export interface ChatHeaderProps {
-	userName: string
+	/** The avatar letter comes from the name, the greeting from the address. */
+	addressee: Addressee
 	timeZone: string
 	today: string
 	/** Scrolled up or typing: the compact bar (mockups/chat-compact.html). */
@@ -32,9 +33,15 @@ const SWAP = {
 }
 
 /** docs Header (chat): the date, the greeting, the avatar and the day card; collapses on scroll. */
-export const ChatHeader = ({ userName, timeZone, today, isCompact, onExpand }: ChatHeaderProps) => {
+export const ChatHeader = ({
+	addressee,
+	timeZone,
+	today,
+	isCompact,
+	onExpand,
+}: ChatHeaderProps) => {
 	const navigate = useNavigate()
-	const greeting = useGreeting({ name: userName, timeZone })
+	const greeting = useGreeting({ addressee, timeZone })
 	const dayQuery = useQuery(dayQueryOptions(today))
 	const stats = dayQuery.data ? getDayStats(dayQuery.data) : null
 	const openProfile = (): void => {
@@ -60,7 +67,7 @@ export const ChatHeader = ({ userName, timeZone, today, isCompact, onExpand }: C
 					) : (
 						<span className="flex-1" />
 					)}
-					<UserAvatar name={userName} size="sm" onClick={openProfile} />
+					<UserAvatar name={addressee.name ?? ''} size="sm" onClick={openProfile} />
 				</motion.header>
 			) : (
 				<motion.header key="full" {...SWAP} className="flex flex-col gap-0">
@@ -79,7 +86,7 @@ export const ChatHeader = ({ userName, timeZone, today, isCompact, onExpand }: C
 							</Text>
 							<Heading as="h1">{greeting}</Heading>
 						</div>
-						<UserAvatar name={userName} onClick={openProfile} />
+						<UserAvatar name={addressee.name ?? ''} onClick={openProfile} />
 					</div>
 					<div className="px-gutter">
 						<DaySummarySlot query={dayQuery} />

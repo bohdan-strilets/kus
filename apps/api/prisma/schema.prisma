@@ -225,6 +225,8 @@ model User {
   // stored lowercased by the backend
   email           String    @unique
   name            String?
+  // how Kusik greets the user («Богдане», «Бо»); null → the vocative of name, if one is safe
+  addressAs       String?   @map("address_as")
   locale          Locale    @default(uk)
   // IANA zone; defines the user's "day" for localDate
   timezone        String    @default("Europe/Warsaw")

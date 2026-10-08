@@ -1,16 +1,23 @@
 import { useTranslation } from 'react-i18next'
 
-import { getLocalHour, getVocative } from '@/shared/lib'
+import { getLocalHour } from '@/shared/lib'
 
+import { type Addressee, getAddressName } from '../lib/get-address-name'
 import { getGreetingKey } from '../lib/get-greeting-key'
 
 /**
- * «Добрий вечір, Богдане» in the user's timezone; without a safe vocative of the name — just
- * «Добрий вечір» (shared/lib/vocative).
+ * «Добрий вечір, Богдане» in the user's timezone: the chosen address, else a safe vocative of the
+ * name (shared/lib/vocative), else just «Добрий вечір».
  */
-export const useGreeting = ({ name, timeZone }: { name: string; timeZone: string }): string => {
+export const useGreeting = ({
+	addressee,
+	timeZone,
+}: {
+	addressee: Addressee
+	timeZone: string
+}): string => {
 	const { t } = useTranslation()
 	const greeting = t(getGreetingKey(getLocalHour(new Date(), timeZone)))
-	const vocative = getVocative(name)
-	return vocative === null ? greeting : t('chat.greetingWithName', { greeting, name: vocative })
+	const name = getAddressName(addressee)
+	return name === null ? greeting : t('chat.greetingWithName', { greeting, name })
 }

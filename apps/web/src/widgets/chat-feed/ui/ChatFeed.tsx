@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { messagesQueryOptions } from '@/entities/message'
+import type { Addressee } from '@/entities/user'
 import { useOutboxStore, useSendMessage } from '@/features/send-message'
 import { bubbleVariants, shiftLocalDate } from '@/shared/lib'
 import { Button, Loader, Text } from '@/shared/ui'
@@ -16,7 +17,8 @@ import { FeedItemView } from './FeedItemView'
 import { FeedSkeleton } from './FeedSkeleton'
 
 export interface ChatFeedProps {
-	userName: string
+	/** Who the new-day greeting calls by name. */
+	addressee: Addressee
 	timeZone: string
 	/** `YYYY-MM-DD` in the user's timezone. */
 	today: string
@@ -32,7 +34,7 @@ const OLDER_LOADER_SIZE = 28
  * The chat history, newest at the bottom: pages of GET /messages plus what is still on its way
  * from this device, grouped by the user's days.
  */
-export const ChatFeed = ({ userName, timeZone, today, onCompactChange }: ChatFeedProps) => {
+export const ChatFeed = ({ addressee, timeZone, today, onCompactChange }: ChatFeedProps) => {
 	const { t } = useTranslation()
 	const query = useInfiniteQuery(messagesQueryOptions)
 	const outbox = useOutboxStore((state) => state.items)
@@ -98,7 +100,7 @@ export const ChatFeed = ({ userName, timeZone, today, onCompactChange }: ChatFee
 				<FeedItemView
 					item={item}
 					isLatestReply={item.key === latestReplyKey}
-					userName={userName}
+					addressee={addressee}
 					timeZone={timeZone}
 					onRetry={retry}
 				/>

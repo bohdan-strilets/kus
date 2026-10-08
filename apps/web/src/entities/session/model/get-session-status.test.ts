@@ -7,6 +7,7 @@ const user: AuthUser = {
 	id: '0199a000-0000-7000-8000-000000000001',
 	email: 'me@kus.app',
 	name: 'Me',
+	addressAs: null,
 	locale: 'uk',
 	timezone: 'Europe/Warsaw',
 	createdAt: '2026-10-01T00:00:00.000Z',

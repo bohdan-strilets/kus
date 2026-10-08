@@ -6,6 +6,7 @@ export {
 	SESSION_QUERY_KEY,
 	sessionQueryOptions,
 	setSessionUser,
+	updateSessionUser,
 } from './model/session-query'
 export { type Session, useSession } from './model/use-session'
 export { useSessionUser } from './model/use-session-user'

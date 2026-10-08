@@ -12,7 +12,11 @@ import { CursorPaginatedResult } from '../../common/pagination'
 import { type Message, MessageRole } from '../../generated/prisma/client'
 import { EntriesService } from '../entries/entries.service'
 import { InvalidCursorException } from './chat.exceptions'
-import { type ClarificationWithEntries, ChatRepository } from './chat.repository'
+import {
+	type ClarificationWithEntries,
+	ClarificationsRepository,
+} from './clarifications.repository'
+import { ChatRepository } from './chat.repository'
 import { decodeMessageCursor, encodeMessageCursor } from './message-cursor'
 
 // only what the chat shows, so rows stored before options carried macros still read
@@ -64,6 +68,7 @@ const toChatMessage = (
 export class ChatFeedService {
 	constructor(
 		private readonly chatRepository: ChatRepository,
+		private readonly clarificationsRepository: ClarificationsRepository,
 		private readonly entriesService: EntriesService,
 	) {}
 
@@ -73,7 +78,7 @@ export class ChatFeedService {
 		const [meals, clarifications] = await Promise.all([
 			this.entriesService.getLoggedMealsByMessage(userId, sourceIds),
 			replies.length > 0
-				? this.chatRepository.findClarifications({
+				? this.clarificationsRepository.findClarifications({
 						userId,
 						messageIds: replies.map((message) => message.id),
 					})

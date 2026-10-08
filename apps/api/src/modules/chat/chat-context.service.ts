@@ -15,6 +15,7 @@ import { type Message, MessageRole } from '../../generated/prisma/client'
 import { type DaySummary, EntriesService } from '../entries/entries.service'
 import { GoalsService } from '../goals/goals.service'
 import { ChatRepository } from './chat.repository'
+import { ClarificationsRepository } from './clarifications.repository'
 import { buildEditContext, type EditRefIds } from './edit-context'
 
 export interface DayOverview {
@@ -42,6 +43,7 @@ const toHistoryTurn = (message: Message): HistoryTurn[] =>
 export class ChatContextService {
 	constructor(
 		private readonly chatRepository: ChatRepository,
+		private readonly clarificationsRepository: ClarificationsRepository,
 		private readonly entriesService: EntriesService,
 		private readonly goalsService: GoalsService,
 	) {}
@@ -82,7 +84,7 @@ export class ChatContextService {
 			}),
 			this.entriesService.getEditableEntries(userId, localDate),
 		])
-		const clarifications = await this.chatRepository.findOpenClarifications({
+		const clarifications = await this.clarificationsRepository.findOpenClarifications({
 			userId,
 			entryIds: editable.active.map((entry) => entry.id),
 			// a few spare: questions whose entries fell out of the context are skipped

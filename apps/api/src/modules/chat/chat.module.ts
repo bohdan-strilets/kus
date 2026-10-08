@@ -8,10 +8,13 @@ import { UsersModule } from '../users/users.module'
 import { ChatContextService } from './chat-context.service'
 import { ChatEditsService } from './chat-edits.service'
 import { ChatFeedService } from './chat-feed.service'
+import { ChatResponseService } from './chat-response.service'
+import { ChatTurnService } from './chat-turn.service'
 import { ChatController } from './chat.controller'
 import { ChatRepository } from './chat.repository'
 import { ChatService } from './chat.service'
 import { ClarificationsController } from './clarifications.controller'
+import { ClarificationsRepository } from './clarifications.repository'
 import { ClarificationsService } from './clarifications.service'
 
 @Module({
@@ -23,6 +26,9 @@ import { ClarificationsService } from './clarifications.service'
 		ChatContextService,
 		ChatEditsService,
 		ChatRepository,
+		ChatResponseService,
+		ChatTurnService,
+		ClarificationsRepository,
 		ClarificationsService,
 	],
 })

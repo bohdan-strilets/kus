@@ -8,7 +8,7 @@ import {
 import { z } from 'zod'
 
 import type { EntryWithMealType } from '../entries/entries.repository'
-import type { ClarificationWithEntries } from './chat.repository'
+import type { ClarificationWithEntries } from './clarifications.repository'
 
 const storedOptionsSchema = z.array(clarifyOptionSchema)
 

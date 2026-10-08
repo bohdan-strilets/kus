@@ -18,6 +18,7 @@ import {
 	OptionIndexOutOfRangeException,
 } from './chat.exceptions'
 import { ChatRepository } from './chat.repository'
+import { ClarificationsRepository } from './clarifications.repository'
 
 const storedOptionsSchema = z.array(clarifyOptionSchema)
 
@@ -41,6 +42,7 @@ export class ClarificationsService {
 	constructor(
 		private readonly prisma: PrismaService,
 		private readonly chatRepository: ChatRepository,
+		private readonly clarificationsRepository: ClarificationsRepository,
 		private readonly chatFeed: ChatFeedService,
 		private readonly entryEdits: EntryEditsService,
 	) {}
@@ -75,7 +77,7 @@ export class ClarificationsService {
 		tx: Prisma.TransactionClient,
 	): Promise<string> {
 		// scoped by userId: a question of another user is "not found", never "forbidden"
-		const clarification = await this.chatRepository.findClarification({ userId, id }, tx)
+		const clarification = await this.clarificationsRepository.findClarification({ userId, id }, tx)
 		if (!clarification) throw new ClarificationNotFoundException()
 		if (clarification.status !== ClarificationStatus.OPEN) {
 			throw new ClarificationAlreadyAnsweredException()
@@ -97,7 +99,7 @@ export class ClarificationsService {
 		const label = answer ?? option?.label
 		// a tap always has an option; words always have their text
 		if (label === undefined) throw new Error('Clarification answer has neither words nor an option')
-		const isMarked = await this.chatRepository.markClarificationAnswered(
+		const isMarked = await this.clarificationsRepository.markClarificationAnswered(
 			{ userId, id, optionIndex, answer: label, answerMessageId },
 			tx,
 		)

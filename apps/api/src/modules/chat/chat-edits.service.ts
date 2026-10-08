@@ -3,7 +3,7 @@ import type { EntryEdits } from '@kus/shared'
 
 import type { Prisma } from '../../generated/prisma/client'
 import { EntryEditsService } from '../entries/entry-edits.service'
-import { ChatRepository } from './chat.repository'
+import { ClarificationsRepository } from './clarifications.repository'
 import { ClarificationsService } from './clarifications.service'
 import type { EditRefIds } from './edit-context'
 
@@ -28,7 +28,7 @@ export class ChatEditsService {
 	constructor(
 		private readonly entryEdits: EntryEditsService,
 		private readonly clarifications: ClarificationsService,
-		private readonly chatRepository: ChatRepository,
+		private readonly clarificationsRepository: ClarificationsRepository,
 	) {}
 
 	async applyEdits(
@@ -64,7 +64,7 @@ export class ChatEditsService {
 		const corrected = await this.entryEdits.correctEntries({ userId, corrections }, tx)
 		const deleted = await this.entryEdits.deleteEntries({ userId, ids: deletedIds }, tx)
 		// the entry changed in words: its old options no longer fit (answered ones are not OPEN)
-		const dismissedReplyIds = await this.chatRepository.dismissOpenClarifications(
+		const dismissedReplyIds = await this.clarificationsRepository.dismissOpenClarifications(
 			{ userId, entryIds: [...corrections.map(({ id }) => id), ...deletedIds] },
 			tx,
 		)

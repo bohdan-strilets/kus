@@ -94,4 +94,15 @@ describe('entries from the API', () => {
 			category: 'porridge',
 		})
 	})
+
+	it('mark an entry changed in the chat, after an answer to a question', () => {
+		if (!buckwheat) throw new Error('fixture')
+		const edited = { ...buckwheat, grams: 250, isEdited: true }
+		expect(toFoodEntryView(edited, { isClarifying: false, answer: null }, t).amount).toBe(
+			'250 г · змінено',
+		)
+		expect(
+			toFoodEntryView(edited, { isClarifying: false, answer: 'трішки більше' }, t).amount,
+		).toBe('250 г · трішки більше')
+	})
 })

@@ -23,6 +23,7 @@ export const Composer = ({
 	placeholder,
 	onValueChange,
 	onSubmit,
+	onFocusChange,
 	onPhotoClick,
 	onVoiceStart,
 	voice,
@@ -79,6 +80,8 @@ export const Composer = ({
 				value={value}
 				maxLength={maxLength}
 				onKeyDown={handleKeyDown}
+				onFocus={() => onFocusChange?.(true)}
+				onBlur={() => onFocusChange?.(false)}
 				onChange={(event) => {
 					onValueChange(event.target.value)
 					measure()

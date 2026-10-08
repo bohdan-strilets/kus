@@ -33,7 +33,7 @@ export const formatEntryAmount = (
 interface EntryViewOptions {
 	/** An open clarification asks about this entry: «100 г · уточнюємо». */
 	isClarifying: boolean
-	/** The tapped answer of a closed clarification: «100 г · суха». */
+	/** The answer of a closed clarification, tapped or in words: «100 г · суха». */
 	answer: string | null
 }
 
@@ -52,6 +52,9 @@ export const toFoodEntryView = (
 				amount: t('entry.answeredCaption', { amount, answer: answerText }),
 				captionState: 'plain',
 			}
+		}
+		if (entry.isEdited) {
+			return { amount: t('entry.editedCaption', { amount }), captionState: 'plain' }
 		}
 		if (entry.source === 'MEMORY') return { amount, captionState: 'usual' }
 		return { amount, captionState: 'plain' }

@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 
@@ -13,13 +14,18 @@ export interface CompactDayBarProps {
 	/** null without a goal: «1 370 ккал» and «Б 78». */
 	goal: number | null
 	protein: MacroProgress
+	/** Given: the bar is a button that expands the header (while typing) instead of a link. */
+	onExpand?: () => void
 }
+
+const BAR_CLASS =
+	'flex min-h-tap min-w-0 flex-1 items-center gap-2 rounded-bubble-ai bg-surface/90 px-3 text-ink shadow-chip'
 
 /**
  * docs CompactBar — the chat header collapsed on scroll (mockups/chat-compact.html):
- * a mini ring, «1 370 / 2 200» and «Б 78/140»; a tap opens «Сьогодні».
+ * a mini ring, «1 370 / 2 200» and «Б 78/140»; a tap opens «Сьогодні», or expands the header.
  */
-export const CompactDayBar = ({ eaten, goal, protein }: CompactDayBarProps) => {
+export const CompactDayBar = ({ eaten, goal, protein, onExpand }: CompactDayBarProps) => {
 	const { t } = useTranslation()
 	const eatenText = formatInteger(eaten)
 	const goalText = goal === null ? null : formatInteger(goal)
@@ -35,12 +41,8 @@ export const CompactDayBar = ({ eaten, goal, protein }: CompactDayBarProps) => {
 				})
 			: t('gauge.compactLabelNoGoal', { eaten: eatenText, protein: proteinText })
 
-	return (
-		<Link
-			to={ROUTES.today}
-			aria-label={label}
-			className="flex min-h-tap min-w-0 flex-1 items-center gap-2 rounded-bubble-ai bg-surface/90 px-3 text-ink shadow-chip"
-		>
+	const content: ReactNode = (
+		<>
 			<MiniRing ratio={goal !== null && goal > 0 ? eaten / goal : 0} />
 			<Text as="span" weight="extrabold" isTabular className="whitespace-nowrap">
 				{eatenText}{' '}
@@ -53,6 +55,28 @@ export const CompactDayBar = ({ eaten, goal, protein }: CompactDayBarProps) => {
 					? t('macro.proteinOnly', { value: proteinText })
 					: t('macro.proteinShort', { value: proteinText, goal: proteinGoalText })}
 			</span>
+		</>
+	)
+
+	if (onExpand) {
+		return (
+			<button
+				type="button"
+				aria-label={label}
+				onClick={onExpand}
+				// the field keeps focus, so the keyboard stays up while the header opens
+				onMouseDown={(event) => {
+					event.preventDefault()
+				}}
+				className={BAR_CLASS}
+			>
+				{content}
+			</button>
+		)
+	}
+	return (
+		<Link to={ROUTES.today} aria-label={label} className={BAR_CLASS}>
+			{content}
 		</Link>
 	)
 }

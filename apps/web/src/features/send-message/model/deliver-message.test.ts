@@ -103,6 +103,43 @@ describe('deliverMessage', () => {
 		expect(feed?.pages[0]?.messages.map((item) => item.status)).toEqual(['COMPLETED', 'COMPLETED'])
 	})
 
+	it('reloads the feed after a resend: a replayed turn carries no changed cards', async () => {
+		const client = createClient()
+		const invalidate = vi.spyOn(client, 'invalidateQueries')
+		vi.mocked(postMessage).mockResolvedValueOnce(turn)
+
+		await deliverMessage(client, {
+			clientMessageId: CLIENT_ID,
+			text: 'тарілка супу',
+			isRetry: true,
+		})
+
+		expect(invalidate).toHaveBeenCalledWith({ queryKey: MESSAGES_QUERY_KEY })
+	})
+
+	it('refreshes an earlier card the turn changed in place', async () => {
+		const client = createClient()
+		const earlier = message({
+			id: '0199b3a4-0000-7000-8000-000000000001',
+			role: 'ASSISTANT',
+			content: 'Записав борщ',
+			clientMessageId: null,
+		})
+		client.setQueryData(MESSAGES_QUERY_KEY, {
+			pages: [{ messages: [earlier], nextCursor: null }],
+			pageParams: [null],
+		})
+		const corrected = { ...earlier, content: 'Записав борщ (змінено)' }
+		vi.mocked(postMessage).mockResolvedValueOnce({ ...turn, updatedMessages: [corrected] })
+
+		await deliverMessage(client, { clientMessageId: CLIENT_ID, text: 'зміни на 600 г' })
+
+		const feed = client.getQueryData<{ pages: MessagesPage[] }>(MESSAGES_QUERY_KEY)
+		const messages = feed?.pages[0]?.messages ?? []
+		expect(messages).toHaveLength(3)
+		expect(messages.find((item) => item.id === earlier.id)).toEqual(corrected)
+	})
+
 	it('shows the item as sending while the request runs', async () => {
 		const client = createClient()
 		let finish: (value: SendMessageResponse) => void = () => undefined

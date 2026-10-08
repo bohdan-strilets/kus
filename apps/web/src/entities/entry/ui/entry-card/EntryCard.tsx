@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { formatInteger } from '@/shared/lib'
+import { cn, formatInteger } from '@/shared/lib'
 import { Badge, Button, Text } from '@/shared/ui'
 
 import type { MacroAmounts } from '../../model/entry.types'
@@ -16,18 +16,34 @@ export interface EntryCardProps {
 	/** EntryItem lines and an open ClarifyCard between them. */
 	children: ReactNode
 	onEdit?: () => void
+	/** Right next to Kusik's head (no words above it): the bubble tail at the bottom left. */
+	hasTail?: boolean
 }
 
 /**
- * docs MealCard — Kusik's answer to a logged meal, shaped like his bubble (mockups/chat.html):
+ * docs MealCard — Kusik's answer to a logged meal: solid `surface`, radius 24; next to his head it
+ * takes the bubble tail (mockups/chat.html), under his words it is an attachment without one:
  * «Сніданок · 08:40» with the kcal badge, the food lines, «Б · В · Ж» and «Редагувати».
  * Macros are always protein → carbs → fat, even though the mockup prints Б · Ж · В.
  */
-export const EntryCard = ({ mealLabel, time, kcal, macros, children, onEdit }: EntryCardProps) => {
+export const EntryCard = ({
+	mealLabel,
+	time,
+	kcal,
+	macros,
+	children,
+	onEdit,
+	hasTail = true,
+}: EntryCardProps) => {
 	const { t } = useTranslation()
 
 	return (
-		<article className="overflow-hidden rounded-bubble-ai rounded-bl-tail bg-surface-glass shadow-card">
+		<article
+			className={cn(
+				'overflow-hidden bg-surface shadow-card',
+				hasTail ? 'rounded-bubble-ai rounded-bl-tail' : 'rounded-card',
+			)}
+		>
 			<header className="flex items-center justify-between px-3.5 pt-3 pb-1.5">
 				<Text as="span" variant="cardTitle">
 					{mealLabel}{' '}

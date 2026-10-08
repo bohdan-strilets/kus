@@ -24,18 +24,25 @@ interface MealCardProps {
 	placement: ReadonlyMap<string, ClarificationPlacement>
 	/** The newest reply opens its questions; older ones show the «суха?» hint (mockups/chat.html). */
 	isLatestReply: boolean
+	/** Next to Kusik's head; under his words it is an attachment without the tail. */
+	hasTail: boolean
 }
 
-const getAnswerLabel = (clarification: ClarificationResponse): string | null => {
-	if (clarification.status !== 'ANSWERED' || clarification.answeredOptionIndex === null) return null
-	return clarification.options[clarification.answeredOptionIndex]?.label ?? null
-}
+/** The tapped label or the user's words. */
+const getAnswerLabel = (clarification: ClarificationResponse): string | null =>
+	clarification.status === 'ANSWERED' ? clarification.answer : null
 
 /** docs MealCard with the food lines of this message and, under a line in doubt, its question. */
 const getOpenIds = (clarifications: readonly ClarificationResponse[]): ReadonlySet<string> =>
 	new Set(clarifications.filter((item) => item.status === 'OPEN').map((item) => item.id))
 
-export const MealCard = ({ meal, clarifications, placement, isLatestReply }: MealCardProps) => {
+export const MealCard = ({
+	meal,
+	clarifications,
+	placement,
+	isLatestReply,
+	hasTail,
+}: MealCardProps) => {
 	const { t } = useTranslation()
 	const { answer, pending } = useAnswerClarification()
 	const [openedIds, setOpenedIds] = useState<ReadonlySet<string>>(() =>
@@ -61,6 +68,7 @@ export const MealCard = ({ meal, clarifications, placement, isLatestReply }: Mea
 			time={formatTime(new Date(meal.eatenAt))}
 			kcal={meal.totals.kcal}
 			macros={meal.totals}
+			hasTail={hasTail}
 		>
 			{meal.entries.map((entry) => {
 				const clarification = findClarification(entry.id)

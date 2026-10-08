@@ -70,7 +70,8 @@
 			"UNKNOWN": "Не вдалося. Спробуй ще раз.",
 			"CLARIFICATION_NOT_FOUND": "Не знайшов це питання. Онови чат.",
 			"CLARIFICATION_ALREADY_ANSWERED": "На це питання вже є відповідь.",
-			"CLARIFICATION_NOT_APPLICABLE": "Цю відповідь уже не застосувати — напиши уточнення в чат."
+			"CLARIFICATION_NOT_APPLICABLE": "Цю відповідь уже не застосувати — напиши уточнення в чат.",
+			"ENTRY_CHANGED": "Запис щойно змінився в іншому вікні. Спробуй ще раз."
 		},
 		"validation": {
 			"REQUIRED": "Заповни це поле",
@@ -130,7 +131,12 @@
 		"profile": "Профіль і пам'ять"
 	},
 	"chat": {
-		"typing": "Kusik рахує…",
+		"waiting": {
+			"thinking": "Думаю…",
+			"second": "Ще секунду…",
+			"almost": "Майже готово…",
+			"long": "Довгий опис — рахую все по черзі"
+		},
 		"notSent": "Не надіслано",
 		"retry": "Спробувати ще",
 		"feedLabel": "Розмова з Kusik",
@@ -171,7 +177,8 @@
 		"remember": "Запам'ятати для {{name}}",
 		"amountGrams": "{{grams}} г",
 		"amountPieces": "{{count}} шт · {{grams}} г",
-		"answeredCaption": "{{amount}} · {{answer}}"
+		"answeredCaption": "{{amount}} · {{answer}}",
+		"editedCaption": "{{amount}} · змінено"
 	},
 	"macro": {
 		"protein": "Білки",

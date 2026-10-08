@@ -7,6 +7,7 @@ export type SendErrorKey =
 	| 'errors.api.DAILY_LIMIT_REACHED'
 	| 'errors.api.TOO_MANY_REQUESTS'
 	| 'errors.api.MESSAGE_IN_PROGRESS'
+	| 'errors.api.ENTRY_CHANGED'
 	| 'errors.api.SERVER'
 	| 'errors.api.UNKNOWN'
 
@@ -27,6 +28,8 @@ const RETRIABLE_ERRORS: Partial<Record<string, SendErrorKey>> = {
 	// the per-minute throttler: a minute later the same message is fine
 	TOO_MANY_REQUESTS: 'errors.api.TOO_MANY_REQUESTS',
 	MESSAGE_IN_PROGRESS: 'errors.api.MESSAGE_IN_PROGRESS',
+	// another tab changed the entry the message was about; the resend sees the new day
+	ENTRY_CHANGED: 'errors.api.ENTRY_CHANGED',
 }
 
 /** What Kusik's «ой» bubble says under a message that didn't go through. */
@@ -43,6 +46,9 @@ export const getSendError = (error: ApiError): SendError => {
 	}
 	return { messageKey: 'errors.api.UNKNOWN', canRetry: true }
 }
+
+/** A draft brought back from storage after a reload: the reason wasn't kept, a resend may work. */
+export const RESTORED_FAILURE: SendError = { messageKey: 'errors.api.UNKNOWN', canRetry: true }
 
 /** A message the server marked FAILED (seen after a reload): the reason is gone, a resend may work. */
 export const STORED_FAILURE: SendError = { messageKey: 'errors.api.AI_UNAVAILABLE', canRetry: true }

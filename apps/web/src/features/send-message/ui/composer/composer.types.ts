@@ -12,6 +12,8 @@ export interface ComposerProps {
 	placeholder?: string
 	onValueChange: (value: string) => void
 	onSubmit: () => void
+	/** The field took or lost focus — the chat header collapses while the keyboard is up. */
+	onFocusChange?: (isFocused: boolean) => void
 	onPhotoClick?: () => void
 	onVoiceStart?: () => void
 	/** Off: no camera button (FEATURES.photo). */

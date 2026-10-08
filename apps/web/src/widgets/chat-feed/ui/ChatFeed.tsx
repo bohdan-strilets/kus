@@ -115,7 +115,7 @@ export const ChatFeed = ({ userName, timeZone, today, onCompactChange }: ChatFee
 				ref={contentRef}
 				role="log"
 				aria-label={t('chat.feedLabel')}
-				className="flex min-h-full flex-col justify-end gap-2.5 px-gutter pt-3.5 pb-2.5"
+				className="flex min-h-full flex-col justify-end gap-4 px-gutter pt-3.5 pb-2.5"
 			>
 				<div ref={topRef} aria-hidden="true" />
 				{isFetchingNextPage && (

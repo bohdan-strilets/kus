@@ -16,7 +16,7 @@ export const useSendMessage = (): SendMessageActions => {
 			void deliverMessage(queryClient, { clientMessageId: crypto.randomUUID(), text: text.trim() })
 		},
 		retry: (params) => {
-			void deliverMessage(queryClient, params)
+			void deliverMessage(queryClient, { ...params, isRetry: true })
 		},
 	}
 }

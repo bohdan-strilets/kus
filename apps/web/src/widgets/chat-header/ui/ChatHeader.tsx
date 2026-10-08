@@ -15,8 +15,10 @@ export interface ChatHeaderProps {
 	userName: string
 	timeZone: string
 	today: string
-	/** The user scrolled up: the compact bar (mockups/chat-compact.html). */
+	/** Scrolled up or typing: the compact bar (mockups/chat-compact.html). */
 	isCompact: boolean
+	/** Typing: a tap on the bar expands the header instead of opening «Сьогодні». */
+	onExpand?: () => void
 }
 
 const FULL_LOGO_SIZE = 22
@@ -30,7 +32,7 @@ const SWAP = {
 }
 
 /** docs Header (chat): the date, the greeting, the avatar and the day card; collapses on scroll. */
-export const ChatHeader = ({ userName, timeZone, today, isCompact }: ChatHeaderProps) => {
+export const ChatHeader = ({ userName, timeZone, today, isCompact, onExpand }: ChatHeaderProps) => {
 	const navigate = useNavigate()
 	const greeting = useGreeting({ name: userName, timeZone })
 	const dayQuery = useQuery(dayQueryOptions(today))
@@ -49,7 +51,12 @@ export const ChatHeader = ({ userName, timeZone, today, isCompact }: ChatHeaderP
 				>
 					<LogoMark size={COMPACT_LOGO_SIZE} isLabelled={false} />
 					{stats ? (
-						<CompactDayBar eaten={stats.eaten} goal={stats.goal} protein={stats.macros.protein} />
+						<CompactDayBar
+							eaten={stats.eaten}
+							goal={stats.goal}
+							protein={stats.macros.protein}
+							onExpand={onExpand}
+						/>
 					) : (
 						<span className="flex-1" />
 					)}

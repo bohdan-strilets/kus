@@ -8,6 +8,8 @@ import { FEATURES } from '@/shared/config'
 import { ChatFeed } from '@/widgets/chat-feed'
 import { ChatHeader } from '@/widgets/chat-header'
 
+import { useChatHeaderMode } from '../model/use-chat-header-mode'
+
 /** The main screen (design/docs/screens.md → Чат): header with the day, the feed, the composer. */
 export const ChatPage = () => {
 	const user = useSessionUser()
@@ -18,23 +20,30 @@ export const ChatPage = () => {
 
 const ChatScreen = ({ userName, timeZone }: { userName: string; timeZone: string }) => {
 	const today = useLocalToday(timeZone)
-	const [isCompact, setIsCompact] = useState(false)
+	const header = useChatHeaderMode()
 	const [text, setText] = useState('')
 	const { send } = useSendMessage()
 
 	return (
 		<div className="flex min-h-0 flex-1 flex-col">
-			<ChatHeader userName={userName} timeZone={timeZone} today={today} isCompact={isCompact} />
+			<ChatHeader
+				userName={userName}
+				timeZone={timeZone}
+				today={today}
+				isCompact={header.mode !== 'full'}
+				onExpand={header.mode === 'focused' ? header.expand : undefined}
+			/>
 			<ChatFeed
 				userName={userName}
 				timeZone={timeZone}
 				today={today}
-				onCompactChange={setIsCompact}
+				onCompactChange={header.onScrolledUpChange}
 			/>
 			<div className="px-gutter pb-2.5">
 				<Composer
 					value={text}
 					onValueChange={setText}
+					onFocusChange={header.onComposerFocusChange}
 					onSubmit={() => {
 						send(text)
 						setText('')

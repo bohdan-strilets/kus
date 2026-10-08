@@ -66,7 +66,24 @@ export const getClarifyOptionErrors = (log: LogFoodInput, clarify: ClarifyInput)
 export const isMultiMealLog = (log: LogFoodInput): boolean =>
 	new Set(log.items.map((item) => item.mealType ?? log.mealType)).size > 1
 
-/** Drops questions below the thresholds and keeps the largest ones, fewer for several meals. */
+/**
+ * «Курячі крильця / Свинячі ребра» for «свинячі крильця»: which food it was, not how much of it.
+ * Checked on the shape, not only the model's word: one item, and every option names its own food —
+ * so a cooked / dry question about 10 g of pasta can't slip past the thresholds as a "rename".
+ */
+export const isRenameClarification = (clarify: ClarifyInput): boolean => {
+	if (clarify.kind !== 'rename' || clarify.itemIndexes.length !== 1) return false
+	const names = clarify.options.flatMap((option) =>
+		option.name === null ? [] : [option.name.trim().toLocaleLowerCase()],
+	)
+	return names.length === clarify.options.length && new Set(names).size === names.length
+}
+
+/**
+ * Drops questions below the thresholds and keeps the largest ones, fewer for several meals. A
+ * rename has no threshold — close kcal don't make a wrong food right — and goes first: until the
+ * food is known, the other numbers are guesses about the wrong thing.
+ */
 export const filterClarifications = (
 	log: LogFoodInput,
 	clarifications: ClarifyInput[],
@@ -74,18 +91,21 @@ export const filterClarifications = (
 	const isMultiMeal = isMultiMealLog(log)
 	const minImpactKcal = isMultiMeal ? MULTI_MEAL_MIN_IMPACT_KCAL : CLARIFY_MIN_IMPACT_KCAL
 	const maxCount = isMultiMeal ? MULTI_MEAL_MAX_CLARIFICATIONS : MAX_CLARIFICATIONS_PER_MESSAGE
+	const isWorthAsking = (clarify: ClarificationResult): boolean => {
+		if (isRenameClarification(clarify)) return true
+		const itemsKcal = clarify.itemIndexes.reduce(
+			(sum, index) => sum + (log.items[index]?.kcal ?? 0),
+			0,
+		)
+		return (
+			clarify.impactKcal >= minImpactKcal &&
+			clarify.impactKcal >= itemsKcal * CLARIFY_MIN_IMPACT_SHARE
+		)
+	}
+	const getRank = (clarify: ClarificationResult): number => (isRenameClarification(clarify) ? 1 : 0)
 	return clarifications
 		.map((clarify) => ({ ...clarify, impactKcal: getImpactKcal(clarify) }))
-		.filter((clarify) => {
-			const itemsKcal = clarify.itemIndexes.reduce(
-				(sum, index) => sum + (log.items[index]?.kcal ?? 0),
-				0,
-			)
-			return (
-				clarify.impactKcal >= minImpactKcal &&
-				clarify.impactKcal >= itemsKcal * CLARIFY_MIN_IMPACT_SHARE
-			)
-		})
-		.sort((a, b) => b.impactKcal - a.impactKcal)
+		.filter(isWorthAsking)
+		.sort((a, b) => getRank(b) - getRank(a) || b.impactKcal - a.impactKcal)
 		.slice(0, maxCount)
 }

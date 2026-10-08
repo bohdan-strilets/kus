@@ -144,6 +144,11 @@ export const clarifyOptionSchema = z.object({
 
 export type ClarifyOption = z.infer<typeof clarifyOptionSchema>
 
+/** value — how much or what state of the same food; rename — which food it really was. */
+export const clarifyKindSchema = z.enum(['value', 'rename'])
+
+export type ClarifyKind = z.infer<typeof clarifyKindSchema>
+
 export const clarifyInputSchema = z.object({
 	question: z
 		.string()
@@ -161,6 +166,11 @@ export const clarifyInputSchema = z.object({
 		})
 		.describe('0-based indexes of the log_food items this question is about'),
 	options: z.array(clarifyOptionSchema).min(CLARIFY_OPTIONS.min).max(CLARIFY_OPTIONS.max),
+	kind: clarifyKindSchema
+		.default('value')
+		.describe(
+			'"rename" only when the item is a food that doesn\'t exist or a strange name ("свинячі крильця") and each option is a different real food with its name; else "value"',
+		),
 })
 
 export type ClarifyInput = z.infer<typeof clarifyInputSchema>
@@ -192,7 +202,7 @@ const AI_TOOL_DESCRIPTIONS: Record<AiToolName, string> = {
 	log_food:
 		'Log everything the user says they ate or drank in this message. Always log your best estimate, even when you also ask a clarify question. Never to fix something already logged.',
 	clarify:
-		'Ask about logged items only when the answer changes their kcal a lot (by 80+ kcal and 15%+). Call together with log_food, at most 2 per message.',
+		'Ask about logged items only when the answer changes their kcal a lot (by 80+ kcal and 15%+), or with kind "rename" which real food a strange name was (no kcal threshold). Call together with log_food, at most 2 per message.',
 	correct_entry:
 		'Change entries already logged today (by ref): portion weight, values or what the food is. Use instead of logging the food again.',
 	delete_entry: 'Delete entries logged today (by ref) that the user wants removed.',

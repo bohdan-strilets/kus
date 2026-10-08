@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { filterClarifications, isMultiMealLog } from './clarifications.js'
+import { filterClarifications, isMultiMealLog, isRenameClarification } from './clarifications.js'
 import type { ParseRefs } from './entry-edits.js'
 import { parseToolCalls, type RawToolCall } from './parse-tool-calls.js'
 import { logFoodInputSchema } from './tools.js'
@@ -266,6 +266,18 @@ describe('filterClarifications', () => {
 		question: '?',
 		itemIndexes,
 		options: kcals.map((kcal, index) => option(`o${index}`, kcal)),
+		kind: 'value' as const,
+	})
+
+	/** «свинячі крильця» → which real food: options with their own names, close in kcal. */
+	const rename = (names: (string | null)[], kcals: number[], itemIndexes = [0]) => ({
+		question: 'Що це було?',
+		itemIndexes,
+		options: names.map((name, index) => ({
+			...option(name ?? `o${index}`, kcals[index] ?? 0),
+			name,
+		})),
+		kind: 'rename' as const,
 	})
 
 	it('keeps a question that changes kcal by 80+ and 15%+', () => {
@@ -292,6 +304,49 @@ describe('filterClarifications', () => {
 			clarify([1], [100, 250]),
 		])
 		expect(selected.map((item) => item.impactKcal)).toEqual([300, 150])
+	})
+
+	describe('a rename question (which food it really was)', () => {
+		it('is kept even when the foods are close in kcal', () => {
+			const wings = rename(['Курячі крильця', 'Свинячі ребра'], [150, 170])
+			expect(isRenameClarification(wings)).toBe(true)
+			expect(filterClarifications(log, [wings])).toHaveLength(1)
+		})
+
+		it('goes before a bigger question about amounts', () => {
+			const selected = filterClarifications(log, [
+				clarify([1], [100, 400]),
+				clarify([1], [100, 300]),
+				rename(['Курячі крильця', 'Свинячі ребра'], [150, 170]),
+			])
+			expect(selected.map((item) => item.kind)).toEqual(['rename', 'value'])
+		})
+
+		it('needs every option to name its own food, so «rename» is not a way past the threshold', () => {
+			const unnamed = rename(['Макарони сухі', null], [35, 13])
+			const sameName = rename(['Курячі крильця', 'курячі крильця '], [150, 170])
+			const twoItems = rename(['Курячі крильця', 'Свинячі ребра'], [150, 170], [0, 1])
+			for (const question of [unnamed, sameName, twoItems]) {
+				expect(isRenameClarification(question)).toBe(false)
+				expect(filterClarifications(log, [question])).toEqual([])
+			}
+		})
+
+		it('keeps the limit of one question for a whole day', () => {
+			const day = logFoodInputSchema.parse({
+				items: [
+					{ ...soup, mealType: 'LUNCH' },
+					{ ...egg, mealType: 'BREAKFAST' },
+				],
+				mealType: null,
+				reply: 'Ок',
+			})
+			const selected = filterClarifications(day, [
+				clarify([1], [100, 400]),
+				rename(['Курячі крильця', 'Свинячі ребра'], [150, 170]),
+			])
+			expect(selected.map((item) => item.kind)).toEqual(['rename'])
+		})
 	})
 
 	describe('for a message with several meals', () => {

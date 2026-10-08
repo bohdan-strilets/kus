@@ -75,6 +75,17 @@ export const DECISION_CASES: EvalCase[] = [
 			'Pigs have no wings: log the likely chicken wings and ask chicken wings vs pork ribs, each named',
 	},
 	{
+		id: 'odd-close-options',
+		text: "з'їв 150 г рибних крилець",
+		expect: {
+			decision: 'clarify',
+			kcal: range(150, 500),
+			clarifyRenames: true,
+		},
+		reference:
+			'Fish have no wings: chicken wings (~320) vs fish fingers (~290) are close in kcal, yet a rename question is kept without the threshold',
+	},
+	{
 		id: 'odd-fried-ice',
 		text: 'смажений лід',
 		expect: { decision: 'reply' },

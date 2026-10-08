@@ -117,6 +117,69 @@ describe('clarification answers (e2e, real DB, fake model)', () => {
 		)
 	})
 
+	it('renames the entry when the tapped option carries a new name', async () => {
+		await start()
+		const owner = await registerUser('owner@kus.app')
+		const pasta = {
+			...SOUP_ITEM,
+			name: 'Макарони варені',
+			grams: 100,
+			kcal: 160,
+			protein: 6,
+			fat: 1,
+			carbs: 31,
+			category: 'pasta',
+		}
+		const question = {
+			name: 'clarify',
+			args: {
+				question: 'Варені чи сухі?',
+				itemIndexes: [0],
+				options: [
+					{
+						label: 'Варені',
+						kcal: 160,
+						protein: 6,
+						fat: 1,
+						carbs: 31,
+						fiber: null,
+						grams: null,
+						name: null,
+					},
+					{
+						label: 'Сухі',
+						kcal: 360,
+						protein: 12,
+						fat: 2,
+						carbs: 74,
+						fiber: null,
+						grams: null,
+						name: 'Макарони сухі',
+					},
+				],
+			},
+		}
+		fake.respond(createCompletion([logFoodCall([pasta]), question]))
+		const sent = await owner.agent
+			.post('/api/v1/messages')
+			.send({ clientMessageId: randomUUID(), text: '100 г макаронів' })
+			.expect(201)
+		const clarificationId =
+			sendResponseSchema.parse(sent.body).data.assistantMessage.clarifications[0]?.id ?? ''
+
+		const response = await owner.agent
+			.post(answerUrl(clarificationId))
+			.send({ optionIndex: 1 })
+			.expect(200)
+
+		const message = answerResponseSchema.parse(response.body).data
+		expect(message.meals[0]?.entries[0]).toMatchObject({ name: 'Макарони сухі', kcal: 360 })
+		expect(message.clarifications[0]?.answer).toBe('Сухі')
+		const correction = await prisma.correction.findFirstOrThrow()
+		expect(correction.before).toMatchObject({ name: 'Макарони варені' })
+		expect(correction.after).toMatchObject({ name: 'Макарони сухі' })
+	})
+
 	it('IDOR: another user can neither answer nor learn of the question', async () => {
 		await start()
 		const owner = await registerUser('owner@kus.app')

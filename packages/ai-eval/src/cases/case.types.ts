@@ -1,11 +1,15 @@
 import { foodCategorySchema, type FoodParseContext, loggableMealTypeSchema } from '@kus/shared'
 import { z } from 'zod'
 
-/** `log` = logged without a question; `clarify` = logged and asked; `log_or_clarify` = either is fine. */
+/**
+ * `log` = logged without a question; `clarify` = logged and asked; `log_or_clarify` = either is
+ * fine; `edit` = only changed what was logged before (edit tools + reply), nothing new logged.
+ */
 export const expectedDecisionSchema = z.enum([
 	'log',
 	'clarify',
 	'log_or_clarify',
+	'edit',
 	'not_food',
 	'reply',
 ])
@@ -25,6 +29,39 @@ export const expectedValueSchema = z.union([
 
 export type ExpectedValue = z.infer<typeof expectedValueSchema>
 
+const resolutionKindSchema = z.enum(['option', 'values', 'close'])
+
+/** What the edit tools must change — exactly these refs; values of a changed entry as the backend computes them. */
+export const expectedEditsSchema = z.object({
+	corrected: z
+		.array(
+			z.object({
+				ref: z.string(),
+				grams: expectedValueSchema.optional(),
+				kcal: expectedValueSchema.optional(),
+				/** Lower-case stem the new name must contain ("суп"). */
+				nameIncludes: z.string().optional(),
+			}),
+		)
+		.optional(),
+	deleted: z.array(z.string()).optional(),
+	restored: z.array(z.string()).optional(),
+	resolved: z
+		.array(
+			z.object({
+				ref: z.string(),
+				/** Any of these is fine: "трішки жирна" may be values between options or the fatter one. */
+				kinds: z.array(resolutionKindSchema).min(1),
+				optionIndex: z.int().nonnegative().optional(),
+				kcal: expectedValueSchema.optional(),
+			}),
+		)
+		.optional(),
+})
+
+export type ExpectedEdits = z.infer<typeof expectedEditsSchema>
+export type ResolutionKind = z.infer<typeof resolutionKindSchema>
+
 export const evalCaseSchema = z.object({
 	id: z.string().min(1),
 	text: z.string().min(1),
@@ -37,6 +74,11 @@ export const evalCaseSchema = z.object({
 		categories: z.array(foodCategorySchema).optional(),
 		/** For reply cases: substrings the answer must contain (e.g. the remaining kcal). */
 		replyIncludes: z.array(z.string()).optional(),
+		/** Lower-case stems the answer must not contain — claims of a change that didn't happen ("змінив"). */
+		replyExcludes: z.array(z.string()).optional(),
+		edits: expectedEditsSchema.optional(),
+		/** Some kept clarify option renames the item ("Макарони сухі"). */
+		clarifyRenames: z.boolean().optional(),
 		/** Whole-day cases: an item (name stem) must land in this meal. */
 		itemMeals: z
 			.array(z.object({ stem: z.string().min(1), mealType: loggableMealTypeSchema }))

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { filterClarifications, isMultiMealLog } from './clarifications.js'
+import type { ParseRefs } from './entry-edits.js'
 import { parseToolCalls, type RawToolCall } from './parse-tool-calls.js'
 import { logFoodInputSchema } from './tools.js'
 
@@ -43,6 +44,7 @@ const option = (label: string, kcal: number) => ({
 	carbs: kcal / 4,
 	fiber: null,
 	grams: null,
+	name: null,
 })
 
 const call = (name: string, input: unknown): RawToolCall => ({
@@ -53,7 +55,12 @@ const call = (name: string, input: unknown): RawToolCall => ({
 const logFood = (items: unknown[]): RawToolCall =>
 	call('log_food', { items, mealType: null, reply: 'Записав!' })
 
-const options = { memoryRefs: new Set(['m1']) }
+const options: ParseRefs = {
+	memoryRefs: new Set(['m1']),
+	entries: new Map(),
+	deletedEntryRefs: new Set(),
+	clarifications: new Map(),
+}
 
 describe('parseToolCalls', () => {
 	it('returns a log decision for a valid log_food', () => {
@@ -189,6 +196,34 @@ describe('parseToolCalls', () => {
 		expect(result.ok).toBe(false)
 		if (result.ok) return
 		expect(result.errors[0]).toContain('options.1 split over items')
+	})
+
+	it('renames an item only in a question about one item', () => {
+		const pasta = {
+			...soup,
+			name: 'Макарони варені',
+			grams: 100,
+			kcal: 160,
+			protein: 6,
+			fat: 1,
+			carbs: 31,
+		}
+		const dry = { ...option('Сухі', 360), name: 'Макарони сухі' }
+		const single = call('clarify', {
+			question: 'Варені чи сухі?',
+			itemIndexes: [0],
+			options: [option('Варені', 160), dry],
+		})
+		expect(parseToolCalls([logFood([pasta]), single], options).ok).toBe(true)
+		const both = call('clarify', {
+			question: 'Варені чи сухі?',
+			itemIndexes: [0, 1],
+			options: [option('Варені', 320), { ...dry, kcal: 720, carbs: 180 }],
+		})
+		const result = parseToolCalls([logFood([pasta, pasta]), both], options)
+		expect(result.ok).toBe(false)
+		if (result.ok) return
+		expect(result.errors.join(' ')).toContain('name is only for a question about one item')
 	})
 
 	it('does not check macros of options about a drink with alcohol', () => {

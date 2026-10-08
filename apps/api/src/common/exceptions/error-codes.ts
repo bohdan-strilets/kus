@@ -33,10 +33,12 @@ export const ErrorCodes = {
 	/** A clientMessageId was resent with a different text. */
 	CLIENT_MESSAGE_ID_REUSED: 'CLIENT_MESSAGE_ID_REUSED',
 	CLARIFICATION_NOT_FOUND: 'CLARIFICATION_NOT_FOUND',
-	/** Answered already by another tap (answers in words close nothing yet — stage 3C). */
+	/** Answered already, by another tap or in words in the chat. */
 	CLARIFICATION_ALREADY_ANSWERED: 'CLARIFICATION_ALREADY_ANSWERED',
 	/** Its entries are gone, the option has no values (an older question) or breaks entry limits. */
 	CLARIFICATION_NOT_APPLICABLE: 'CLARIFICATION_NOT_APPLICABLE',
+	/** An entry the message changes was deleted or restored meanwhile (another tab); resend it. */
+	ENTRY_CHANGED: 'ENTRY_CHANGED',
 } as const
 
 export type ErrorCode = (typeof ErrorCodes)[keyof typeof ErrorCodes]

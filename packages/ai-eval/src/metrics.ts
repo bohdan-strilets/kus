@@ -1,5 +1,11 @@
-import type { EvalCase, ExpectedValue } from './cases/index.js'
-import type { ActualDecision, CaseResult, ErrorStats, ModelSummary } from './eval.types.js'
+import type { EvalCase, ExpectedEdits, ExpectedValue } from './cases/index.js'
+import type {
+	ActualDecision,
+	CaseResult,
+	EditResult,
+	ErrorStats,
+	ModelSummary,
+} from './eval.types.js'
 
 /** Floors for the % base, so 0.5 g of protein in an apple doesn't turn 1 g into a 100 % error. */
 export const MIN_BASE = { kcal: 50, protein: 5 } as const
@@ -25,8 +31,51 @@ export const isDecisionCorrect = (
 	const expected = evalCase.expect.decision
 	if (expected === 'log_or_clarify') return actual === 'log' || actual === 'clarify'
 	if (expected !== actual) return false
+	const text = (replyText ?? '').toLowerCase()
 	const mustInclude = evalCase.expect.replyIncludes ?? []
-	return mustInclude.every((text) => (replyText ?? '').includes(text))
+	const mustExclude = evalCase.expect.replyExcludes ?? []
+	return (
+		mustInclude.every((part) => (replyText ?? '').includes(part)) &&
+		mustExclude.every((stem) => !text.includes(stem))
+	)
+}
+
+const isSameSet = (expected: string[] = [], actual: string[] = []): boolean =>
+	expected.length === actual.length && expected.every((ref) => actual.includes(ref))
+
+const isWithin = (expected: ExpectedValue | undefined, actual: number | null): boolean =>
+	!expected || (actual !== null && getErrorPct(expected, actual, 0) === 0)
+
+/** Exactly the expected refs changed, each the expected way; nothing else touched. */
+export const isEditsCorrect = (expected: ExpectedEdits, actual: EditResult | null): boolean => {
+	const corrected = expected.corrected ?? []
+	const resolved = expected.resolved ?? []
+	const corrections = actual?.corrections ?? []
+	const resolutions = actual?.resolutions ?? []
+	return (
+		isSameSet(expected.deleted, actual?.deletions) &&
+		isSameSet(expected.restored, actual?.restorations) &&
+		isSameSet(
+			corrected.map(({ ref }) => ref),
+			corrections.map(({ ref }) => ref),
+		) &&
+		corrected.every((want) => {
+			const got = corrections.find(({ ref }) => ref === want.ref)
+			if (!got) return false
+			const isNamed = !want.nameIncludes || got.name.toLowerCase().includes(want.nameIncludes)
+			return isNamed && isWithin(want.grams, got.grams) && isWithin(want.kcal, got.kcal)
+		}) &&
+		isSameSet(
+			resolved.map(({ ref }) => ref),
+			resolutions.map(({ ref }) => ref),
+		) &&
+		resolved.every((want) => {
+			const got = resolutions.find(({ ref }) => ref === want.ref)
+			if (!got || !want.kinds.includes(got.kind)) return false
+			const isOption = want.optionIndex === undefined || want.optionIndex === got.optionIndex
+			return isOption && isWithin(want.kcal, got.kcal)
+		})
+	)
 }
 
 /** How many expected categories appear among the logged items (each item counts once). */
@@ -140,6 +189,14 @@ export const summarize = (model: string, pairs: Pair[]): ModelSummary => {
 				0,
 			),
 			total: pairs.reduce((sum, { evalCase }) => sum + (evalCase.expect.itemMeals?.length ?? 0), 0),
+		},
+		edits: {
+			correct: pairs.filter(
+				({ evalCase, result }) =>
+					evalCase.expect.edits !== undefined &&
+					isEditsCorrect(evalCase.expect.edits, result.edits),
+			).length,
+			total: pairs.filter(({ evalCase }) => evalCase.expect.edits !== undefined).length,
 		},
 		decisions: getDecisionStats(pairs),
 		costUsd: { total: totalCost, perCase: getAverage(results.map((r) => r.costUsd)) ?? 0 },

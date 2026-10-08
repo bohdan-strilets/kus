@@ -40,6 +40,9 @@ export const getClarifyOptionErrors = (log: LogFoodInput, clarify: ClarifyInput)
 	const source = items.every((item) => item.source === 'LABEL') ? 'LABEL' : 'ESTIMATE'
 	return clarify.options.flatMap((option, index) => {
 		const errors: string[] = []
+		if (option.name !== null && items.length > 1) {
+			errors.push(`clarify: options.${index}.name is only for a question about one item`)
+		}
 		const grams = option.grams ?? itemsGrams
 		if (grams > 0 && option.kcal / grams > MAX_KCAL_PER_GRAM) {
 			errors.push(`clarify: options.${index}.kcal is above ${MAX_KCAL_PER_GRAM} kcal per gram`)

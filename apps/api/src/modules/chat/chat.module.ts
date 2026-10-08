@@ -6,6 +6,7 @@ import { GoalsModule } from '../goals/goals.module'
 import { MemoryModule } from '../memory/memory.module'
 import { UsersModule } from '../users/users.module'
 import { ChatContextService } from './chat-context.service'
+import { ChatEditsService } from './chat-edits.service'
 import { ChatFeedService } from './chat-feed.service'
 import { ChatController } from './chat.controller'
 import { ChatRepository } from './chat.repository'
@@ -20,6 +21,7 @@ import { ClarificationsService } from './clarifications.service'
 		ChatService,
 		ChatFeedService,
 		ChatContextService,
+		ChatEditsService,
 		ChatRepository,
 		ClarificationsService,
 	],

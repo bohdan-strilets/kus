@@ -46,6 +46,7 @@ const turn: SendMessageResponse = {
 		goalKcal: null,
 		remainingKcal: null,
 	},
+	updatedMessages: [],
 }
 
 const networkError = new AxiosError('Network Error')

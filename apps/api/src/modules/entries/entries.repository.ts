@@ -2,11 +2,13 @@ import { Injectable } from '@nestjs/common'
 
 import type { FoodEntry, Meal, Prisma } from '../../generated/prisma/client'
 import { PrismaService } from '../../prisma'
-import type { EntryValues, LoggableMealType } from '@kus/shared'
+import type { LoggableMealType } from '@kus/shared'
 
 import type { NewFoodEntry } from './entries.types'
 
 export type MealWithEntries = Meal & { entries: FoodEntry[] }
+
+export type EntryWithMealType = FoodEntry & { meal: Pick<Meal, 'type'> }
 
 interface FindOrCreateMealData {
 	userId: string
@@ -16,7 +18,11 @@ interface FindOrCreateMealData {
 	sourceMessageId: string
 }
 
-const ACTIVE_ENTRIES = { where: { deletedAt: null }, orderBy: { createdAt: 'asc' } } as const
+// entries of one message share createdAt: the id keeps their order stable across updates
+const ACTIVE_ENTRIES = {
+	where: { deletedAt: null },
+	orderBy: [{ createdAt: 'asc' as const }, { id: 'asc' as const }],
+}
 
 @Injectable()
 export class EntriesRepository {
@@ -88,21 +94,57 @@ export class EntriesRepository {
 		})
 	}
 
-	async updateValues(
-		{ userId, id, values }: { userId: string; id: string; values: EntryValues },
+	findDeletedEntries(
+		{ userId, ids }: { userId: string; ids: string[] },
 		tx: Prisma.TransactionClient,
-	): Promise<void> {
-		await tx.foodEntry.updateMany({
-			where: { id, userId, deletedAt: null },
-			data: {
-				grams: values.grams,
-				kcal: values.kcal,
-				proteinG: values.protein,
-				fatG: values.fat,
-				carbsG: values.carbs,
-				fiberG: values.fiber,
-			},
+	): Promise<FoodEntry[]> {
+		return tx.foodEntry.findMany({
+			where: { id: { in: ids }, userId, deletedAt: { not: null } },
+			orderBy: { createdAt: 'asc' },
 		})
+	}
+
+	/** Every entry of the day's active meals, deleted ones too, oldest first. */
+	findDayEntries({
+		userId,
+		localDate,
+	}: {
+		userId: string
+		localDate: Date
+	}): Promise<EntryWithMealType[]> {
+		return this.prisma.foodEntry.findMany({
+			where: { userId, meal: { localDate, deletedAt: null } },
+			include: { meal: { select: { type: true } } },
+			// the id keeps e1…eN stable among the entries of one message
+			orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+		})
+	}
+
+	async updateEntry(
+		{
+			userId,
+			id,
+			data,
+		}: { userId: string; id: string; data: Prisma.FoodEntryUpdateManyMutationInput },
+		tx: Prisma.TransactionClient,
+	): Promise<boolean> {
+		const { count } = await tx.foodEntry.updateMany({
+			where: { id, userId, deletedAt: null },
+			data,
+		})
+		return count === 1
+	}
+
+	/** Soft delete (a date) or restore (null); only rows in the opposite state, so a repeat is a no-op. */
+	async setDeletedAt(
+		{ userId, ids, deletedAt }: { userId: string; ids: string[]; deletedAt: Date | null },
+		tx: Prisma.TransactionClient,
+	): Promise<number> {
+		const { count } = await tx.foodEntry.updateMany({
+			where: { id: { in: ids }, userId, deletedAt: deletedAt === null ? { not: null } : null },
+			data: { deletedAt },
+		})
+		return count
 	}
 
 	async createCorrections(
@@ -115,6 +157,27 @@ export class EntriesRepository {
 		tx: Prisma.TransactionClient,
 	): Promise<void> {
 		await tx.correction.createMany({ data: corrections })
+	}
+
+	/**
+	 * Messages with active entries in the meals these messages logged into (deleted entries count
+	 * for the link): every chat card of such a meal shows its totals.
+	 */
+	async findSourceMessagesOfSameMeals(
+		{ userId, messageIds }: { userId: string; messageIds: string[] },
+		tx?: Prisma.TransactionClient,
+	): Promise<string[]> {
+		const entries = await (tx ?? this.prisma).foodEntry.findMany({
+			where: {
+				userId,
+				deletedAt: null,
+				sourceMessageId: { not: null },
+				meal: { userId, entries: { some: { sourceMessageId: { in: messageIds } } } },
+			},
+			select: { sourceMessageId: true },
+			distinct: ['sourceMessageId'],
+		})
+		return entries.flatMap((entry) => entry.sourceMessageId ?? [])
 	}
 
 	/** Meals that got entries from these messages, with all their active entries. */

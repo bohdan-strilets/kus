@@ -6,6 +6,7 @@ import {
 	type GoalContext,
 	HISTORY_MAX_MESSAGES,
 	type HistoryTurn,
+	MAX_CONTEXT_OPEN_CLARIFICATIONS,
 	type MemoryFoodContext,
 } from '@kus/shared'
 
@@ -14,6 +15,7 @@ import { type Message, MessageRole } from '../../generated/prisma/client'
 import { type DaySummary, EntriesService } from '../entries/entries.service'
 import { GoalsService } from '../goals/goals.service'
 import { ChatRepository } from './chat.repository'
+import { buildEditContext, type EditRefIds } from './edit-context'
 
 export interface DayOverview {
 	summary: DaySummary
@@ -62,6 +64,7 @@ export class ChatContextService {
 		}
 	}
 
+	/** The model input and the ref → id map its edit tools are checked against. */
 	async buildContext({
 		userId,
 		timezone,
@@ -69,15 +72,23 @@ export class ChatContextService {
 		now,
 		localDate,
 		memory,
-	}: BuildContextParams): Promise<FoodParseContext> {
-		const [{ summary, goal, totals }, history] = await Promise.all([
+	}: BuildContextParams): Promise<{ context: FoodParseContext; refIds: EditRefIds }> {
+		const [{ summary, goal, totals }, history, editable] = await Promise.all([
 			this.getDayOverview(userId, localDate),
 			this.chatRepository.findHistory({
 				userId,
 				beforeId: message.id,
 				limit: HISTORY_MAX_MESSAGES,
 			}),
+			this.entriesService.getEditableEntries(userId, localDate),
 		])
+		const clarifications = await this.chatRepository.findOpenClarifications({
+			userId,
+			entryIds: editable.active.map((entry) => entry.id),
+			// a few spare: questions whose entries fell out of the context are skipped
+			take: MAX_CONTEXT_OPEN_CLARIFICATIONS * 2,
+		})
+		const { refIds, ...edit } = buildEditContext({ ...editable, clarifications })
 		const goalContext: GoalContext | null =
 			goal && totals.remainingKcal !== null
 				? {
@@ -90,12 +101,16 @@ export class ChatContextService {
 				: null
 
 		return {
-			localTime: formatLocalTime(now, timezone),
-			dayTotals: summary.totals,
-			meals: summary.meals,
-			goal: goalContext,
-			memory,
-			history: history.reverse().flatMap(toHistoryTurn),
+			context: {
+				localTime: formatLocalTime(now, timezone),
+				dayTotals: summary.totals,
+				meals: summary.meals,
+				...edit,
+				goal: goalContext,
+				memory,
+				history: history.reverse().flatMap(toHistoryTurn),
+			},
+			refIds,
 		}
 	}
 }

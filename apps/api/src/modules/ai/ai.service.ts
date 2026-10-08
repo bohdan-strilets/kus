@@ -10,6 +10,7 @@ import {
 	createFoodParseRequest,
 	type FoodParseContext,
 	type FoodParseDecision,
+	getParseRefs,
 	getRawToolCalls,
 	isOutputTruncated,
 	type ParsedToolCall,
@@ -45,10 +46,9 @@ export interface ParseFoodParams {
 	messageId: string
 	/** The user's calendar day, for the daily cost counter. */
 	localDate: Date
+	/** Its refs (saved foods, today's entries, open questions) are the only ones the model may use. */
 	context: FoodParseContext
 	text: string
-	/** Memory refs present in `context`; any other ref from the model is rejected. */
-	memoryRefs: ReadonlySet<string>
 }
 
 interface CompletionResult {
@@ -102,10 +102,11 @@ export class AiService {
 	async parseFood(params: ParseFoodParams): Promise<FoodParseDecision> {
 		const signal = AbortSignal.timeout(AI_PARSE_DEADLINE_MS)
 		let messages: AiRequestMessage[] = buildFoodParseMessages(params.context, params.text)
+		const refs = getParseRefs(params.context)
 
 		for (let attempt = 0; attempt <= AI_VALIDATION_RETRY_COUNT; attempt += 1) {
 			const { completion, durationMs } = await this.requestCompletion(params, messages, signal)
-			const result = parseToolCalls(getRawToolCalls(completion), { memoryRefs: params.memoryRefs })
+			const result = parseToolCalls(getRawToolCalls(completion), refs)
 			const isTruncated = isOutputTruncated(completion)
 			await this.recordRun(params, {
 				completion,

@@ -10,10 +10,20 @@ import {
 	refineFoodEntry,
 } from '../schemas/food-entry.js'
 import { CATEGORY_DESCRIPTION } from './category-description.js'
+import {
+	correctEntryInputSchema,
+	deleteEntryInputSchema,
+	resolveClarificationInputSchema,
+	restoreEntryInputSchema,
+} from './edit-tools.js'
 
 export const AI_TOOL_NAMES = {
 	logFood: 'log_food',
 	clarify: 'clarify',
+	correctEntry: 'correct_entry',
+	deleteEntry: 'delete_entry',
+	restoreEntry: 'restore_entry',
+	resolveClarification: 'resolve_clarification',
 	notFood: 'not_food',
 	reply: 'reply',
 } as const
@@ -124,6 +134,12 @@ export const clarifyOptionSchema = z.object({
 		.describe(
 			'Total grams of the referenced items only if this answer changes the portion weight ("маленька / велика тарілка"); else null',
 		),
+	name: foodEntryBaseSchema.shape.name
+		.nullable()
+		.default(null)
+		.describe(
+			'New item name if this answer changes what the item is ("Макарони сухі" for "Макарони варені"); only for a question about one item; else null',
+		),
 })
 
 export type ClarifyOption = z.infer<typeof clarifyOptionSchema>
@@ -164,19 +180,29 @@ export type ReplyInput = z.infer<typeof replyInputSchema>
 export const AI_TOOL_SCHEMAS: Record<AiToolName, z.ZodType> = {
 	log_food: logFoodInputSchema,
 	clarify: clarifyInputSchema,
+	correct_entry: correctEntryInputSchema,
+	delete_entry: deleteEntryInputSchema,
+	restore_entry: restoreEntryInputSchema,
+	resolve_clarification: resolveClarificationInputSchema,
 	not_food: notFoodInputSchema,
 	reply: replyInputSchema,
 }
 
 const AI_TOOL_DESCRIPTIONS: Record<AiToolName, string> = {
 	log_food:
-		'Log everything the user says they ate or drank in this message. Always log your best estimate, even when you also ask a clarify question.',
+		'Log everything the user says they ate or drank in this message. Always log your best estimate, even when you also ask a clarify question. Never to fix something already logged.',
 	clarify:
 		'Ask about logged items only when the answer changes their kcal a lot (by 80+ kcal and 15%+). Call together with log_food, at most 2 per message.',
+	correct_entry:
+		'Change entries already logged today (by ref): portion weight, values or what the food is. Use instead of logging the food again.',
+	delete_entry: 'Delete entries logged today (by ref) that the user wants removed.',
+	restore_entry: 'Bring back entries deleted today (by ref), e.g. "поверни".',
+	resolve_clarification:
+		'The user answers an open question in words: close it with the option that matches, with values between two options, or (both null) without values — then change the entry with correct_entry.',
 	not_food:
 		'The user claims to have eaten something inedible ("з\'їв камінь", "з\'їв телефон"). Nothing is logged.',
 	reply:
-		'Plain conversation: greetings, thanks, questions (including "how much can I still eat today" — answer from the day context). Nothing is logged.',
+		'Plain conversation: greetings, thanks, questions (including "how much can I still eat today" — answer from the day context). Nothing is logged. Also the chat answer of a message that only changes entries (correct_entry, delete_entry, restore_entry, resolve_clarification).',
 }
 
 /** OpenAI-compatible tool definition, as OpenRouter expects it. */

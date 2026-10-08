@@ -8,6 +8,7 @@ import {
 	countMealMatches,
 	getErrorPct,
 	isDecisionCorrect,
+	isEditsCorrect,
 	summarize,
 } from './metrics.js'
 
@@ -22,6 +23,7 @@ const result = (overrides: Partial<CaseResult>): CaseResult => ({
 	protein: null,
 	categories: [],
 	replyText: null,
+	edits: null,
 	costUsd: 0.001,
 	latencyMs: 1000,
 	inputTokens: 3000,
@@ -122,7 +124,66 @@ describe('repo cases', () => {
 
 	it('cover every decision', () => {
 		const decisions = new Set(REPO_CASES.map((item) => item.expect.decision))
-		expect([...decisions].sort()).toEqual(['clarify', 'log', 'log_or_clarify', 'not_food', 'reply'])
+		expect([...decisions].sort()).toEqual([
+			'clarify',
+			'edit',
+			'log',
+			'log_or_clarify',
+			'not_food',
+			'reply',
+		])
+	})
+})
+
+describe('isEditsCorrect', () => {
+	const edits = {
+		corrections: [{ ref: 'e3', name: 'Борщ', grams: 600, kcal: 300 }],
+		deletions: [],
+		restorations: [],
+		resolutions: [],
+	}
+
+	it('accepts exactly the expected change within its range', () => {
+		const expected = { corrected: [{ ref: 'e3', kcal: { min: 290, max: 310 } }] }
+		expect(isEditsCorrect(expected, edits)).toBe(true)
+	})
+
+	it('rejects a missing, an extra or an out-of-range change', () => {
+		expect(isEditsCorrect({ deleted: ['e1'] }, edits)).toBe(false)
+		expect(
+			isEditsCorrect({ corrected: [{ ref: 'e3', kcal: { min: 400, max: 500 } }] }, edits),
+		).toBe(false)
+		expect(isEditsCorrect({ corrected: [{ ref: 'e3' }] }, { ...edits, deletions: ['e1'] })).toBe(
+			false,
+		)
+		expect(isEditsCorrect({ deleted: ['e1'] }, null)).toBe(false)
+	})
+
+	it('checks the kind of an answer to a question', () => {
+		const answered = {
+			...edits,
+			corrections: [],
+			resolutions: [{ ref: 'c1', kind: 'values' as const, optionIndex: null, kcal: 700 }],
+		}
+		expect(
+			isEditsCorrect({ resolved: [{ ref: 'c1', kinds: ['values', 'option'] }] }, answered),
+		).toBe(true)
+		expect(isEditsCorrect({ resolved: [{ ref: 'c1', kinds: ['close'] }] }, answered)).toBe(false)
+	})
+})
+
+describe('isDecisionCorrect: honest replies', () => {
+	it('fails a reply that claims a change', () => {
+		const honest = {
+			id: 'x',
+			text: 'x',
+			reference: 'x',
+			expect: { decision: 'reply' as const, replyExcludes: ['змінив'] },
+		}
+		expect(isDecisionCorrect(honest, 'reply', 'Поки можу змінити лише сьогоднішні записи.')).toBe(
+			true,
+		)
+		expect(isDecisionCorrect(honest, 'reply', 'Змінив борщ на суп.')).toBe(false)
 	})
 })
 

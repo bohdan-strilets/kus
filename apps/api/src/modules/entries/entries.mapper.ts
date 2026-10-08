@@ -72,5 +72,4 @@ export const toDayMeal = (meal: MealWithEntries): LoggedMeal => toMeal(meal, mea
 export const toDayMealContext = (meal: MealWithEntries): DayMealContext => ({
 	type: meal.type,
 	kcal: sumEntries(meal.entries).kcal,
-	itemNames: meal.entries.map((entry) => entry.name),
 })

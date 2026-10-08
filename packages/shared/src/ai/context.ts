@@ -1,5 +1,11 @@
 // Builds the model input: static prompt (cacheable) + day/memory context + recent turns + the message.
 import type { FoodCategory, MealType } from '../schemas/enums.js'
+import {
+	type DeletedEntryContext,
+	formatEditContext,
+	type OpenClarificationContext,
+	type TodayEntryContext,
+} from './edit-context.js'
 import { SYSTEM_PROMPT } from './prompt.js'
 
 /** Rough size estimate; good enough to cap history without shipping a tokenizer. */
@@ -19,7 +25,6 @@ export interface MacroTotals {
 export interface DayMealContext {
 	type: MealType
 	kcal: number
-	itemNames: string[]
 }
 
 export interface GoalContext {
@@ -52,6 +57,10 @@ export interface FoodParseContext {
 	localTime: string
 	dayTotals: MacroTotals
 	meals: DayMealContext[]
+	/** Today's active entries, oldest first: the newest MAX_CONTEXT_ENTRIES. */
+	entries: TodayEntryContext[]
+	deletedEntries: DeletedEntryContext[]
+	openClarifications: OpenClarificationContext[]
 	goal: GoalContext | null
 	memory: MemoryFoodContext[]
 	/** Oldest first. */
@@ -92,10 +101,10 @@ const formatMemoryFood = (food: MemoryFoodContext): string => {
 export const formatContext = (context: FoodParseContext): string => {
 	const meals =
 		context.meals.length === 0
-			? 'Nothing logged yet today.'
-			: context.meals
-					.map((meal) => `- ${meal.type}: ${round(meal.kcal)} kcal (${meal.itemNames.join(', ')})`)
-					.join('\n')
+			? []
+			: [
+					`Meals: ${context.meals.map((meal) => `${meal.type} ${round(meal.kcal)} kcal`).join(', ')}.`,
+				]
 	const memory =
 		context.memory.length === 0
 			? 'Saved foods: none match this message.'
@@ -104,7 +113,8 @@ export const formatContext = (context: FoodParseContext): string => {
 	return [
 		`Local time: ${context.localTime}.`,
 		`Eaten today: ${formatMacros(context.dayTotals)}.`,
-		meals,
+		...meals,
+		...formatEditContext(context),
 		formatGoal(context.goal),
 		memory,
 	].join('\n')

@@ -1,14 +1,21 @@
 // Which tool the model picks: not_food (claims to have eaten something inedible), reply
 // (conversation), clarify (logged + a question that changes kcal by 80+ and 15 %+).
-import { range } from './case-builders.js'
+import { entry, range } from './case-builders.js'
 import type { EvalCase } from './case.types.js'
 
 /** 1240 eaten of 2000 — the backend gives the model the remainder, the model must not add up. */
 const DAY_WITH_GOAL: EvalCase['context'] = {
 	dayTotals: { kcal: 1240, protein: 70, fat: 45, carbs: 140 },
 	meals: [
-		{ type: 'BREAKFAST', kcal: 420, itemNames: ['Вівсянка на молоці', 'Кава з молоком'] },
-		{ type: 'LUNCH', kcal: 820, itemNames: ['Борщ', 'Котлета', 'Картопляне пюре'] },
+		{ type: 'BREAKFAST', kcal: 420 },
+		{ type: 'LUNCH', kcal: 820 },
+	],
+	entries: [
+		entry('e1', 'Вівсянка на молоці', 'BREAKFAST', 300, 330, 'porridge'),
+		entry('e2', 'Кава з молоком', 'BREAKFAST', 250, 90, 'coffee'),
+		entry('e3', 'Борщ', 'LUNCH', 350, 175, 'borscht'),
+		entry('e4', 'Котлета', 'LUNCH', 120, 300, 'meat'),
+		entry('e5', 'Картопляне пюре', 'LUNCH', 250, 345, 'potatoes'),
 	],
 	goal: { dailyKcal: 2000, protein: 140, fat: 70, carbs: 200, remainingKcal: 760 },
 }

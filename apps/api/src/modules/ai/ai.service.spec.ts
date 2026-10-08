@@ -24,7 +24,6 @@ const params: ParseFoodParams = {
 	localDate: new Date('2026-10-07T00:00:00Z'),
 	context: EMPTY_CONTEXT,
 	text: '3 варені яйця і 100 г гречки',
-	memoryRefs: new Set(),
 }
 
 describe('AiService.parseFood', () => {

@@ -91,6 +91,8 @@ export const clarificationResponseSchema = z.object({
 	status: clarificationStatusSchema,
 	/** The tapped option once ANSWERED by a tap; null while open or answered in words. */
 	answeredOptionIndex: z.int().nonnegative().nullable(),
+	/** The tapped option's label or the user's words; null while open. */
+	answer: z.string().nullable(),
 	entryIds: z.array(z.uuid()),
 })
 
@@ -126,6 +128,11 @@ export const sendMessageResponseSchema = z.object({
 	userMessage: chatMessageSchema,
 	assistantMessage: chatMessageSchema,
 	dayTotals: dayTotalsSchema,
+	/**
+	 * Earlier replies whose cards or questions this turn changed (an entry corrected, deleted or
+	 * restored, a question answered in words), as they are now. Empty on a replayed turn.
+	 */
+	updatedMessages: z.array(chatMessageSchema),
 })
 
 export type SendMessageResponse = z.infer<typeof sendMessageResponseSchema>

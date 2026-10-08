@@ -20,6 +20,19 @@ import {
 	filterClarifications,
 	getClarifyOptionErrors,
 } from './clarifications.js'
+import {
+	type CorrectEntryInput,
+	correctEntryInputSchema,
+	type DeleteEntryInput,
+	deleteEntryInputSchema,
+	type EntryEdits,
+	hasEdits,
+	type ResolveClarificationInput,
+	resolveClarificationInputSchema,
+	type RestoreEntryInput,
+	restoreEntryInputSchema,
+} from './edit-tools.js'
+import { getEditErrors, type ParseRefs } from './entry-edits.js'
 
 /** Hints appended to validation errors so the model can fix them on the retry. */
 const ERROR_HINTS: Record<string, string> = {
@@ -41,8 +54,10 @@ export interface ParsedToolCall {
 	error: string | null
 }
 
+/** `log` may also change earlier entries; `edit` only changes them and answers with `text`. */
 export type FoodParseDecision =
-	| { kind: 'log'; log: LogFoodInput; clarifications: ClarificationResult[] }
+	| { kind: 'log'; log: LogFoodInput; clarifications: ClarificationResult[]; edits: EntryEdits }
+	| { kind: 'edit'; edits: EntryEdits; text: string }
 	| { kind: 'not_food'; reply: string }
 	| { kind: 'reply'; text: string }
 
@@ -50,14 +65,16 @@ export type FoodParseResult =
 	| { ok: true; decision: FoodParseDecision; calls: ParsedToolCall[] }
 	| { ok: false; errors: string[]; calls: ParsedToolCall[] }
 
-export interface ParseToolCallsOptions {
-	/** Memory refs given to the model in this request; anything else is invented. */
-	memoryRefs: ReadonlySet<string>
-}
+/** Refs given to the model in this request (see getParseRefs). */
+export type ParseToolCallsOptions = ParseRefs
 
 type ValidatedCall =
 	| { name: typeof AI_TOOL_NAMES.logFood; data: LogFoodInput }
 	| { name: typeof AI_TOOL_NAMES.clarify; data: ClarifyInput }
+	| { name: typeof AI_TOOL_NAMES.correctEntry; data: CorrectEntryInput }
+	| { name: typeof AI_TOOL_NAMES.deleteEntry; data: DeleteEntryInput }
+	| { name: typeof AI_TOOL_NAMES.restoreEntry; data: RestoreEntryInput }
+	| { name: typeof AI_TOOL_NAMES.resolveClarification; data: ResolveClarificationInput }
 	| { name: typeof AI_TOOL_NAMES.notFood; data: NotFoodInput }
 	| { name: typeof AI_TOOL_NAMES.reply; data: ReplyInput }
 
@@ -65,32 +82,33 @@ type InputParse = { ok: true; call: ValidatedCall } | { ok: false; error: z.ZodE
 
 const isToolName = (name: string): name is AiToolName => Object.hasOwn(AI_TOOL_SCHEMAS, name)
 
+const toInputParse = <T>(
+	result: z.ZodSafeParseResult<T>,
+	toCall: (data: T) => ValidatedCall,
+): InputParse =>
+	result.success ? { ok: true, call: toCall(result.data) } : { ok: false, error: result.error }
+
 const parseInput = (name: AiToolName, value: unknown): InputParse => {
 	switch (name) {
-		case AI_TOOL_NAMES.logFood: {
-			const result = logFoodInputSchema.safeParse(value)
-			return result.success
-				? { ok: true, call: { name, data: result.data } }
-				: { ok: false, error: result.error }
-		}
-		case AI_TOOL_NAMES.clarify: {
-			const result = clarifyInputSchema.safeParse(value)
-			return result.success
-				? { ok: true, call: { name, data: result.data } }
-				: { ok: false, error: result.error }
-		}
-		case AI_TOOL_NAMES.notFood: {
-			const result = notFoodInputSchema.safeParse(value)
-			return result.success
-				? { ok: true, call: { name, data: result.data } }
-				: { ok: false, error: result.error }
-		}
-		case AI_TOOL_NAMES.reply: {
-			const result = replyInputSchema.safeParse(value)
-			return result.success
-				? { ok: true, call: { name, data: result.data } }
-				: { ok: false, error: result.error }
-		}
+		case AI_TOOL_NAMES.logFood:
+			return toInputParse(logFoodInputSchema.safeParse(value), (data) => ({ name, data }))
+		case AI_TOOL_NAMES.clarify:
+			return toInputParse(clarifyInputSchema.safeParse(value), (data) => ({ name, data }))
+		case AI_TOOL_NAMES.correctEntry:
+			return toInputParse(correctEntryInputSchema.safeParse(value), (data) => ({ name, data }))
+		case AI_TOOL_NAMES.deleteEntry:
+			return toInputParse(deleteEntryInputSchema.safeParse(value), (data) => ({ name, data }))
+		case AI_TOOL_NAMES.restoreEntry:
+			return toInputParse(restoreEntryInputSchema.safeParse(value), (data) => ({ name, data }))
+		case AI_TOOL_NAMES.resolveClarification:
+			return toInputParse(resolveClarificationInputSchema.safeParse(value), (data) => ({
+				name,
+				data,
+			}))
+		case AI_TOOL_NAMES.notFood:
+			return toInputParse(notFoodInputSchema.safeParse(value), (data) => ({ name, data }))
+		case AI_TOOL_NAMES.reply:
+			return toInputParse(replyInputSchema.safeParse(value), (data) => ({ name, data }))
 	}
 }
 
@@ -137,7 +155,7 @@ const validateCall = (raw: RawToolCall): ValidatedRawCall => {
 const checkLogReferences = (
 	log: LogFoodInput,
 	clarifications: ClarifyInput[],
-	{ memoryRefs }: ParseToolCallsOptions,
+	{ memoryRefs }: ParseRefs,
 ): string[] => {
 	const errors: string[] = []
 	log.items.forEach((item, index) => {
@@ -167,40 +185,58 @@ const checkLogReferences = (
 }
 
 const ONE_DECISION_ERROR =
-	'call exactly one of log_food, not_food or reply (clarify only together with log_food)'
+	'call log_food (with clarify and edit tools if needed), or edit tools (correct_entry, delete_entry, restore_entry, resolve_clarification) with exactly one reply, or exactly one of not_food or reply'
 
 type Decision = { decision: FoodParseDecision; errors: [] } | { decision: null; errors: string[] }
 
-const decide = (valid: ValidatedCall[], options: ParseToolCallsOptions): Decision => {
+const collectEdits = (valid: ValidatedCall[]): EntryEdits => ({
+	corrections: valid.flatMap((call) =>
+		call.name === AI_TOOL_NAMES.correctEntry ? call.data.changes : [],
+	),
+	deletions: valid.flatMap((call) =>
+		call.name === AI_TOOL_NAMES.deleteEntry ? call.data.refs : [],
+	),
+	restorations: valid.flatMap((call) =>
+		call.name === AI_TOOL_NAMES.restoreEntry ? call.data.refs : [],
+	),
+	resolutions: valid.flatMap((call) =>
+		call.name === AI_TOOL_NAMES.resolveClarification ? [call.data] : [],
+	),
+})
+
+const decide = (valid: ValidatedCall[], refs: ParseRefs): Decision => {
 	const logs = valid.flatMap((call) => (call.name === AI_TOOL_NAMES.logFood ? [call.data] : []))
 	const clarifications = valid.flatMap((call) =>
 		call.name === AI_TOOL_NAMES.clarify ? [call.data] : [],
 	)
 	const notFood = valid.flatMap((call) => (call.name === AI_TOOL_NAMES.notFood ? [call.data] : []))
 	const replies = valid.flatMap((call) => (call.name === AI_TOOL_NAMES.reply ? [call.data] : []))
+	const edits = collectEdits(valid)
+	const isEditing = hasEdits(edits)
 	const [log] = logs
 	const [rejected] = notFood
 	const [reply] = replies
 
-	if (logs.length + notFood.length + replies.length !== 1) {
+	// log_food speaks for the whole turn, an edit-only turn speaks through reply
+	const answers = logs.length + notFood.length + replies.length
+	if (answers !== 1 || (rejected && isEditing))
 		return { decision: null, errors: [ONE_DECISION_ERROR] }
-	}
 	if (log) {
-		const errors = checkLogReferences(log, clarifications, options)
+		const errors = [...checkLogReferences(log, clarifications, refs), ...getEditErrors(edits, refs)]
 		if (errors.length > 0) return { decision: null, errors }
 		const selected = filterClarifications(log, clarifications)
-		return { decision: { kind: 'log', log, clarifications: selected }, errors: [] }
+		return { decision: { kind: 'log', log, clarifications: selected, edits }, errors: [] }
 	}
 	if (clarifications.length > 0) return { decision: null, errors: [ONE_DECISION_ERROR] }
 	if (rejected) return { decision: { kind: 'not_food', reply: rejected.reply }, errors: [] }
-	if (reply) return { decision: { kind: 'reply', text: reply.text }, errors: [] }
-	return { decision: null, errors: [ONE_DECISION_ERROR] }
+	if (!reply) return { decision: null, errors: [ONE_DECISION_ERROR] }
+	if (!isEditing) return { decision: { kind: 'reply', text: reply.text }, errors: [] }
+	const errors = getEditErrors(edits, refs)
+	if (errors.length > 0) return { decision: null, errors }
+	return { decision: { kind: 'edit', edits, text: reply.text }, errors: [] }
 }
 
-export const parseToolCalls = (
-	rawCalls: RawToolCall[],
-	options: ParseToolCallsOptions,
-): FoodParseResult => {
+export const parseToolCalls = (rawCalls: RawToolCall[], refs: ParseRefs): FoodParseResult => {
 	if (rawCalls.length === 0) {
 		return { ok: false, errors: ['no tool call — always answer with a tool call'], calls: [] }
 	}
@@ -210,6 +246,6 @@ export const parseToolCalls = (
 	if (callErrors.length > 0) return { ok: false, errors: callErrors, calls }
 
 	const valid = results.flatMap((result) => (result.valid ? [result.valid] : []))
-	const { decision, errors } = decide(valid, options)
+	const { decision, errors } = decide(valid, refs)
 	return decision ? { ok: true, decision, calls } : { ok: false, errors, calls }
 }

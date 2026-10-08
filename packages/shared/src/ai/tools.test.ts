@@ -7,10 +7,14 @@ import { getAiFunctionTools } from './tools.js'
 describe('getAiFunctionTools', () => {
 	const tools = getAiFunctionTools()
 
-	it('exposes exactly the four tools', () => {
+	it('exposes the tools in a stable order', () => {
 		expect(tools.map((tool) => tool.function.name)).toEqual([
 			'log_food',
 			'clarify',
+			'correct_entry',
+			'delete_entry',
+			'restore_entry',
+			'resolve_clarification',
 			'not_food',
 			'reply',
 		])
@@ -28,7 +32,24 @@ describe('getAiFunctionTools', () => {
 const context: FoodParseContext = {
 	localTime: '2026-10-07 13:20, Wednesday',
 	dayTotals: { kcal: 420, protein: 20, fat: 15, carbs: 50 },
-	meals: [{ type: 'BREAKFAST', kcal: 420, itemNames: ['Вівсянка'] }],
+	meals: [{ type: 'BREAKFAST', kcal: 420 }],
+	entries: [
+		{
+			ref: 'e1',
+			name: 'Вівсянка',
+			mealType: 'BREAKFAST',
+			grams: 300,
+			kcal: 420,
+			protein: 20,
+			fat: 15,
+			carbs: 50,
+			fiber: null,
+			category: 'porridge',
+			source: 'ESTIMATE',
+		},
+	],
+	deletedEntries: [],
+	openClarifications: [],
 	goal: { dailyKcal: 2000, protein: 140, fat: 70, carbs: 200, remainingKcal: 1580 },
 	memory: [],
 	history: [],
@@ -40,6 +61,7 @@ describe('buildFoodParseMessages', () => {
 		expect(messages[0]).toMatchObject({ role: 'system' })
 		expect(JSON.stringify(messages[0])).toContain('"cache_control"')
 		expect(JSON.stringify(messages[1])).toContain('Remaining today: 1580 kcal')
+		expect(JSON.stringify(messages[1])).toContain('e1 BREAKFAST \\"Вівсянка\\"')
 		expect(messages.at(-1)).toEqual({ role: 'user', content: '3 яйця' })
 	})
 

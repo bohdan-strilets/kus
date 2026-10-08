@@ -1,4 +1,4 @@
-export type ActualDecision = 'log' | 'clarify' | 'not_food' | 'reply' | 'error'
+export type ActualDecision = 'log' | 'clarify' | 'edit' | 'not_food' | 'reply' | 'error'
 
 export interface CaseResult {
 	caseId: string
@@ -12,7 +12,10 @@ export interface CaseResult {
 	kcal: number | null
 	protein: number | null
 	categories: string[]
+	/** The chat answer: reply text, log_food's reply or the edit turn's reply. */
 	replyText: string | null
+	/** What the edit tools changed (refs of the case context); null when the answer changed nothing. */
+	edits: EditResult | null
 	costUsd: number
 	latencyMs: number
 	inputTokens: number
@@ -30,10 +33,24 @@ export interface CaseResult {
 
 export interface ClarifyCall {
 	question: string
-	options: { label: string; kcal: number }[]
+	options: { label: string; kcal: number; name: string | null }[]
 	impactKcal: number
 	/** Passed the thresholds (≥ 80 kcal and ≥ 15 %, max 2) and would reach the user. */
 	isKept: boolean
+}
+
+export interface EditResult {
+	/** Values as the backend would store them (a new weight alone rescales the entry). */
+	corrections: { ref: string; name: string; grams: number; kcal: number }[]
+	deletions: string[]
+	restorations: string[]
+	resolutions: {
+		ref: string
+		kind: 'option' | 'values' | 'close'
+		optionIndex: number | null
+		/** Option or given kcal; null when closed without values. */
+		kcal: number | null
+	}[]
 }
 
 export interface LoggedItem {
@@ -72,6 +89,8 @@ export interface ModelSummary {
 	categories: RateStats
 	/** Items of whole-day cases placed in the expected meal. */
 	meals: RateStats
+	/** Cases with expected edits whose edits all matched. */
+	edits: RateStats
 	decisions: RateStats & { byExpected: Record<string, RateStats> }
 	costUsd: { total: number; perCase: number }
 	latencyMs: { p50: number; p95: number }

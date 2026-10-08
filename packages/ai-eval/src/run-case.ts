@@ -6,6 +6,7 @@ import {
 	buildRetryMessages,
 	type FoodParseContext,
 	type FoodParseDecision,
+	getParseRefs,
 	getRawToolCalls,
 	isOutputTruncated,
 	type MemoryFoodContext,
@@ -15,6 +16,7 @@ import {
 import type { EvalCase } from './cases/index.js'
 import type { ActualDecision, CaseResult, LoggedItem } from './eval.types.js'
 import { getClarifyCalls } from './clarify-calls.js'
+import { getEditResult } from './edit-result.js'
 import { type EvalModelOptions, requestFoodParse } from './openrouter.js'
 
 /** Fixed clock, so meal-type guesses and reruns compare like for like. */
@@ -22,6 +24,9 @@ export const BASE_CONTEXT: FoodParseContext = {
 	localTime: '2026-10-07 13:20, Wednesday',
 	dayTotals: { kcal: 0, protein: 0, fat: 0, carbs: 0 },
 	meals: [],
+	entries: [],
+	deletedEntries: [],
+	openClarifications: [],
 	goal: null,
 	memory: [],
 	history: [],
@@ -73,6 +78,18 @@ const toActualDecision = (decision: FoodParseDecision): ActualDecision => {
 const getLoggedItems = (decision: FoodParseDecision) =>
 	decision.kind === 'log' ? decision.log.items : []
 
+const getReplyText = (decision: FoodParseDecision): string => {
+	switch (decision.kind) {
+		case 'log':
+			return decision.log.reply
+		case 'not_food':
+			return decision.reply
+		case 'edit':
+		case 'reply':
+			return decision.text
+	}
+}
+
 const failedResult = (
 	base: { caseId: string; model: string },
 	usage: Pick<
@@ -93,6 +110,7 @@ const failedResult = (
 	protein: null,
 	categories: [],
 	replyText: null,
+	edits: null,
 	wasRetried: attempts > 1,
 })
 
@@ -100,12 +118,10 @@ export const runCase = async (
 	evalCase: EvalCase,
 	options: EvalModelOptions,
 ): Promise<CaseResult> => {
-	const memory = evalCase.context?.memory ?? []
-	const memoryRefs = new Set(memory.map((food) => food.ref))
-	let messages: AiRequestMessage[] = buildFoodParseMessages(
-		{ ...BASE_CONTEXT, ...evalCase.context },
-		evalCase.text,
-	)
+	const context: FoodParseContext = { ...BASE_CONTEXT, ...evalCase.context }
+	const { memory } = context
+	const refs = getParseRefs(context)
+	let messages: AiRequestMessage[] = buildFoodParseMessages(context, evalCase.text)
 	const usage = {
 		costUsd: 0,
 		latencyMs: 0,
@@ -132,7 +148,7 @@ export const runCase = async (
 				return failedResult(base, usage, { error: OUTPUT_TRUNCATED, attempts: attempt })
 			const rawCalls = getRawToolCalls(completion)
 			if (rawCalls.length === 0) usage.textOnlyAnswers += 1
-			const result = parseToolCalls(rawCalls, { memoryRefs })
+			const result = parseToolCalls(rawCalls, refs)
 			if (result.ok) {
 				const items = getLoggedItems(result.decision)
 				const totals = items.length > 0 ? sumItems(items, memory) : null
@@ -145,7 +161,8 @@ export const runCase = async (
 					kcal: totals?.kcal ?? null,
 					protein: totals?.protein ?? null,
 					categories: items.map((item) => item.category),
-					replyText: result.decision.kind === 'reply' ? result.decision.text : null,
+					replyText: getReplyText(result.decision),
+					edits: getEditResult(result.decision, context),
 					items: items.map((item) =>
 						toLoggedItem(
 							item,

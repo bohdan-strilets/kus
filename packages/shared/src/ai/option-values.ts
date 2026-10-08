@@ -6,7 +6,7 @@ import type { ClarifyOption } from './tools.js'
 const DECIMALS = 10
 
 /** One decimal, like every stored nutrition value. */
-const roundNutrition = (value: number): number => Math.round(value * DECIMALS) / DECIMALS
+export const roundNutrition = (value: number): number => Math.round(value * DECIMALS) / DECIMALS
 
 export interface EntryValues {
 	grams: number
@@ -16,6 +16,12 @@ export interface EntryValues {
 	carbs: number
 	fiber: number | null
 }
+
+/** What an answer carries for its entries: a clarify option, or values the user gave in words. */
+export type OptionValues = Pick<
+	ClarifyOption,
+	'kcal' | 'protein' | 'fat' | 'carbs' | 'fiber' | 'grams'
+>
 
 const isValid = ({ grams, kcal }: EntryValues): boolean =>
 	grams >= MIN_ENTRY_GRAMS && grams <= MAX_ENTRY_GRAMS && kcal / grams <= MAX_KCAL_PER_GRAM
@@ -33,7 +39,7 @@ const getShares = (values: number[]): number[] => {
  */
 export const distributeOptionValues = (
 	entries: readonly EntryValues[],
-	option: ClarifyOption,
+	option: OptionValues,
 ): EntryValues[] | null => {
 	if (entries.length === 0) return null
 	const kcalShares = getShares(entries.map((entry) => entry.kcal))

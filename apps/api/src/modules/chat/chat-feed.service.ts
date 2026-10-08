@@ -28,6 +28,7 @@ const toClarificationResponse = (
 	impactKcal: clarification.impactKcal,
 	status: clarification.status,
 	answeredOptionIndex: clarification.answerOptionIndex,
+	answer: clarification.answer,
 	entryIds: clarification.entries.map((entry) => entry.foodEntryId),
 })
 

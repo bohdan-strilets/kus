@@ -45,6 +45,7 @@ const result = (overrides: Partial<CaseResult>): CaseResult => ({
 	protein: 2.7,
 	categories: [],
 	replyText: null,
+	edits: null,
 	costUsd: 0,
 	latencyMs: 0,
 	inputTokens: 0,
@@ -60,8 +61,8 @@ const result = (overrides: Partial<CaseResult>): CaseResult => ({
 const lowImpactCall: ClarifyCall = {
 	question: 'Яке печиво?',
 	options: [
-		{ label: 'Малі', kcal: 120 },
-		{ label: 'Великі', kcal: 170 },
+		{ label: 'Малі', kcal: 120, name: null },
+		{ label: 'Великі', kcal: 170, name: null },
 	],
 	impactKcal: 50,
 	isKept: false,

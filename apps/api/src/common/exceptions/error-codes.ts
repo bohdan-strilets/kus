@@ -11,6 +11,8 @@ export const ErrorCodes = {
 	/** Any other 4xx without a dedicated code (405, 415, …). */
 	CLIENT_ERROR: 'CLIENT_ERROR',
 	INTERNAL_ERROR: 'INTERNAL_ERROR',
+	/** The API runs but can't reach the database: the healthcheck fails, the deploy isn't promoted. */
+	SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
 
 	// auth & users
 	/** Same code for an unknown email and a wrong password, so accounts can't be enumerated. */

@@ -70,7 +70,7 @@ export class ChatResponseService {
 			...sourceMessageIds,
 			...answered.flatMap((message) => message.replyToId ?? []),
 		]
-		// a meal's totals show on the card of every message that logged into it
+		// every card of a meal tells the whole meal's kcal («Вечеря разом»)
 		const replyToIds = await this.entriesService.getMessagesSharingMeals(userId, changedSources)
 		const messages = await this.chatRepository.findAssistantMessages({
 			userId,

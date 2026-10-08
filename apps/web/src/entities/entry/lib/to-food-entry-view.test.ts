@@ -15,6 +15,7 @@ const breakfast = loggedMealSchema.parse({
 	localDate: '2026-10-05',
 	eatenAt: '2026-10-05T06:40:00.000Z',
 	totals: { kcal: 370, protein: 23, fat: 17, carbs: 27, fiber: 3 },
+	mealTotalKcal: null,
 	entries: [
 		{
 			id: '0199b3a4-0000-7000-8000-000000000002',

@@ -151,7 +151,7 @@ export class EntriesService {
 			.sort((a, b) => getMealRank(a.type) - getMealRank(b.type))
 	}
 
-	/** The edited messages and every other message whose card shows the same meal's totals. */
+	/** The edited messages and every other message whose card tells the same meal's kcal. */
 	async getMessagesSharingMeals(userId: string, messageIds: string[]): Promise<string[]> {
 		if (messageIds.length === 0) return []
 		const shared = await this.entriesRepository.findSourceMessagesOfSameMeals({

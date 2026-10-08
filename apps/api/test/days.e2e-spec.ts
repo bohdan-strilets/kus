@@ -117,6 +117,8 @@ describe('days (e2e, real DB)', () => {
 			'Гречка варена',
 			'Суп',
 		])
+		// «Сьогодні» shows the whole meal, so there is no «разом» line apart from it
+		expect(data.meals[0]).toMatchObject({ totals: { kcal: 493 }, mealTotalKcal: null })
 		expect(data.totals.kcal).toBe(493)
 		expect(data.goal).toEqual({ kcal: 2200, protein: 140, carbs: 225, fat: 80 })
 		expect(data.remainingKcal).toBe(1707)

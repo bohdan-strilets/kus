@@ -49,13 +49,14 @@ export const toFoodEntryResponse = (entry: FoodEntry): FoodEntryResponse => ({
 	isEdited: entry.isEdited,
 })
 
-/** Totals always of the whole meal; `entries` — the ones the caller shows. */
+/** Totals of the `entries` the caller shows; the whole meal's kcal only when it holds more. */
 const toMeal = (meal: MealWithEntries, entries: FoodEntry[]): LoggedMeal => ({
 	id: meal.id,
 	type: meal.type,
 	localDate: formatDbDate(meal.localDate),
 	eatenAt: meal.eatenAt.toISOString(),
-	totals: sumEntries(meal.entries),
+	totals: sumEntries(entries),
+	mealTotalKcal: entries.length < meal.entries.length ? sumEntries(meal.entries).kcal : null,
 	entries: entries.map(toFoodEntryResponse),
 })
 

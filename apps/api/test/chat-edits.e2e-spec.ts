@@ -107,6 +107,7 @@ describe('chat edits of logged food (e2e, real DB, fake model)', () => {
 			protein: 12,
 			isEdited: true,
 		})
+		expect(second.updatedMessages[0]?.meals[0]?.totals.kcal).toBe(300)
 		expect(second.dayTotals.totals.kcal).toBe(300)
 		expect(await prisma.foodEntry.count()).toBe(1)
 		const correction = await prisma.correction.findFirstOrThrow()
@@ -182,12 +183,15 @@ describe('chat edits of logged food (e2e, real DB, fake model)', () => {
 		expect(deleted.updatedMessages[0]?.meals[0]?.entries.map((entry) => entry.name)).toEqual([
 			'Яйце варене',
 		])
+		// the card's badge follows what is left of it
+		expect(deleted.updatedMessages[0]?.meals[0]?.totals.kcal).toBe(233)
 		expect(deleted.dayTotals.totals.kcal).toBe(233)
 
 		const restored = await send(owner, 'поверни')
 
 		expect(JSON.stringify(fake.bodies[2])).toContain('Deleted today')
 		expect(restored.updatedMessages[0]?.meals[0]?.entries).toHaveLength(2)
+		expect(restored.updatedMessages[0]?.meals[0]?.totals.kcal).toBe(343)
 		expect(restored.dayTotals.totals.kcal).toBe(343)
 		const corrections = await prisma.correction.findMany({ orderBy: { createdAt: 'asc' } })
 		expect(corrections.map((item) => item.after)).toEqual([{ deleted: true }, { deleted: false }])
@@ -203,6 +207,11 @@ describe('chat edits of logged food (e2e, real DB, fake model)', () => {
 		)
 		const first = await send(owner, 'тарілка борщу')
 		const second = await send(owner, 'і тарілка супу')
+		// the soup card sums its soup; the meal it joined also holds the borscht (175 + 150)
+		expect(second.assistantMessage.meals[0]).toMatchObject({
+			totals: { kcal: 150 },
+			mealTotalKcal: 325,
+		})
 
 		const deleted = await send(owner, 'видали борщ')
 
@@ -210,7 +219,8 @@ describe('chat edits of logged food (e2e, real DB, fake model)', () => {
 			[first.assistantMessage.id, second.assistantMessage.id].sort(),
 		)
 		const soupCard = deleted.updatedMessages.find((item) => item.id === second.assistantMessage.id)
-		expect(soupCard?.meals[0]?.totals.kcal).toBe(150)
+		// only the soup is left in the meal: no «разом» line any more
+		expect(soupCard?.meals[0]).toMatchObject({ totals: { kcal: 150 }, mealTotalKcal: null })
 	})
 
 	it('answers an open question in words: the same entry changes, the question closes', async () => {

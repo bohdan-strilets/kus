@@ -181,7 +181,7 @@ export class EntriesRepository {
 
 	/**
 	 * Messages with active entries in the meals these messages logged into (deleted entries count
-	 * for the link): every chat card of such a meal shows its totals.
+	 * for the link): every chat card of such a meal shows the whole meal's kcal.
 	 */
 	async findSourceMessagesOfSameMeals(
 		{ userId, messageIds }: { userId: string; messageIds: string[] },

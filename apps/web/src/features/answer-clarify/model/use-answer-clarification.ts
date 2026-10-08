@@ -29,6 +29,10 @@ export const useAnswerClarification = (): AnswerClarification => {
 		onSuccess: (message) => {
 			replaceFeedMessage(queryClient, message)
 			void queryClient.invalidateQueries({ queryKey: DAY_QUERY_KEY })
+			// the meal also holds other messages' food: their cards' «разом» changed too
+			if (message.meals.some((meal) => meal.mealTotalKcal !== null)) {
+				void queryClient.invalidateQueries({ queryKey: MESSAGES_QUERY_KEY })
+			}
 		},
 		onError: (error) => {
 			toast.show(t(getAnswerErrorKey(getApiError(error))))

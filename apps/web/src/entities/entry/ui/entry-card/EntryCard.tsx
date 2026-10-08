@@ -18,6 +18,8 @@ export interface EntryCardProps {
 	onEdit?: () => void
 	/** Right next to Kusik's head (no words above it): the bubble tail at the bottom left. */
 	hasTail?: boolean
+	/** A small muted line under the macros: «Вечеря разом: 917 ккал». */
+	footnote?: string
 }
 
 /**
@@ -34,6 +36,7 @@ export const EntryCard = ({
 	children,
 	onEdit,
 	hasTail = true,
+	footnote,
 }: EntryCardProps) => {
 	const { t } = useTranslation()
 
@@ -69,6 +72,11 @@ export const EntryCard = ({
 					</Button>
 				)}
 			</footer>
+			{footnote && (
+				<Text as="p" variant="caption" tone="muted" isTabular className="-mt-1.5 px-3.5 pb-3">
+					{footnote}
+				</Text>
+			)}
 		</article>
 	)
 }

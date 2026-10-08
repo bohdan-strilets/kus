@@ -232,7 +232,8 @@ describe('chat messages (e2e, real DB, fake model)', () => {
 		const meal = sendResponseSchema.parse(second.body).data.assistantMessage.meals[0]
 		expect(meal?.type).toBe('DINNER')
 		expect(meal?.entries.map((entry) => entry.name)).toEqual(['Гречка варена'])
-		expect(meal?.totals.kcal).toBe(343)
+		// the badge is this message's buckwheat; the dinner as a whole goes under the card
+		expect(meal).toMatchObject({ totals: { kcal: 110 }, mealTotalKcal: 343 })
 		expect(await prisma.meal.count()).toBe(1)
 	})
 
@@ -299,14 +300,27 @@ describe('chat messages (e2e, real DB, fake model)', () => {
 
 		const response = await send(owner, 'ще суп зранку, а на вечерю гречка').expect(201)
 
-		const { meals } = sendResponseSchema.parse(response.body).data.assistantMessage
+		const { assistantMessage, updatedMessages } = sendResponseSchema.parse(response.body).data
+		const { meals } = assistantMessage
 		expect(meals.map((meal) => [meal.type, meal.entries.map((entry) => entry.name)])).toEqual([
 			['BREAKFAST', ['Суп']],
 			['DINNER', ['Гречка варена']],
 		])
-		// the morning meal is the same one: eggs (233) + soup (150)
-		expect(meals[0]?.totals.kcal).toBe(383)
+		// the morning meal is the same one: the card sums its soup (150), the meal holds eggs too (233)
+		expect(meals[0]).toMatchObject({ totals: { kcal: 150 }, mealTotalKcal: 383 })
+		// the evening meal is only this message's buckwheat
+		expect(meals[1]?.mealTotalKcal).toBeNull()
 		expect(await prisma.meal.count()).toBe(2)
+
+		// the first card in the feed keeps its own eggs, the meal grew past them
+		const feed = await owner.agent.get(MESSAGES_URL).expect(200)
+		const eggsCard = listResponseSchema
+			.parse(feed.body)
+			.data.find((message) => message.meals[0]?.entries[0]?.name === eggs?.name)
+		expect(eggsCard?.meals[0]).toMatchObject({ totals: { kcal: 233 }, mealTotalKcal: 383 })
+		// and the open chat gets it at once, without a reload
+		expect(updatedMessages.map((message) => message.id)).toEqual([eggsCard?.id])
+		expect(updatedMessages[0]?.meals[0]?.mealTotalKcal).toBe(383)
 	})
 
 	it('stops at the daily AI limit with 429 and marks the message FAILED', async () => {
@@ -498,8 +512,8 @@ describe('chat messages (e2e, real DB, fake model)', () => {
 		const response = await send(owner, 'тарілка супу').expect(201)
 
 		const { assistantMessage, dayTotals } = sendResponseSchema.parse(response.body).data
-		// 110 buckwheat + 150 soup; the deleted 233 kcal of eggs is gone
-		expect(assistantMessage.meals[0]?.totals.kcal).toBe(260)
+		// the card is its soup (150); the meal is 110 buckwheat + 150 soup, the deleted eggs are gone
+		expect(assistantMessage.meals[0]).toMatchObject({ totals: { kcal: 150 }, mealTotalKcal: 260 })
 		expect(dayTotals.totals.kcal).toBe(260)
 	})
 

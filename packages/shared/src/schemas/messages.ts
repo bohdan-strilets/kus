@@ -64,7 +64,10 @@ export const foodEntryResponseSchema = z.object({
 
 export type FoodEntryResponse = z.infer<typeof foodEntryResponseSchema>
 
-/** A meal as the chat card shows it: totals of the whole meal, entries added by this message. */
+/**
+ * A meal as a card shows it: in the chat — the entries added by this message, on «Сьогодні» — all
+ * of them. `totals` always sum exactly the `entries` shown.
+ */
 export const loggedMealSchema = z.object({
 	id: z.uuid(),
 	type: mealTypeSchema,
@@ -73,6 +76,8 @@ export const loggedMealSchema = z.object({
 	/** When the meal was eaten: the typical time of a named earlier meal, else the moment it was logged. */
 	eatenAt: z.iso.datetime(),
 	totals: nutritionTotalsSchema,
+	/** kcal of the whole meal when it also holds entries of other messages («Вечеря разом»); else null. */
+	mealTotalKcal: z.number().nullable(),
 	entries: z.array(foodEntryResponseSchema),
 })
 

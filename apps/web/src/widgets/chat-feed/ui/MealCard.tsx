@@ -15,6 +15,7 @@ import { formatTime } from '@/shared/lib'
 
 import type { ClarificationPlacement } from '../lib/get-clarification-placement'
 import { getClarifyHint } from '../lib/get-clarify-hint'
+import { getMealTotalNote } from '../lib/get-meal-total-note'
 
 interface MealCardProps {
 	meal: LoggedMeal
@@ -69,6 +70,7 @@ export const MealCard = ({
 			kcal={meal.totals.kcal}
 			macros={meal.totals}
 			hasTail={hasTail}
+			footnote={getMealTotalNote(meal, t) ?? undefined}
 		>
 			{meal.entries.map((entry) => {
 				const clarification = findClarification(entry.id)

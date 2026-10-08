@@ -105,7 +105,8 @@ export class ChatTurnService {
 					tx,
 				)
 			}
-			return edited
+			// the meals it joined grew: earlier cards of them get a new «разом» line
+			return { ...edited, sourceMessageIds: [...edited.sourceMessageIds, message.id] }
 		})
 	}
 

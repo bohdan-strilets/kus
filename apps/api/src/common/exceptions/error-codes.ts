@@ -41,6 +41,8 @@ export const ErrorCodes = {
 	CLARIFICATION_NOT_APPLICABLE: 'CLARIFICATION_NOT_APPLICABLE',
 	/** An entry the message changes was deleted or restored meanwhile (another tab); resend it. */
 	ENTRY_CHANGED: 'ENTRY_CHANGED',
+	/** The edit sheet: no active entry with this id for this user (another user's is "not found" too). */
+	ENTRY_NOT_FOUND: 'ENTRY_NOT_FOUND',
 } as const
 
 export type ErrorCode = (typeof ErrorCodes)[keyof typeof ErrorCodes]

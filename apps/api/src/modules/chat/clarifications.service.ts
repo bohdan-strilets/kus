@@ -107,6 +107,17 @@ export class ClarificationsService {
 		return clarification.messageId
 	}
 
+	/**
+	 * An entry changed outside the chat (the edit sheet): its open questions no longer fit, as
+	 * their options assume the portion the model saw. Returns the replies that asked.
+	 */
+	dismissForEntries(
+		{ userId, entryIds }: { userId: string; entryIds: string[] },
+		tx: Prisma.TransactionClient,
+	): Promise<string[]> {
+		return this.clarificationsRepository.dismissOpenClarifications({ userId, entryIds }, tx)
+	}
+
 	private getOption(stored: Prisma.JsonValue, optionIndex: number): ClarifyOption {
 		// questions stored before options carried macros can't be applied without the model
 		const options = storedOptionsSchema.safeParse(stored)

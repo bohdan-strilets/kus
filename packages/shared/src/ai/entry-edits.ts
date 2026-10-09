@@ -34,7 +34,10 @@ export const toEntryValues = (entry: TodayEntryContext): EntryValues => ({
  * The entry after a change: new values as given (on the new or old weight), or — a new weight
  * alone — the old values rescaled by its density, so "600 г" never becomes a fresh guess.
  */
-export const getCorrectedValues = (entry: EntryValues, change: EntryChange): EntryValues => {
+export const getCorrectedValues = (
+	entry: EntryValues,
+	change: Pick<EntryChange, 'grams' | 'values'>,
+): EntryValues => {
 	const grams = change.grams ?? entry.grams
 	if (change.values) return { grams, ...change.values }
 	const factor = grams / entry.grams

@@ -20,6 +20,25 @@ export const TYPICAL_MEAL_HOUR: Record<LoggableMealType, number> = {
 export const getMealTypeByHour = (hour: number): LoggableMealType =>
 	MEAL_HOURS.find(({ from, to }) => hour >= from && hour < to)?.type ?? 'SNACK'
 
+interface TypicalMealEatenAtParams {
+	mealType: LoggableMealType
+	/** The meal's day, a @db.Date value. */
+	localDate: Date
+	now: Date
+	timezone: string
+}
+
+/** The typical hour of the meal on that day — never in the future: a meal not eaten yet stays at now. */
+export const getTypicalMealEatenAt = ({
+	mealType,
+	localDate,
+	now,
+	timezone,
+}: TypicalMealEatenAtParams): Date => {
+	const typical = getZonedMoment(localDate, TYPICAL_MEAL_HOUR[mealType], timezone)
+	return typical < now ? typical : now
+}
+
 interface MealEatenAtParams {
 	mealType: LoggableMealType
 	/** The user named the meal ("на сніданок"), it wasn't picked by the clock. */
@@ -30,11 +49,10 @@ interface MealEatenAtParams {
 
 /**
  * «на сніданок …» written at 13:00 happened in the morning: a named meal other than the one the
- * clock gives gets its typical time today. Never in the future — a meal not eaten yet stays at now.
+ * clock gives gets its typical time today.
  */
 export const getMealEatenAt = ({ mealType, isNamed, now, timezone }: MealEatenAtParams): Date => {
 	if (!isNamed) return now
 	if (mealType === getMealTypeByHour(getLocalHour(now, timezone))) return now
-	const typical = getZonedMoment(getLocalDate(now, timezone), TYPICAL_MEAL_HOUR[mealType], timezone)
-	return typical < now ? typical : now
+	return getTypicalMealEatenAt({ mealType, localDate: getLocalDate(now, timezone), now, timezone })
 }

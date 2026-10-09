@@ -8,3 +8,10 @@ export class EntryChangedException extends AppException {
 		super({ status: HttpStatus.CONFLICT, errorCode: ErrorCodes.ENTRY_CHANGED })
 	}
 }
+
+/** No active entry with this id for this user — another user's entry reads the same, never 403. */
+export class EntryNotFoundException extends AppException {
+	constructor() {
+		super({ status: HttpStatus.NOT_FOUND, errorCode: ErrorCodes.ENTRY_NOT_FOUND })
+	}
+}

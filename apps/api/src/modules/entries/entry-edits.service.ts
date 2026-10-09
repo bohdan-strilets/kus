@@ -3,14 +3,16 @@ import {
 	distributeOptionValues,
 	type EntryChange,
 	type EntryValues,
+	type FoodEntryResponse,
 	getCorrectedValues,
+	type LoggableMealType,
 	type OptionValues,
 } from '@kus/shared'
 
 import type { FoodEntry, Prisma } from '../../generated/prisma/client'
-import { EntryChangedException } from './entries.exceptions'
-import { roundNutrition } from './entries.mapper'
-import { EntriesRepository } from './entries.repository'
+import { EntryChangedException, EntryNotFoundException } from './entries.exceptions'
+import { roundNutrition, toFoodEntryResponse } from './entries.mapper'
+import { EntriesRepository, type EntryWithMeal } from './entries.repository'
 
 type CorrectionFields = Record<string, string | number | boolean | null>
 
@@ -62,16 +64,36 @@ const getSourceMessageIds = (entries: FoodEntry[]): string[] => [
 	...new Set(entries.flatMap((entry) => entry.sourceMessageId ?? [])),
 ]
 
+/** What changes in an entry; the chat's ref is already resolved to the id. */
+export type EntryValuesChange = Omit<EntryChange, 'ref'>
+
 /**
  * New numbers for the same food are the user's (MANUAL); for a different food («не борщ, а суп») the
  * model estimated them. Either way they are no longer a label's or a saved food's.
  */
-const getValuesSource = (change: EntryChange): 'MANUAL' | 'ESTIMATE' =>
+const getValuesSource = (change: EntryValuesChange): 'MANUAL' | 'ESTIMATE' =>
 	change.name === null ? 'MANUAL' : 'ESTIMATE'
 
 export interface EntryCorrection {
 	id: string
-	change: EntryChange
+	change: EntryValuesChange
+}
+
+export interface ManualEntryEdit {
+	userId: string
+	id: string
+	/** A new weight of the whole portion; undefined keeps it. */
+	grams: number | undefined
+	/** Another meal of the same day; undefined keeps it. */
+	mealType: LoggableMealType | undefined
+	/** When a meal created by the move was eaten. */
+	getEatenAt: (meal: { type: LoggableMealType; localDate: Date }) => Date
+}
+
+export interface ManualEntryEditResult {
+	entry: FoodEntryResponse
+	isWeightChanged: boolean
+	isMealChanged: boolean
 }
 
 /**
@@ -129,6 +151,47 @@ export class EntryEditsService {
 		}
 		await this.entriesRepository.createCorrections(changes, tx)
 		return getSourceMessageIds(entries)
+	}
+
+	findActiveEntry(
+		{ userId, id }: { userId: string; id: string },
+		tx: Prisma.TransactionClient,
+	): Promise<EntryWithMeal | null> {
+		return this.entriesRepository.findActiveEntryWithMeal({ userId, id }, tx)
+	}
+
+	/**
+	 * The edit sheet: a new weight rescales the entry by its density (the same correction as
+	 * «зміни порцію на 150 г» in the chat); another meal moves it within the day, creating the
+	 * meal when the day has none of that type — the one it leaves empty simply stops showing.
+	 * Read-then-write without a row lock, like the chat's edits: two sheets saving the same entry
+	 * at once is not a case a single-user tracker guards against.
+	 */
+	async editEntry(
+		{ userId, id, grams, mealType, getEatenAt }: ManualEntryEdit,
+		tx: Prisma.TransactionClient,
+	): Promise<ManualEntryEditResult> {
+		const entry = await this.entriesRepository.findActiveEntryWithMeal({ userId, id }, tx)
+		if (!entry) throw new EntryNotFoundException()
+		const isWeightChanged = grams !== undefined && grams !== entry.grams
+		const isMealChanged = mealType !== undefined && mealType !== entry.meal.type
+		if (!isWeightChanged && !isMealChanged) {
+			return { entry: toFoodEntryResponse(entry), isWeightChanged, isMealChanged }
+		}
+		if (isWeightChanged) {
+			await this.correctEntries(
+				{
+					userId,
+					corrections: [{ id, change: { grams, values: null, name: null, category: null } }],
+				},
+				tx,
+			)
+		}
+		if (isMealChanged) await this.moveEntry(entry, mealType, getEatenAt, tx)
+		const updated = await this.entriesRepository.findActiveEntryWithMeal({ userId, id }, tx)
+		// written a moment ago inside this same transaction
+		if (!updated) throw new EntryChangedException()
+		return { entry: toFoodEntryResponse(updated), isWeightChanged, isMealChanged }
 	}
 
 	deleteEntries(
@@ -190,6 +253,36 @@ export class EntryEditsService {
 		}
 		await this.entriesRepository.createCorrections(changes, tx)
 		return true
+	}
+
+	private async moveEntry(
+		entry: EntryWithMeal,
+		mealType: LoggableMealType,
+		getEatenAt: ManualEntryEdit['getEatenAt'],
+		tx: Prisma.TransactionClient,
+	): Promise<void> {
+		const { userId, id } = entry
+		const { localDate } = entry.meal
+		const meal = await this.entriesRepository.findOrCreateMeal(
+			{
+				userId,
+				type: mealType,
+				localDate,
+				eatenAt: getEatenAt({ type: mealType, localDate }),
+				sourceMessageId: null,
+			},
+			tx,
+		)
+		const isMoved = await this.entriesRepository.moveEntryToMeal(
+			{ userId, id, mealId: meal.id },
+			tx,
+		)
+		// deleted by a parallel request after the read
+		if (!isMoved) throw new EntryChangedException()
+		await this.entriesRepository.createCorrections(
+			[{ userId, foodEntryId: id, before: { mealType: entry.meal.type }, after: { mealType } }],
+			tx,
+		)
 	}
 
 	private async findActive(

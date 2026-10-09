@@ -12,7 +12,7 @@ import { MessageInProgressException } from './chat.exceptions'
 import { ChatRepository } from './chat.repository'
 import { ClarificationsRepository } from './clarifications.repository'
 import type { EditRefIds } from './edit-context'
-import { getMealEatenAt, getMealTypeByHour } from './meal-type'
+import { getMealEatenAt, getMealTypeByHour } from '../entries/meal-type'
 
 export interface TurnParams {
 	userId: string

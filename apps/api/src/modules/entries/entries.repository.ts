@@ -10,12 +10,15 @@ export type MealWithEntries = Meal & { entries: FoodEntry[] }
 
 export type EntryWithMealType = FoodEntry & { meal: Pick<Meal, 'type'> }
 
+export type EntryWithMeal = FoodEntry & { meal: Meal }
+
 interface FindOrCreateMealData {
 	userId: string
 	type: LoggableMealType
 	localDate: Date
 	eatenAt: Date
-	sourceMessageId: string
+	/** null for a meal created by moving an entry into it from the edit sheet. */
+	sourceMessageId: string | null
 }
 
 // entries of one message share createdAt: the id keeps their order stable across updates
@@ -114,6 +117,17 @@ export class EntriesRepository {
 		})
 	}
 
+	/** An active entry of an active meal, with the meal (its type and day). */
+	findActiveEntryWithMeal(
+		{ userId, id }: { userId: string; id: string },
+		tx: Prisma.TransactionClient,
+	): Promise<EntryWithMeal | null> {
+		return tx.foodEntry.findFirst({
+			where: { id, userId, deletedAt: null, meal: { deletedAt: null } },
+			include: { meal: true },
+		})
+	}
+
 	findDeletedEntries(
 		{ userId, ids }: { userId: string; ids: string[] },
 		tx: Prisma.TransactionClient,
@@ -151,6 +165,18 @@ export class EntriesRepository {
 		const { count } = await tx.foodEntry.updateMany({
 			where: { id, userId, deletedAt: null },
 			data,
+		})
+		return count === 1
+	}
+
+	/** Into another meal of the same day; the entry keeps its source message for the chat card. */
+	async moveEntryToMeal(
+		{ userId, id, mealId }: { userId: string; id: string; mealId: string },
+		tx: Prisma.TransactionClient,
+	): Promise<boolean> {
+		const { count } = await tx.foodEntry.updateMany({
+			where: { id, userId, deletedAt: null },
+			data: { mealId, isEdited: true },
 		})
 		return count === 1
 	}

@@ -81,13 +81,7 @@ const parseErrors = (calls: RawToolCall[]): string[] => {
 
 describe('getCorrectedValues', () => {
 	it('rescales by the entry density when only grams change: 350 → 600 g', () => {
-		const values = getCorrectedValues(borscht, {
-			ref: 'e1',
-			name: null,
-			category: null,
-			grams: 600,
-			values: null,
-		})
+		const values = getCorrectedValues(borscht, { grams: 600, values: null })
 		expect(values).toEqual({
 			grams: 600,
 			kcal: 300,
@@ -100,9 +94,7 @@ describe('getCorrectedValues', () => {
 
 	it('takes given values on the old weight', () => {
 		const values = { kcal: 100, protein: 5, fat: 4, carbs: 11, fiber: null }
-		expect(
-			getCorrectedValues(borscht, { ref: 'e1', name: null, category: null, grams: null, values }),
-		).toEqual({ grams: 350, ...values })
+		expect(getCorrectedValues(borscht, { grams: null, values })).toEqual({ grams: 350, ...values })
 	})
 })
 

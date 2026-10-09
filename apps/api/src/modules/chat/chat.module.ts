@@ -31,5 +31,7 @@ import { ClarificationsService } from './clarifications.service'
 		ClarificationsRepository,
 		ClarificationsService,
 	],
+	// the edit sheet (food-entries) closes the open questions of an entry it changed
+	exports: [ClarificationsService],
 })
 export class ChatModule {}

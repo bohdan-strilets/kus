@@ -17,6 +17,7 @@ export { useBlink } from './use-blink'
 export { useCountUp } from './use-count-up'
 export {
 	bubbleVariants,
+	expandVariants,
 	HOP_KEYFRAMES,
 	HOP_TRANSITION,
 	popInVariants,

@@ -11,6 +11,7 @@ import {
 	toFoodEntryView,
 } from '@/entities/entry'
 import { useAnswerClarification } from '@/features/answer-clarify'
+import { useEditEntryStore } from '@/features/edit-entry'
 import { formatTime } from '@/shared/lib'
 
 import type { ClarificationPlacement } from '../lib/get-clarification-placement'
@@ -46,6 +47,7 @@ export const MealCard = ({
 }: MealCardProps) => {
 	const { t } = useTranslation()
 	const { answer, pending } = useAnswerClarification()
+	const openEditor = useEditEntryStore((state) => state.open)
 	const [openedIds, setOpenedIds] = useState<ReadonlySet<string>>(() =>
 		isLatestReply ? getOpenIds(clarifications) : new Set(),
 	)
@@ -71,6 +73,13 @@ export const MealCard = ({
 			macros={meal.totals}
 			hasTail={hasTail}
 			footnote={getMealTotalNote(meal, t) ?? undefined}
+			// one line opens its form at once; several — the picker first
+			onEdit={() => {
+				openEditor({
+					meal,
+					entryId: meal.entries.length === 1 ? (meal.entries[0]?.id ?? null) : null,
+				})
+			}}
 		>
 			{meal.entries.map((entry) => {
 				const clarification = findClarification(entry.id)

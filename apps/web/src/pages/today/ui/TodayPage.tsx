@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router'
 import { dayQueryOptions, daysRangeQueryOptions, useLocalToday } from '@/entities/day'
 import { useSessionUser } from '@/entities/session'
 import { WeekStrip } from '@/entities/stats'
+import { EditEntrySheet } from '@/features/edit-entry'
 import { SetGoalSheet } from '@/features/set-goal'
 import { ROUTES } from '@/shared/config'
 import { fromCalendarDate, toCalendarDate } from '@/shared/lib'
@@ -90,6 +91,7 @@ const TodayScreen = ({ timeZone }: { timeZone: string }) => {
 				onOpenChange={setIsGoalOpen}
 				goal={todayQuery.data?.goal ?? null}
 			/>
+			<EditEntrySheet />
 		</div>
 	)
 }

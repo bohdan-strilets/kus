@@ -67,7 +67,8 @@
 			"CLARIFICATION_NOT_FOUND": "Не знайшов це питання. Онови чат.",
 			"CLARIFICATION_ALREADY_ANSWERED": "На це питання вже є відповідь.",
 			"CLARIFICATION_NOT_APPLICABLE": "Цю відповідь уже не застосувати — напиши уточнення в чат.",
-			"ENTRY_CHANGED": "Запис щойно змінився в іншому вікні. Спробуй ще раз."
+			"ENTRY_CHANGED": "Запис щойно змінився в іншому вікні. Спробуй ще раз.",
+			"ENTRY_NOT_FOUND": "Цього запису вже немає. Онови екран."
 		},
 		"validation": {
 			"REQUIRED": "Заповни це поле",
@@ -232,6 +233,36 @@
 		"answeredCaption": "{{amount}} · {{answer}}",
 		"editedCaption": "{{amount}} · змінено",
 		"mealTotal": "{{meal}} разом: {{kcal}} ккал"
+	},
+	"editEntry": {
+		"subtitle": "{{meal}} · {{time}}",
+		"pick": "{{time}} · обери, що змінити",
+		"amountGrams": "Вага, г",
+		"amountMl": "Об'єм, мл",
+		"unitGrams": "г",
+		"unitMl": "мл",
+		"less": "Менше: {{name}}",
+		"more": "Більше: {{name}}",
+		"was": "було {{amount}} · {{kcal}} ккал",
+		"mealType": "Прийом їжі",
+		"total": "Разом",
+		"wasKcal": "було {{kcal}}",
+		"save": "Зберегти",
+		"saving": "Зберігаю…",
+		"delete": "Видалити",
+		"confirmTitle": "Видалити запис?",
+		"confirmText": "«{{name}}» зникне з прийому й з підсумку дня. Повернути можна словами в чаті.",
+		"cancel": "Скасувати",
+		"confirmDelete": "Видалити",
+		"saveError": "Не вдалося зберегти зміни. Спробуй ще раз.",
+		"deleteError": "Не вдалося видалити запис. Спробуй ще раз.",
+		"validation": {
+			"required": "Вкажи вагу",
+			"wholeNumber": "Лише ціле число, без коми",
+			"rangeGrams": "Від {{min}} до {{max}} г",
+			"rangeMl": "Від {{min}} до {{max}} мл",
+			"mealRequired": "Обери прийом їжі"
+		}
 	},
 	"macro": {
 		"protein": "Білки",

@@ -3,6 +3,7 @@ import { MESSAGE_TEXT_MAX_LENGTH } from '@kus/shared'
 import { useLocalToday } from '@/entities/day'
 import { useSessionUser } from '@/entities/session'
 import type { Addressee } from '@/entities/user'
+import { EditEntrySheet } from '@/features/edit-entry'
 import { Composer, useComposerDraftStore, useSendMessage } from '@/features/send-message'
 import { FEATURES } from '@/shared/config'
 import { ChatFeed } from '@/widgets/chat-feed'
@@ -62,6 +63,7 @@ const ChatScreen = ({ addressee, timeZone }: { addressee: Addressee; timeZone: s
 					maxLength={MESSAGE_TEXT_MAX_LENGTH}
 				/>
 			</div>
+			<EditEntrySheet />
 		</div>
 	)
 }

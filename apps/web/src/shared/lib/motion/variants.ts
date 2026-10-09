@@ -17,6 +17,16 @@ export const rowVariants: Variants = {
 	visible: { opacity: 1, y: 0, transition: TRANSITION.base },
 }
 
+/**
+ * A block that opens by height (a folded meal on «Сьогодні»): pair with TRANSITION.expand and an
+ * `overflow-hidden` wrapper. MotionConfig reducedMotion skips transforms only, so the caller
+ * zeroes the duration under reduced motion.
+ */
+export const expandVariants: Variants = {
+	hidden: { height: 0, opacity: 0 },
+	visible: { height: 'auto', opacity: 1 },
+}
+
 /** Bottom sheet: opens 320 ms out, closes 250 ms in. */
 export const sheetVariants: Variants = {
 	hidden: { y: '105%', transition: TRANSITION.exit },

@@ -30,6 +30,7 @@ export {
 	countUp,
 	DURATION_MS,
 	EASE,
+	expandVariants,
 	fillArc,
 	HOP_KEYFRAMES,
 	HOP_TRANSITION,

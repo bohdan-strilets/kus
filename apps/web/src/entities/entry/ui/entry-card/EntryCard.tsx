@@ -65,7 +65,7 @@ export const EntryCard = ({
 						fat: formatInteger(macros.fat),
 					})}
 				</Text>
-				{/* hidden until editing exists (stage 5): a button that does nothing is worse than none */}
+				{/* only with a handler: a button that does nothing is worse than none */}
 				{onEdit && (
 					<Button variant="secondary" size="sm" onClick={onEdit}>
 						{t('entry.edit')}

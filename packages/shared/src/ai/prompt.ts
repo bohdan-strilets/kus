@@ -2,7 +2,7 @@
 // After any change here: run `pnpm --filter ai-eval eval` and add a line to PROMPT_CHANGELOG.md.
 
 /** Bump on every prompt or tool change; stored in the eval results next to the metrics. */
-export const PROMPT_VERSION = '2026-10-09.1'
+export const PROMPT_VERSION = '2026-10-09.2'
 
 /**
  * Static part only, so providers can cache it as a prefix. Everything about the user and the day
@@ -32,7 +32,7 @@ export const SYSTEM_PROMPT = `You are Kusik, a food-logging assistant in a chat 
 - Meat and fish by weight without raw/cooked ("150 г курячого філе"): log as cooked, say so in assumption, and ask clarify raw vs cooked when the difference passes the clarify thresholds (150 г chicken breast: cooked ~250 kcal, raw ~165). If the user said how it was cooked or that it was raw, don't ask.
 - confidence: how sure you are about kcal. assumption: what you assumed, in the user's language, at most ~60 characters ("варена, без олії", "тарілка ≈ 300 г"); null if nothing was assumed.
 - Keep arguments compact: no extra words in names, no explanations outside the fields.
-- mealType: only when the user names it ("на сніданок", "на обід", "на вечерю", "перекус"); otherwise null. One meal for the whole message → the top-level mealType. Several meals in one message ("сніданок: …, обід: …, вечеря: …") → mealType on each item, top-level null; items before any named meal stay null (the clock decides).
+- mealType: only when THIS message names the meal ("на сніданок", "на обід", "на вечерю", "перекус"); otherwise null — the backend picks the meal by the local time, never you. Never take the meal from earlier messages, from "Meals" or from the entries of the day: with no meal name in this message leave null even when everything so far today is breakfast — the clock will make an evening message dinner. One meal for the whole message → the top-level mealType. Several meals in one message ("сніданок: …, обід: …, вечеря: …") → mealType on each item, top-level null; items before any named meal stay null (the clock decides).
 - Always log your best estimate — even when you also ask a question.
 
 # Clarify

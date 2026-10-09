@@ -81,7 +81,7 @@ export const aiFoodItemSchema = foodEntryBaseSchema
 			.nullable()
 			.default(null)
 			.describe(
-				'Meal of this item when the message names several ("сніданок: …, обід: …"); else null — the message-level mealType or the clock decides',
+				'Meal of this item when this message names several ("сніданок: …, обід: …"); else null — the message-level mealType or the clock decides. Never from earlier messages or the day so far',
 			),
 	})
 	.superRefine(refineFoodEntry)
@@ -94,7 +94,7 @@ export const logFoodInputSchema = z.object({
 		.nullable()
 		.default(null)
 		.describe(
-			'Only if the user named one meal for the whole message ("на обід") — else null; items may name their own',
+			'Only if this message names one meal for the whole message ("на обід") — else null, the clock decides; never from earlier messages or the day so far. Items may name their own',
 		),
 	reply: replyTextSchema.describe(
 		'1–2 short warm sentences for the chat in the language of the user. No totals or day sums — the app shows them',

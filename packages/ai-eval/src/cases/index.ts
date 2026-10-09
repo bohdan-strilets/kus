@@ -4,6 +4,7 @@ import { DAY_CASES } from './day.cases.js'
 import { DECISION_CASES } from './decision.cases.js'
 import { EDIT_CASES } from './edit.cases.js'
 import { EXACT_CASES } from './exact.cases.js'
+import { MEAL_TYPE_CASES } from './meal-type.cases.js'
 import { MEMORY_OVERRIDE_CASES } from './memory-override.cases.js'
 import { loadPrivateCases } from './private-cases.js'
 import { RANGE_CASES } from './range.cases.js'
@@ -16,6 +17,7 @@ export const REPO_CASES: EvalCase[] = [
 	...CATEGORY_CASES,
 	...DECISION_CASES,
 	...DAY_CASES,
+	...MEAL_TYPE_CASES,
 	...MEMORY_OVERRIDE_CASES,
 	...EDIT_CASES,
 ]

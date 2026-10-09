@@ -227,6 +227,8 @@
 		"remember": "Запам'ятати для {{name}}",
 		"amountGrams": "{{grams}} г",
 		"amountPieces": "{{count}} шт · {{grams}} г",
+		"amountMl": "{{ml}} мл",
+		"amountPiecesMl": "{{count}} шт · {{ml}} мл",
 		"answeredCaption": "{{amount}} · {{answer}}",
 		"editedCaption": "{{amount}} · змінено",
 		"mealTotal": "{{meal}} разом: {{kcal}} ккал"

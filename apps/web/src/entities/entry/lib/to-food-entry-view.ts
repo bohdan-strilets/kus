@@ -1,4 +1,4 @@
-import type { FoodEntryResponse, MealType } from '@kus/shared'
+import { type FoodEntryResponse, isLiquidCategory, type MealType } from '@kus/shared'
 import type { TFunction } from 'i18next'
 
 import { formatDecimal, formatInteger, INTL_LOCALE } from '@/shared/lib'
@@ -16,18 +16,25 @@ const MEAL_LABEL_KEY = {
 export const getMealLabelKey = (type: MealType): (typeof MEAL_LABEL_KEY)[MealType] =>
 	MEAL_LABEL_KEY[type]
 
-/** «3 шт · 150 г» when the user counted pieces, else «150 г». */
+/**
+ * «3 шт · 150 г» when the user counted pieces, else «150 г». Drinks read in ml («250 мл»): their
+ * grams already hold the volume (isLiquidCategory).
+ */
 export const formatEntryAmount = (
-	{ grams, quantity }: Pick<FoodEntryResponse, 'grams' | 'quantity'>,
+	{ grams, quantity, category }: Pick<FoodEntryResponse, 'grams' | 'quantity' | 'category'>,
 	t: TFunction,
 ): string => {
-	const gramsText = formatInteger(grams)
-	return quantity === null
-		? t('entry.amountGrams', { grams: gramsText })
-		: t('entry.amountPieces', {
-				count: Number.isInteger(quantity) ? formatInteger(quantity) : formatDecimal(quantity),
-				grams: gramsText,
-			})
+	const amount = formatInteger(grams)
+	const isLiquid = isLiquidCategory(category)
+	if (quantity === null) {
+		return isLiquid
+			? t('entry.amountMl', { ml: amount })
+			: t('entry.amountGrams', { grams: amount })
+	}
+	const count = Number.isInteger(quantity) ? formatInteger(quantity) : formatDecimal(quantity)
+	return isLiquid
+		? t('entry.amountPiecesMl', { count, ml: amount })
+		: t('entry.amountPieces', { count, grams: amount })
 }
 
 interface EntryViewOptions {

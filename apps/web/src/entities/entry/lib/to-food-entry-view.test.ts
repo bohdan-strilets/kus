@@ -79,7 +79,20 @@ describe('entries from the API', () => {
 		if (!eggs || !buckwheat) throw new Error('fixture')
 		expect(formatEntryAmount(eggs, t)).toBe('3 шт · 150 г')
 		expect(formatEntryAmount(buckwheat, t)).toBe('100 г')
-		expect(formatEntryAmount({ grams: 75, quantity: 1.5 }, t)).toBe('1,5 шт · 75 г')
+		expect(formatEntryAmount({ grams: 75, quantity: 1.5, category: 'pancakes' }, t)).toBe(
+			'1,5 шт · 75 г',
+		)
+	})
+
+	it('read drinks in ml: their grams hold the volume', () => {
+		if (!coffee) throw new Error('fixture')
+		expect(formatEntryAmount(coffee, t)).toBe('250 мл')
+		expect(formatEntryAmount({ grams: 1000, quantity: 2, category: 'alcohol' }, t)).toBe(
+			'2 шт · 1 000 мл',
+		)
+		expect(formatEntryAmount({ grams: 400, quantity: null, category: 'milk' }, t)).toBe('400 мл')
+		// eaten with a spoon: grams
+		expect(formatEntryAmount({ grams: 150, quantity: null, category: 'yogurt' }, t)).toBe('150 г')
 	})
 
 	it('caption a saved food, an open question and a tapped answer', () => {

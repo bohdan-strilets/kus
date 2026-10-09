@@ -2,7 +2,7 @@ import { QueryClient } from '@tanstack/react-query'
 import { beforeEach, describe, expect, it } from 'vitest'
 
 import { SESSION_QUERY_KEY } from '@/entities/session'
-import { useOutboxStore } from '@/features/send-message'
+import { useComposerDraftStore, useOutboxStore } from '@/features/send-message'
 
 import { syncOutboxOwner } from './sync-outbox-owner'
 
@@ -25,6 +25,7 @@ const failDraft = (): void => {
 describe('syncOutboxOwner', () => {
 	beforeEach(() => {
 		useOutboxStore.setState({ ownerId: null, items: {} })
+		useComposerDraftStore.setState({ ownerId: null, text: '' })
 	})
 
 	it('keeps the drafts of the same user and drops them for another one or after logout', () => {
@@ -42,6 +43,24 @@ describe('syncOutboxOwner', () => {
 		failDraft()
 		queryClient.setQueryData(SESSION_QUERY_KEY, null)
 		expect(useOutboxStore.getState()).toMatchObject({ ownerId: null, items: {} })
+		stop()
+	})
+
+	it('drops the composer text for another user and after logout, like the drafts', () => {
+		const queryClient = new QueryClient()
+		const stop = syncOutboxOwner(queryClient)
+		queryClient.setQueryData(SESSION_QUERY_KEY, USER_A)
+		useComposerDraftStore.getState().setText('тарілка борщу і')
+
+		queryClient.setQueryData(SESSION_QUERY_KEY, { ...USER_A })
+		expect(useComposerDraftStore.getState().text).toBe('тарілка борщу і')
+
+		queryClient.setQueryData(SESSION_QUERY_KEY, USER_B)
+		expect(useComposerDraftStore.getState()).toMatchObject({ ownerId: USER_B.id, text: '' })
+
+		useComposerDraftStore.getState().setText('банан')
+		queryClient.setQueryData(SESSION_QUERY_KEY, null)
+		expect(useComposerDraftStore.getState()).toMatchObject({ ownerId: null, text: '' })
 		stop()
 	})
 

@@ -1,10 +1,9 @@
 import { MESSAGE_TEXT_MAX_LENGTH } from '@kus/shared'
-import { useState } from 'react'
 
 import { useLocalToday } from '@/entities/day'
 import { useSessionUser } from '@/entities/session'
 import type { Addressee } from '@/entities/user'
-import { Composer, useSendMessage } from '@/features/send-message'
+import { Composer, useComposerDraftStore, useSendMessage } from '@/features/send-message'
 import { FEATURES } from '@/shared/config'
 import { ChatFeed } from '@/widgets/chat-feed'
 import { ChatHeader } from '@/widgets/chat-header'
@@ -27,7 +26,10 @@ export const ChatPage = () => {
 const ChatScreen = ({ addressee, timeZone }: { addressee: Addressee; timeZone: string }) => {
 	const today = useLocalToday(timeZone)
 	const header = useChatHeaderMode()
-	const [text, setText] = useState('')
+	// survives a switch of tabs and a reload of the PWA; claimed per user with the session
+	const text = useComposerDraftStore((state) => state.text)
+	const setText = useComposerDraftStore((state) => state.setText)
+	const clearText = useComposerDraftStore((state) => state.clear)
 	const { send } = useSendMessage()
 
 	return (
@@ -44,6 +46,7 @@ const ChatScreen = ({ addressee, timeZone }: { addressee: Addressee; timeZone: s
 				timeZone={timeZone}
 				today={today}
 				onCompactChange={header.onScrolledUpChange}
+				isComposerFocused={header.isComposerFocused}
 			/>
 			<div className="px-gutter pb-2.5">
 				<Composer
@@ -52,7 +55,7 @@ const ChatScreen = ({ addressee, timeZone }: { addressee: Addressee; timeZone: s
 					onFocusChange={header.onComposerFocusChange}
 					onSubmit={() => {
 						send(text)
-						setText('')
+						clearText()
 					}}
 					isPhotoEnabled={FEATURES.photo}
 					isVoiceEnabled={FEATURES.voice}

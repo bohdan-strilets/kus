@@ -17,14 +17,40 @@
 	mask-image: linear-gradient(to bottom, transparent 0, black --spacing(9));
 }
 
+/* Under the floating tab bar: 20 px above the screen edge (mockups), or the home indicator if that
+   is taller — the safe area counts once, not on top of the margin */
+@utility pb-nav-bottom {
+	padding-bottom: max(--spacing(5), env(safe-area-inset-bottom));
+}
+
+/* Room the content keeps under itself for the tab bar: the bar (56 tab + 2×6 padding), its bottom
+   gap from pb-nav-bottom and some air, so the last card or the composer is never under the bar */
+@utility pb-nav-room {
+	padding-bottom: calc(
+		--spacing(17) + max(--spacing(5), env(safe-area-inset-bottom)) + --spacing(3)
+	);
+}
+
 @layer base {
+	/* The document itself never scrolls or rubber-bands: only the chat feed and the tab content do
+	   (AppLayout). The solid top colour of bg-app shows wherever iOS reveals the page behind the app
+	   (overscroll, under the keyboard), so there is no white anywhere. */
+	html,
+	body {
+		@apply h-full overflow-hidden overscroll-none bg-app-top;
+	}
+
 	html {
 		-webkit-text-size-adjust: 100%;
 		-webkit-tap-highlight-color: transparent;
 	}
 
 	body {
-		@apply min-h-dvh bg-app bg-fixed font-sans text-body font-medium text-ink antialiased;
+		@apply font-sans text-body font-medium text-ink antialiased;
+	}
+
+	#root {
+		@apply flex h-full flex-col;
 	}
 
 	/* CLAUDE-design: visible focus, 3px ink outline */

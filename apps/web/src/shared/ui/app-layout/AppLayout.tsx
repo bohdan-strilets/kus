@@ -1,30 +1,50 @@
 import type { ReactNode } from 'react'
 
-import { cn } from '@/shared/lib'
+import { cn, useIsTypingOnTouch, useViewportBox } from '@/shared/lib'
 
 export interface AppLayoutProps {
 	children: ReactNode
-	/** The fixed bottom nav; the content gets room under it. */
+	/** The floating bottom nav; the content keeps room under it. */
 	bottomNav?: ReactNode
-	/** Exactly one screen tall, the page scrolls inside itself (the chat feed). */
+	/** The page scrolls inside itself (the chat feed); otherwise the content area scrolls. */
 	isFixedHeight?: boolean
 }
 
 /**
- * docs AppShell: bg-app on the whole viewport, a 480px column in the middle on wide screens,
- * safe-area insets for the notch and the home indicator.
+ * docs AppShell: bg-app, a 480px column in the middle on wide screens, safe-area insets.
+ * The shell is exactly the visible part of the screen (visualViewport — on iOS the keyboard
+ * doesn't shrink the page) and never scrolls itself: only the content area or the chat feed do,
+ * so the header stays put and the composer sits right on the keyboard. While a field is focused
+ * on a touch screen the keyboard is up and the tab bar steps aside.
  */
-export const AppLayout = ({ children, bottomNav, isFixedHeight = false }: AppLayoutProps) => (
-	<div className={cn('bg-app bg-fixed', isFixedHeight ? 'h-dvh overflow-hidden' : 'min-h-dvh')}>
+export const AppLayout = ({ children, bottomNav, isFixedHeight = false }: AppLayoutProps) => {
+	const viewport = useViewportBox()
+	const isTyping = useIsTypingOnTouch()
+	const hasNav = bottomNav !== undefined && !isTyping
+
+	return (
 		<div
-			className={cn(
-				'mx-auto flex w-full max-w-app flex-col pt-safe-top pb-safe-bottom',
-				isFixedHeight ? 'h-full' : 'min-h-dvh',
-			)}
+			className="fixed inset-x-0 top-0 h-dvh overflow-hidden bg-app"
+			// dynamic: the keyboard changes the visible box; without visualViewport it stays 100dvh
+			style={
+				viewport.height === null
+					? undefined
+					: { height: viewport.height, transform: `translateY(${viewport.offsetTop}px)` }
+			}
 		>
-			{/* room for the floating nav: 68 tall + 20 margin + air */}
-			<main className={cn('flex min-h-0 flex-1 flex-col', bottomNav && 'pb-28')}>{children}</main>
-			{bottomNav}
+			<div className="relative mx-auto flex h-full w-full max-w-app flex-col pt-safe-top">
+				<main
+					className={cn(
+						'flex min-h-0 flex-1 flex-col',
+						isFixedHeight ? 'overflow-hidden' : 'overflow-y-auto overscroll-contain',
+						// the home indicator is under the keyboard while typing: no room needed then
+						hasNav ? 'pb-nav-room' : !isTyping && 'pb-safe-bottom',
+					)}
+				>
+					{children}
+				</main>
+				{hasNav && <div className="absolute inset-x-0 bottom-0 z-30">{bottomNav}</div>}
+			</div>
 		</div>
-	</div>
-)
+	)
+}

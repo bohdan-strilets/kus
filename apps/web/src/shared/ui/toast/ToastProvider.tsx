@@ -66,10 +66,11 @@ export const ToastProvider = ({ children }: { children: ReactNode }) => {
 						</RadixToast.Root>
 					))}
 				</AnimatePresence>
-				{/* above the floating nav (68 + 20 margin) and above sheets and dialogs (z-50) */}
+				{/* above the floating nav (the same room the content keeps for it) and above sheets and
+				    dialogs (z-50) */}
 				<RadixToast.Viewport
 					label={t('toast.viewport')}
-					className="pointer-events-none fixed inset-x-0 bottom-0 z-60 mx-auto mb-26 flex max-w-app flex-col gap-2 px-gutter pb-safe-bottom outline-none"
+					className="pointer-events-none fixed inset-x-0 bottom-0 z-60 mx-auto flex max-w-app flex-col gap-2 px-gutter pb-nav-room outline-none"
 				/>
 			</RadixToast.Provider>
 		</ToastContext>

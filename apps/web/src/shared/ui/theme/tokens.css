@@ -36,6 +36,9 @@
 	--color-muted-soft: #a8998a;
 	--color-surface: #ffffff;
 	--color-surface-glass: rgb(255 255 255 / 0.92);
+	/* the first stop of bg-app as a solid colour: html/body behind iOS overscroll and the keyboard,
+	   theme-color — so no white shows around the app */
+	--color-app-top: #fcebd8;
 	--color-field: #f7f1e9;
 	/* secondary buttons, camera / mic */
 	--color-secondary: #f3ece3;

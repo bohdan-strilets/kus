@@ -14,15 +14,16 @@ interface BottomNavProps {
 }
 
 /**
- * The floating tab bar from the mockups: radius 30, white 94%, shadow-float, 16px from the sides
- * and 20px above the home indicator, inside the 480px app column.
+ * The floating tab bar from the mockups: radius 30, white 94%, shadow-float, 16px from the sides,
+ * 20px from the bottom edge or just over the home indicator (the safe area counts once). AppLayout
+ * places it at the bottom of the app column and hides it while the keyboard is up.
  */
 export const BottomNav = ({ hasProgressUpdate = false, todayProgress = 0 }: BottomNavProps) => {
 	const { t } = useTranslation()
 
 	return (
-		<div className="fixed inset-x-0 bottom-0 z-30 mx-auto max-w-app px-gutter pb-safe-bottom">
-			<nav aria-label={t('nav.label')} className={navBarVariants({ className: 'mb-5' })}>
+		<div className="px-gutter pb-nav-bottom">
+			<nav aria-label={t('nav.label')} className={navBarVariants()}>
 				<ul className="grid grid-cols-4 items-center">
 					{NAV_ITEMS.map((item) => (
 						<li key={item.to}>

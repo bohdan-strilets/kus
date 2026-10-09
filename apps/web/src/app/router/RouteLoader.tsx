@@ -12,7 +12,7 @@ export const RouteLoader = () => {
 	if (!isShown) return null
 
 	return (
-		<div className="flex min-h-dvh items-center justify-center">
+		<div className="flex min-h-0 flex-1 items-center justify-center">
 			<Loader size={SCREEN_LOADER_SIZE} ariaLabel={t('common.loading')} />
 		</div>
 	)

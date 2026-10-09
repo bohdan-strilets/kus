@@ -4,6 +4,8 @@ import { type ChatHeaderMode, getHeaderMode } from '../lib/get-header-mode'
 
 export interface ChatHeaderModeState {
 	mode: ChatHeaderMode
+	/** The composer has focus — the feed pins to the newest message. */
+	isComposerFocused: boolean
 	onScrolledUpChange: (isScrolledUp: boolean) => void
 	onComposerFocusChange: (isFocused: boolean) => void
 	/** A tap on the bar while typing. */
@@ -17,6 +19,7 @@ export const useChatHeaderMode = (): ChatHeaderModeState => {
 
 	return {
 		mode: getHeaderMode({ isScrolledUp, isComposerFocused, isExpandedByTap }),
+		isComposerFocused,
 		onScrolledUpChange: setIsScrolledUp,
 		onComposerFocusChange: (isFocused) => {
 			setIsComposerFocused(isFocused)

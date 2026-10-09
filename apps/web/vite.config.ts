@@ -7,8 +7,11 @@ import { VitePWA } from 'vite-plugin-pwa'
 import { defineConfig } from 'vitest/config'
 
 // Middle stop of the bg-app gradient (shared/ui/theme/tokens.css), as design/README.md specifies
-// for the manifest; keep in sync with <meta name="theme-color"> in index.html
+// for the manifest: the splash screen of the installed app
 const APP_BACKGROUND_COLOR = '#FBF6EE'
+// The top of bg-app (--color-app-top): the status bar / browser toolbar continue the screen instead
+// of a white strip; keep in sync with <meta name="theme-color"> in index.html
+const APP_THEME_COLOR = '#FCEBD8'
 // `pnpm --filter api dev` (PORT in apps/api/.env.example)
 const API_DEV_TARGET = 'http://localhost:3000'
 
@@ -26,7 +29,7 @@ export default defineConfig({
 				start_url: '/',
 				display: 'standalone',
 				orientation: 'portrait',
-				theme_color: APP_BACKGROUND_COLOR,
+				theme_color: APP_THEME_COLOR,
 				background_color: APP_BACKGROUND_COLOR,
 				icons: [
 					{ src: '/icon-192.png', sizes: '192x192', type: 'image/png' },

@@ -5,8 +5,11 @@ export const textareaVariants = cva(
 	{
 		variants: {
 			variant: {
-				/** chat composer: 15/1.45, grows up to 132px (mockups/chat-long-input.html) */
-				composer: 'max-h-33 text-body font-medium',
+				/**
+				 * chat composer, grows up to 132px (mockups/chat-long-input.html). 16px, not the mockup's
+				 * 15: iOS zooms into any field under 16px on focus (CLAUDE-design rule 4)
+				 */
+				composer: 'max-h-33 text-input font-medium',
 				/** inside a FormField card: 16/600 like Input */
 				field: 'max-h-40 text-input font-semibold',
 			},

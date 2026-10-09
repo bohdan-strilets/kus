@@ -2,13 +2,20 @@
 <html lang="uk">
 	<head>
 		<meta charset="UTF-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-		<!-- keep in sync with APP_BACKGROUND_COLOR in vite.config.ts -->
-		<meta name="theme-color" content="#FBF6EE" />
+		<!-- interactive-widget: Android shrinks the page for the keyboard; iOS Safari ignores it so far,
+		     AppLayout follows visualViewport there. Zoom stays allowed (no maximum-scale). -->
+		<meta
+			name="viewport"
+			content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content"
+		/>
+		<!-- the top of bg-app (--color-app-top); keep in sync with APP_THEME_COLOR in vite.config.ts -->
+		<meta name="theme-color" content="#FCEBD8" />
 		<meta name="mobile-web-app-capable" content="yes" />
 		<!-- older iOS Safari reads only the prefixed name -->
 		<meta name="apple-mobile-web-app-capable" content="yes" />
 		<meta name="apple-mobile-web-app-title" content="Kusik" />
+		<!-- default, not black-translucent: its status bar text is always white, unreadable on the light
+		     top of bg-app; the app starts under the status bar, so no inset is needed for it -->
 		<meta name="apple-mobile-web-app-status-bar-style" content="default" />
 		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 		<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />

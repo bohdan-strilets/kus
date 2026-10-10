@@ -17,6 +17,7 @@ const REPLY_KINDS: readonly KusikReplyKind[] = [
 	'weeklySummary',
 	'newRecipe',
 	'weight',
+	'welcomeBack',
 ]
 const HEAD_SIZE = 40
 

@@ -11,7 +11,9 @@ interface KusikReplyProps {
 	isLatest: boolean
 }
 
-const getReplyKind = ({ meals, clarifications }: ChatMessage): KusikReplyKind => {
+const getReplyKind = ({ replyToId, meals, clarifications }: ChatMessage): KusikReplyKind => {
+	// the only message Kusik writes on his own, without a user turn: the welcome back after a restore
+	if (replyToId === null) return 'welcomeBack'
 	if (clarifications.some((item) => item.status === 'OPEN')) return 'clarify'
 	return meals.length > 0 ? 'mealLogged' : 'reply'
 }

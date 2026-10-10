@@ -13,12 +13,15 @@ export type KusikReplyKind =
 	| 'weeklySummary'
 	| 'newRecipe'
 	| 'weight'
+	/** Kusik's own message after account-restore («З поверненням»), not a reply to a user turn. */
+	| 'welcomeBack'
 
 /**
  * Face per reply, taken from the avatars in design/mockups/chat*.html (and docs/components.md):
  * chat / chat-clarify (meal card) → smile, chat-photo and chat-typing → think, chat «що на вечерю»
  * → happy, chat-error → oops, chat-new-day and chat-weekly-summary → smileOpen, chat-new-recipe →
- * content, chat-weight → proud. hungry is used outside chat bubbles (the dinner tip on «Сьогодні»).
+ * content, chat-weight → proud; the welcome back is glad to see the user → happy. hungry is used
+ * outside chat bubbles (the dinner tip on «Сьогодні»).
  */
 const FACE_BY_REPLY: Record<KusikReplyKind, HamsterHeadMood> = {
 	reply: 'smile',
@@ -32,6 +35,7 @@ const FACE_BY_REPLY: Record<KusikReplyKind, HamsterHeadMood> = {
 	weeklySummary: 'smileOpen',
 	newRecipe: 'content',
 	weight: 'proud',
+	welcomeBack: 'happy',
 }
 
 export const getKusikFace = (kind: KusikReplyKind): HamsterHeadMood => FACE_BY_REPLY[kind]

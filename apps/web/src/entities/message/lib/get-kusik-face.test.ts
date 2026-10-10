@@ -21,4 +21,8 @@ describe('getKusikFace', () => {
 		expect(getKusikFace('newRecipe')).toBe('content')
 		expect(getKusikFace('weight')).toBe('proud')
 	})
+
+	it('is glad to see the user back after a restore', () => {
+		expect(getKusikFace('welcomeBack')).toBe('happy')
+	})
 })

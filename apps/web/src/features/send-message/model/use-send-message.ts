@@ -1,5 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query'
 
+import { createUuid } from '@/shared/lib'
+
 import { deliverMessage } from './deliver-message'
 
 export interface SendMessageActions {
@@ -13,7 +15,7 @@ export const useSendMessage = (): SendMessageActions => {
 	const queryClient = useQueryClient()
 	return {
 		send: (text) => {
-			void deliverMessage(queryClient, { clientMessageId: crypto.randomUUID(), text: text.trim() })
+			void deliverMessage(queryClient, { clientMessageId: createUuid(), text: text.trim() })
 		},
 		retry: (params) => {
 			void deliverMessage(queryClient, { ...params, isRetry: true })

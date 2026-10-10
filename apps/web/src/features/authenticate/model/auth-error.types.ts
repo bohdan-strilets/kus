@@ -1,3 +1,5 @@
+import type { ApiMessage } from '@/shared/api'
+
 export type AuthFormField = 'name' | 'email' | 'password' | 'consent'
 
 export type ValidationMessageKey =
@@ -26,5 +28,5 @@ export interface AuthFormError {
 	/** Shown under the field: the card turns red and shakes. */
 	fields: Partial<Record<AuthFormField, AuthErrorMessage>>
 	/** The alert line above the submit button; the fields stay neutral. */
-	form?: AuthErrorMessage
+	form?: ApiMessage
 }

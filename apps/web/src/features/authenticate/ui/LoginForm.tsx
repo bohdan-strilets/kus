@@ -1,12 +1,10 @@
 import { Controller } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 
-import { Button } from '@/shared/ui'
+import { Button, FormAlert, PasswordField } from '@/shared/ui'
 
 import type { LoginFormState } from '../model/use-login-form'
 import { EmailField } from './EmailField'
-import { FormAlert } from './FormAlert'
-import { PasswordField } from './PasswordField'
 
 /** auth-login / auth-login-error. The state comes from useLoginForm, owned by the page. */
 export const LoginForm = ({ state }: { state: LoginFormState }) => {

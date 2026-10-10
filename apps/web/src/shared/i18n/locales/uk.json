@@ -2,7 +2,9 @@
 	"common": {
 		"retry": "Повторити",
 		"loading": "Завантаження",
-		"close": "Закрити"
+		"close": "Закрити",
+		"showPassword": "Показати пароль",
+		"hidePassword": "Сховати пароль"
 	},
 	"nav": {
 		"label": "Основна навігація",
@@ -145,8 +147,6 @@
 		"name": "Ім'я",
 		"email": "Email",
 		"password": "Пароль",
-		"showPassword": "Показати пароль",
-		"hidePassword": "Сховати пароль",
 		"passwordHint": "Мінімум {{min}} символів",
 		"login": "Увійти",
 		"loggingIn": "Входжу…",

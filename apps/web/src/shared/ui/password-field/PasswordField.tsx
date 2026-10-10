@@ -1,9 +1,12 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { FormField, Icon, ICON_SIZE, IconButton, Input, type InputProps } from '@/shared/ui'
+import { FormField } from '../form-field'
+import { Icon, ICON_SIZE } from '../icon'
+import { IconButton } from '../icon-button'
+import { Input, type InputProps } from '../input'
 
-interface PasswordFieldProps {
+export interface PasswordFieldProps {
 	label: string
 	error?: string
 	hint?: string
@@ -34,7 +37,7 @@ export const PasswordField = ({
 			endSlot={
 				<IconButton
 					variant="ghost"
-					label={isShown ? t('auth.hidePassword') : t('auth.showPassword')}
+					label={isShown ? t('common.hidePassword') : t('common.showPassword')}
 					aria-pressed={isShown}
 					onClick={() => {
 						setIsShown((value) => !value)

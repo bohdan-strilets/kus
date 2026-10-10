@@ -17,6 +17,7 @@ export { Button, type ButtonProps } from './button'
 export { Chip, type ChipProps } from './chip'
 export { ConfirmDialog, type ConfirmDialogProps } from './confirm-dialog'
 export { DecorBackdrop } from './decor-backdrop'
+export { FormAlert, type FormAlertProps } from './form-alert'
 export {
 	FALLBACK_FOOD_CATEGORY,
 	FOOD_CATEGORIES,
@@ -53,6 +54,7 @@ export {
 export { Input, type InputProps } from './input'
 export { BaseModal, type BaseModalProps } from './modal'
 export { PageStub } from './page-stub'
+export { PasswordField, type PasswordFieldProps } from './password-field'
 export { ProgressBar, type ProgressBarProps } from './progress-bar'
 export { Skeleton, type SkeletonProps } from './skeleton'
 export { Surface, type SurfaceProps } from './surface'

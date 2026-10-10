@@ -1,6 +1,6 @@
 import { RouterProvider } from 'react-router/dom'
 
-import { consumePendingLoginPush } from '@/features/logout'
+import { consumePendingLoginPush } from '@/entities/session'
 import { httpClient } from '@/shared/api'
 import { ROUTES } from '@/shared/config'
 

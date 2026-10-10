@@ -5,10 +5,10 @@ import type { FieldValues, Path, UseFormReturn } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 
 import { setSessionUser } from '@/entities/session'
+import { type ApiMessage, translateApiMessage } from '@/shared/api'
 
 import { getAuthError } from '../lib/get-auth-error'
-import { translateAuthError } from '../lib/translate-auth-error'
-import type { AuthErrorMessage, AuthFormField } from './auth-error.types'
+import type { AuthFormField } from './auth-error.types'
 
 interface UseAuthSubmitOptions<TValues extends FieldValues, TRequest> {
 	form: UseFormReturn<TValues>
@@ -21,7 +21,7 @@ export interface AuthSubmit {
 	onSubmit: (event?: BaseSyntheticEvent) => Promise<void>
 	isSubmitting: boolean
 	/** The alert line above the button; null when the last error belongs to a field. */
-	formMessage: AuthErrorMessage | null
+	formMessage: ApiMessage | null
 }
 
 /**
@@ -36,7 +36,7 @@ export const useAuthSubmit = <TValues extends FieldValues, TRequest>({
 }: UseAuthSubmitOptions<TValues, TRequest>): AuthSubmit => {
 	const { t } = useTranslation()
 	const queryClient = useQueryClient()
-	const [formMessage, setFormMessage] = useState<AuthErrorMessage | null>(null)
+	const [formMessage, setFormMessage] = useState<ApiMessage | null>(null)
 	const mutation = useMutation({
 		mutationFn: request,
 		onSuccess: (user) => {
@@ -48,7 +48,8 @@ export const useAuthSubmit = <TValues extends FieldValues, TRequest>({
 		const authError = getAuthError(error)
 		for (const field of fields) {
 			const message = authError.fields[field]
-			if (message) form.setError(field, { type: 'server', message: translateAuthError(t, message) })
+			if (message)
+				form.setError(field, { type: 'server', message: translateApiMessage(t, message) })
 		}
 		setFormMessage(authError.form ?? null)
 	}

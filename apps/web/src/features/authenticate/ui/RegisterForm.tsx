@@ -2,13 +2,11 @@ import { PASSWORD_MIN_LENGTH } from '@kus/shared'
 import { Controller } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 
-import { Button, FormField, Input } from '@/shared/ui'
+import { Button, FormAlert, FormField, Input, PasswordField } from '@/shared/ui'
 
 import type { RegisterFormState } from '../model/use-register-form'
 import { ConsentCard } from './ConsentCard'
 import { EmailField } from './EmailField'
-import { FormAlert } from './FormAlert'
-import { PasswordField } from './PasswordField'
 
 /** auth-register. Without consent the button is disabled (docs Consent card). */
 export const RegisterForm = ({ state }: { state: RegisterFormState }) => {

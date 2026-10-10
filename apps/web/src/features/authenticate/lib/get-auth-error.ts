@@ -1,12 +1,6 @@
-import { getApiError } from '@/shared/api'
-import { formatTime } from '@/shared/lib'
+import { type ApiMessage, getAccountLockedMessage, getApiError } from '@/shared/api'
 
-import type {
-	AuthErrorMessage,
-	AuthFormError,
-	AuthFormField,
-	ValidationMessageKey,
-} from '../model/auth-error.types'
+import type { AuthFormError, AuthFormField, ValidationMessageKey } from '../model/auth-error.types'
 
 const AUTH_FORM_FIELDS: readonly AuthFormField[] = ['name', 'email', 'password', 'consent']
 const VALIDATION_CODES: Readonly<Record<string, ValidationMessageKey>> = {
@@ -18,18 +12,10 @@ const VALIDATION_CODES: Readonly<Record<string, ValidationMessageKey>> = {
 const HTTP_TOO_MANY_REQUESTS = 429
 const HTTP_SERVER_ERROR_MIN = 500
 
-const formError = (message: AuthErrorMessage): AuthFormError => ({ fields: {}, form: message })
+const formError = (message: ApiMessage): AuthFormError => ({ fields: {}, form: message })
 
 const isAuthFormField = (field: string): field is AuthFormField =>
 	AUTH_FORM_FIELDS.some((known) => known === field)
-
-/** `details.lockedUntil` → «14:35»; the lockout may stop exposing it (roadmap), so it's optional. */
-const getLockedMessage = (details: Record<string, unknown>): AuthErrorMessage => {
-	const { lockedUntil } = details
-	const date = typeof lockedUntil === 'string' ? new Date(lockedUntil) : null
-	if (!date || Number.isNaN(date.getTime())) return { key: 'errors.api.ACCOUNT_LOCKED_NO_TIME' }
-	return { key: 'errors.api.ACCOUNT_LOCKED', params: { time: formatTime(date) } }
-}
 
 /** 422 `details.fields` → a message under each known field (server rules may be stricter). */
 const getValidationError = (details: Record<string, unknown>): AuthFormError => {
@@ -65,7 +51,7 @@ export const getAuthError = (error: unknown): AuthFormError => {
 		case 'VALIDATION_ERROR':
 			return getValidationError(details)
 		case 'ACCOUNT_LOCKED':
-			return formError(getLockedMessage(details))
+			return formError(getAccountLockedMessage(details))
 		case 'REGISTRATION_DISABLED':
 			return formError({ key: 'errors.api.REGISTRATION_DISABLED' })
 	}

@@ -9,7 +9,7 @@ import { REFRESH_THROTTLE, STRICT_AUTH_THROTTLE } from './auth.constants'
 import { RefreshTokenInvalidException, RefreshTokenReusedException } from './auth.exceptions'
 import { AuthService } from './auth.service'
 import type { ClientMeta } from './auth.types'
-import { LoginDto, RegisterDto } from './dto'
+import { ChangePasswordDto, LoginDto, RegisterDto } from './dto'
 import { RegistrationEnabledGuard } from './guards/registration-enabled.guard'
 import { SessionService } from './session.service'
 
@@ -98,5 +98,16 @@ export class AuthController {
 	): Promise<void> {
 		await this.sessionService.logoutAll(user.sub)
 		this.authCookies.clearTokens(response)
+	}
+
+	/** The current password is checked like a login, so it shares the login throttle and lockout. */
+	@Throttle(STRICT_AUTH_THROTTLE)
+	@Post('change-password')
+	@HttpCode(HttpStatus.NO_CONTENT)
+	async changePassword(
+		@CurrentUser() user: AuthenticatedUser,
+		@Body() body: ChangePasswordDto,
+	): Promise<void> {
+		await this.authService.changePassword(user, body)
 	}
 }

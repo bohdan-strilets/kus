@@ -18,8 +18,10 @@ const storedGoal = (overrides: Partial<UserGoal>): UserGoal => ({
 	proteinG: 140,
 	fatG: 80,
 	carbsG: 225,
+	source: 'MANUAL',
 	validFrom: new Date('2026-10-08T00:00:00Z'),
 	createdAt: new Date(),
+	updatedAt: new Date(),
 	...overrides,
 })
 
@@ -52,6 +54,7 @@ describe('GoalsService.setCurrentGoal', () => {
 		const [params] = repository.upsertForDate.mock.calls[0] ?? []
 		expect(params?.values).toEqual({
 			type: 'MAINTAIN',
+			source: 'MANUAL',
 			dailyKcal: 2200,
 			proteinG: 140,
 			fatG: 80,

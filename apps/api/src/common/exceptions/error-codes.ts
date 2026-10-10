@@ -23,6 +23,21 @@ export const ErrorCodes = {
 	REFRESH_TOKEN_INVALID: 'REFRESH_TOKEN_INVALID',
 	REFRESH_TOKEN_REUSED: 'REFRESH_TOKEN_REUSED',
 	USER_NOT_FOUND: 'USER_NOT_FOUND',
+	/**
+	 * The password typed to confirm a change or a deletion is wrong. 400, not 401: the web app
+	 * would answer a 401 with a token refresh and a logout.
+	 */
+	PASSWORD_INCORRECT: 'PASSWORD_INCORRECT',
+	/** The new password equals the current one. */
+	PASSWORD_SAME: 'PASSWORD_SAME',
+	/** Deletion requested: the account can only be restored or logged out until it is purged. */
+	ACCOUNT_PENDING_DELETION: 'ACCOUNT_PENDING_DELETION',
+
+	// profile & goals
+	/** The goal calculation needs fields that «Мої дані» doesn't have yet (details.fields). */
+	PROFILE_INCOMPLETE: 'PROFILE_INCOMPLETE',
+	/** Manual goals: protein, carbs and fat add up to something far from the kcal. */
+	GOALS_INCONSISTENT: 'GOALS_INCONSISTENT',
 
 	// chat & AI
 	/** The model failed or kept returning invalid data; the message is FAILED and can be resent. */

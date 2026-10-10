@@ -105,9 +105,21 @@ export class SessionService {
 		this.logger.log(`Logout userId=${session.userId}`)
 	}
 
-	async logoutAll(userId: string): Promise<void> {
-		const revoked = await this.authRepository.revokeAllForUser(userId, new Date())
+	async logoutAll(userId: string, tx?: Prisma.TransactionClient): Promise<void> {
+		const revoked = await this.authRepository.revokeAllForUser(userId, new Date(), tx)
 		this.logger.log(`Logout from all sessions userId=${userId} revoked=${revoked}`)
+	}
+
+	/** After a password change: every device but the one that changed it. */
+	async logoutOthers(
+		{ sub, fam }: AuthenticatedUser,
+		tx?: Prisma.TransactionClient,
+	): Promise<void> {
+		const revoked = await this.authRepository.revokeAllForUserExceptFamily(
+			{ userId: sub, tokenFamily: fam, revokedAt: new Date() },
+			tx,
+		)
+		this.logger.log(`Logout from other sessions userId=${sub} revoked=${revoked}`)
 	}
 
 	/**

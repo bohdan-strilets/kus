@@ -9,12 +9,15 @@ import { ResponseEnvelopeInterceptor } from './common/interceptors'
 import { AppValidationPipe } from './common/pipes'
 import { getClientIp } from './common/proxy'
 import { AppConfigModule } from './config'
+import { AccountModule } from './modules/account/account.module'
+import { PendingDeletionGuard } from './modules/account/guards/pending-deletion.guard'
 import { AuthModule } from './modules/auth/auth.module'
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard'
 import { ChatModule } from './modules/chat/chat.module'
 import { DaysModule } from './modules/days/days.module'
 import { FoodEntriesModule } from './modules/food-entries/food-entries.module'
 import { HealthModule } from './modules/health/health.module'
+import { ProfileModule } from './modules/profile/profile.module'
 import { UsersModule } from './modules/users/users.module'
 import { PrismaModule } from './prisma'
 
@@ -30,19 +33,23 @@ const DEFAULT_THROTTLE = { ttl: minutes(1), limit: 100 }
 			// the throttler types the request loosely; on the Express platform it is Express's Request
 			getTracker: (request: Record<string, unknown>) => getClientIp(request as unknown as Request),
 		}),
-		// daily cleanup of old AI tool calls
+		// daily cleanup of old AI tool calls and purge of deleted accounts
 		ScheduleModule.forRoot(),
 		HealthModule,
 		AuthModule,
 		UsersModule,
+		AccountModule,
+		ProfileModule,
 		ChatModule,
 		DaysModule,
 		FoodEntriesModule,
 	],
 	providers: [
-		// order matters: rate limiting runs before auth, so unauthenticated floods are limited too
+		// order matters: rate limiting runs before auth, so unauthenticated floods are limited too;
+		// the deletion check needs the user the auth guard attached
 		{ provide: APP_GUARD, useClass: ThrottlerGuard },
 		{ provide: APP_GUARD, useExisting: JwtAuthGuard },
+		{ provide: APP_GUARD, useExisting: PendingDeletionGuard },
 		{ provide: APP_PIPE, useClass: AppValidationPipe },
 		{ provide: APP_INTERCEPTOR, useClass: ResponseEnvelopeInterceptor },
 		{ provide: APP_FILTER, useClass: AllExceptionsFilter },

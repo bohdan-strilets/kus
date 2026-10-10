@@ -68,14 +68,20 @@
 			"CLARIFICATION_ALREADY_ANSWERED": "На це питання вже є відповідь.",
 			"CLARIFICATION_NOT_APPLICABLE": "Цю відповідь уже не застосувати — напиши уточнення в чат.",
 			"ENTRY_CHANGED": "Запис щойно змінився в іншому вікні. Спробуй ще раз.",
-			"ENTRY_NOT_FOUND": "Цього запису вже немає. Онови екран."
+			"ENTRY_NOT_FOUND": "Цього запису вже немає. Онови екран.",
+			"PASSWORD_INCORRECT": "Неправильний пароль.",
+			"PASSWORD_SAME": "Новий пароль має відрізнятися від поточного.",
+			"ACCOUNT_PENDING_DELETION": "Акаунт чекає на видалення. Віднови його, щоб продовжити.",
+			"PROFILE_INCOMPLETE": "Заповни «Мої дані», щоб Kusik порахував цілі.",
+			"GOALS_INCONSISTENT": "З Б/В/Ж виходить інша кількість калорій. Перевір числа."
 		},
 		"validation": {
 			"REQUIRED": "Заповни це поле",
 			"INVALID_FORMAT": "Перевір формат",
 			"TOO_SMALL": "Закоротко",
 			"TOO_LARGE": "Задовго",
-			"INVALID_VALUE": "Перевір значення"
+			"INVALID_VALUE": "Перевір значення",
+			"AGE_BELOW_MINIMUM": "Kusik — для дорослих, від 18 років"
 		}
 	},
 	"profile": {

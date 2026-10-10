@@ -56,6 +56,14 @@ enum GoalType {
   @@map("goal_type")
 }
 
+// Where the daily goal came from: computed from the profile or typed in by hand
+enum GoalSource {
+  CALCULATED
+  MANUAL
+
+  @@map("goal_source")
+}
+
 enum MessageRole {
   USER
   ASSISTANT
@@ -221,20 +229,24 @@ enum FoodCategory {
 // ───────────────────────── User & access ─────────────────────────
 
 model User {
-  id              String    @id @default(uuid(7)) @db.Uuid
+  id                  String    @id @default(uuid(7)) @db.Uuid
   // stored lowercased by the backend
-  email           String    @unique
-  name            String?
+  email               String    @unique
+  name                String?
   // how Kusik greets the user («Богдане», «Бо»); null → the vocative of name, if one is safe
-  addressAs       String?   @map("address_as")
-  locale          Locale    @default(uk)
+  addressAs           String?   @map("address_as")
+  locale              Locale    @default(uk)
   // IANA zone; defines the user's "day" for localDate
-  timezone        String    @default("Europe/Warsaw")
-  emailVerifiedAt DateTime? @map("email_verified_at") @db.Timestamptz
+  timezone            String    @default("Europe/Warsaw")
+  emailVerifiedAt     DateTime? @map("email_verified_at") @db.Timestamptz
   // when the user accepted processing of their food and weight data; set by the server at registration
-  consentAt       DateTime? @map("consent_at") @db.Timestamptz
-  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  consentAt           DateTime? @map("consent_at") @db.Timestamptz
+  // account deletion with a 30-day grace: set together; a daily job hard-deletes rows past purgeAt.
+  // While set, every route except restore, logout and «who am I» answers 403 ACCOUNT_PENDING_DELETION
+  deletionRequestedAt DateTime? @map("deletion_requested_at") @db.Timestamptz
+  purgeAt             DateTime? @map("purge_at") @db.Timestamptz
+  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt           DateTime  @updatedAt @map("updated_at") @db.Timestamptz
 
   credentials        AuthCredentials?
   sessions           Session[]
@@ -254,6 +266,8 @@ model User {
   dailyUsage         DailyUsage[]
   exerciseEntries    ExerciseEntry[]
 
+  // the daily purge job scans by purgeAt
+  @@index([purgeAt])
   @@map("users")
 }
 
@@ -307,14 +321,20 @@ model VerificationToken {
 
 // ───────────────────────── Profile & goals ─────────────────────────
 
+// Inputs of the goal calculation (packages/shared calculateGoals). birthYear never leaves the API:
+// the client sends and reads an age, the service converts it with the user's local year
 model UserProfile {
-  userId        String         @id @map("user_id") @db.Uuid
-  heightCm      Float?         @map("height_cm")
-  birthYear     Int?           @map("birth_year")
-  sex           Sex?
-  activityLevel ActivityLevel? @map("activity_level")
-  createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt     DateTime       @updatedAt @map("updated_at") @db.Timestamptz
+  userId         String         @id @map("user_id") @db.Uuid
+  heightCm       Float?         @map("height_cm")
+  birthYear      Int?           @map("birth_year")
+  sex            Sex?
+  activityLevel  ActivityLevel? @map("activity_level")
+  targetWeightKg Float?         @map("target_weight_kg")
+  goalType       GoalType?      @map("goal_type")
+  // 0.25 / 0.5 / 0.75 kg per week, always positive; null for MAINTAIN
+  paceKgPerWeek  Float?         @map("pace_kg_per_week")
+  createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime       @updatedAt @map("updated_at") @db.Timestamptz
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -323,16 +343,20 @@ model UserProfile {
 
 // Goal history: stats for a past day use the goal with the latest validFrom <= that day
 model UserGoal {
-  id             String   @id @default(uuid(7)) @db.Uuid
-  userId         String   @map("user_id") @db.Uuid
+  id             String     @id @default(uuid(7)) @db.Uuid
+  userId         String     @map("user_id") @db.Uuid
   type           GoalType
-  targetWeightKg Float?   @map("target_weight_kg")
-  dailyKcal      Float    @map("daily_kcal")
-  proteinG       Float    @map("protein_g")
-  fatG           Float    @map("fat_g")
-  carbsG         Float    @map("carbs_g")
-  validFrom      DateTime @map("valid_from") @db.Date
-  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+  // no longer written: the target weight lives in UserProfile (docs/database.md, «Відкладено»)
+  targetWeightKg Float?     @map("target_weight_kg")
+  dailyKcal      Float      @map("daily_kcal")
+  proteinG       Float      @map("protein_g")
+  fatG           Float      @map("fat_g")
+  carbsG         Float      @map("carbs_g")
+  // MANUAL by default so goals set before the calculation existed keep their meaning
+  source         GoalSource @default(MANUAL)
+  validFrom      DateTime   @map("valid_from") @db.Date
+  createdAt      DateTime   @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -340,9 +364,11 @@ model UserGoal {
   @@map("user_goals")
 }
 
+// One weigh-in per local day (a second one that day rewrites it); «вага зараз» = the latest row
 model WeightEntry {
   id         String   @id @default(uuid(7)) @db.Uuid
   userId     String   @map("user_id") @db.Uuid
+  // one decimal, rounded by the backend
   weightKg   Float    @map("weight_kg")
   measuredAt DateTime @map("measured_at") @db.Timestamptz
   localDate  DateTime @map("local_date") @db.Date
@@ -352,7 +378,7 @@ model WeightEntry {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([userId, localDate])
+  @@unique([userId, localDate])
   @@map("weight_entries")
 }
 

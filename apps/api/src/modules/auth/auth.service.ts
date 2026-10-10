@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common'
-import type { LoginRequest, RegisterRequest } from '@kus/shared'
+import type { ChangePasswordRequest, LoginRequest, RegisterRequest } from '@kus/shared'
 
+import type { AuthenticatedUser } from '../../common/decorators'
 import { Prisma } from '../../generated/prisma/client'
 import { PrismaService } from '../../prisma'
 import { UsersService } from '../users/users.service'
@@ -9,6 +10,8 @@ import {
 	AccountLockedException,
 	EmailTakenException,
 	InvalidCredentialsException,
+	PasswordIncorrectException,
+	PasswordSameException,
 } from './auth.exceptions'
 import { AuthRepository } from './auth.repository'
 import type { AuthResult, ClientMeta } from './auth.types'
@@ -70,23 +73,80 @@ export class AuthService {
 			throw new InvalidCredentialsException()
 		}
 
+		const isPasswordValid = await this.checkPasswordWithLockout({
+			userId: user.id,
+			passwordHash: credentials.passwordHash,
+			password,
+		})
+		if (!isPasswordValid) throw new InvalidCredentialsException()
+
+		this.logger.log(`Login succeeded userId=${user.id}`)
+		return { user, tokens: await this.sessionService.startSession({ userId: user.id, meta }) }
+	}
+
+	/**
+	 * The password typed to confirm a change or a deletion, checked with the login lockout: five
+	 * wrong confirmations lock the account like five wrong logins would.
+	 */
+	async verifyPasswordOrThrow(userId: string, password: string): Promise<void> {
+		const credentials = await this.authRepository.findCredentials(userId)
+		if (!credentials) throw new PasswordIncorrectException()
+
+		const isPasswordValid = await this.checkPasswordWithLockout({
+			userId,
+			passwordHash: credentials.passwordHash,
+			password,
+		})
+		if (!isPasswordValid) throw new PasswordIncorrectException()
+	}
+
+	/** New password after the current one; every other device is logged out, this one stays. */
+	async changePassword(
+		{ sub: userId, fam }: AuthenticatedUser,
+		{ currentPassword, newPassword }: ChangePasswordRequest,
+	): Promise<void> {
+		await this.verifyPasswordOrThrow(userId, currentPassword)
+		// checked after the current one, so a wrong guess learns nothing from this error
+		if (newPassword === currentPassword) throw new PasswordSameException()
+
+		const passwordHash = await this.passwordService.hash(newPassword)
+		const now = new Date()
+		await this.prisma.$transaction(async (tx) => {
+			await this.authRepository.updatePassword({ userId, passwordHash, changedAt: now }, tx)
+			await this.sessionService.logoutOthers({ sub: userId, fam }, tx)
+		})
+		this.logger.log(`Password changed userId=${userId}`)
+	}
+
+	/**
+	 * Reserves an attempt (423 when locked), verifies, and counts a failure towards the lock.
+	 * false = wrong password; the caller picks the error, which differs for login and confirmation.
+	 */
+	private async checkPasswordWithLockout({
+		userId,
+		passwordHash,
+		password,
+	}: {
+		userId: string
+		passwordHash: string
+		password: string
+	}): Promise<boolean> {
 		const now = new Date()
 		const isReserved = await this.authRepository.reserveLoginAttempt({
-			userId: user.id,
+			userId,
 			maxAttempts: MAX_FAILED_LOGIN_ATTEMPTS,
 			now,
 		})
-		if (!isReserved) throw await this.rejectLockedLogin(user.id, now)
+		if (!isReserved) throw await this.rejectLockedLogin(userId, now)
 
-		const isPasswordValid = await this.passwordService.verify(credentials.passwordHash, password)
+		const isPasswordValid = await this.passwordService.verify(passwordHash, password)
 		if (!isPasswordValid) {
-			await this.recordFailedLogin(user.id, now)
-			throw new InvalidCredentialsException()
+			await this.recordFailedLogin(userId, now)
+			return false
 		}
 
-		await this.authRepository.resetFailedAttempts(user.id)
-		this.logger.log(`Login succeeded userId=${user.id}`)
-		return { user, tokens: await this.sessionService.startSession({ userId: user.id, meta }) }
+		await this.authRepository.resetFailedAttempts(userId)
+		return true
 	}
 
 	/** Builds the 423 for a login that couldn't reserve an attempt. */

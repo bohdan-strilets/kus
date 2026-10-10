@@ -69,6 +69,16 @@ export class AuthRepository {
 		})
 	}
 
+	updatePassword(
+		{ userId, passwordHash, changedAt }: { userId: string; passwordHash: string; changedAt: Date },
+		tx?: Prisma.TransactionClient,
+	): Promise<AuthCredentials> {
+		return (tx ?? this.prisma).authCredentials.update({
+			where: { userId },
+			data: { passwordHash, passwordChangedAt: changedAt },
+		})
+	}
+
 	createSession(data: CreateSessionData, tx?: Prisma.TransactionClient): Promise<Session> {
 		return (tx ?? this.prisma).session.create({ data })
 	}
@@ -111,6 +121,18 @@ export class AuthRepository {
 	): Promise<number> {
 		const { count } = await (tx ?? this.prisma).session.updateMany({
 			where: { userId, revokedAt: null },
+			data: { revokedAt },
+		})
+		return count
+	}
+
+	/** Every other device: all families of the user but the one making the request. */
+	async revokeAllForUserExceptFamily(
+		{ userId, tokenFamily, revokedAt }: { userId: string; tokenFamily: string; revokedAt: Date },
+		tx?: Prisma.TransactionClient,
+	): Promise<number> {
+		const { count } = await (tx ?? this.prisma).session.updateMany({
+			where: { userId, tokenFamily: { not: tokenFamily }, revokedAt: null },
 			data: { revokedAt },
 		})
 		return count

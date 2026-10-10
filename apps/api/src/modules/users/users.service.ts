@@ -14,6 +14,8 @@ const toAuthUser = (user: User): AuthUser => ({
 	locale: user.locale,
 	timezone: user.timezone,
 	createdAt: user.createdAt.toISOString(),
+	pendingDeletion: user.purgeAt !== null,
+	purgeAt: user.purgeAt?.toISOString() ?? null,
 })
 
 @Injectable()

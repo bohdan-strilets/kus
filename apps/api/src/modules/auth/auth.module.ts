@@ -40,7 +40,8 @@ const JWT_ALGORITHM = 'HS256'
 		JwtAuthGuard,
 		RegistrationEnabledGuard,
 	],
-	// the guard is registered globally in AppModule, which resolves it from here
-	exports: [JwtAuthGuard],
+	// the guard is registered globally in AppModule, which resolves it from here; the services serve
+	// the account module (password confirmation, ending sessions, cookies)
+	exports: [JwtAuthGuard, AuthService, SessionService, AuthCookieService],
 })
 export class AuthModule {}

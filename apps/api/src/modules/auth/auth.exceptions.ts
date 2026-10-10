@@ -52,3 +52,19 @@ export class RefreshTokenReusedException extends AppException {
 		super({ status: HttpStatus.UNAUTHORIZED, errorCode: ErrorCodes.REFRESH_TOKEN_REUSED })
 	}
 }
+
+/**
+ * The password typed to confirm a change or an account deletion is wrong. 400 on purpose: the
+ * web app treats a 401 on a regular route as an expired session (refresh, then logout).
+ */
+export class PasswordIncorrectException extends AppException {
+	constructor() {
+		super({ status: HttpStatus.BAD_REQUEST, errorCode: ErrorCodes.PASSWORD_INCORRECT })
+	}
+}
+
+export class PasswordSameException extends AppException {
+	constructor() {
+		super({ status: HttpStatus.BAD_REQUEST, errorCode: ErrorCodes.PASSWORD_SAME })
+	}
+}

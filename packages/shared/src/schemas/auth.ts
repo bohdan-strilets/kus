@@ -47,6 +47,9 @@ export const authUserSchema = z.object({
 	locale: localeSchema,
 	timezone: z.string(),
 	createdAt: z.iso.datetime(),
+	/** Deletion requested: only restore, logout and «who am I» work until `purgeAt` (account-restore). */
+	pendingDeletion: z.boolean(),
+	purgeAt: z.iso.datetime().nullable(),
 })
 
 export type AuthUser = z.infer<typeof authUserSchema>

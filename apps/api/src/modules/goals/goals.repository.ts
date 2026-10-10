@@ -1,10 +1,11 @@
 import { Injectable } from '@nestjs/common'
 
-import type { GoalType, Prisma, UserGoal } from '../../generated/prisma/client'
+import type { GoalSource, GoalType, Prisma, UserGoal } from '../../generated/prisma/client'
 import { PrismaService } from '../../prisma'
 
 export interface GoalValues {
 	type: GoalType
+	source: GoalSource
 	dailyKcal: number
 	proteinG: number
 	fatG: number

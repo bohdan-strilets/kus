@@ -4,8 +4,8 @@ const VERSION_BYTE_INDEX = 6
 const VARIANT_BYTE_INDEX = 8
 const VERSION_4 = 0x40
 const VARIANT_RFC = 0x80
-/** Hex digits before each hyphen of the 8-4-4-4-12 layout. */
-const GROUP_ENDS = [8, 12, 16, 20]
+/** The 8-4-4-4-12 layout, over the 32 hex digits. */
+const UUID_GROUPS = /^(.{8})(.{4})(.{4})(.{4})(.{12})$/
 const HEX_RADIX = 16
 
 const toHex = (byte: number): string => byte.toString(HEX_RADIX).padStart(2, '0')
@@ -19,13 +19,5 @@ export const createUuid = (): string => {
 	const bytes = crypto.getRandomValues(new Uint8Array(UUID_BYTES))
 	bytes[VERSION_BYTE_INDEX] = ((bytes[VERSION_BYTE_INDEX] ?? 0) & 0x0f) | VERSION_4
 	bytes[VARIANT_BYTE_INDEX] = ((bytes[VARIANT_BYTE_INDEX] ?? 0) & 0x3f) | VARIANT_RFC
-	const hex = Array.from(bytes, toHex).join('')
-	let start = 0
-	const groups: string[] = []
-	for (const end of GROUP_ENDS) {
-		groups.push(hex.slice(start, end))
-		start = end
-	}
-	groups.push(hex.slice(start))
-	return groups.join('-')
+	return Array.from(bytes, toHex).join('').replace(UUID_GROUPS, '$1-$2-$3-$4-$5')
 }

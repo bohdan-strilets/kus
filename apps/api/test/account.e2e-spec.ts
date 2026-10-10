@@ -5,6 +5,8 @@ import {
 	apiErrorResponseSchema,
 	authSessionResponseSchema,
 	authUserSchema,
+	chatMessageSchema,
+	createCursorPaginatedResponseSchema,
 	createDataResponseSchema,
 } from '@kus/shared'
 import request, { type Response } from 'supertest'
@@ -20,11 +22,14 @@ import { createDbTestApp } from './create-db-test-app'
 const DELETE_URL = '/api/v1/account/delete'
 const RESTORE_URL = '/api/v1/account/restore'
 const ME_URL = '/api/v1/users/me'
+const MESSAGES_URL = '/api/v1/messages'
 const PASSWORD = 'correct-horse-battery'
 const MS_IN_DAY = 24 * 60 * 60 * 1000
+const WELCOME_BACK_TAIL = 'Усе на місці, як і було. Пиши, що їси — я порахую.'
 
 const userResponse = createDataResponseSchema(authUserSchema)
 const sessionResponse = createDataResponseSchema(authSessionResponseSchema)
+const messagesResponse = createCursorPaginatedResponseSchema(chatMessageSchema)
 
 const fake = createFakeAiClient()
 
@@ -54,11 +59,11 @@ describe('account deletion (e2e, real DB)', () => {
 		;({ app, prisma } = await createDbTestApp({ aiClient: fake.client }))
 	}
 
-	const registerUser = async (email: string): Promise<TestUser> => {
+	const registerUser = async (email: string, name = 'Bohdan'): Promise<TestUser> => {
 		const agent = request.agent(app.getHttpServer())
 		const response = await agent
 			.post('/api/v1/auth/register')
-			.send({ email, password: PASSWORD, name: 'Bohdan', consent: true })
+			.send({ email, password: PASSWORD, name, consent: true })
 			.expect(201)
 		const { user } = sessionResponse.parse(response.body).data
 		return { agent, userId: user.id, email }
@@ -152,6 +157,33 @@ describe('account deletion (e2e, real DB)', () => {
 		const after = await prisma.user.findUniqueOrThrow({ where: { id: owner.userId } })
 		expect(after.purgeAt).toBeNull()
 		expect(after.deletionRequestedAt).toBeNull()
+
+		// Kusik greets the user in the chat — without a name: «Bohdan» has no safe vocative
+		const feed = await owner.agent.get(MESSAGES_URL).expect(200)
+		const [welcome] = messagesResponse.parse(feed.body).data
+		expect(welcome).toMatchObject({
+			role: 'ASSISTANT',
+			status: 'COMPLETED',
+			replyToId: null,
+			content: `З поверненням! ${WELCOME_BACK_TAIL}`,
+			meals: [],
+			clarifications: [],
+		})
+	})
+
+	it('greets by name once: a repeated restore adds no second message', async () => {
+		await start()
+		const owner = await registerUser('owner@kus.app', 'Богдан')
+		await owner.agent.post(DELETE_URL).send({ password: PASSWORD }).expect(204)
+		await login(owner.agent, owner.email)
+
+		await owner.agent.post(RESTORE_URL).expect(200)
+		await owner.agent.post(RESTORE_URL).expect(200)
+
+		const feed = await owner.agent.get(MESSAGES_URL).expect(200)
+		const messages = messagesResponse.parse(feed.body).data
+		expect(messages).toHaveLength(1)
+		expect(messages[0]?.content).toBe(`З поверненням, Богдане! ${WELCOME_BACK_TAIL}`)
 	})
 
 	it('purges the accounts past their date, with everything they own, and leaves the rest', async () => {

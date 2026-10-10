@@ -27,11 +27,13 @@ export class AccountRepository {
 		})
 	}
 
-	async restore(userId: string, tx?: Prisma.TransactionClient): Promise<void> {
-		await (tx ?? this.prisma).user.updateMany({
-			where: { id: userId },
+	/** true when the account was pending; false = nothing to restore (already active, or gone). */
+	async restore(userId: string, tx?: Prisma.TransactionClient): Promise<boolean> {
+		const { count } = await (tx ?? this.prisma).user.updateMany({
+			where: { id: userId, purgeAt: { not: null } },
 			data: { deletionRequestedAt: null, purgeAt: null },
 		})
+		return count === 1
 	}
 
 	/** Hard delete; every table of the user cascades (schema.prisma, onDelete: Cascade). */

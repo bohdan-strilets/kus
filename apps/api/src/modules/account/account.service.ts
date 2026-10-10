@@ -5,6 +5,7 @@ import { addDays } from '../../common/time'
 import { PrismaService } from '../../prisma'
 import { AuthService } from '../auth/auth.service'
 import { SessionService } from '../auth/session.service'
+import { ChatGreetingsService } from '../chat/chat-greetings.service'
 import { UsersService } from '../users/users.service'
 import { AccountRepository } from './account.repository'
 
@@ -22,6 +23,7 @@ export class AccountService {
 		private readonly authService: AuthService,
 		private readonly sessionService: SessionService,
 		private readonly usersService: UsersService,
+		private readonly chatGreetings: ChatGreetingsService,
 	) {}
 
 	/** Confirms with the password, marks the account and ends every session (the cookies die with them). */
@@ -37,10 +39,18 @@ export class AccountService {
 		this.logger.log(`Account deletion requested userId=${userId}`)
 	}
 
-	/** Idempotent: restoring an account that isn't pending just returns it. */
+	/**
+	 * Idempotent: restoring an account that isn't pending just returns it. An account that really
+	 * came back gets Kusik's welcome in the chat, in the same transaction.
+	 */
 	async restore(userId: string): Promise<AuthUser> {
-		await this.accountRepository.restore(userId)
-		this.logger.log(`Account restored userId=${userId}`)
-		return this.usersService.getMe(userId)
+		const { user, wasPending } = await this.prisma.$transaction(async (tx) => {
+			const wasPending = await this.accountRepository.restore(userId, tx)
+			const user = await this.usersService.getMe(userId, tx)
+			if (wasPending) await this.chatGreetings.postWelcomeBack(user, tx)
+			return { user, wasPending }
+		})
+		if (wasPending) this.logger.log(`Account restored userId=${userId}`)
+		return user
 	}
 }

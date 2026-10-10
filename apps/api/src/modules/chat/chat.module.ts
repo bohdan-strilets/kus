@@ -8,6 +8,7 @@ import { UsersModule } from '../users/users.module'
 import { ChatContextService } from './chat-context.service'
 import { ChatEditsService } from './chat-edits.service'
 import { ChatFeedService } from './chat-feed.service'
+import { ChatGreetingsService } from './chat-greetings.service'
 import { ChatResponseService } from './chat-response.service'
 import { ChatTurnService } from './chat-turn.service'
 import { ChatController } from './chat.controller'
@@ -23,6 +24,7 @@ import { ClarificationsService } from './clarifications.service'
 	providers: [
 		ChatService,
 		ChatFeedService,
+		ChatGreetingsService,
 		ChatContextService,
 		ChatEditsService,
 		ChatRepository,
@@ -31,7 +33,8 @@ import { ClarificationsService } from './clarifications.service'
 		ClarificationsRepository,
 		ClarificationsService,
 	],
-	// the edit sheet (food-entries) closes the open questions of an entry it changed
-	exports: [ClarificationsService],
+	// the edit sheet (food-entries) closes the open questions of an entry it changed; account-restore
+	// writes Kusik's welcome back into the chat
+	exports: [ClarificationsService, ChatGreetingsService],
 })
 export class ChatModule {}

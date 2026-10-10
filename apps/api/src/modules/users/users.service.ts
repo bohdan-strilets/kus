@@ -34,8 +34,8 @@ export class UsersService {
 		return user ? toAuthUser(user) : null
 	}
 
-	async getMe(userId: string): Promise<AuthUser> {
-		const user = await this.usersRepository.findById(userId)
+	async getMe(userId: string, tx?: Prisma.TransactionClient): Promise<AuthUser> {
+		const user = await this.usersRepository.findById(userId, tx)
 		if (!user) throw new UserNotFoundException()
 		return toAuthUser(user)
 	}

@@ -98,6 +98,16 @@ export class ChatRepository {
 		})
 	}
 
+	/** Kusik's own message, not a reply to a user turn (the greeting after account-restore). */
+	createAssistantMessage(
+		{ userId, content }: { userId: string; content: string },
+		tx?: Prisma.TransactionClient,
+	): Promise<Message> {
+		return (tx ?? this.prisma).message.create({
+			data: { userId, role: MessageRole.ASSISTANT, content, status: MessageStatus.COMPLETED },
+		})
+	}
+
 	findById({ userId, id }: { userId: string; id: string }): Promise<Message | null> {
 		return this.prisma.message.findFirst({ where: { id, userId } })
 	}

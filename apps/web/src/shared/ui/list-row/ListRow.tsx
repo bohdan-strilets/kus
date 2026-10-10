@@ -50,12 +50,19 @@ export const ListRow = ({
 				variant="body"
 				weight="semibold"
 				tone={tone === 'danger' ? 'danger' : 'ink'}
-				className="min-w-0 flex-1 truncate"
+				className="flex-1"
 			>
 				{label}
 			</Text>
+			{/* a long value (an email) truncates; the label keeps its width */}
 			{value !== undefined && (
-				<Text as="span" variant="cardTitle" weight="regular" tone="muted" className="text-right">
+				<Text
+					as="span"
+					variant="cardTitle"
+					weight="regular"
+					tone="muted"
+					className="min-w-0 truncate text-right"
+				>
 					{value}
 				</Text>
 			)}

@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { DaySummaryCard, getDayStats } from '@/entities/stats'
-import { SetGoalLink, SetGoalSheet } from '@/features/set-goal'
+import { EditGoalsSheet, SetGoalLink, toGoalValues } from '@/features/edit-goals'
 import { InlineError, Skeleton, Surface } from '@/shared/ui'
 
 /** The day card under the chat header in its three states: loading, failed, the day. */
@@ -41,7 +41,11 @@ export const DaySummarySlot = ({ query }: { query: UseQueryResult<DayResponse> }
 				goalAction={goal === null ? undefined : { label: t('goal.change'), onClick: openGoal }}
 				footer={goal === null ? <SetGoalLink onClick={openGoal} /> : undefined}
 			/>
-			<SetGoalSheet isOpen={isGoalOpen} onOpenChange={setIsGoalOpen} goal={query.data.goal} />
+			<EditGoalsSheet
+				isOpen={isGoalOpen}
+				onOpenChange={setIsGoalOpen}
+				goal={toGoalValues(query.data.goal)}
+			/>
 		</>
 	)
 }

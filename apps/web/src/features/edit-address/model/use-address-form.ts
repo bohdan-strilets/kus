@@ -16,8 +16,14 @@ export interface AddressForm {
 	isSaving: boolean
 }
 
-/** Saves «Як до тебе звертатися?»; the greeting in the chat follows the session at once. */
-export const useAddressForm = (addressAs: string | null): AddressForm => {
+/** Saves «Як до тебе звертатися?»; the greeting in the chat follows the session at once, then onSaved. */
+export const useAddressForm = ({
+	addressAs,
+	onSaved,
+}: {
+	addressAs: string | null
+	onSaved?: () => void
+}): AddressForm => {
 	const { t } = useTranslation()
 	const toast = useToast()
 	const queryClient = useQueryClient()
@@ -33,6 +39,7 @@ export const useAddressForm = (addressAs: string | null): AddressForm => {
 			updateSessionUser(queryClient, user)
 			form.reset({ addressAs: user.addressAs ?? '' })
 			toast.show(t('profile.address.saved'))
+			onSaved?.()
 		},
 		onError: () => {
 			toast.show(t('profile.saveError'))

@@ -5,10 +5,15 @@ import { Button, FormField, Input } from '@/shared/ui'
 
 import { useAddressForm } from '../model/use-address-form'
 
-/** «Як до тебе звертатися?» — the name Kusik greets with; empty means the name from registration. */
-export const AddressForm = ({ addressAs }: { addressAs: string | null }) => {
+interface AddressFormProps {
+	addressAs: string | null
+	onSaved?: () => void
+}
+
+/** The name Kusik greets with; empty means the name from registration. The hint is the sheet's description. */
+export const AddressForm = ({ addressAs, onSaved }: AddressFormProps) => {
 	const { t } = useTranslation()
-	const { form, onSubmit, isSaving } = useAddressForm(addressAs)
+	const { form, onSubmit, isSaving } = useAddressForm({ addressAs, onSaved })
 	const { errors, submitCount } = form.formState
 
 	return (
@@ -19,7 +24,6 @@ export const AddressForm = ({ addressAs }: { addressAs: string | null }) => {
 				render={({ field }) => (
 					<FormField
 						label={t('profile.address.label')}
-						hint={t('profile.address.hint')}
 						error={errors.addressAs?.message}
 						attemptCount={submitCount}
 					>
@@ -27,7 +31,7 @@ export const AddressForm = ({ addressAs }: { addressAs: string | null }) => {
 					</FormField>
 				)}
 			/>
-			<Button type="submit" variant="secondary" isLoading={isSaving}>
+			<Button type="submit" isFullWidth isLoading={isSaving}>
 				{t('profile.address.save')}
 			</Button>
 		</form>

@@ -7,7 +7,7 @@ import { dayQueryOptions, daysRangeQueryOptions, useLocalToday } from '@/entitie
 import { useSessionUser } from '@/entities/session'
 import { WeekStrip } from '@/entities/stats'
 import { EditEntrySheet } from '@/features/edit-entry'
-import { SetGoalSheet } from '@/features/set-goal'
+import { EditGoalsSheet, toGoalValues } from '@/features/edit-goals'
 import { ROUTES } from '@/shared/config'
 import { fromCalendarDate, toCalendarDate } from '@/shared/lib'
 import { DecorBackdrop, Skeleton, InlineError } from '@/shared/ui'
@@ -86,10 +86,10 @@ const TodayScreen = ({ timeZone }: { timeZone: string }) => {
 					}}
 				/>
 			</div>
-			<SetGoalSheet
+			<EditGoalsSheet
 				isOpen={isGoalOpen}
 				onOpenChange={setIsGoalOpen}
-				goal={todayQuery.data?.goal ?? null}
+				goal={toGoalValues(todayQuery.data?.goal ?? null)}
 			/>
 			<EditEntrySheet />
 		</div>

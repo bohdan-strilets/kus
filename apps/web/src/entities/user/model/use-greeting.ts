@@ -2,12 +2,12 @@ import { useTranslation } from 'react-i18next'
 
 import { getLocalHour } from '@/shared/lib'
 
-import { type Addressee, getAddressName } from '../lib/get-address-name'
+import { type Addressee, getAddressName } from '@kus/shared'
 import { getGreetingKey } from '../lib/get-greeting-key'
 
 /**
  * «Добрий вечір, Богдане» in the user's timezone: the chosen address, else a safe vocative of the
- * name (shared/lib/vocative), else just «Добрий вечір».
+ * name (@kus/shared), else just «Добрий вечір».
  */
 export const useGreeting = ({
 	addressee,

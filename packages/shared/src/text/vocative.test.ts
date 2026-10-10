@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { getVocative } from './get-vocative'
+import { getVocative } from './vocative.js'
 
 describe('getVocative', () => {
 	it.each([

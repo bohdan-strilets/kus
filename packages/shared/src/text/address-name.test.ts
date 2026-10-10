@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { getAddressName } from './get-address-name'
+import { getAddressName } from './address-name.js'
 
 describe('getAddressName', () => {
 	it('takes «Як до тебе звертатися?» as typed, over the name', () => {

@@ -70,4 +70,3 @@ export {
 } from './viewport'
 export { useSvgId } from './use-svg-id'
 export { createUuid } from './uuid'
-export { getVocative } from './vocative'

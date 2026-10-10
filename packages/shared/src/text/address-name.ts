@@ -1,4 +1,4 @@
-import { getVocative } from '@/shared/lib'
+import { getVocative } from './vocative.js'
 
 export interface Addressee {
 	name: string | null

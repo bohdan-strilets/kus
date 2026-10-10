@@ -1,4 +1,4 @@
-import { INTL_LOCALE } from '../format'
+import { INTL_LOCALE } from './locale.js'
 
 /**
  * Ukrainian vocative of a first name for «Добрий вечір, Богдане». Only endings with one safe rule;

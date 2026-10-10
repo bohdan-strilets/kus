@@ -29,6 +29,14 @@ export const loginRequestSchema = z.object({
 
 export type LoginRequest = z.infer<typeof loginRequestSchema>
 
+/** Body of POST /auth/change-password (change-password): the other sessions are logged out. */
+export const changePasswordRequestSchema = z.object({
+	currentPassword: z.string().min(1).max(PASSWORD_MAX_LENGTH),
+	newPassword: z.string().min(PASSWORD_MIN_LENGTH).max(PASSWORD_MAX_LENGTH),
+})
+
+export type ChangePasswordRequest = z.infer<typeof changePasswordRequestSchema>
+
 /** The current user as the web app sees it: never credentials, lockout state or sessions. */
 export const authUserSchema = z.object({
 	id: z.uuid(),

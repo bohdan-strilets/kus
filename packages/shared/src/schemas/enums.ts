@@ -23,6 +23,9 @@ export type ActivityLevel = z.infer<typeof activityLevelSchema>
 export const goalTypeSchema = z.enum(['LOSE', 'MAINTAIN', 'GAIN'])
 export type GoalType = z.infer<typeof goalTypeSchema>
 
+export const goalSourceSchema = z.enum(['CALCULATED', 'MANUAL'])
+export type GoalSource = z.infer<typeof goalSourceSchema>
+
 export const messageRoleSchema = z.enum(['USER', 'ASSISTANT'])
 export type MessageRole = z.infer<typeof messageRoleSchema>
 

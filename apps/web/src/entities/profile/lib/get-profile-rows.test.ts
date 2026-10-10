@@ -53,6 +53,7 @@ describe('getProfileRows', () => {
 		const gain = getProfileRows(makeProfile({ goalType: 'GAIN', paceKgPerWeek: 0.5 }), t).goal
 
 		expect(lose.map((row) => row.key)).toEqual(['goalType', 'targetWeightKg', 'paceKgPerWeek'])
+		expect(lose[1]?.value).toBe('78 кг')
 		expect(lose[2]?.value).toBe('−0,25 кг на тиждень')
 		expect(gain[2]?.value).toBe('+0,5 кг на тиждень')
 	})

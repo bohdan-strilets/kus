@@ -21,8 +21,11 @@ export const getProfileRows = (profile: ProfileResponse, t: TFunction): ProfileR
 		profile.profile
 	const weightKg = profile.weight?.kg ?? null
 
+	// «82,4 кг», but a whole number stays «78 кг» (mockup my-data)
 	const formatKg = (kg: number | null): string | null =>
-		kg === null ? null : t('profile.data.values.kg', { value: formatDecimal(kg, 1) })
+		kg === null
+			? null
+			: t('profile.data.values.kg', { value: formatDecimal(kg, Number.isInteger(kg) ? 0 : 1) })
 
 	const body: ProfileRow[] = [
 		{

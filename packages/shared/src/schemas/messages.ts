@@ -109,6 +109,11 @@ export const chatMessageSchema = z.object({
 	content: z.string().nullable(),
 	status: messageStatusSchema,
 	clientMessageId: z.string().nullable(),
+	/**
+	 * The user message an assistant reply answers. null on an assistant message = Kusik wrote it on
+	 * his own (today only the welcome back after account-restore); a second kind of such message
+	 * needs an explicit field, not this null.
+	 */
 	replyToId: z.uuid().nullable(),
 	createdAt: z.iso.datetime(),
 	/** Assistant replies only: what this turn logged, one card per meal (a whole day → several). */

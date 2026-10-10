@@ -34,8 +34,10 @@ export interface BaseBottomSheetProps {
 	hasCloseButton?: boolean
 	/** start — title left, close right (chat-edit-entry); center — everything centred (install-hint). */
 	titleAlign?: 'start' | 'center'
-	/** Above the title, e.g. <Hamster size={84} /> in install-hint. */
+	/** E.g. <Hamster size={84} /> in install-hint, or the head before the title in plan-how. */
 	headerSlot?: ReactNode
+	/** above — over the title (install-hint, default); start — in the row, before the title (plan-how). */
+	headerSlotPlacement?: 'above' | 'start'
 	/** What gets focus on open: the sheet itself (default), or the first field of a form sheet. */
 	initialFocus?: 'container' | 'first-field'
 	children: ReactNode
@@ -54,10 +56,12 @@ export const BaseBottomSheet = ({
 	hasCloseButton = true,
 	titleAlign = 'start',
 	headerSlot,
+	headerSlotPlacement = 'above',
 	initialFocus = 'container',
 	children,
 }: BaseBottomSheetProps) => {
 	const isCentered = titleAlign === 'center'
+	const isSlotAtStart = headerSlotPlacement === 'start'
 	const { t } = useTranslation()
 	const viewport = useViewportBox()
 	// dragging starts only from the grabber and header, so the body can scroll and select text
@@ -123,13 +127,15 @@ export const BaseBottomSheet = ({
 													: 'items-center justify-between',
 											)}
 										>
+											{isSlotAtStart && headerSlot}
 											<div
 												className={cn(
 													'flex min-w-0 flex-col',
 													isCentered ? 'items-center gap-2' : 'gap-1',
+													isSlotAtStart && 'flex-1',
 												)}
 											>
-												{headerSlot}
+												{!isSlotAtStart && headerSlot}
 												<Dialog.Title asChild>
 													<Heading level="title">{title}</Heading>
 												</Dialog.Title>

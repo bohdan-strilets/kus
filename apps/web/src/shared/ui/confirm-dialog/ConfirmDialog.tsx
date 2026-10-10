@@ -2,7 +2,7 @@ import * as AlertDialog from '@radix-ui/react-alert-dialog'
 import { AnimatePresence } from 'motion/react'
 import type { ReactNode } from 'react'
 
-import { getViewportBoxStyle, useViewportBox } from '@/shared/lib'
+import { cn, getViewportBoxStyle, useViewportBox } from '@/shared/lib'
 
 import { Button } from '../button'
 import { DialogCard } from '../dialog-card'
@@ -79,7 +79,10 @@ export const ConfirmDialog = ({
 									{children}
 									<div className="mt-1 grid w-full grid-cols-2 gap-2">
 										<AlertDialog.Cancel asChild>
-											<Button variant="secondary">{cancelLabel}</Button>
+											{/* two buttons share the card width; the mockup gives them no side padding */}
+											<Button variant="secondary" className="px-2">
+												{cancelLabel}
+											</Button>
 										</AlertDialog.Cancel>
 										<AlertDialog.Action asChild>
 											<Button
@@ -88,7 +91,7 @@ export const ConfirmDialog = ({
 												isLoading={isConfirmLoading}
 												loadingText={confirmLoadingText}
 												// settings-delete-confirm: a disabled action is at 0.4
-												className={isConfirmDisabled ? 'opacity-40' : undefined}
+												className={cn('px-2', isConfirmDisabled && 'opacity-40')}
 												onClick={(event) => {
 													// Radix would close the dialog on Action; the caller decides when
 													event.preventDefault()

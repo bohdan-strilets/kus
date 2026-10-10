@@ -16,7 +16,7 @@ export const ProfilePage = () => {
 	return (
 		<PageStub title={t('pages.profile.title')} description="">
 			{user && <AddressForm addressAs={user.addressAs} />}
-			<LogoutButton />
+			<LogoutButton label={t('profile.logout')} />
 		</PageStub>
 	)
 }

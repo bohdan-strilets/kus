@@ -6,3 +6,4 @@ export {
 	type FakeHandler,
 	type FakeReply,
 } from './create-fake-adapter'
+export { renderWithProviders } from './render'

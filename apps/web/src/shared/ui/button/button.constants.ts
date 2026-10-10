@@ -9,4 +9,5 @@ export const LOADER_TONE_BY_VARIANT = {
 	text: 'brand',
 	textOnBackground: 'brand',
 	textDanger: 'brand',
+	textPlain: 'brand',
 } as const

@@ -21,6 +21,8 @@ export const buttonVariants = cva(
 				textOnBackground: 'bg-transparent font-bold text-primary-deep underline underline-offset-2',
 				/** «Вийти з акаунту»: danger 14/600, no underline */
 				textDanger: 'bg-transparent font-semibold text-danger',
+				/** «Вийти» on account-restore: a quiet 15/600 action, no underline */
+				textPlain: 'bg-transparent font-semibold text-muted-strong',
 			},
 			size: {
 				lg: 'min-h-button rounded-button px-5 text-body',
@@ -40,6 +42,7 @@ export const buttonVariants = cva(
 				variant: ['text', 'textOnBackground', 'textDanger'],
 				className: 'min-h-tap px-4 text-card-title',
 			},
+			{ variant: 'textPlain', className: 'min-h-tap px-4 text-body' },
 			{
 				variant: ['text', 'textOnBackground', 'textDanger'],
 				size: 'sm',

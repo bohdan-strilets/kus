@@ -14,7 +14,7 @@ export const ProfilePage = () => {
 	const user = useSessionUser()
 
 	return (
-		<PageStub title={t('pages.profile.title')} description={t('pages.profile.placeholder')}>
+		<PageStub title={t('pages.profile.title')} description="">
 			{user && <AddressForm addressAs={user.addressAs} />}
 			<LogoutButton />
 		</PageStub>

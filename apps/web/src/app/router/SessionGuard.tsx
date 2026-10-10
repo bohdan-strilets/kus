@@ -1,6 +1,6 @@
 import { Navigate, Outlet, useLocation } from 'react-router'
 
-import { useSession } from '@/entities/session'
+import { useSession, useSessionUser } from '@/entities/session'
 
 import { getRouteGuardDecision, type RouteGuard } from './get-route-guard-decision'
 import { RouteLoader } from './RouteLoader'
@@ -10,11 +10,13 @@ import { SessionErrorState } from './SessionErrorState'
 export const SessionGuard = ({ guard }: { guard: RouteGuard }) => {
 	const session = useSession()
 	const location = useLocation()
+	const isPendingDeletion = useSessionUser()?.pendingDeletion ?? false
 	const decision = getRouteGuardDecision({
 		guard,
 		status: session.status,
 		path: `${location.pathname}${location.search}${location.hash}`,
 		locationState: location.state,
+		isPendingDeletion,
 	})
 
 	switch (decision.action) {

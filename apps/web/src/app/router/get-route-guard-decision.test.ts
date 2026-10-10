@@ -2,7 +2,11 @@ import { describe, expect, it } from 'vitest'
 
 import { getReturnPath, getRouteGuardDecision } from './get-route-guard-decision'
 
-const base = { path: '/app/today?day=2026-10-07', locationState: null } as const
+const base = {
+	path: '/app/today?day=2026-10-07',
+	locationState: null,
+	isPendingDeletion: false,
+} as const
 
 describe('getRouteGuardDecision — protected (/app/*)', () => {
 	it('waits for the session check without rendering anything', () => {
@@ -32,8 +36,51 @@ describe('getRouteGuardDecision — protected (/app/*)', () => {
 	})
 })
 
+describe('getRouteGuardDecision — account pending deletion', () => {
+	const pending = { ...base, status: 'authenticated', isPendingDeletion: true } as const
+
+	it('sends every protected page to account-restore', () => {
+		expect(getRouteGuardDecision({ ...pending, guard: 'protected' })).toEqual({
+			action: 'redirect',
+			to: '/app/account-restore',
+		})
+	})
+
+	it('renders account-restore itself, ignoring query and hash', () => {
+		expect(
+			getRouteGuardDecision({
+				...pending,
+				guard: 'protected',
+				path: '/app/account-restore?x=1#top',
+			}),
+		).toEqual({ action: 'render' })
+	})
+
+	it('sends a healthy account away from account-restore', () => {
+		expect(
+			getRouteGuardDecision({
+				...base,
+				guard: 'protected',
+				status: 'authenticated',
+				path: '/app/account-restore',
+			}),
+		).toEqual({ action: 'redirect', to: '/app' })
+	})
+
+	it('sends a login/register visitor to account-restore, not back to where they came from', () => {
+		expect(
+			getRouteGuardDecision({
+				...pending,
+				guard: 'guest',
+				path: '/login',
+				locationState: { from: '/app/recipes' },
+			}),
+		).toEqual({ action: 'redirect', to: '/app/account-restore' })
+	})
+})
+
 describe('getRouteGuardDecision — guest (/login, /register)', () => {
-	const guest = { path: '/login', guard: 'guest' } as const
+	const guest = { path: '/login', guard: 'guest', isPendingDeletion: false } as const
 
 	it('waits for the session check', () => {
 		expect(getRouteGuardDecision({ ...guest, status: 'pending', locationState: null })).toEqual({

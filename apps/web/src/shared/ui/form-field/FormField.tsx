@@ -1,9 +1,10 @@
-import { AnimatePresence, motion, useAnimate, useReducedMotion } from 'motion/react'
-import { useEffect, useId } from 'react'
+import { AnimatePresence, motion } from 'motion/react'
+import { useId } from 'react'
 
-import { cn, SHAKE_KEYFRAMES, SHAKE_TRANSITION, TRANSITION } from '@/shared/lib'
+import { cn, TRANSITION } from '@/shared/lib'
 
 import type { FormFieldProps } from './form-field.types'
+import { useShakeOnError } from './use-shake-on-error'
 
 const ERROR_ENTER_OFFSET_PX = -4
 
@@ -26,14 +27,7 @@ export const FormField = ({
 	const hintId = `${id}-hint`
 	const hasError = Boolean(error)
 	const describedBy = hasError ? errorId : hint ? hintId : undefined
-	const [cardRef, animate] = useAnimate<HTMLDivElement>()
-	const shouldReduceMotion = useReducedMotion()
-
-	// shake when an error appears or changes, and again on every failed attempt with the same one
-	useEffect(() => {
-		if (!error || shouldReduceMotion) return
-		void animate(cardRef.current, SHAKE_KEYFRAMES, SHAKE_TRANSITION)
-	}, [error, attemptCount, shouldReduceMotion, animate, cardRef])
+	const cardRef = useShakeOnError(error, attemptCount)
 
 	return (
 		<div className={cn('flex flex-col gap-1.5', className)}>

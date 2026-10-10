@@ -11,9 +11,14 @@ export const AUTH_ROUTES = {
 	register: '/register',
 } as const
 
-/** Behind the avatar, not a tab. */
+/** Behind the avatar, not a tab: the profile stack (no bottom nav) and account restore. */
 export const PROFILE_ROUTES = {
 	profile: '/app/profile',
+	profileGoals: '/app/profile/goals',
+	profileData: '/app/profile/data',
+	settings: '/app/settings',
+	settingsPassword: '/app/settings/password',
+	accountRestore: '/app/account-restore',
 } as const
 
 export const ROUTES = { ...TAB_ROUTES, ...PROFILE_ROUTES, ...AUTH_ROUTES } as const

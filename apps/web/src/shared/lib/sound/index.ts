@@ -1,3 +1,4 @@
-export { DEFAULT_SOUND_SETTINGS, HAPTICS } from './sound.constants'
-export type { SoundName, SoundSettings } from './sound.types'
-export { configureSound, playSound, unlockSound } from './sounds'
+export { HAPTICS } from './sound.constants'
+export type { SoundName } from './sound.types'
+export { useSoundSettingsStore } from './sound-settings-store'
+export { playSound, unlockSound } from './sounds'

@@ -19,16 +19,20 @@ export const EASE: Record<'out' | 'spring' | 'in', CubicBezier> = {
 
 const toSeconds = (ms: number): number => ms / 1000
 
-export const TRANSITION: Record<'fast' | 'base' | 'slow' | 'expand' | 'pop' | 'exit', Transition> =
-	{
-		fast: { duration: toSeconds(DURATION_MS.fast), ease: EASE.out },
-		base: { duration: toSeconds(DURATION_MS.base), ease: EASE.out },
-		slow: { duration: toSeconds(DURATION_MS.slow), ease: EASE.out },
-		/** clarification and other blocks that open by height (design/docs/motion.md: 250 ms) */
-		expand: { duration: 0.25, ease: EASE.out },
-		pop: { duration: 0.3, ease: EASE.spring },
-		exit: { duration: 0.25, ease: EASE.in },
-	}
+export const TRANSITION: Record<
+	'fast' | 'base' | 'slow' | 'expand' | 'pop' | 'exit' | 'toggle',
+	Transition
+> = {
+	fast: { duration: toSeconds(DURATION_MS.fast), ease: EASE.out },
+	base: { duration: toSeconds(DURATION_MS.base), ease: EASE.out },
+	slow: { duration: toSeconds(DURATION_MS.slow), ease: EASE.out },
+	/** clarification and other blocks that open by height (design/docs/motion.md: 250 ms) */
+	expand: { duration: 0.25, ease: EASE.out },
+	pop: { duration: 0.3, ease: EASE.spring },
+	exit: { duration: 0.25, ease: EASE.in },
+	/** switch thumb: slow + spring (design/docs/motion.md) */
+	toggle: { duration: toSeconds(DURATION_MS.slow), ease: EASE.spring },
+}
 
 /** Press on a button / option / chip: spread onto a motion element. */
 export const PRESS = { whileTap: { scale: 0.96 }, transition: TRANSITION.fast }

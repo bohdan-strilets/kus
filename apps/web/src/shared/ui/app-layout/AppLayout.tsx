@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 
-import { cn, useIsTypingOnTouch, useViewportBox } from '@/shared/lib'
+import { cn, getViewportBoxStyle, useIsTypingOnTouch, useViewportBox } from '@/shared/lib'
 
 export interface AppLayoutProps {
 	children: ReactNode
@@ -26,11 +26,7 @@ export const AppLayout = ({ children, bottomNav, isFixedHeight = false }: AppLay
 		<div
 			className="fixed inset-x-0 top-0 h-dvh overflow-hidden bg-app"
 			// dynamic: the keyboard changes the visible box; without visualViewport it stays 100dvh
-			style={
-				viewport.height === null
-					? undefined
-					: { height: viewport.height, transform: `translateY(${viewport.offsetTop}px)` }
-			}
+			style={getViewportBoxStyle(viewport)}
 		>
 			<div className="relative mx-auto flex h-full w-full max-w-app flex-col pt-safe-top">
 				<main

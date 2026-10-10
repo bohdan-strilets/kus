@@ -3,6 +3,7 @@ export { refreshSession } from './api/refresh-session'
 export { getSessionStatus, type SessionStatus } from './model/get-session-status'
 export {
 	endSession,
+	markSessionPendingDeletion,
 	SESSION_QUERY_KEY,
 	sessionQueryOptions,
 	setSessionUser,

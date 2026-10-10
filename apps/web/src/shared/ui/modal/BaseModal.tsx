@@ -2,7 +2,7 @@ import * as Dialog from '@radix-ui/react-dialog'
 import { AnimatePresence } from 'motion/react'
 import type { ReactNode } from 'react'
 
-import { focusDialogContainer } from '@/shared/lib'
+import { focusDialogContainer, getViewportBoxStyle, useViewportBox } from '@/shared/lib'
 
 import { DialogCard } from '../dialog-card'
 import { DialogScrim } from '../dialog-scrim'
@@ -35,38 +35,46 @@ export const BaseModal = ({
 	illustration,
 	children,
 	actions,
-}: BaseModalProps) => (
-	<Dialog.Root open={isOpen} onOpenChange={onOpenChange}>
-		<AnimatePresence>
-			{isOpen && (
-				<Dialog.Portal forceMount>
-					<Dialog.Overlay forceMount asChild>
-						<DialogScrim tone="dialog" />
-					</Dialog.Overlay>
-					<div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center px-5">
-						<Dialog.Content
-							forceMount
-							asChild
-							onOpenAutoFocus={focusDialogContainer}
-							{...(description ? {} : { 'aria-describedby': undefined })}
+}: BaseModalProps) => {
+	const viewport = useViewportBox()
+
+	return (
+		<Dialog.Root open={isOpen} onOpenChange={onOpenChange}>
+			<AnimatePresence>
+				{isOpen && (
+					<Dialog.Portal forceMount>
+						<Dialog.Overlay forceMount asChild>
+							<DialogScrim tone="dialog" />
+						</Dialog.Overlay>
+						{/* sized to the part of the screen above the keyboard (iOS doesn't shrink the layout viewport) */}
+						<div
+							className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center px-5"
+							style={getViewportBoxStyle(viewport)}
 						>
-							<DialogCard>
-								{illustration}
-								<Dialog.Title asChild>
-									<Heading level="title">{title}</Heading>
-								</Dialog.Title>
-								{description && (
-									<Dialog.Description asChild>
-										<Text tone="mutedStrong">{description}</Text>
-									</Dialog.Description>
-								)}
-								{children}
-								<div className="mt-1 grid w-full auto-cols-fr grid-flow-col gap-2">{actions}</div>
-							</DialogCard>
-						</Dialog.Content>
-					</div>
-				</Dialog.Portal>
-			)}
-		</AnimatePresence>
-	</Dialog.Root>
-)
+							<Dialog.Content
+								forceMount
+								asChild
+								onOpenAutoFocus={focusDialogContainer}
+								{...(description ? {} : { 'aria-describedby': undefined })}
+							>
+								<DialogCard>
+									{illustration}
+									<Dialog.Title asChild>
+										<Heading level="title">{title}</Heading>
+									</Dialog.Title>
+									{description && (
+										<Dialog.Description asChild>
+											<Text tone="mutedStrong">{description}</Text>
+										</Dialog.Description>
+									)}
+									{children}
+									<div className="mt-1 grid w-full auto-cols-fr grid-flow-col gap-2">{actions}</div>
+								</DialogCard>
+							</Dialog.Content>
+						</div>
+					</Dialog.Portal>
+				)}
+			</AnimatePresence>
+		</Dialog.Root>
+	)
+}

@@ -160,7 +160,10 @@ export const EditEntryForm = ({ entry, meal, onDone }: EditEntryFormProps) => {
 				description={t('editEntry.confirmText', { name: entry.name })}
 				cancelLabel={t('editEntry.cancel')}
 				confirmLabel={t('editEntry.confirmDelete')}
-				onConfirm={remove}
+				onConfirm={() => {
+					setIsConfirmOpen(false)
+					remove()
+				}}
 			/>
 		</form>
 	)

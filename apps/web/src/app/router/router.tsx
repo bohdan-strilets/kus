@@ -3,18 +3,24 @@ import { createBrowserRouter, Navigate, type RouteObject } from 'react-router'
 import { DEV_ROUTES, ROUTES } from '@/shared/config'
 
 import {
+	AccountRestorePage,
+	ChangePasswordPage,
 	ChatPage,
+	GoalsRecalcPage,
 	LoginPage,
+	MyDataPage,
 	ProfilePage,
 	ProgressPage,
 	RecipesPage,
 	RegisterPage,
+	SettingsPage,
 	TodayPage,
 } from './lazy-pages'
 import { RootLayout } from './RootLayout'
 import { RouteErrorPage } from './RouteErrorPage'
 import { RouteLoader } from './RouteLoader'
 import { SessionGuard } from './SessionGuard'
+import { StackLayout } from './StackLayout'
 import { SuspenseOutlet } from './SuspenseOutlet'
 
 // `import.meta.env.DEV` is a build-time constant: in production this branch and its chunk are dropped
@@ -63,8 +69,24 @@ export const router = createBrowserRouter([
 									{ path: ROUTES.today, element: <TodayPage /> },
 									{ path: ROUTES.progress, element: <ProgressPage /> },
 									{ path: ROUTES.recipes, element: <RecipesPage /> },
-									{ path: ROUTES.profile, element: <ProfilePage /> },
 									{ path: '*', element: <Navigate to={ROUTES.chat} replace /> },
+								],
+							},
+						],
+					},
+					{
+						// profile stack: pushed screens without the bottom nav
+						element: <StackLayout />,
+						children: [
+							{
+								errorElement: <RouteErrorPage />,
+								children: [
+									{ path: ROUTES.profile, element: <ProfilePage /> },
+									{ path: ROUTES.profileGoals, element: <GoalsRecalcPage /> },
+									{ path: ROUTES.profileData, element: <MyDataPage /> },
+									{ path: ROUTES.settings, element: <SettingsPage /> },
+									{ path: ROUTES.settingsPassword, element: <ChangePasswordPage /> },
+									{ path: ROUTES.accountRestore, element: <AccountRestorePage /> },
 								],
 							},
 						],

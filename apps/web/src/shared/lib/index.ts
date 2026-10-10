@@ -8,14 +8,17 @@ export {
 } from './date'
 export {
 	formatDayHeading,
+	formatDayMonth,
 	formatDecimal,
 	formatInteger,
 	formatSignedDecimal,
+	formatShortDate,
 	formatSignedInteger,
 	formatTime,
 	formatWeekdayLong,
 	formatWeekdayShort,
 	INTL_LOCALE,
+	parseDecimalInput,
 	MINUS_SIGN,
 } from './format'
 export {
@@ -51,20 +54,14 @@ export {
 	useBlink,
 	useCountUp,
 } from './motion'
-export {
-	configureSound,
-	DEFAULT_SOUND_SETTINGS,
-	HAPTICS,
-	playSound,
-	type SoundName,
-	type SoundSettings,
-	unlockSound,
-} from './sound'
+export { HAPTICS, playSound, type SoundName, unlockSound, useSoundSettingsStore } from './sound'
 export { focusDialogContainer } from './focus-dialog-container'
+export { focusFirstField } from './focus-first-field'
 export { DEFAULT_FLAG_DELAY_MS, useDelayedFlag } from './use-delayed-flag'
 export { useAutoHeight } from './use-auto-height'
 export { COARSE_POINTER_QUERY, useMediaQuery } from './use-media-query'
 export {
+	getViewportBoxStyle,
 	isTextField,
 	useIsTextFieldFocused,
 	useIsTypingOnTouch,

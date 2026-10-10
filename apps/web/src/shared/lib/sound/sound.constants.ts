@@ -1,14 +1,7 @@
-import type { SoundName, SoundSettings } from './sound.types'
+import type { SoundName } from './sound.types'
 
-/**
- * Off by default until «Налаштування → Звуки й вібрація» exists (design/docs/sounds.md
- * assumes on; product decision: opt-in). Haptics share the same settings group.
- */
-export const DEFAULT_SOUND_SETTINGS: SoundSettings = {
-	isSoundOn: false,
-	isHapticsOn: false,
-	volume: 0.6,
-}
+/** Master gain of every sound. */
+export const MASTER_VOLUME = 0.6
 
 /** A burst of entries must not crackle: at most one sound per 150 ms. */
 export const MIN_SOUND_INTERVAL_MS = 150

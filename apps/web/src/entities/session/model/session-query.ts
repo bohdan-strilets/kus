@@ -51,3 +51,13 @@ export const setSessionUser = (queryClient: QueryClient, user: AuthUser): void =
 export const endSession = (queryClient: QueryClient): void => {
 	replaceSession(queryClient, null)
 }
+
+/** The API said the account awaits deletion: the guards then send every page to account-restore. */
+export const markSessionPendingDeletion = (
+	queryClient: QueryClient,
+	purgeAt: string | null,
+): void => {
+	queryClient.setQueryData<AuthUser | null>(SESSION_QUERY_KEY, (user) =>
+		user ? { ...user, pendingDeletion: true, purgeAt } : user,
+	)
+}

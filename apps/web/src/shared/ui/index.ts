@@ -16,7 +16,7 @@ export {
 export { Button, type ButtonProps } from './button'
 export { Chip, type ChipProps } from './chip'
 export { ConfirmDialog, type ConfirmDialogProps } from './confirm-dialog'
-export { DecorBackdrop } from './decor-backdrop'
+export { DecorBackdrop, DecorCrumb, type DecorCrumbProps } from './decor-backdrop'
 export { FormAlert, type FormAlertProps } from './form-alert'
 export {
 	FALLBACK_FOOD_CATEGORY,
@@ -52,12 +52,24 @@ export {
 	type ProgressRingIconProps,
 } from './icon'
 export { Input, type InputProps } from './input'
+export {
+	ListRow,
+	ListRowIcon,
+	type ListRowIconProps,
+	type ListRowProps,
+	RowGroup,
+	type RowGroupProps,
+} from './list-row'
 export { BaseModal, type BaseModalProps } from './modal'
+export { NumberField, type NumberFieldProps } from './number-field'
+export { type Option, OptionList, type OptionListProps } from './option-list'
 export { PageStub } from './page-stub'
 export { PasswordField, type PasswordFieldProps } from './password-field'
 export { ProgressBar, type ProgressBarProps } from './progress-bar'
+export { ScreenHeader, type ScreenHeaderProps } from './screen-header'
 export { Skeleton, type SkeletonProps } from './skeleton'
 export { Surface, type SurfaceProps } from './surface'
+export { Switch, type SwitchProps } from './switch'
 export { Text, type TextProps } from './text'
 export { Textarea, type TextareaProps } from './textarea'
 export { type ToastApi, ToastProvider, useToast } from './toast'

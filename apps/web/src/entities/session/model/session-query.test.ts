@@ -2,7 +2,12 @@ import type { AuthUser } from '@kus/shared'
 import { QueryClient } from '@tanstack/react-query'
 import { describe, expect, it } from 'vitest'
 
-import { endSession, SESSION_QUERY_KEY, setSessionUser } from './session-query'
+import {
+	endSession,
+	markSessionPendingDeletion,
+	SESSION_QUERY_KEY,
+	setSessionUser,
+} from './session-query'
 
 const user: AuthUser = {
 	id: '0199a000-0000-7000-8000-000000000002',
@@ -38,6 +43,30 @@ describe('session cache', () => {
 		endSession(queryClient)
 
 		expect(queryClient.getQueryData(ENTRIES_KEY)).toBeUndefined()
+		expect(queryClient.getQueryData(SESSION_QUERY_KEY)).toBeNull()
+	})
+
+	it('marks the signed-in user as pending deletion, keeping the rest of the cache', () => {
+		const queryClient = new QueryClient()
+		queryClient.setQueryData(SESSION_QUERY_KEY, user)
+		queryClient.setQueryData(ENTRIES_KEY, ['mine'])
+
+		markSessionPendingDeletion(queryClient, '2026-11-08T10:00:00.000Z')
+
+		expect(queryClient.getQueryData(SESSION_QUERY_KEY)).toEqual({
+			...user,
+			pendingDeletion: true,
+			purgeAt: '2026-11-08T10:00:00.000Z',
+		})
+		expect(queryClient.getQueryData(ENTRIES_KEY)).toEqual(['mine'])
+	})
+
+	it('leaves an anonymous session anonymous', () => {
+		const queryClient = new QueryClient()
+		queryClient.setQueryData(SESSION_QUERY_KEY, null)
+
+		markSessionPendingDeletion(queryClient, null)
+
 		expect(queryClient.getQueryData(SESSION_QUERY_KEY)).toBeNull()
 	})
 })

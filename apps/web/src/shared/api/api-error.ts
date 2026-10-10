@@ -11,6 +11,7 @@ export type ApiError =
 
 export const HTTP_STATUS = {
 	unauthorized: 401,
+	forbidden: 403,
 	serverErrorMin: 500,
 } as const
 

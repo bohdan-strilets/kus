@@ -1,13 +1,6 @@
-import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import {
-	configureSound,
-	DEFAULT_SOUND_SETTINGS,
-	playSound,
-	type SoundName,
-	unlockSound,
-} from '@/shared/lib'
+import { playSound, type SoundName, unlockSound } from '@/shared/lib'
 
 import { DemoButton } from '../DemoButton'
 import { DevSection } from '../DevSection'
@@ -27,14 +20,6 @@ const SOUND_NAMES: readonly SoundName[] = [
 
 export const SoundsSection = () => {
 	const { t } = useTranslation()
-
-	// sound is opt-in in the app; this page turns it on only while it is open
-	useEffect(() => {
-		configureSound({ isSoundOn: true, isHapticsOn: true })
-		return () => {
-			configureSound(DEFAULT_SOUND_SETTINGS)
-		}
-	}, [])
 
 	return (
 		<DevSection title={t('devUi.sections.sounds')} hint={t('devUi.soundsHint')}>

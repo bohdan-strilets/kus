@@ -21,6 +21,8 @@ interface GuardInput {
 	path: string
 	/** location.state, whatever it holds — it can come from history, so it's untrusted. */
 	locationState: unknown
+	/** The account awaits deletion: the only page left is account-restore. */
+	isPendingDeletion: boolean
 }
 
 /** Only a path inside /app: never an absolute URL or a guest page, so no open redirect. */
@@ -34,23 +36,35 @@ export const getReturnPath = (locationState: unknown): string | null => {
 	return isProtectedPath(pathname) ? from : null
 }
 
+const getPathname = (path: string): string => path.split(/[?#]/)[0] ?? ''
+
+/** A pending-deletion account sees only account-restore; everyone else has no business there. */
+const getAuthenticatedDecision = (path: string, isPendingDeletion: boolean): GuardDecision => {
+	const isOnRestore = getPathname(path) === ROUTES.accountRestore
+	if (isPendingDeletion && !isOnRestore) return { action: 'redirect', to: ROUTES.accountRestore }
+	if (!isPendingDeletion && isOnRestore) return { action: 'redirect', to: ROUTES.chat }
+	return { action: 'render' }
+}
+
 export const getRouteGuardDecision = ({
 	guard,
 	status,
 	path,
 	locationState,
+	isPendingDeletion,
 }: GuardInput): GuardDecision => {
 	// nothing renders until the session is known: no flash of the login form or of the app
 	if (status === 'pending') return { action: 'loading' }
 
 	if (guard === 'protected') {
-		if (status === 'authenticated') return { action: 'render' }
+		if (status === 'authenticated') return getAuthenticatedDecision(path, isPendingDeletion)
 		// the network failed, not the session: show «retry», don't throw the user out
 		if (status === 'error') return { action: 'error' }
 		return { action: 'redirect', to: ROUTES.login, state: { from: path } }
 	}
 
 	if (status === 'authenticated') {
+		if (isPendingDeletion) return { action: 'redirect', to: ROUTES.accountRestore }
 		return { action: 'redirect', to: getReturnPath(locationState) ?? ROUTES.chat }
 	}
 	// anonymous, or the check failed: the form works anyway and reports the network itself

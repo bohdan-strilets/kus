@@ -16,3 +16,18 @@ export const LoginPage = lazy(() => import('@/pages/auth').then((m) => ({ defaul
 export const RegisterPage = lazy(() =>
 	import('@/pages/auth').then((m) => ({ default: m.RegisterPage })),
 )
+export const MyDataPage = lazy(() =>
+	import('@/pages/my-data').then((m) => ({ default: m.MyDataPage })),
+)
+export const GoalsRecalcPage = lazy(() =>
+	import('@/pages/goals-recalc').then((m) => ({ default: m.GoalsRecalcPage })),
+)
+export const SettingsPage = lazy(() =>
+	import('@/pages/settings').then((m) => ({ default: m.SettingsPage })),
+)
+export const ChangePasswordPage = lazy(() =>
+	import('@/pages/change-password').then((m) => ({ default: m.ChangePasswordPage })),
+)
+export const AccountRestorePage = lazy(() =>
+	import('@/pages/account-restore').then((m) => ({ default: m.AccountRestorePage })),
+)

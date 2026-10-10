@@ -12,6 +12,8 @@ export const surfaceVariants = cva('', {
 			translucent: 'bg-surface/82',
 			/** «Вечеря» suggestion row in today */
 			dashed: 'border-2 border-dashed border-line-strong bg-surface/45',
+			/** list cards in profile, my-data, settings (white 88%) */
+			list: 'bg-surface/88',
 			soft: 'bg-soft-card',
 			field: 'bg-field',
 			selected: 'bg-primary-selected',
@@ -33,6 +35,7 @@ export const surfaceVariants = cva('', {
 			chip: 'shadow-chip',
 			float: 'shadow-float',
 			field: 'shadow-field',
+			list: 'shadow-list',
 		},
 	},
 	defaultVariants: { variant: 'solid', radius: 'card', shadow: 'card' },

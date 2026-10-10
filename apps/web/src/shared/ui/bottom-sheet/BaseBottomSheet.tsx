@@ -3,7 +3,14 @@ import { AnimatePresence, motion, type PanInfo, useDragControls } from 'motion/r
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { cn, focusDialogContainer, sheetVariants } from '@/shared/lib'
+import {
+	cn,
+	focusDialogContainer,
+	focusFirstField,
+	getViewportBoxStyle,
+	sheetVariants,
+	useViewportBox,
+} from '@/shared/lib'
 
 import { DialogScrim } from '../dialog-scrim'
 import { Heading } from '../heading'
@@ -29,6 +36,8 @@ export interface BaseBottomSheetProps {
 	titleAlign?: 'start' | 'center'
 	/** Above the title, e.g. <Hamster size={84} /> in install-hint. */
 	headerSlot?: ReactNode
+	/** What gets focus on open: the sheet itself (default), or the first field of a form sheet. */
+	initialFocus?: 'container' | 'first-field'
 	children: ReactNode
 }
 
@@ -45,10 +54,12 @@ export const BaseBottomSheet = ({
 	hasCloseButton = true,
 	titleAlign = 'start',
 	headerSlot,
+	initialFocus = 'container',
 	children,
 }: BaseBottomSheetProps) => {
 	const isCentered = titleAlign === 'center'
 	const { t } = useTranslation()
+	const viewport = useViewportBox()
 	// dragging starts only from the grabber and header, so the body can scroll and select text
 	const dragControls = useDragControls()
 
@@ -67,11 +78,17 @@ export const BaseBottomSheet = ({
 							<DialogScrim />
 						</Dialog.Overlay>
 						{/* caps the sheet at the screen below the notch; the body scrolls, the header stays */}
-						<div className="pointer-events-none fixed inset-0 z-50 flex flex-col justify-end pt-safe-top">
+						{/* sized to the part of the screen above the keyboard (iOS doesn't shrink the layout viewport) */}
+						<div
+							className="pointer-events-none fixed inset-0 z-50 flex flex-col justify-end pt-safe-top"
+							style={getViewportBoxStyle(viewport)}
+						>
 							<Dialog.Content
 								forceMount
 								asChild
-								onOpenAutoFocus={focusDialogContainer}
+								onOpenAutoFocus={
+									initialFocus === 'first-field' ? focusFirstField : focusDialogContainer
+								}
 								// without a description Radix wants the attribute explicitly empty
 								{...(description ? {} : { 'aria-describedby': undefined })}
 							>

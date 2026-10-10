@@ -56,6 +56,7 @@ export const DialogsDemo = () => {
 				cancelLabel={t('devUi.level0.cancel')}
 				confirmLabel={t('devUi.level0.deleteAll')}
 				onConfirm={() => {
+					setIsConfirmOpen(false)
 					toast.show(t('devUi.level0.deleteAll'))
 				}}
 				illustration={<Hamster mood="oops" size={DIALOG_HAMSTER_SIZE} />}

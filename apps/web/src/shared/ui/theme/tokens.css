@@ -150,6 +150,19 @@
 	--text-wordmark--line-height: 1;
 	--text-wordmark--letter-spacing: -0.04em;
 	--text-wordmark--font-weight: 800;
+	/* added: the big number in a NumberField, 32/800 (my-data-edit-sheet «82,4») */
+	--text-field-number: 32px;
+	--text-field-number--line-height: 1.1;
+	--text-field-number--letter-spacing: -0.02em;
+	--text-field-number--font-weight: 800;
+	/* added: compact number, 22/800 (goal tiles in goals-edit-sheet, avatar letter 60 in profile) */
+	--text-field-number-sm: 22px;
+	--text-field-number-sm--line-height: 1.1;
+	--text-field-number-sm--font-weight: 800;
+	/* added: the user's name on the profile card, 18/800 */
+	--text-name: 18px;
+	--text-name--line-height: 1.2;
+	--text-name--font-weight: 800;
 
 	/* ── Radii ── */
 	--radius-screen: 40px;
@@ -187,6 +200,8 @@
 	--shadow-dialog: 0 20px 50px rgb(0 0 0 / 0.2);
 	/* added: form field card (docs Field) */
 	--shadow-field: 0 6px 16px rgb(80 50 20 / 0.06);
+	/* added: list cards in profile, my-data, settings */
+	--shadow-list: 0 8px 22px rgb(80 50 20 / 0.08);
 
 	/* ── Motion ── */
 	/* appear */
@@ -224,6 +239,8 @@
 	--bg-dark-card: linear-gradient(120deg, #2a2118, #3d2d20);
 	/* the user's initial avatar in every chat header */
 	--bg-avatar: linear-gradient(140deg, #ffe1c4, #f6c79b);
+	/* the plan card in goals-recalc */
+	--bg-plan-card: linear-gradient(140deg, #fce6d2, #fcebdd);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -250,4 +267,8 @@
 
 @utility bg-avatar {
 	background-image: var(--bg-avatar);
+}
+
+@utility bg-plan-card {
+	background-image: var(--bg-plan-card);
 }

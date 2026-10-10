@@ -20,13 +20,6 @@ export type SoundName =
 	/** In-app reminder (push uses the system sound), 0.5 s */
 	| 'remind'
 
-export interface SoundSettings {
-	isSoundOn: boolean
-	isHapticsOn: boolean
-	/** 0…1 */
-	volume: number
-}
-
 /** The Web Audio nodes every synth primitive plays through. */
 export interface AudioGraph {
 	context: AudioContext

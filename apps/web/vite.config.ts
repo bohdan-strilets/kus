@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { fileURLToPath, URL } from 'node:url'
 
 import tailwindcss from '@tailwindcss/vite'
@@ -15,7 +16,13 @@ const APP_THEME_COLOR = '#FCEBD8'
 // `pnpm --filter api dev` (PORT in apps/api/.env.example)
 const API_DEV_TARGET = 'http://localhost:3000'
 
+const { version } = JSON.parse(
+	readFileSync(new URL('./package.json', import.meta.url), 'utf8'),
+) as { version: string }
+
 export default defineConfig({
+	// the «Kusik · версія 0.1» line in Settings (__APP_VERSION__ in src/vite-env.d.ts)
+	define: { __APP_VERSION__: JSON.stringify(version) },
 	plugins: [
 		react(),
 		tailwindcss(),

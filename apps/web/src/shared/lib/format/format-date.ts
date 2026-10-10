@@ -18,3 +18,19 @@ export const formatWeekdayLong = (date: Date): string =>
 /** «Пн» — week strip day labels. */
 export const formatWeekdayShort = (date: Date): string =>
 	capitalize(date.toLocaleDateString(LOCALE, { weekday: 'short' }))
+
+/** «5 вересня» — a date inside a sentence, no weekday and no capital. */
+export const formatDayMonth = (date: Date): string =>
+	date.toLocaleDateString(LOCALE, { day: 'numeric', month: 'long' })
+
+/** «08.11» — compact day.month; `timeZone` picks the day in the user's zone, not the device's. */
+export const formatShortDate = (date: Date, timeZone?: string): string => {
+	const parts = new Intl.DateTimeFormat(LOCALE, {
+		day: '2-digit',
+		month: '2-digit',
+		timeZone,
+	}).formatToParts(date)
+	const pick = (type: 'day' | 'month'): string =>
+		parts.find((part) => part.type === type)?.value ?? ''
+	return `${pick('day')}.${pick('month')}`
+}

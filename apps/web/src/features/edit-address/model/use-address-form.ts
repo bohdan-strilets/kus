@@ -35,7 +35,7 @@ export const useAddressForm = (addressAs: string | null): AddressForm => {
 			toast.show(t('profile.address.saved'))
 		},
 		onError: () => {
-			toast.show(t('profile.address.saveError'))
+			toast.show(t('profile.saveError'))
 		},
 	})
 

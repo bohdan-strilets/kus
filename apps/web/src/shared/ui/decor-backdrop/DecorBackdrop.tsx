@@ -1,29 +1,7 @@
-import { cn, useSvgId } from '@/shared/lib'
+import { cn } from '@/shared/lib'
 
+import { DecorCrumb } from './DecorCrumb'
 import { DECOR_BLOBS, DECOR_CRUMBS, DECOR_DOTS, DECOR_RINGS } from './decor-backdrop.constants'
-
-const BITES = [
-	{ cx: 91, cy: 31, r: 10 },
-	{ cx: 83, cy: 18, r: 10 },
-	{ cx: 70, cy: 10, r: 9.5 },
-] as const
-
-const Crumb = ({ className }: { className: string }) => {
-	const maskId = useSvgId('decor-bite')
-	return (
-		<svg viewBox="0 0 100 100" className={cn('absolute', className)}>
-			<defs>
-				<mask id={maskId}>
-					<rect width="100" height="100" fill="white" />
-					{BITES.map((bite) => (
-						<circle key={bite.cx} {...bite} fill="black" />
-					))}
-				</mask>
-			</defs>
-			<circle cx="50" cy="50" r="42" fill="currentColor" mask={`url(#${maskId})`} />
-		</svg>
-	)
-}
 
 /**
  * docs/motion.md «Декоративні фони»: soft blurred circles and static crumbs behind auth (later
@@ -40,7 +18,7 @@ export const DecorBackdrop = () => (
 			<span key={className} className={cn('absolute rounded-full blur-xl', className)} />
 		))}
 		{DECOR_CRUMBS.map((className) => (
-			<Crumb key={className} className={className} />
+			<DecorCrumb key={className} className={className} />
 		))}
 		{DECOR_RINGS.map((className) => (
 			<span key={className} className={cn('absolute rounded-full border-2', className)} />

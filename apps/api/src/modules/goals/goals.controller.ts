@@ -11,6 +11,7 @@ import { GoalsService } from './goals.service'
 export class GoalsController {
 	constructor(private readonly goalsService: GoalsService) {}
 
+	// TODO(6B): remove once the profile frontend is deployed — the web build on production still calls this; the replacement is PUT /profile/goals.
 	@Throttle(SET_GOAL_THROTTLE)
 	@Put('current')
 	setCurrent(@CurrentUser() user: AuthenticatedUser, @Body() body: SetGoalDto): Promise<DailyGoal> {

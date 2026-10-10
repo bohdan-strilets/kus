@@ -1,11 +1,7 @@
 import { RECIPES } from './recipes'
-import {
-	DEFAULT_SOUND_SETTINGS,
-	HAPTICS,
-	MIN_SOUND_INTERVAL_MS,
-	SCHEDULE_LEAD_S,
-} from './sound.constants'
-import type { AudioGraph, SoundName, SoundSettings } from './sound.types'
+import { HAPTICS, MASTER_VOLUME, MIN_SOUND_INTERVAL_MS, SCHEDULE_LEAD_S } from './sound.constants'
+import type { AudioGraph, SoundName } from './sound.types'
+import { useSoundSettingsStore } from './sound-settings-store'
 
 /**
  * Kusik sounds, synthesised with Web Audio: no files, works offline (design/docs/sounds.md).
@@ -14,7 +10,6 @@ import type { AudioGraph, SoundName, SoundSettings } from './sound.types'
 
 const NOISE_SECONDS = 0.5
 
-const settings: SoundSettings = { ...DEFAULT_SOUND_SETTINGS }
 let graph: AudioGraph | null = null
 let lastPlayedAt = Number.NEGATIVE_INFINITY
 
@@ -29,7 +24,7 @@ const createGraph = (): AudioGraph | null => {
 	if (!AudioContextClass) return null
 	const context = new AudioContextClass()
 	const master = context.createGain()
-	master.gain.value = settings.volume
+	master.gain.value = MASTER_VOLUME
 	master.connect(context.destination)
 	const noise = context.createBuffer(1, context.sampleRate * NOISE_SECONDS, context.sampleRate)
 	const channel = noise.getChannelData(0)
@@ -43,18 +38,13 @@ const getGraph = (): AudioGraph | null => {
 	return graph
 }
 
-export const configureSound = (next: Partial<SoundSettings>): void => {
-	Object.assign(settings, next)
-	if (graph) graph.master.gain.value = settings.volume
-}
-
 /** Call in the first click/tap handler: browsers (iOS especially) block audio until a gesture. */
 export const unlockSound = (): void => {
 	getGraph()
 }
 
 const vibrate = (name: SoundName): void => {
-	if (!settings.isHapticsOn || !('vibrate' in navigator)) return
+	if (!useSoundSettingsStore.getState().isHapticsOn || !('vibrate' in navigator)) return
 	// without a user gesture the browser blocks vibration and logs an error
 	// (`userActivation` is missing before Safari 16.4 — then just try)
 	if ('userActivation' in navigator && !navigator.userActivation.hasBeenActive) return
@@ -68,7 +58,7 @@ export const playSound = (name: SoundName): void => {
 	lastPlayedAt = now
 
 	vibrate(name)
-	if (!settings.isSoundOn || document.visibilityState !== 'visible') return
+	if (!useSoundSettingsStore.getState().isSoundOn || document.visibilityState !== 'visible') return
 	const audio = getGraph()
 	if (!audio) return
 	RECIPES[name](audio, audio.context.currentTime + SCHEDULE_LEAD_S)

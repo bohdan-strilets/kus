@@ -7,3 +7,7 @@ export {
 export { httpClient } from './http-client'
 export { isRetriableError } from './is-retriable-error'
 export { getAccountLockedMessage } from './lockout-message'
+export {
+	attachPendingDeletionInterceptor,
+	type PendingDeletionInterceptorOptions,
+} from './attach-pending-deletion-interceptor'

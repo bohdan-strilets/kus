@@ -20,7 +20,8 @@ export const Switch = ({ isChecked, onCheckedChange, label, disabled }: SwitchPr
 		onCheckedChange={onCheckedChange}
 		disabled={disabled}
 		aria-label={label}
-		className="relative h-7 w-12 shrink-0 cursor-pointer rounded-full bg-toggle-off transition-colors duration-(--duration-base) focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-ink disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-primary"
+		// 48×28 in the mockup; the ::after hitbox gives the 44px tap target (CLAUDE.md §13)
+		className="relative h-7 w-12 shrink-0 cursor-pointer rounded-full bg-toggle-off transition-colors duration-(--duration-base) after:absolute after:-inset-x-1 after:-inset-y-2 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-ink disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-primary"
 	>
 		<RadixSwitch.Thumb asChild>
 			<motion.span

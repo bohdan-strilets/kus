@@ -44,7 +44,7 @@ export const ProfilePage = () => {
 			<div className="flex flex-col gap-3 px-gutter pt-2.5 pb-5">
 				{/* the name and the date come from the session at once; the goal waits for the profile */}
 				<ProfileCard
-					name={user.name ?? ''}
+					name={user.name ?? user.addressAs ?? user.email}
 					subtitle={getGoalSubtitle(
 						{ goalType: profile?.profile.goalType ?? null, createdAt: user.createdAt },
 						t,
@@ -62,11 +62,14 @@ export const ProfilePage = () => {
 							variant="text"
 							size="sm"
 							aria-haspopup="dialog"
-							icon={<Icon name="edit" size={16} />}
+							// the sheet starts from the goal in force, so it waits for the profile
+							disabled={!profile}
+							icon={<Icon name="edit" size={ICON_SIZE.small} />}
 							onClick={() => {
 								setIsGoalsOpen(true)
 							}}
-							className="-mr-3.5 min-h-6 no-underline"
+							// the row is 24px in the mockup; the ::after hitbox keeps the 44px tap target
+							className="-mr-3.5 min-h-6 no-underline after:-inset-y-2.5"
 						>
 							{t('profile.goals.edit')}
 						</Button>
@@ -78,7 +81,7 @@ export const ProfilePage = () => {
 							))}
 						</div>
 					)}
-					{profileQuery.isError && (
+					{profileQuery.isError && !profile && (
 						<InlineError
 							message={t('profile.loadError')}
 							onRetry={() => void profileQuery.refetch()}

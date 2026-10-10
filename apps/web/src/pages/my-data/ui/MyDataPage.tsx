@@ -36,11 +36,13 @@ export const MyDataPage = () => {
 				</div>
 			)
 		}
-		if (query.isError) {
+		// a failed refetch keeps the rows already shown; the error is only for an empty screen
+		const profile = query.data
+		if (!profile) {
 			return <InlineError message={t('profile.loadError')} onRetry={() => void query.refetch()} />
 		}
 
-		const rows = getProfileRows(query.data, t)
+		const rows = getProfileRows(profile, t)
 		const sections = [
 			{ title: t('profile.data.sections.body'), rows: rows.body },
 			{ title: t('profile.data.sections.goal'), rows: rows.goal },

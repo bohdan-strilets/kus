@@ -85,7 +85,8 @@ export const EditGoalsForm = ({ goal, onSaved }: EditGoalsFormProps) => {
 			</div>
 			<MacroKcalHint hint={hint} errorMessage={errors.macros?.message} />
 			<div className="flex flex-col gap-1">
-				<Button type="submit" isFullWidth isLoading={isSaving}>
+				{/* one request at a time: the other button waits while this one saves */}
+				<Button type="submit" isFullWidth isLoading={isSaving} disabled={isRestoring}>
 					{t('editGoals.save')}
 				</Button>
 				{calculated && (
@@ -93,6 +94,7 @@ export const EditGoalsForm = ({ goal, onSaved }: EditGoalsFormProps) => {
 						variant="text"
 						isFullWidth
 						isLoading={isRestoring}
+						disabled={isSaving}
 						icon={<Icon name="retry" size={ICON_SIZE.control} />}
 						onClick={restoreCalculated}
 						// the mockup's link has no underline, unlike the `text` variant

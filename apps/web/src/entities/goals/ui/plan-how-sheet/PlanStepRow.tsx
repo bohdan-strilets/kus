@@ -10,14 +10,14 @@ export interface PlanStepRowProps {
 
 /** One step of «Як я порахував»: the number, the title with its formula, and the result. */
 export const PlanStepRow = ({ index, step }: PlanStepRowProps) => (
-	<li className="grid grid-cols-[26px_minmax(0,1fr)_auto] items-start gap-2.5 border-b border-divider py-2.5">
+	<li className="flex items-start gap-2.5 border-b border-divider py-2.5">
 		<span
 			aria-hidden="true"
-			className="flex size-6.5 items-center justify-center rounded-full bg-primary-soft text-caption font-extrabold text-primary-deep"
+			className="flex size-6.5 shrink-0 items-center justify-center rounded-full bg-primary-soft text-caption font-extrabold text-primary-deep"
 		>
 			{index}
 		</span>
-		<span className="flex min-w-0 flex-col gap-0.5">
+		<span className="flex min-w-0 flex-1 flex-col gap-0.5">
 			<Text as="span" variant="cardTitle">
 				{step.title}
 			</Text>
@@ -25,7 +25,13 @@ export const PlanStepRow = ({ index, step }: PlanStepRowProps) => (
 				{step.formula}
 			</Text>
 		</span>
-		<Text as="span" variant="body" weight="extrabold" isTabular className="whitespace-nowrap">
+		<Text
+			as="span"
+			variant="body"
+			weight="extrabold"
+			isTabular
+			className="shrink-0 whitespace-nowrap"
+		>
 			{step.value}
 		</Text>
 	</li>

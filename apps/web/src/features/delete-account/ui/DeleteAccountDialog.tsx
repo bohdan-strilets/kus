@@ -22,6 +22,8 @@ export const DeleteAccountDialog = ({ isOpen, onOpenChange }: DeleteAccountDialo
 	const password = form.watch('password')
 
 	const handleOpenChange = (nextIsOpen: boolean): void => {
+		// the request is on its way: closing now would reset the field under a pending deletion
+		if (!nextIsOpen && isDeleting) return
 		if (!nextIsOpen) form.reset()
 		onOpenChange(nextIsOpen)
 	}
@@ -75,6 +77,13 @@ export const DeleteAccountDialog = ({ isOpen, onOpenChange }: DeleteAccountDialo
 									autoCapitalize="none"
 									spellCheck={false}
 									placeholder={t('deleteAccount.passwordPlaceholder')}
+									enterKeyHint="done"
+									// the field sits outside a <form> (the dialog owns the buttons): Enter confirms
+									onKeyDown={(event) => {
+										if (event.key !== 'Enter' || password.trim() === '') return
+										event.preventDefault()
+										void onSubmit()
+									}}
 									{...field}
 									{...controlProps}
 								/>

@@ -106,8 +106,13 @@ export const GoalsRecalcPage = () => {
 						>
 							{t('recalcGoals.how')}
 						</Button>
-						<div className="grid grid-cols-[1fr_auto] gap-2 px-3.5 pt-2 pb-3.5">
-							<Button isLoading={isSaving} loadingText={t('recalcGoals.saving')} onClick={save}>
+						<div className="flex gap-2 px-3.5 pt-2 pb-3.5">
+							<Button
+								isLoading={isSaving}
+								loadingText={t('recalcGoals.saving')}
+								onClick={save}
+								className="flex-1"
+							>
 								{t('recalcGoals.save')}
 							</Button>
 							<Button

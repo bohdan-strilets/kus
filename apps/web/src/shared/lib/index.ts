@@ -56,7 +56,14 @@ export {
 	useCountUp,
 	useRevealedValue,
 } from './motion'
-export { HAPTICS, playSound, type SoundName, unlockSound, useSoundSettingsStore } from './sound'
+export {
+	HAPTICS,
+	playSound,
+	type SoundName,
+	unlockSound,
+	useSoundSettingsStore,
+	useUnlockSoundOnFirstTap,
+} from './sound'
 export { focusDialogContainer } from './focus-dialog-container'
 export { focusFirstField } from './focus-first-field'
 export { DEFAULT_FLAG_DELAY_MS, useDelayedFlag } from './use-delayed-flag'

@@ -28,10 +28,17 @@ const Screen = () => {
 	)
 }
 
+let disposeRouter: (() => void) | null = null
+
 /** jsdom keeps one session history per file: every test starts over at a fresh first entry. */
 const renderAt = (path: string): void => {
 	window.history.replaceState(null, '', path)
-	render(<RouterProvider router={createBrowserRouter([{ path: '*', element: <Screen /> }])} />)
+	const router = createBrowserRouter([{ path: '*', element: <Screen /> }])
+	// the router keeps listening to popstate after unmount: not into the next test
+	disposeRouter = () => {
+		router.dispose()
+	}
+	render(<RouterProvider router={router} />)
 }
 
 const click = async (name: string): Promise<void> => {
@@ -43,7 +50,11 @@ const click = async (name: string): Promise<void> => {
 
 const pathname = (): string => screen.getByTestId('path').textContent
 
-afterEach(cleanup)
+afterEach(() => {
+	cleanup()
+	disposeRouter?.()
+	disposeRouter = null
+})
 
 describe('useStackBack', () => {
 	it('goes back to the entry the screen was opened from', async () => {

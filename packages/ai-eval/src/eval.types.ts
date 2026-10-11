@@ -96,6 +96,8 @@ export interface ModelSummary {
 	meals: RateStats
 	/** Cases with expected edits whose edits all matched. */
 	edits: RateStats
+	/** Cases with expected sources whose every logged item carries one of them (labels → LABEL). */
+	sources: RateStats
 	decisions: RateStats & { byExpected: Record<string, RateStats> }
 	costUsd: { total: number; perCase: number }
 	latencyMs: { p50: number; p95: number }

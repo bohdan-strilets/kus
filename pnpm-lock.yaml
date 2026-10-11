@@ -271,6 +271,9 @@ importers:
       '@kus/shared':
         specifier: workspace:*
         version: link:../shared
+      image-size:
+        specifier: 2.0.4
+        version: 2.0.4
       zod:
         specifier: ^4.6.5
         version: 4.6.5

@@ -1,5 +1,12 @@
-import { foodCategorySchema, type FoodParseContext, loggableMealTypeSchema } from '@kus/shared'
+import {
+	foodCategorySchema,
+	type FoodParseContext,
+	foodSourceSchema,
+	loggableMealTypeSchema,
+} from '@kus/shared'
 import { z } from 'zod'
+
+import type { EvalPhoto } from './photo.js'
 
 /**
  * `log` = logged without a question; `clarify` = logged and asked; `log_or_clarify` = either is
@@ -63,33 +70,42 @@ export const expectedEditsSchema = z.object({
 export type ExpectedEdits = z.infer<typeof expectedEditsSchema>
 export type ResolutionKind = z.infer<typeof resolutionKindSchema>
 
-export const evalCaseSchema = z.object({
-	id: z.string().min(1),
-	text: z.string().min(1),
-	expect: z.object({
-		decision: expectedDecisionSchema,
-		/** Total kcal of everything logged by the message. */
-		kcal: expectedValueSchema.optional(),
-		protein: expectedValueSchema.optional(),
-		/** Each must appear among the logged items' categories (extra items are fine). */
-		categories: z.array(foodCategorySchema).optional(),
-		/** For reply cases: substrings the answer must contain (e.g. the remaining kcal). */
-		replyIncludes: z.array(z.string()).optional(),
-		/** Lower-case stems the answer must not contain — claims of a change that didn't happen ("змінив"). */
-		replyExcludes: z.array(z.string()).optional(),
-		edits: expectedEditsSchema.optional(),
-		/** Some kept clarify option renames the item ("Макарони сухі"). */
-		clarifyRenames: z.boolean().optional(),
-		/** Whole-day cases: an item (name stem) must land in this meal. */
-		itemMeals: z
-			.array(z.object({ stem: z.string().min(1), mealType: loggableMealTypeSchema }))
-			.optional(),
-		/** For clarify cases: stems of the items a question is expected about ("печив"). */
-		clarifyAbout: z.array(z.string().min(1)).optional(),
-	}),
-	/** Where the numbers come from (label text, USDA FDC, typical portion). */
-	reference: z.string().min(1),
-})
+export const evalCaseSchema = z
+	.object({
+		id: z.string().min(1),
+		/** The words of the message; may be empty when the case has a photo. */
+		text: z.string().default(''),
+		/** A photo next to the words: a path relative to data/private/ (.jpg, .png or .webp). */
+		image: z.string().min(1).optional(),
+		expect: z.object({
+			decision: expectedDecisionSchema,
+			/** Total kcal of everything logged by the message. */
+			kcal: expectedValueSchema.optional(),
+			protein: expectedValueSchema.optional(),
+			/** Each must appear among the logged items' categories (extra items are fine). */
+			categories: z.array(foodCategorySchema).optional(),
+			/** For reply cases: substrings the answer must contain (e.g. the remaining kcal). */
+			replyIncludes: z.array(z.string()).optional(),
+			/** Lower-case stems the answer must not contain — claims of a change that didn't happen ("змінив"). */
+			replyExcludes: z.array(z.string()).optional(),
+			edits: expectedEditsSchema.optional(),
+			/** Some kept clarify option renames the item ("Макарони сухі"). */
+			clarifyRenames: z.boolean().optional(),
+			/** Whole-day cases: an item (name stem) must land in this meal. */
+			itemMeals: z
+				.array(z.object({ stem: z.string().min(1), mealType: loggableMealTypeSchema }))
+				.optional(),
+			/** For clarify cases: stems of the items a question is expected about ("печив"). */
+			clarifyAbout: z.array(z.string().min(1)).optional(),
+			/** Every logged item must carry one of these sources (a label photo → LABEL, a plate → ESTIMATE). */
+			sources: z.array(foodSourceSchema).min(1).optional(),
+		}),
+		/** Where the numbers come from (label text, USDA FDC, typical portion). */
+		reference: z.string().min(1),
+	})
+	.refine((evalCase) => evalCase.text.length > 0 || evalCase.image !== undefined, {
+		message: 'a case needs text or an image',
+	})
 
 /** A saved food (MyFood) in `data/private/*.foods.json`; values per 100 g, like in the DB. */
 export const savedFoodSchema = z.object({
@@ -111,4 +127,6 @@ export type SavedFood = z.infer<typeof savedFoodSchema>
 export type EvalCase = z.infer<typeof evalCaseSchema> & {
 	/** Day state the model sees; defaults to an empty day without a goal. */
 	context?: Partial<FoodParseContext>
+	/** The loaded photo of a private case with `image`. */
+	photo?: EvalPhoto
 }

@@ -2,6 +2,7 @@ import { type AiReasoningMode, buildFoodParseMessages, createFoodParseRequest } 
 import { z } from 'zod'
 
 import type { EvalCase } from './cases/index.js'
+import { getImageTokens } from './cases/photo.js'
 import { OPENROUTER_API_URL } from './openrouter.js'
 import { BASE_CONTEXT } from './run-case.js'
 
@@ -41,12 +42,15 @@ const fetchPrices = async (): Promise<Map<string, { prompt: number; completion: 
 	return new Map(data.map((model) => [model.id, model.pricing]))
 }
 
+/** The words and the tools by their characters; a photo by its patches, not by its base64. */
 const estimateInputTokens = (evalCase: EvalCase): number => {
 	const messages = buildFoodParseMessages({ ...BASE_CONTEXT, ...evalCase.context }, evalCase.text)
 	const request = createFoodParseRequest('estimate', messages)
-	return Math.ceil(
+	const textTokens = Math.ceil(
 		JSON.stringify({ messages: request.messages, tools: request.tools }).length / CHARS_PER_TOKEN,
 	)
+	const { photo } = evalCase
+	return textTokens + (photo ? getImageTokens(photo.width, photo.height) : 0)
 }
 
 export const estimateCost = async (

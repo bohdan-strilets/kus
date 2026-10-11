@@ -4,6 +4,7 @@ import type {
 	CaseResult,
 	EditResult,
 	ErrorStats,
+	LoggedItem,
 	ModelSummary,
 } from './eval.types.js'
 
@@ -77,6 +78,10 @@ export const isEditsCorrect = (expected: ExpectedEdits, actual: EditResult | nul
 		})
 	)
 }
+
+/** Every logged item carries an allowed source; nothing logged is a miss too (a label must be read). */
+export const isSourcesCorrect = (expected: string[], items: LoggedItem[]): boolean =>
+	items.length > 0 && items.every((item) => expected.includes(item.source))
 
 /** How many expected categories appear among the logged items (each item counts once). */
 export const countCategoryMatches = (expected: string[], actual: string[]): number => {
@@ -197,6 +202,14 @@ export const summarize = (model: string, pairs: Pair[]): ModelSummary => {
 					isEditsCorrect(evalCase.expect.edits, result.edits),
 			).length,
 			total: pairs.filter(({ evalCase }) => evalCase.expect.edits !== undefined).length,
+		},
+		sources: {
+			correct: pairs.filter(
+				({ evalCase, result }) =>
+					evalCase.expect.sources !== undefined &&
+					isSourcesCorrect(evalCase.expect.sources, result.items),
+			).length,
+			total: pairs.filter(({ evalCase }) => evalCase.expect.sources !== undefined).length,
 		},
 		decisions: getDecisionStats(pairs),
 		costUsd: { total: totalCost, perCase: getAverage(results.map((r) => r.costUsd)) ?? 0 },

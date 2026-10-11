@@ -11,6 +11,7 @@ import {
 import { z } from 'zod'
 
 import { type EvalCase, evalCaseSchema, type SavedFood, savedFoodSchema } from './case.types.js'
+import { loadEvalPhoto } from './photo.js'
 
 /** Real meals of the owner — gitignored, picked up only when present (CLAUDE.md §9: no personal data in git). */
 export const PRIVATE_CASES_DIR = new URL('../../data/private/', import.meta.url)
@@ -55,14 +56,24 @@ const toMemoryContext = (foods: SavedFood[], text: string): MemoryFoodContext[] 
 			category: food.category,
 		}))
 
+const warn = (message: string): void => {
+	process.stderr.write(`⚠ data/private/${message}
+`)
+}
+
 export const loadPrivateCases = async (): Promise<EvalCase[]> => {
 	const [cases, foods] = await Promise.all([
 		readJsonFiles(CASES_SUFFIX, z.array(evalCaseSchema)),
 		readJsonFiles(FOODS_SUFFIX, z.array(savedFoodSchema)),
 	])
-	return cases.map((item) => ({
-		...item,
-		id: `${PRIVATE_ID_PREFIX}${item.id}`,
-		context: { memory: toMemoryContext(foods, item.text) },
-	}))
+	const dir = fileURLToPath(PRIVATE_CASES_DIR)
+	return Promise.all(
+		cases.map(async (item) => ({
+			...item,
+			id: `${PRIVATE_ID_PREFIX}${item.id}`,
+			context: { memory: toMemoryContext(foods, item.text) },
+			// the bytes live in memory for the run only; results/ keeps ids and numbers, never the photo
+			photo: item.image === undefined ? undefined : await loadEvalPhoto(dir, item.image, warn),
+		})),
+	)
 }

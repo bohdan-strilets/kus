@@ -105,6 +105,36 @@ describe('summarize', () => {
 		expect(summary.failed).toBe(1)
 		expect(summary.decisions).toMatchObject({ correct: 2, total: 3 })
 	})
+
+	it('counts the cases whose every logged item has an allowed source', () => {
+		const item = (source: string) => ({
+			name: 'Скир',
+			mealType: null,
+			grams: 150,
+			quantity: null,
+			kcal: 96,
+			protein: 16,
+			source,
+			memoryRef: null,
+			assumption: null,
+		})
+		const summary = summarize('m', [
+			{
+				evalCase: evalCase({ decision: 'log', sources: ['LABEL'] }),
+				result: result({ items: [item('LABEL')] }),
+			},
+			{
+				evalCase: evalCase({ decision: 'log', sources: ['LABEL'] }),
+				result: result({ items: [item('LABEL'), item('ESTIMATE')] }),
+			},
+			{
+				evalCase: evalCase({ decision: 'log', sources: ['LABEL'] }),
+				result: result({ items: [] }),
+			},
+			{ evalCase: evalCase({ decision: 'log' }), result: result({ items: [item('ESTIMATE')] }) },
+		])
+		expect(summary.sources).toEqual({ correct: 1, total: 3 })
+	})
 })
 
 describe('repo cases', () => {

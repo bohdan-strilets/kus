@@ -122,7 +122,8 @@ export const runCase = async (
 	const context: FoodParseContext = { ...BASE_CONTEXT, ...evalCase.context }
 	const { memory } = context
 	const refs = getParseRefs(context)
-	let messages: AiRequestMessage[] = buildFoodParseMessages(context, evalCase.text)
+	let messages: AiRequestMessage[] = buildFoodParseMessages(context, evalCase.text, evalCase.photo)
+	const hasImage = evalCase.photo !== undefined
 	const usage = {
 		costUsd: 0,
 		latencyMs: 0,
@@ -149,7 +150,7 @@ export const runCase = async (
 				return failedResult(base, usage, { error: OUTPUT_TRUNCATED, attempts: attempt })
 			const rawCalls = getRawToolCalls(completion)
 			if (rawCalls.length === 0) usage.textOnlyAnswers += 1
-			const result = parseToolCalls(rawCalls, refs)
+			const result = parseToolCalls(rawCalls, refs, { hasImage })
 			if (result.ok) {
 				const items = getLoggedItems(result.decision)
 				const totals = items.length > 0 ? sumItems(items, memory) : null

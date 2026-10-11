@@ -1,14 +1,13 @@
 import { Injectable, Logger } from '@nestjs/common'
-import type { DailyGoal, ProfileGoals, SetGoalRequest } from '@kus/shared'
+import type { DailyGoal, ProfileGoals } from '@kus/shared'
 
-import { formatDbDate, getLocalDate } from '../../common/time'
+import { formatDbDate } from '../../common/time'
 import {
 	type GoalSource,
 	GoalType,
 	type Prisma,
 	type UserGoal,
 } from '../../generated/prisma/client'
-import { UsersService } from '../users/users.service'
 import { GoalsRepository } from './goals.repository'
 
 const toDailyGoal = (goal: UserGoal): DailyGoal => ({
@@ -46,10 +45,7 @@ export interface SaveGoalOptions {
 export class GoalsService {
 	private readonly logger = new Logger(GoalsService.name)
 
-	constructor(
-		private readonly goalsRepository: GoalsRepository,
-		private readonly usersService: UsersService,
-	) {}
+	constructor(private readonly goalsRepository: GoalsRepository) {}
 
 	async getGoalForDate(userId: string, localDate: Date): Promise<DailyGoal | null> {
 		const goal = await this.goalsRepository.findForDate({ userId, localDate })
@@ -108,28 +104,5 @@ export class GoalsService {
 		)
 		this.logger.log(`Goal set user=${userId} source=${source}`)
 		return toProfileGoals(goal)
-	}
-
-	/**
-	 * The chat's goal sheet (PUT /goals/current): numbers typed by hand from today on. The type
-	 * stays as it was, or MAINTAIN for a first goal; the profile's PUT /profile/goals sets it.
-	 * No «add up» check here on purpose: the current web sheet doesn't handle GOALS_INCONSISTENT;
-	 * it moves to PUT /profile/goals with the profile screens, and this route goes with it.
-	 */
-	async setCurrentGoal(userId: string, request: SetGoalRequest): Promise<DailyGoal> {
-		const { timezone } = await this.usersService.getMe(userId)
-		const today = getLocalDate(new Date(), timezone)
-		const current = await this.goalsRepository.findForDate({ userId, localDate: today })
-		const goal = await this.saveGoal({
-			userId,
-			validFrom: today,
-			type: current?.type ?? GoalType.MAINTAIN,
-			source: 'MANUAL',
-			kcal: request.kcal,
-			proteinG: request.protein,
-			fatG: request.fat,
-			carbsG: request.carbs,
-		})
-		return { kcal: goal.kcal, protein: goal.proteinG, carbs: goal.carbsG, fat: goal.fatG }
 	}
 }

@@ -23,6 +23,8 @@ export const BottomNavItem = ({
 }: BottomNavItemProps) => (
 	<NavLink
 		to={item.to}
+		// tabs switch in place, as in a native app: Back never flips between them
+		replace
 		// «Чат» is /app itself: without `end` it would be active under every /app/* tab
 		end
 		aria-label={hasUpdate ? updateLabel : undefined}

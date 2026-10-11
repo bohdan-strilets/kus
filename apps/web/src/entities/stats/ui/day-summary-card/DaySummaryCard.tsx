@@ -49,12 +49,12 @@ export const DaySummaryCard = ({
 						{/* the gauge keeps its own label with the numbers; this only names the action */}
 						<span className="sr-only">{goalAction.label}</span>
 					</button>
-					<Link to={ROUTES.today} className="flex min-w-0 flex-1 rounded-tile text-ink">
+					<Link to={ROUTES.today} replace className="flex min-w-0 flex-1 rounded-tile text-ink">
 						{tiles}
 					</Link>
 				</div>
 			) : (
-				<Link to={ROUTES.today} className={cn(rowClass, 'rounded-card text-ink')}>
+				<Link to={ROUTES.today} replace className={cn(rowClass, 'rounded-card text-ink')}>
 					{gauge}
 					{tiles}
 				</Link>

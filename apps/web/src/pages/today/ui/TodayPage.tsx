@@ -81,7 +81,7 @@ const TodayScreen = ({ timeZone }: { timeZone: string }) => {
 						setIsGoalOpen(true)
 					}}
 					onEmptyAction={() => {
-						if (isToday) void navigate(ROUTES.chat)
+						if (isToday) void navigate(ROUTES.chat, { replace: true })
 						else navigation.select(today)
 					}}
 				/>

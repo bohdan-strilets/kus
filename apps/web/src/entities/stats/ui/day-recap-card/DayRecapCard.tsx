@@ -29,6 +29,7 @@ export const DayRecapCard = ({ eaten, goal, protein, proteinGoal, to }: DayRecap
 	return (
 		<Link
 			to={to}
+			replace
 			className="flex items-center gap-3 self-stretch rounded-bubble bg-surface/75 px-3.5 py-3 text-ink"
 		>
 			{isWithinGoal && (

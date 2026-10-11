@@ -76,7 +76,7 @@ export const CompactDayBar = ({ eaten, goal, protein, onExpand }: CompactDayBarP
 		)
 	}
 	return (
-		<Link to={ROUTES.today} aria-label={label} className={BAR_CLASS}>
+		<Link to={ROUTES.today} replace aria-label={label} className={BAR_CLASS}>
 			{content}
 		</Link>
 	)

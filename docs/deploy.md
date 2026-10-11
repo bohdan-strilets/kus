@@ -198,18 +198,19 @@ New Project → цей репозиторій.
 
 - **Volume backups** (Railway → Postgres → Backups): Daily (зберігається 6 днів) і Weekly (1 місяць); за потреби Monthly (3 місяці). **Ручний бекап на Hobby/trial недоступний** (кнопка є лише на Pro), тому перед кожним деплоєм з міграцією — логічний дамп нижче.
 - Обмеження: **видалення тому видаляє і всі його бекапи**. Від цього захищає лише логічний дамп.
-- **Логічний дамп** — перед деплоєм з міграцією і раз на тиждень, на свій диск. Ніколи не в репо: там раціон і вага (RODO, репозиторій публічний). `pg_dump` локально не встановлений, тож через Docker з тим самим образом, що й локальна база (`postgres:17`, версія клієнта має бути не нижча за серверну):
-  1. Railway → Postgres → Variables → скопіювати `DATABASE_PUBLIC_URL` (TCP proxy має бути увімкнений; якщо вимикався — увімкнути на час дампу).
-  2. У теці **поза репо** (наприклад `~/kus-backups`), URL — лише через змінну оточення, не в команді й не в історії shell:
-     ```bash
-     mkdir -p ~/kus-backups
-     export DATABASE_PUBLIC_URL='<вставити з Railway>'
-     docker run --rm -e PGURL="$DATABASE_PUBLIC_URL" -v ~/kus-backups:/backup postgres:17 \
-       sh -c 'pg_dump --format=custom --no-owner --file "/backup/kus-$(date +%F).dump" "$PGURL"'
-     unset DATABASE_PUBLIC_URL
+- **Логічний дамп** — перед деплоєм з міграцією і раз на тиждень, на свій диск. Ніколи не в репо: там раціон і вага (RODO, репозиторій публічний). `pg_dump` локально не встановлений, тож через Docker (`postgres:18` — версія клієнта має бути не нижча за серверну). Перевірена послідовність на Windows / PowerShell:
+  1. **Відкрити проксі.** Railway → Postgres → **Settings → Networking → TCP Proxy** → увімкнути → **Deploy**: зміни налаштувань стають у чергу «Apply changes» і діють лише після Deploy. `DATABASE_PUBLIC_URL` з'являється у Variables тільки після цього.
+  2. **Дамп у теку поза репо** (наприклад `$HOME\kus-backups`). URL — лише через змінну оточення, яку вводиш через `Read-Host`: так він не лишається ні в команді, ні в історії PowerShell:
+     ```powershell
+     New-Item -ItemType Directory -Force "$HOME\kus-backups"
+     $env:DB_URL = Read-Host 'DATABASE_PUBLIC_URL'
+     docker run --rm -v "$HOME\kus-backups:/backup" postgres:18 pg_dump "$env:DB_URL" -Fc --no-owner -f /backup/kus-<дата>.dump
+     Get-ChildItem "$HOME\kus-backups"
+     Remove-Item Env:DB_URL
      ```
-     У Git Bash на Windows шлях тому пишеться як `/c/Users/<user>/kus-backups` (або `//c/...`, якщо Docker скаржиться на шлях).
-  3. Перевірити, що файл не порожній: `ls -la ~/kus-backups`. Якщо TCP proxy вмикався лише для дампу — вимкнути.
+     `Get-ChildItem` має показати файл з розміром явно більшим за кілька кілобайт; порожній або крихітний дамп означає, що з'єднання не відбулось.
+  3. **Закрити проксі.** Postgres → Settings → Networking → видалити TCP Proxy → знову **Deploy**. Без цього база лишається доступна з інтернету за паролем.
+  - У Git Bash той самий `docker run` із `-v /c/Users/<user>/kus-backups:/backup` і `PGURL` з `export`/`unset`; суть та сама — URL не в історії, проксі лише на час дампу.
 
 ### Відновлення
 

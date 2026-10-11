@@ -27,6 +27,11 @@ interface DailyUsageKey {
 	localDate: Date
 }
 
+export interface DailyUsageLimits {
+	messageLimit: number
+	photoLimit: number
+}
+
 @Injectable()
 export class AiRepository {
 	constructor(private readonly prisma: PrismaService) {}
@@ -38,14 +43,16 @@ export class AiRepository {
 	}
 
 	/**
-	 * Counts one AI request against the daily limit. The conditional increment keeps parallel
-	 * requests from slipping past the limit; `false` = the limit is used up.
+	 * Counts one AI request (and its photo) against the daily limits. The conditional increment
+	 * keeps parallel requests from slipping past a limit; `false` = a limit is used up.
 	 */
-	async reserveDailyMessage({
+	async reserveDailyUsage({
 		userId,
 		localDate,
-		limit,
-	}: DailyUsageKey & { limit: number }): Promise<boolean> {
+		hasPhoto,
+		messageLimit,
+		photoLimit,
+	}: DailyUsageKey & DailyUsageLimits & { hasPhoto: boolean }): Promise<boolean> {
 		// full unique (userId, localDate), so upsert is safe here (docs/database.md)
 		await this.prisma.dailyUsage.upsert({
 			where: { userId_localDate: { userId, localDate } },
@@ -53,10 +60,31 @@ export class AiRepository {
 			update: {},
 		})
 		const { count } = await this.prisma.dailyUsage.updateMany({
-			where: { userId, localDate, messageCount: { lt: limit } },
-			data: { messageCount: { increment: 1 } },
+			where: {
+				userId,
+				localDate,
+				messageCount: { lt: messageLimit },
+				...(hasPhoto ? { photoCount: { lt: photoLimit } } : {}),
+			},
+			data: {
+				messageCount: { increment: 1 },
+				...(hasPhoto ? { photoCount: { increment: 1 } } : {}),
+			},
 		})
 		return count === 1
+	}
+
+	/** Whether the photo limit (and not the message one) is what stopped a reservation. */
+	async isPhotoLimitUsedUp({
+		userId,
+		localDate,
+		photoLimit,
+	}: DailyUsageKey & { photoLimit: number }): Promise<boolean> {
+		const usage = await this.prisma.dailyUsage.findUnique({
+			where: { userId_localDate: { userId, localDate } },
+			select: { photoCount: true },
+		})
+		return usage !== null && usage.photoCount >= photoLimit
 	}
 
 	async addDailyCost({

@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common'
 import {
+	AttachmentStatus,
 	type Message,
 	MessageRole,
 	MessageStatus,
@@ -7,6 +8,20 @@ import {
 } from '../../generated/prisma/client'
 import { PrismaService } from '../../prisma'
 import type { MessageCursor } from './message-cursor'
+import type { PhotoPayload } from './photo'
+
+/** The chat shows only how the photo went, so only the status is read. */
+const WITH_ATTACHMENTS = { attachments: { select: { status: true } } } as const
+
+export type MessageWithAttachments = Prisma.MessageGetPayload<{ include: typeof WITH_ATTACHMENTS }>
+
+const toAttachmentData = (photo: PhotoPayload) => ({
+	mimeType: photo.mimeType,
+	width: photo.width,
+	height: photo.height,
+	sizeBytes: photo.sizeBytes,
+	status: AttachmentStatus.PENDING,
+})
 
 @Injectable()
 export class ChatRepository {
@@ -18,20 +33,58 @@ export class ChatRepository {
 	}: {
 		userId: string
 		clientMessageId: string
-	}): Promise<Message | null> {
+	}): Promise<MessageWithAttachments | null> {
 		// full unique (userId, clientMessageId), so findUnique is exact
 		return this.prisma.message.findUnique({
 			where: { userId_clientMessageId: { userId, clientMessageId } },
+			include: WITH_ATTACHMENTS,
 		})
 	}
 
-	createUserMessage(data: {
+	/** The photo's bytes are not stored (v0.1): only type, size and status go to the attachment. */
+	createUserMessage({
+		photo,
+		...data
+	}: {
 		userId: string
 		clientMessageId: string
-		content: string
-	}): Promise<Message> {
+		content: string | null
+		photo?: PhotoPayload
+	}): Promise<MessageWithAttachments> {
 		return this.prisma.message.create({
-			data: { ...data, role: MessageRole.USER, status: MessageStatus.PENDING },
+			data: {
+				...data,
+				role: MessageRole.USER,
+				status: MessageStatus.PENDING,
+				...(photo ? { attachments: { create: toAttachmentData(photo) } } : {}),
+			},
+			include: WITH_ATTACHMENTS,
+		})
+	}
+
+	/** A retry carries the photo again (it is not stored): the attachment starts over. */
+	async resetAttachment({
+		userId,
+		messageId,
+		photo,
+	}: {
+		userId: string
+		messageId: string
+		photo: PhotoPayload
+	}): Promise<void> {
+		await this.prisma.messageAttachment.updateMany({
+			where: { messageId, message: { userId } },
+			data: toAttachmentData(photo),
+		})
+	}
+
+	async setAttachmentStatus(
+		{ userId, messageId, status }: { userId: string; messageId: string; status: AttachmentStatus },
+		tx: Prisma.TransactionClient,
+	): Promise<void> {
+		await tx.messageAttachment.updateMany({
+			where: { messageId, message: { userId } },
+			data: { status },
 		})
 	}
 
@@ -108,8 +161,8 @@ export class ChatRepository {
 		})
 	}
 
-	findById({ userId, id }: { userId: string; id: string }): Promise<Message | null> {
-		return this.prisma.message.findFirst({ where: { id, userId } })
+	findById({ userId, id }: { userId: string; id: string }): Promise<MessageWithAttachments | null> {
+		return this.prisma.message.findFirst({ where: { id, userId }, include: WITH_ATTACHMENTS })
 	}
 
 	findReply({
@@ -118,10 +171,11 @@ export class ChatRepository {
 	}: {
 		userId: string
 		userMessageId: string
-	}): Promise<Message | null> {
+	}): Promise<MessageWithAttachments | null> {
 		return this.prisma.message.findFirst({
 			where: { userId, replyToId: userMessageId, role: MessageRole.ASSISTANT },
 			orderBy: { createdAt: 'desc' },
+			include: WITH_ATTACHMENTS,
 		})
 	}
 
@@ -134,17 +188,19 @@ export class ChatRepository {
 		userId: string
 		beforeId: string
 		limit: number
-	}): Promise<Message[]> {
+	}): Promise<MessageWithAttachments[]> {
 		return this.prisma.message.findMany({
 			where: {
 				userId,
 				status: MessageStatus.COMPLETED,
-				content: { not: null },
+				// a photo-only message has no text but still happened
+				OR: [{ content: { not: null } }, { attachments: { some: {} } }],
 				id: { lt: beforeId },
 			},
 			// uuid v7 ids grow with time, see message-cursor.ts
 			orderBy: { id: 'desc' },
 			take: limit,
+			include: WITH_ATTACHMENTS,
 		})
 	}
 
@@ -156,12 +212,13 @@ export class ChatRepository {
 		userId: string
 		cursor: MessageCursor | null
 		take: number
-	}): Promise<Message[]> {
+	}): Promise<MessageWithAttachments[]> {
 		return this.prisma.message.findMany({
 			where: { userId, ...(cursor ? { id: { lt: cursor.id } } : {}) },
 			// uuid v7 ids grow with time, see message-cursor.ts
 			orderBy: { id: 'desc' },
 			take,
+			include: WITH_ATTACHMENTS,
 		})
 	}
 
@@ -174,7 +231,7 @@ export class ChatRepository {
 		userId: string
 		ids: string[]
 		replyToIds: string[]
-	}): Promise<Message[]> {
+	}): Promise<MessageWithAttachments[]> {
 		return this.prisma.message.findMany({
 			where: {
 				userId,
@@ -182,6 +239,7 @@ export class ChatRepository {
 				OR: [{ id: { in: ids } }, { replyToId: { in: replyToIds } }],
 			},
 			orderBy: { id: 'asc' },
+			include: WITH_ATTACHMENTS,
 		})
 	}
 }

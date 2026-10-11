@@ -9,6 +9,8 @@ const DEFAULT_AI_TIMEOUT_MS = 45_000
 // one attempt can't usefully run past the whole-parse deadline
 const MAX_AI_TIMEOUT_MS = 95_000
 const DEFAULT_AI_DAILY_MESSAGE_LIMIT = 100
+// a photo costs about 2.5× a text request: 30 a day caps it at ≈ $0.45
+const DEFAULT_AI_DAILY_PHOTO_LIMIT = 30
 // a shared secret between Vercel and the API: as long as a JWT key, for the same reason
 const PROXY_SECRET_MIN_LENGTH = 32
 
@@ -55,6 +57,8 @@ export const envSchema = z
 			.int()
 			.positive()
 			.default(DEFAULT_AI_DAILY_MESSAGE_LIMIT),
+		// photos per user per local day; a photo message counts in both limits
+		AI_DAILY_PHOTO_LIMIT: z.coerce.number().int().positive().default(DEFAULT_AI_DAILY_PHOTO_LIMIT),
 		JWT_ACCESS_SECRET: z.string().min(JWT_SECRET_MIN_LENGTH),
 		// v0.1 is single-user: open only to create the owner account, then closed on prod
 		ALLOW_REGISTRATION: z.stringbool().default(false),

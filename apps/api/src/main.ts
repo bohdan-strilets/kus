@@ -10,7 +10,7 @@ import { setupApp } from './app.setup'
 import type { Env } from './config'
 
 const bootstrap = async (): Promise<void> => {
-	const app = await NestFactory.create<NestExpressApplication>(AppModule)
+	const app = await NestFactory.create<NestExpressApplication>(AppModule, { bodyParser: false })
 	setupApp(app)
 
 	const port = app.get<ConfigService<Env, true>>(ConfigService).get('PORT', { infer: true })

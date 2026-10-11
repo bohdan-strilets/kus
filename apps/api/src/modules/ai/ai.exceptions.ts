@@ -24,3 +24,13 @@ export class DailyLimitReachedException extends AppException {
 		})
 	}
 }
+
+export class DailyPhotoLimitReachedException extends AppException {
+	constructor(limit: number) {
+		super({
+			status: HttpStatus.TOO_MANY_REQUESTS,
+			errorCode: ErrorCodes.DAILY_PHOTO_LIMIT_REACHED,
+			details: { limit },
+		})
+	}
+}

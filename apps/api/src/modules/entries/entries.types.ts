@@ -17,6 +17,8 @@ export interface NewFoodEntry {
 	confidence: number
 	assumption: string | null
 	myFoodId: string | null
+	/** The entry was read from a photo; `source` keeps saying how exact the numbers are. */
+	fromPhoto: boolean
 }
 
 export interface MealEntryInput {

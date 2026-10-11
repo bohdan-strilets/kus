@@ -545,7 +545,7 @@ describe('chat messages (e2e, real DB, fake model)', () => {
 			.expect(422)
 
 		expect(apiErrorResponseSchema.parse(response.body).details).toEqual({
-			fields: { clientMessageId: 'INVALID_FORMAT', text: 'TOO_SMALL' },
+			fields: { clientMessageId: 'INVALID_FORMAT', _root: 'TEXT_OR_PHOTO_REQUIRED' },
 		})
 		expect(fake.bodies).toHaveLength(0)
 	})

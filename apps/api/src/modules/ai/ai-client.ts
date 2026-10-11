@@ -19,5 +19,7 @@ export const aiClientProvider: Provider = {
 			apiKey: config.get('OPENROUTER_API_KEY', { infer: true }),
 			timeout: config.get('AI_TIMEOUT_MS', { infer: true }),
 			maxRetries: AI_NETWORK_RETRIES,
+			// 'debug' (OPENAI_LOG) would print request bodies, photos included (CLAUDE.md §10.1)
+			logLevel: 'warn',
 		}),
 }

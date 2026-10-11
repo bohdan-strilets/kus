@@ -43,6 +43,8 @@ export const ErrorCodes = {
 	/** The model failed or kept returning invalid data; the message is FAILED and can be resent. */
 	AI_UNAVAILABLE: 'AI_UNAVAILABLE',
 	DAILY_LIMIT_REACHED: 'DAILY_LIMIT_REACHED',
+	/** Photos have their own, lower daily limit; texts still go through. */
+	DAILY_PHOTO_LIMIT_REACHED: 'DAILY_PHOTO_LIMIT_REACHED',
 	/** The answer didn't fit the output limit; resending the same text would be cut again. */
 	MESSAGE_TOO_LONG: 'MESSAGE_TOO_LONG',
 	/** The same clientMessageId is being processed right now. */

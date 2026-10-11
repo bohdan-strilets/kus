@@ -86,4 +86,11 @@ describe('envSchema AI', () => {
 		expect(env.AI_DAILY_MESSAGE_LIMIT).toBe(100)
 		expect(envSchema.safeParse({ ...baseEnv, AI_DAILY_MESSAGE_LIMIT: '0' }).success).toBe(false)
 	})
+
+	it('defaults the daily photo limit to 30 and rejects a zero or fractional one', () => {
+		expect(envSchema.parse(baseEnv).AI_DAILY_PHOTO_LIMIT).toBe(30)
+		expect(envSchema.parse({ ...baseEnv, AI_DAILY_PHOTO_LIMIT: '5' }).AI_DAILY_PHOTO_LIMIT).toBe(5)
+		expect(envSchema.safeParse({ ...baseEnv, AI_DAILY_PHOTO_LIMIT: '0' }).success).toBe(false)
+		expect(envSchema.safeParse({ ...baseEnv, AI_DAILY_PHOTO_LIMIT: '1.5' }).success).toBe(false)
+	})
 })

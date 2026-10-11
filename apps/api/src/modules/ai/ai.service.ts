@@ -2,6 +2,7 @@ import { Inject, Injectable, Logger } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import {
 	type AiCompletion,
+	type AiImageInput,
 	AI_VALIDATION_RETRY_COUNT,
 	aiCompletionSchema,
 	type AiRequestMessage,
@@ -49,6 +50,8 @@ export interface ParseFoodParams {
 	/** Its refs (saved foods, today's entries, open questions) are the only ones the model may use. */
 	context: FoodParseContext
 	text: string
+	/** The photo of the message. Its base64 only goes into the request body, never into a log. */
+	image?: AiImageInput
 }
 
 interface CompletionResult {
@@ -86,6 +89,7 @@ const toToolCallLog = (call: ParsedToolCall): Prisma.InputJsonValue => {
 export class AiService {
 	private readonly logger = new Logger(AiService.name)
 	private readonly parseModel: string
+	private readonly visionModel: string
 
 	constructor(
 		@Inject(AI_CLIENT) private readonly client: AiClient,
@@ -93,6 +97,7 @@ export class AiService {
 		config: ConfigService<Env, true>,
 	) {
 		this.parseModel = config.get('AI_MODEL', { infer: true })
+		this.visionModel = config.get('AI_MODEL_VISION', { infer: true })
 	}
 
 	/**
@@ -101,12 +106,18 @@ export class AiService {
 	 */
 	async parseFood(params: ParseFoodParams): Promise<FoodParseDecision> {
 		const signal = AbortSignal.timeout(AI_PARSE_DEADLINE_MS)
-		let messages: AiRequestMessage[] = buildFoodParseMessages(params.context, params.text)
+		let messages: AiRequestMessage[] = buildFoodParseMessages(
+			params.context,
+			params.text,
+			params.image,
+		)
 		const refs = getParseRefs(params.context)
 
 		for (let attempt = 0; attempt <= AI_VALIDATION_RETRY_COUNT; attempt += 1) {
 			const { completion, durationMs } = await this.requestCompletion(params, messages, signal)
-			const result = parseToolCalls(getRawToolCalls(completion), refs)
+			const result = parseToolCalls(getRawToolCalls(completion), refs, {
+				hasImage: params.image !== undefined,
+			})
 			const isTruncated = isOutputTruncated(completion)
 			await this.recordRun(params, {
 				completion,
@@ -122,6 +133,10 @@ export class AiService {
 		throw new AiUnavailableException()
 	}
 
+	private getModel({ image }: ParseFoodParams): string {
+		return image ? this.visionModel : this.parseModel
+	}
+
 	private async requestCompletion(
 		params: ParseFoodParams,
 		messages: AiRequestMessage[],
@@ -130,7 +145,7 @@ export class AiService {
 		const startedAt = Date.now()
 		try {
 			const response = await this.client.post(CHAT_COMPLETIONS_PATH, {
-				body: createFoodParseRequest(this.parseModel, messages),
+				body: createFoodParseRequest(this.getModel(params), messages),
 				signal,
 			})
 			const parsed = aiCompletionSchema.safeParse(response)
@@ -160,7 +175,7 @@ export class AiService {
 		const usage = completion.usage
 		const costUsd = usage?.cost ?? 0
 		const status = errorCode === null ? AiRunStatus.SUCCEEDED : AiRunStatus.FAILED
-		const model = completion.model ?? this.parseModel
+		const model = completion.model ?? this.getModel(params)
 
 		await this.aiRepository.createRun({
 			userId: params.userId,
@@ -190,6 +205,7 @@ export class AiService {
 			`AI run ${status} purpose=PARSE_FOOD user=${params.userId} message=${params.messageId} ` +
 				`model=${model} in=${usage?.prompt_tokens ?? 0} cached=${usage?.prompt_tokens_details?.cached_tokens ?? 0} ` +
 				`out=${usage?.completion_tokens ?? 0} cost=${costUsd} ms=${durationMs} toolCalls=${calls.length}` +
+				(params.image ? ' photo=1' : '') +
 				(errorCode ? ` error=${errorCode}` : ''),
 		)
 	}
@@ -202,7 +218,7 @@ export class AiService {
 			userId: params.userId,
 			messageId: params.messageId,
 			purpose: AiRunPurpose.PARSE_FOOD,
-			model: this.parseModel,
+			model: this.getModel(params),
 			inputTokens: 0,
 			outputTokens: 0,
 			costUsd: 0,
@@ -213,7 +229,9 @@ export class AiService {
 		})
 		this.logger.warn(
 			`AI request failed purpose=PARSE_FOOD user=${params.userId} message=${params.messageId} ` +
-				`model=${this.parseModel} ms=${failure.durationMs} error=${failure.errorCode}`,
+				`model=${this.getModel(params)} ms=${failure.durationMs}` +
+				(params.image ? ' photo=1' : '') +
+				` error=${failure.errorCode}`,
 		)
 	}
 }

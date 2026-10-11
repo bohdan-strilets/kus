@@ -565,6 +565,8 @@ model FoodEntry {
   myFoodId        String?      @map("my_food_id") @db.Uuid
   recipeId        String?      @map("recipe_id") @db.Uuid
   isEdited        Boolean      @default(false) @map("is_edited")
+  // the entry came from a photo (label or dish); `source` stays the accuracy of the numbers
+  fromPhoto       Boolean      @default(false) @map("from_photo")
   // user message the entry came from: a meal is shared per day + type, so the meal alone can't tell
   sourceMessageId String?      @map("source_message_id") @db.Uuid
   createdAt       DateTime     @default(now()) @map("created_at") @db.Timestamptz

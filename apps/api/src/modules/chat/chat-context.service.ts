@@ -11,10 +11,10 @@ import {
 } from '@kus/shared'
 
 import { formatDbDate, formatLocalTime } from '../../common/time'
-import { type Message, MessageRole } from '../../generated/prisma/client'
+import { MessageRole } from '../../generated/prisma/client'
 import { type DaySummary, EntriesService } from '../entries/entries.service'
 import { GoalsService } from '../goals/goals.service'
-import { ChatRepository } from './chat.repository'
+import { ChatRepository, type MessageWithAttachments } from './chat.repository'
 import { ClarificationsRepository } from './clarifications.repository'
 import { buildEditContext, type EditRefIds } from './edit-context'
 
@@ -27,16 +27,20 @@ export interface DayOverview {
 interface BuildContextParams {
 	userId: string
 	timezone: string
-	message: Message
+	message: MessageWithAttachments
 	now: Date
 	localDate: Date
 	memory: MemoryFoodContext[]
 }
 
-const toHistoryTurn = (message: Message): HistoryTurn[] =>
-	message.content === null
-		? []
-		: [{ role: message.role === MessageRole.USER ? 'user' : 'assistant', content: message.content }]
+const toHistoryTurn = (message: MessageWithAttachments): HistoryTurn[] => {
+	const role = message.role === MessageRole.USER ? 'user' : 'assistant'
+	// the photo itself is never sent again: the model sees a marker next to the words
+	if (message.attachments.length > 0) {
+		return [{ role, content: message.content ?? '', hasPhoto: true }]
+	}
+	return message.content === null ? [] : [{ role, content: message.content }]
+}
 
 /** What the model gets besides the message: day so far, goal, matching saved foods, last turns. */
 @Injectable()

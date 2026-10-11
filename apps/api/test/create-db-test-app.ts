@@ -1,3 +1,5 @@
+import { inspect } from 'node:util'
+import type { LoggerService } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import type { NestExpressApplication } from '@nestjs/platform-express'
 import { Test } from '@nestjs/testing'
@@ -21,6 +23,30 @@ interface CreateDbTestAppOptions {
 	shouldResetDatabase?: boolean
 	/** Replaces the OpenRouter client; tests must never call the real model. */
 	aiClient?: AiClient
+	/** Replaces Nest's logger, e.g. to check that nothing sensitive reaches the logs. */
+	logger?: LoggerService
+}
+
+type LogLevel = 'log' | 'error' | 'warn' | 'debug' | 'verbose' | 'fatal'
+
+/** Collects every line of every level as one string (the message plus its params, inspected). */
+export const createCapturingLogger = (): LoggerService & { lines: string[] } => {
+	const lines: string[] = []
+	const capture =
+		(level: LogLevel) =>
+		(message: unknown, ...params: unknown[]): void => {
+			const parts = [String(message), ...params.map((param) => inspect(param, { depth: 6 }))]
+			lines.push(`${level}: ${parts.join(' ')}`)
+		}
+	return {
+		lines,
+		log: capture('log'),
+		error: capture('error'),
+		warn: capture('warn'),
+		debug: capture('debug'),
+		verbose: capture('verbose'),
+		fatal: capture('fatal'),
+	}
 }
 
 const UNCONFIGURED_AI_CLIENT: AiClient = {
@@ -41,6 +67,7 @@ export const createDbTestApp = async ({
 	env = {},
 	shouldResetDatabase = true,
 	aiClient = UNCONFIGURED_AI_CLIENT,
+	logger,
 }: CreateDbTestAppOptions = {}): Promise<DbTestApp> => {
 	// ConfigModule validates env once at import time; a per-app env needs its own ConfigService
 	const config = validateEnv({ ...process.env, ...env })
@@ -57,7 +84,8 @@ export const createDbTestApp = async ({
 		.useValue(aiClient)
 		.compile()
 
-	const app = moduleRef.createNestApplication<NestExpressApplication>()
+	const app = moduleRef.createNestApplication<NestExpressApplication>({ bodyParser: false })
+	if (logger) app.useLogger(logger)
 	setupApp(app)
 	await app.init()
 

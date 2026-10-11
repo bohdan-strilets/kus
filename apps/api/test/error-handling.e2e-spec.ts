@@ -20,6 +20,9 @@ import { createTestApp } from './create-test-app'
 
 // above express' default 100 kb JSON limit
 const OVERSIZED_BODY_BYTES = 200 * 1024
+// POST /messages carries a photo as base64: 2 MB there, 100 kb everywhere else
+const PHOTO_SIZED_BODY_BYTES = 1_500_000
+const OVER_MESSAGES_LIMIT_BYTES = 2_500_000
 
 const validEntry = {
 	name: 'Гречка варена',
@@ -185,6 +188,34 @@ describe('API error handling', () => {
 			details: {},
 		})
 		expect(logError).not.toHaveBeenCalled()
+	})
+
+	it('lets POST /messages take a photo-sized body (it reaches the auth guard)', async () => {
+		const response = await request(app.getHttpServer())
+			.post('/api/v1/messages')
+			.send({ clientMessageId: 'x', text: 'x'.repeat(PHOTO_SIZED_BODY_BYTES) })
+
+		expect(response.status).toBe(401)
+	})
+
+	it('returns 413 on POST /messages above 2 MB', async () => {
+		const response = await request(app.getHttpServer())
+			.post('/api/v1/messages')
+			.send({ clientMessageId: 'x', text: 'x'.repeat(OVER_MESSAGES_LIMIT_BYTES) })
+			.expect(413)
+
+		expect(response.body).toEqual({
+			statusCode: 413,
+			errorCode: 'PAYLOAD_TOO_LARGE',
+			details: {},
+		})
+	})
+
+	it('keeps the small limit on other routes, even for the same size', async () => {
+		await request(app.getHttpServer())
+			.post('/api/v1/test-errors/food-entries')
+			.send({ ...validEntry, name: 'x'.repeat(PHOTO_SIZED_BODY_BYTES) })
+			.expect(413)
 	})
 
 	it('returns 500 INTERNAL_ERROR without leaking internals and logs it', async () => {

@@ -1,6 +1,6 @@
 import { Logger } from '@nestjs/common'
 import type { ConfigService } from '@nestjs/config'
-import { APIConnectionError, APIUserAbortError } from 'openai'
+import { APIConnectionError, APIError, APIUserAbortError } from 'openai'
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { Env } from '../../config'
@@ -18,6 +18,12 @@ import {
 } from './ai.test-utils'
 
 const config = { get: () => 'test/model' } as unknown as ConfigService<Env, true>
+
+const IMAGE_BASE64 = Buffer.alloc(4000, 0x5a).toString('base64')
+const VISION_MODEL = 'test/vision'
+const visionConfig = {
+	get: (key: string) => (key === 'AI_MODEL_VISION' ? VISION_MODEL : 'test/model'),
+} as unknown as ConfigService<Env, true>
 
 const params: ParseFoodParams = {
 	userId: '01999a00-0000-7000-8000-000000000001',
@@ -37,6 +43,7 @@ describe('AiService.parseFood', () => {
 	const logSpies = [
 		vi.spyOn(Logger.prototype, 'log').mockImplementation(() => undefined),
 		vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined),
+		vi.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined),
 	]
 
 	beforeEach(() => {
@@ -185,5 +192,80 @@ describe('AiService.parseFood', () => {
 		expect(logged).toContain('cost=')
 		expect(logged).not.toContain('яйц')
 		expect(logged).not.toContain('Гречка')
+	})
+
+	describe('with a photo', () => {
+		const visionService = new AiService(
+			fake.client,
+			repository as unknown as AiRepository,
+			visionConfig,
+		)
+		const photoParams: ParseFoodParams = {
+			...params,
+			image: { mimeType: 'image/jpeg', base64: IMAGE_BASE64 },
+		}
+		const getLogged = (): string => JSON.stringify(logSpies.map((spy) => spy.mock.calls))
+
+		it('uses the vision model and puts the image into the request only', async () => {
+			fake.respond(createCompletion([logFoodCall()]))
+
+			await visionService.parseFood(photoParams)
+
+			expect(fake.bodies[0]).toMatchObject({ model: VISION_MODEL })
+			expect(JSON.stringify(fake.bodies[0])).toContain(`data:image/jpeg;base64,${IMAGE_BASE64}`)
+			expect(getLogged()).toContain('photo=1')
+		})
+
+		it('never logs or records the image, on success, retry or failure', async () => {
+			fake.respond(
+				createCompletion([logFoodCall([INVALID_ITEM])]),
+				createCompletion([logFoodCall()]),
+			)
+			await visionService.parseFood(photoParams)
+			fake.respond(new APIConnectionError({ message: `socket hang up ${IMAGE_BASE64}` }))
+			await expect(visionService.parseFood(photoParams)).rejects.toBeInstanceOf(
+				AiUnavailableException,
+			)
+
+			const stored = JSON.stringify(repository.createRun.mock.calls)
+			for (const text of [getLogged(), stored]) {
+				expect(text).not.toContain('base64,')
+				expect(text).not.toContain(IMAGE_BASE64.slice(0, 60))
+			}
+		})
+
+		it('logs an SDK error that quotes the data URL as its code only', async () => {
+			const dataUrl = `data:image/jpeg;base64,${IMAGE_BASE64}`
+			fake.respond(new APIError(400, { message: dataUrl }, `400 ${dataUrl}`, new Headers()))
+
+			await expect(visionService.parseFood(photoParams)).rejects.toBeInstanceOf(
+				AiUnavailableException,
+			)
+
+			const logged = getLogged()
+			expect(logged).toContain('error=HTTP_400')
+			expect(logged).not.toContain('base64,')
+			expect(logged).not.toContain(IMAGE_BASE64.slice(0, 60))
+			expect(JSON.stringify(repository.createRun.mock.calls)).not.toContain(
+				IMAGE_BASE64.slice(0, 60),
+			)
+			expect(repository.createRun).toHaveBeenCalledWith(
+				expect.objectContaining({ model: VISION_MODEL, errorCode: 'HTTP_400' }),
+			)
+		})
+
+		it('lets photo_unusable through only with a photo', async () => {
+			const unusable = {
+				name: 'photo_unusable',
+				args: { reason: 'no_food', reply: 'Не бачу їжі, сфотографуй ще раз.' },
+			}
+			fake.respond(createCompletion([unusable]))
+			await expect(visionService.parseFood(photoParams)).resolves.toMatchObject({
+				kind: 'photo_unusable',
+			})
+
+			fake.respond(createCompletion([unusable]), createCompletion([unusable]))
+			await expect(service.parseFood(params)).rejects.toBeInstanceOf(AiUnavailableException)
+		})
 	})
 })

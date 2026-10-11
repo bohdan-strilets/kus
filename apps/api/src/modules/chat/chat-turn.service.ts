@@ -2,14 +2,15 @@ import { Injectable } from '@nestjs/common'
 import type { AiFoodItem, FoodParseDecision } from '@kus/shared'
 
 import { getLocalHour } from '../../common/time'
-import type { Message } from '../../generated/prisma/client'
+import { AttachmentStatus } from '../../generated/prisma/client'
 import { PrismaService } from '../../prisma'
 import { EntriesService } from '../entries/entries.service'
 import type { NewFoodEntry } from '../entries/entries.types'
 import { MemoryService, type RelevantFoods } from '../memory/memory.service'
 import { ChatEditsService, type EditedMessages, NO_EDITED_MESSAGES } from './chat-edits.service'
 import { MessageInProgressException } from './chat.exceptions'
-import { ChatRepository } from './chat.repository'
+import { ChatRepository, type MessageWithAttachments } from './chat.repository'
+import type { PhotoPayload } from './photo'
 import { ClarificationsRepository } from './clarifications.repository'
 import type { EditRefIds } from './edit-context'
 import { getMealEatenAt, getMealTypeByHour } from '../entries/meal-type'
@@ -17,8 +18,9 @@ import { getMealEatenAt, getMealTypeByHour } from '../entries/meal-type'
 export interface TurnParams {
 	userId: string
 	timezone: string
-	message: Message
-	text: string
+	message: MessageWithAttachments
+	text?: string
+	photo?: PhotoPayload
 	now: Date
 	localDate: Date
 }
@@ -50,7 +52,7 @@ export class ChatTurnService {
 	) {}
 
 	saveDecision(
-		{ userId, timezone, message, now, localDate }: TurnParams,
+		{ userId, timezone, message, photo, now, localDate }: TurnParams,
 		decision: FoodParseDecision,
 		{ memory, refIds }: { memory: RelevantFoods; refIds: EditRefIds },
 	): Promise<EditedMessages> {
@@ -61,6 +63,19 @@ export class ChatTurnService {
 			)
 			// a resend of a stale turn finished it meanwhile; roll back instead of logging food twice
 			if (!reply) throw new MessageInProgressException()
+			if (photo) {
+				await this.chatRepository.setAttachmentStatus(
+					{
+						userId,
+						messageId: message.id,
+						status:
+							decision.kind === 'photo_unusable'
+								? AttachmentStatus.FAILED
+								: AttachmentStatus.PROCESSED,
+					},
+					tx,
+				)
+			}
 			if (decision.kind !== 'log' && decision.kind !== 'edit') return NO_EDITED_MESSAGES
 			// earlier entries first: their refs describe the day before this message
 			const edited = await this.chatEdits.applyEdits(
@@ -77,7 +92,7 @@ export class ChatTurnService {
 			)
 			const entries = decision.log.items.map((item) => ({
 				mealType: item.mealType ?? fallbackMealType,
-				entry: this.toNewEntry(item, memory),
+				entry: this.toNewEntry(item, memory, photo !== undefined),
 			}))
 			const { entryIds } = await this.entriesService.logEntries(
 				{
@@ -116,11 +131,13 @@ export class ChatTurnService {
 	private toNewEntry(
 		{ memoryRef, mealType: _mealType, ...item }: AiFoodItem,
 		memory: RelevantFoods,
+		fromPhoto: boolean,
 	): NewFoodEntry {
 		const food = memoryRef === null ? undefined : memory.byRef.get(memoryRef)
-		if (!food) return { ...item, myFoodId: null }
+		if (!food) return { ...item, myFoodId: null, fromPhoto }
 		return {
 			...item,
+			fromPhoto,
 			...this.memoryService.getPortionValues(food, item.grams),
 			source: 'MEMORY',
 			myFoodId: food.id,

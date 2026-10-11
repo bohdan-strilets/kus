@@ -1,8 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common'
-import type { SendMessageRequest, SendMessageResponse } from '@kus/shared'
+import type { SendMessageResponse } from '@kus/shared'
 
 import { getLocalDate } from '../../common/time'
-import { type Message, MessageStatus, Prisma } from '../../generated/prisma/client'
+import { MessageStatus, Prisma } from '../../generated/prisma/client'
 import { AiUsageService } from '../ai/ai-usage.service'
 import { AiService } from '../ai/ai.service'
 import { MemoryService } from '../memory/memory.service'
@@ -13,12 +13,19 @@ import { ChatResponseService } from './chat-response.service'
 import { ChatTurnService, type TurnParams } from './chat-turn.service'
 import { STALE_PENDING_MS } from './chat.constants'
 import { ClientMessageIdReusedException, MessageInProgressException } from './chat.exceptions'
-import { ChatRepository } from './chat.repository'
+import { ChatRepository, type MessageWithAttachments } from './chat.repository'
+import type { PhotoPayload } from './photo'
 
 const UNIQUE_VIOLATION = 'P2002'
 
 const isUniqueViolation = (error: unknown): boolean =>
 	error instanceof Prisma.PrismaClientKnownRequestError && error.code === UNIQUE_VIOLATION
+
+export interface SendMessageParams {
+	clientMessageId: string
+	text?: string
+	photo?: PhotoPayload
+}
 
 /** One chat turn: user message → AI → entries / questions / answer, idempotent by clientMessageId. */
 @Injectable()
@@ -38,10 +45,10 @@ export class ChatService {
 
 	async sendMessage(
 		userId: string,
-		{ clientMessageId, text }: SendMessageRequest,
+		{ clientMessageId, text, photo }: SendMessageParams,
 	): Promise<SendMessageResponse> {
 		const { timezone } = await this.usersService.getMe(userId)
-		const message = await this.acquireMessage({ userId, clientMessageId, text })
+		const message = await this.acquireMessage({ userId, clientMessageId, text, photo })
 		const now = new Date()
 		const localDate = getLocalDate(now, timezone)
 
@@ -54,7 +61,15 @@ export class ChatService {
 				edited: NO_EDITED_MESSAGES,
 			})
 		}
-		const edited = await this.processTurn({ userId, timezone, message, text, now, localDate })
+		const edited = await this.processTurn({
+			userId,
+			timezone,
+			message,
+			text,
+			photo,
+			now,
+			localDate,
+		})
 		// the day the entries went to, even if the resend happened after midnight
 		return this.chatResponse.build({
 			userId,
@@ -69,18 +84,17 @@ export class ChatService {
 	 * New message → PENDING row. A resend returns the stored one if it's done, takes a FAILED or
 	 * lost one for another try, and refuses while the first request is still running.
 	 */
-	private async acquireMessage(params: {
-		userId: string
-		clientMessageId: string
-		text: string
-	}): Promise<Message> {
+	private async acquireMessage(
+		params: { userId: string } & SendMessageParams,
+	): Promise<MessageWithAttachments> {
 		const existing = await this.chatRepository.findByClientMessageId(params)
 		if (!existing) {
 			return this.chatRepository
 				.createUserMessage({
 					userId: params.userId,
 					clientMessageId: params.clientMessageId,
-					content: params.text,
+					content: params.text ?? null,
+					photo: params.photo,
 				})
 				.catch((error: unknown) => {
 					// a parallel request with the same clientMessageId created it after our check
@@ -88,7 +102,10 @@ export class ChatService {
 					throw error
 				})
 		}
-		if (existing.content !== params.text) throw new ClientMessageIdReusedException()
+		const hadPhoto = existing.attachments.length > 0
+		if (existing.content !== (params.text ?? null) || hadPhoto !== (params.photo !== undefined)) {
+			throw new ClientMessageIdReusedException()
+		}
 		if (existing.status === MessageStatus.COMPLETED) return existing
 
 		const isClaimed = await this.chatRepository.claimForRetry({
@@ -97,14 +114,25 @@ export class ChatService {
 			staleBefore: new Date(Date.now() - STALE_PENDING_MS),
 		})
 		if (!isClaimed) throw new MessageInProgressException()
+		if (params.photo) {
+			await this.chatRepository.resetAttachment({
+				userId: params.userId,
+				messageId: existing.id,
+				photo: params.photo,
+			})
+		}
 		return { ...existing, status: MessageStatus.PENDING }
 	}
 
 	private async processTurn(params: TurnParams): Promise<EditedMessages> {
-		const { userId, message } = params
+		const { userId, message, photo } = params
 		try {
-			await this.aiUsage.reserveMessage(userId, params.localDate)
-			const memory = await this.memoryService.findRelevantFoods(userId, params.text)
+			await this.aiUsage.reserveUsage({
+				userId,
+				localDate: params.localDate,
+				hasPhoto: photo !== undefined,
+			})
+			const memory = await this.memoryService.findRelevantFoods(userId, params.text ?? '')
 			const { context, refIds } = await this.chatContext.buildContext({
 				...params,
 				memory: memory.context,
@@ -114,7 +142,11 @@ export class ChatService {
 				messageId: message.id,
 				localDate: params.localDate,
 				context,
-				text: params.text,
+				text: params.text ?? '',
+				// the only place the bytes become base64: it goes straight into the request body
+				image: photo
+					? { mimeType: photo.mimeType, base64: photo.bytes.toString('base64') }
+					: undefined,
 			})
 			const edited = await this.chatTurn.saveDecision(params, decision, { memory, refIds })
 			this.logger.log(`Chat turn ${decision.kind} user=${userId} message=${message.id}`)

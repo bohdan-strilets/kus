@@ -27,7 +27,7 @@ export const createTestApp = async ({
 		.useValue(prismaStub)
 		.compile()
 
-	const app = moduleRef.createNestApplication<NestExpressApplication>()
+	const app = moduleRef.createNestApplication<NestExpressApplication>({ bodyParser: false })
 	setupApp(app)
 	await app.init()
 	return app

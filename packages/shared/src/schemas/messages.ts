@@ -1,7 +1,9 @@
 import { z } from 'zod'
 
+import { AI_IMAGE_MIME_TYPES } from '../ai/context.js'
 import { clarifyOptionSchema } from '../ai/tools.js'
 import {
+	attachmentStatusSchema,
 	clarificationStatusSchema,
 	foodCategorySchema,
 	foodSourceSchema,
@@ -15,11 +17,43 @@ export const MESSAGES_PAGE_DEFAULT_LIMIT = 30
 export const MESSAGES_PAGE_MAX_LIMIT = 50
 const CURSOR_MAX_LENGTH = 200
 
-/** Body of POST /messages. `clientMessageId` makes a resend (double tap, "Спробувати ще") idempotent. */
-export const sendMessageRequestSchema = z.object({
-	clientMessageId: z.uuid(),
-	text: z.string().trim().min(1).max(MESSAGE_TEXT_MAX_LENGTH),
+/** The client sends a JPEG of at most ~1 MB; the server accepts a bit more and refuses the rest. */
+export const PHOTO_MAX_BYTES = 1_400_000
+/** The longest side the model prices sensibly: above it the image costs more tokens for no gain. */
+export const PHOTO_MAX_SIDE_PX = 2576
+export const PHOTO_MIN_SIDE_PX = 64
+const BASE64_CHARS_PER_GROUP = 4
+const BYTES_PER_BASE64_GROUP = 3
+export const PHOTO_MAX_BASE64_LENGTH =
+	Math.ceil(PHOTO_MAX_BYTES / BYTES_PER_BASE64_GROUP) * BASE64_CHARS_PER_GROUP
+
+export const TEXT_OR_PHOTO_REQUIRED = 'TEXT_OR_PHOTO_REQUIRED'
+
+export const sendMessagePhotoSchema = z.object({
+	mimeType: z.enum(AI_IMAGE_MIME_TYPES),
+	data: z.base64().max(PHOTO_MAX_BASE64_LENGTH),
 })
+
+export type SendMessagePhoto = z.infer<typeof sendMessagePhotoSchema>
+
+/**
+ * Body of POST /messages: words, a photo, or both. `clientMessageId` makes a resend (double tap,
+ * "Спробувати ще") idempotent. A blank text counts as no text.
+ */
+export const sendMessageRequestSchema = z
+	.object({
+		clientMessageId: z.uuid(),
+		text: z
+			.string()
+			.trim()
+			.max(MESSAGE_TEXT_MAX_LENGTH)
+			.optional()
+			.transform((text) => (text === '' ? undefined : text)),
+		photo: sendMessagePhotoSchema.optional(),
+	})
+	.refine((request) => request.text !== undefined || request.photo !== undefined, {
+		message: TEXT_OR_PHOTO_REQUIRED,
+	})
 
 export type SendMessageRequest = z.infer<typeof sendMessageRequestSchema>
 
@@ -116,6 +150,8 @@ export const chatMessageSchema = z.object({
 	 */
 	replyToId: z.uuid().nullable(),
 	createdAt: z.iso.datetime(),
+	/** User messages only: the photo is not stored, only how it went (FAILED = not food or unreadable). */
+	photo: z.object({ status: attachmentStatusSchema }).nullable(),
 	/** Assistant replies only: what this turn logged, one card per meal (a whole day → several). */
 	meals: z.array(loggedMealSchema),
 	clarifications: z.array(clarificationResponseSchema),

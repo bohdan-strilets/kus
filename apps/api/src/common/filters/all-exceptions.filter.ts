@@ -24,6 +24,10 @@ const STATUS_ERROR_CODES: Partial<Record<number, ErrorCode>> = {
 }
 
 const PRISMA_ERROR_PREFIX = 'PrismaClient'
+const IMAGE_REDACTED = '[image redacted]'
+// a photo as a data URL, or any base64 run too long to be a word: an SDK error can quote the request
+const DATA_URL_PATTERN = /data:[\w/+.-]*;base64,[A-Za-z0-9+/=_-]*/g
+const LONG_BASE64_PATTERN = /[A-Za-z0-9+/=]{200,}/g
 const CLIENT_ERROR_MIN = 400
 const SERVER_ERROR_MIN = 500
 
@@ -53,11 +57,10 @@ const getErrorCode = (statusCode: number): ErrorCode => {
 	return STATUS_ERROR_CODES[statusCode] ?? ErrorCodes.CLIENT_ERROR
 }
 
-/**
- * Prisma error messages quote the query arguments — message text, food names (CLAUDE.md §10.1),
- * so for them only the class and the error code are logged.
- */
-const getSafeTrace = (exception: unknown): string => {
+const redactImages = (text: string): string =>
+	text.replace(DATA_URL_PATTERN, IMAGE_REDACTED).replace(LONG_BASE64_PATTERN, IMAGE_REDACTED)
+
+const getTrace = (exception: unknown): string => {
 	if (exception instanceof Prisma.PrismaClientKnownRequestError) {
 		return `${exception.name} ${exception.code}`
 	}
@@ -66,6 +69,13 @@ const getSafeTrace = (exception: unknown): string => {
 	}
 	return exception instanceof Error ? (exception.stack ?? exception.name) : String(exception)
 }
+
+/**
+ * Prisma error messages quote the query arguments — message text, food names (CLAUDE.md §10.1),
+ * so for them only the class and the error code are logged. Any other message is scrubbed of
+ * photos first: a failing SDK call may quote its request body, and the body holds the image.
+ */
+const getSafeTrace = (exception: unknown): string => redactImages(getTrace(exception))
 
 /** Turns every thrown error into the API error format from CLAUDE.md §5. */
 @Catch()

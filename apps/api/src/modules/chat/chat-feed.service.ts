@@ -9,14 +9,14 @@ import {
 import { z } from 'zod'
 
 import { CursorPaginatedResult } from '../../common/pagination'
-import { type Message, MessageRole } from '../../generated/prisma/client'
+import { MessageRole } from '../../generated/prisma/client'
 import { EntriesService } from '../entries/entries.service'
 import { InvalidCursorException } from './chat.exceptions'
 import {
 	type ClarificationWithEntries,
 	ClarificationsRepository,
 } from './clarifications.repository'
-import { ChatRepository } from './chat.repository'
+import { ChatRepository, type MessageWithAttachments } from './chat.repository'
 import { decodeMessageCursor, encodeMessageCursor } from './message-cursor'
 
 // only what the chat shows, so rows stored before options carried macros still read
@@ -42,10 +42,11 @@ interface ChatMessageExtras {
 }
 
 const toChatMessage = (
-	message: Message,
+	message: MessageWithAttachments,
 	{ meals, clarifications }: ChatMessageExtras,
 ): ChatMessage => {
 	const isAssistant = message.role === MessageRole.ASSISTANT
+	const [attachment] = message.attachments
 	return {
 		id: message.id,
 		role: message.role,
@@ -54,6 +55,7 @@ const toChatMessage = (
 		clientMessageId: message.clientMessageId,
 		replyToId: message.replyToId,
 		createdAt: message.createdAt.toISOString(),
+		photo: attachment ? { status: attachment.status } : null,
 		meals: isAssistant && message.replyToId ? (meals.get(message.replyToId) ?? []) : [],
 		clarifications: isAssistant
 			? clarifications
@@ -72,7 +74,7 @@ export class ChatFeedService {
 		private readonly entriesService: EntriesService,
 	) {}
 
-	async toChatMessages(userId: string, messages: Message[]): Promise<ChatMessage[]> {
+	async toChatMessages(userId: string, messages: MessageWithAttachments[]): Promise<ChatMessage[]> {
 		const replies = messages.filter((message) => message.role === MessageRole.ASSISTANT)
 		const sourceIds = replies.flatMap((message) => (message.replyToId ? [message.replyToId] : []))
 		const [meals, clarifications] = await Promise.all([

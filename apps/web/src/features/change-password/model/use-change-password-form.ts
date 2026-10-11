@@ -3,10 +3,10 @@ import { useMutation } from '@tanstack/react-query'
 import { type BaseSyntheticEvent, useMemo, useState } from 'react'
 import { useForm, type UseFormReturn } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
-import { useNavigate } from 'react-router'
 
 import { type ApiMessage, translateApiMessage } from '@/shared/api'
 import { ROUTES } from '@/shared/config'
+import { useStackBack } from '@/shared/lib'
 import { useToast } from '@/shared/ui'
 
 import { postChangePassword } from '../api/post-change-password'
@@ -27,7 +27,7 @@ const FIELDS: readonly ChangePasswordField[] = ['currentPassword', 'newPassword'
 export const useChangePasswordForm = (): ChangePasswordFormState => {
 	const { t } = useTranslation()
 	const toast = useToast()
-	const navigate = useNavigate()
+	const goBack = useStackBack(ROUTES.settings)
 	const schema = useMemo(() => createChangePasswordSchema(t), [t])
 	const [formMessage, setFormMessage] = useState<ApiMessage | null>(null)
 	const form = useForm<ChangePasswordFormValues>({
@@ -62,7 +62,8 @@ export const useChangePasswordForm = (): ChangePasswordFormState => {
 			}
 			toast.show(t('changePassword.success'))
 			form.reset()
-			void navigate(ROUTES.settings)
+			// the form's entry goes: Back from the settings must not reopen it
+			goBack()
 		},
 		() => {
 			setFormMessage(null)

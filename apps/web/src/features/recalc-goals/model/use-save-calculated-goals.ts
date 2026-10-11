@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router'
 
 import { invalidateGoalQueries, isProfileIncompleteError } from '@/entities/goals'
 import { ROUTES } from '@/shared/config'
-import { playSound } from '@/shared/lib'
+import { playSound, useStackBack } from '@/shared/lib'
 import { useToast } from '@/shared/ui'
 
 import { putCalculatedGoals } from '../api/put-calculated-goals'
@@ -14,10 +14,11 @@ export interface SaveCalculatedGoals {
 	isSaving: boolean
 }
 
-/** Saved → toast and back to the profile; an incomplete profile → «Мої дані». */
+/** Saved → toast and back where the screen was opened from; an incomplete profile → «Мої дані». */
 export const useSaveCalculatedGoals = (): SaveCalculatedGoals => {
 	const { t } = useTranslation()
 	const toast = useToast()
+	const goBack = useStackBack(ROUTES.profile)
 	const navigate = useNavigate()
 	const queryClient = useQueryClient()
 
@@ -27,7 +28,7 @@ export const useSaveCalculatedGoals = (): SaveCalculatedGoals => {
 			await invalidateGoalQueries(queryClient)
 			playSound('saved')
 			toast.show(t('recalcGoals.saved'))
-			void navigate(ROUTES.profile, { replace: true })
+			goBack()
 		},
 		onError: (error: unknown) => {
 			if (isProfileIncompleteError(error)) {

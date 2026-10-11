@@ -1,8 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNavigate } from 'react-router'
-
 import {
 	getGoalWarningMessage,
 	getPlanSteps,
@@ -23,6 +21,7 @@ import {
 } from '@/features/recalc-goals'
 import { translateApiMessage } from '@/shared/api'
 import { ROUTES } from '@/shared/config'
+import { useStackBack } from '@/shared/lib'
 import { Button, InlineError, ScreenHeader, Text } from '@/shared/ui'
 
 import { ProfileIncompleteRedirect } from './ProfileIncompleteRedirect'
@@ -31,7 +30,7 @@ import { RecalcSkeleton } from './RecalcSkeleton'
 
 export const GoalsRecalcPage = () => {
 	const { t } = useTranslation()
-	const navigate = useNavigate()
+	const goBack = useStackBack(ROUTES.profile)
 	const [isHowOpen, setIsHowOpen] = useState(false)
 	const { save, isSaving } = useSaveCalculatedGoals()
 	const profileQuery = useQuery(profileQueryOptions)
@@ -115,12 +114,7 @@ export const GoalsRecalcPage = () => {
 							>
 								{t('recalcGoals.save')}
 							</Button>
-							<Button
-								variant="secondary"
-								onClick={() => {
-									void navigate(ROUTES.profile)
-								}}
-							>
+							<Button variant="secondary" onClick={goBack}>
 								{t('recalcGoals.cancel')}
 							</Button>
 						</div>

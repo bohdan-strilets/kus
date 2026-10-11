@@ -1,6 +1,7 @@
 import type { ClarifyKind } from '@kus/shared'
 
-export type ActualDecision = 'log' | 'clarify' | 'edit' | 'not_food' | 'reply' | 'error'
+export type ActualDecision =
+	'log' | 'clarify' | 'edit' | 'not_food' | 'photo_unusable' | 'reply' | 'error'
 
 export interface CaseResult {
 	caseId: string

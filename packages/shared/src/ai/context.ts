@@ -50,6 +50,16 @@ export interface MemoryFoodContext {
 export interface HistoryTurn {
 	role: 'user' | 'assistant'
 	content: string
+	/** The user turn carried a photo; the model sees a marker, never the image again. */
+	hasPhoto?: boolean
+}
+
+/** In the user's language, like the chat itself: the model answers in it anyway. */
+export const PHOTO_HISTORY_MARKER = '[фото]'
+
+const toHistoryText = ({ content, hasPhoto = false }: HistoryTurn): string => {
+	if (!hasPhoto) return content
+	return content.length > 0 ? `${PHOTO_HISTORY_MARKER} ${content}` : PHOTO_HISTORY_MARKER
 }
 
 export interface FoodParseContext {
@@ -74,8 +84,41 @@ export interface AiTextPart {
 	cache_control?: { type: 'ephemeral' }
 }
 
+/** OpenAI-compatible image part; OpenRouter passes a data URL to the provider as the image itself. */
+export interface AiImagePart {
+	type: 'image_url'
+	image_url: { url: string }
+}
+
+export type AiUserPart = AiTextPart | AiImagePart
+
 export type AiChatMessage =
-	{ role: 'system'; content: AiTextPart[] } | { role: 'user' | 'assistant'; content: string }
+	| { role: 'system'; content: AiTextPart[] }
+	| { role: 'user'; content: string | AiUserPart[] }
+	| { role: 'assistant'; content: string }
+
+export const AI_IMAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const
+
+export type AiImageMimeType = (typeof AI_IMAGE_MIME_TYPES)[number]
+
+/** One photo of the message, already resized by the client; the bytes live only in this request. */
+export interface AiImageInput {
+	mimeType: AiImageMimeType
+	base64: string
+}
+
+const toImagePart = ({ mimeType, base64 }: AiImageInput): AiImagePart => ({
+	type: 'image_url',
+	image_url: { url: `data:${mimeType};base64,${base64}` },
+})
+
+/** Image first, then the words: the order the vision docs recommend. */
+const toUserContent = (text: string, image: AiImageInput | undefined): string | AiUserPart[] => {
+	if (!image) return text
+	const parts: AiUserPart[] = [toImagePart(image)]
+	if (text.length > 0) parts.push({ type: 'text', text })
+	return parts
+}
 
 const round = (value: number): number => Math.round(value)
 
@@ -127,7 +170,7 @@ export const selectHistory = (turns: HistoryTurn[]): HistoryTurn[] => {
 	const selected: HistoryTurn[] = []
 	let budget = HISTORY_MAX_TOKENS
 	for (const turn of turns.slice(-HISTORY_MAX_MESSAGES).reverse()) {
-		const content = turn.content.slice(0, HISTORY_MESSAGE_MAX_CHARS)
+		const content = toHistoryText(turn).slice(0, HISTORY_MESSAGE_MAX_CHARS)
 		budget -= estimateTokens(content)
 		if (budget < 0) break
 		selected.unshift({ role: turn.role, content })
@@ -138,6 +181,7 @@ export const selectHistory = (turns: HistoryTurn[]): HistoryTurn[] => {
 export const buildFoodParseMessages = (
 	context: FoodParseContext,
 	text: string,
+	image?: AiImageInput,
 ): AiChatMessage[] => [
 	{
 		role: 'system',
@@ -145,5 +189,5 @@ export const buildFoodParseMessages = (
 	},
 	{ role: 'system', content: [{ type: 'text', text: formatContext(context) }] },
 	...selectHistory(context.history),
-	{ role: 'user', content: text },
+	{ role: 'user', content: toUserContent(text, image) },
 ]

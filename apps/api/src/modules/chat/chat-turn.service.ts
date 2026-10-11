@@ -30,6 +30,7 @@ const getReplyText = (decision: FoodParseDecision): string => {
 		case 'edit':
 			return decision.text
 		case 'not_food':
+		case 'photo_unusable':
 			return decision.reply
 		case 'reply':
 			return decision.text

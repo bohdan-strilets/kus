@@ -12,6 +12,9 @@ import {
 	logFoodInputSchema,
 	type NotFoodInput,
 	notFoodInputSchema,
+	type PhotoUnusableInput,
+	type PhotoUnusableReason,
+	photoUnusableInputSchema,
 	type ReplyInput,
 	replyInputSchema,
 } from './tools.js'
@@ -59,6 +62,7 @@ export type FoodParseDecision =
 	| { kind: 'log'; log: LogFoodInput; clarifications: ClarificationResult[]; edits: EntryEdits }
 	| { kind: 'edit'; edits: EntryEdits; text: string }
 	| { kind: 'not_food'; reply: string }
+	| { kind: 'photo_unusable'; reason: PhotoUnusableReason; reply: string }
 	| { kind: 'reply'; text: string }
 
 export type FoodParseResult =
@@ -68,6 +72,11 @@ export type FoodParseResult =
 /** Refs given to the model in this request (see getParseRefs). */
 export type ParseToolCallsOptions = ParseRefs
 
+export interface ParseMessageOptions {
+	/** The message carried a photo: only then may the model answer with photo_unusable. */
+	hasImage?: boolean
+}
+
 type ValidatedCall =
 	| { name: typeof AI_TOOL_NAMES.logFood; data: LogFoodInput }
 	| { name: typeof AI_TOOL_NAMES.clarify; data: ClarifyInput }
@@ -76,6 +85,7 @@ type ValidatedCall =
 	| { name: typeof AI_TOOL_NAMES.restoreEntry; data: RestoreEntryInput }
 	| { name: typeof AI_TOOL_NAMES.resolveClarification; data: ResolveClarificationInput }
 	| { name: typeof AI_TOOL_NAMES.notFood; data: NotFoodInput }
+	| { name: typeof AI_TOOL_NAMES.photoUnusable; data: PhotoUnusableInput }
 	| { name: typeof AI_TOOL_NAMES.reply; data: ReplyInput }
 
 type InputParse = { ok: true; call: ValidatedCall } | { ok: false; error: z.ZodError }
@@ -107,6 +117,8 @@ const parseInput = (name: AiToolName, value: unknown): InputParse => {
 			}))
 		case AI_TOOL_NAMES.notFood:
 			return toInputParse(notFoodInputSchema.safeParse(value), (data) => ({ name, data }))
+		case AI_TOOL_NAMES.photoUnusable:
+			return toInputParse(photoUnusableInputSchema.safeParse(value), (data) => ({ name, data }))
 		case AI_TOOL_NAMES.reply:
 			return toInputParse(replyInputSchema.safeParse(value), (data) => ({ name, data }))
 	}
@@ -185,7 +197,9 @@ const checkLogReferences = (
 }
 
 const ONE_DECISION_ERROR =
-	'call log_food (with clarify and edit tools if needed), or edit tools (correct_entry, delete_entry, restore_entry, resolve_clarification) with exactly one reply, or exactly one of not_food or reply'
+	'call log_food (with clarify and edit tools if needed), or edit tools (correct_entry, delete_entry, restore_entry, resolve_clarification) with exactly one reply, or exactly one of not_food, photo_unusable or reply'
+const NO_PHOTO_ERROR =
+	'photo_unusable: this message has no photo — answer with reply (or not_food) instead'
 
 type Decision = { decision: FoodParseDecision; errors: [] } | { decision: null; errors: string[] }
 
@@ -204,23 +218,32 @@ const collectEdits = (valid: ValidatedCall[]): EntryEdits => ({
 	),
 })
 
-const decide = (valid: ValidatedCall[], refs: ParseRefs): Decision => {
+const decide = (
+	valid: ValidatedCall[],
+	refs: ParseRefs,
+	{ hasImage = false }: ParseMessageOptions,
+): Decision => {
 	const logs = valid.flatMap((call) => (call.name === AI_TOOL_NAMES.logFood ? [call.data] : []))
 	const clarifications = valid.flatMap((call) =>
 		call.name === AI_TOOL_NAMES.clarify ? [call.data] : [],
 	)
 	const notFood = valid.flatMap((call) => (call.name === AI_TOOL_NAMES.notFood ? [call.data] : []))
+	const unusable = valid.flatMap((call) =>
+		call.name === AI_TOOL_NAMES.photoUnusable ? [call.data] : [],
+	)
 	const replies = valid.flatMap((call) => (call.name === AI_TOOL_NAMES.reply ? [call.data] : []))
 	const edits = collectEdits(valid)
 	const isEditing = hasEdits(edits)
 	const [log] = logs
 	const [rejected] = notFood
+	const [photoUnusable] = unusable
 	const [reply] = replies
 
 	// log_food speaks for the whole turn, an edit-only turn speaks through reply
-	const answers = logs.length + notFood.length + replies.length
-	if (answers !== 1 || (rejected && isEditing))
+	const answers = logs.length + notFood.length + unusable.length + replies.length
+	if (answers !== 1 || ((rejected || photoUnusable) && isEditing))
 		return { decision: null, errors: [ONE_DECISION_ERROR] }
+	if (photoUnusable && !hasImage) return { decision: null, errors: [NO_PHOTO_ERROR] }
 	if (log) {
 		const errors = [...checkLogReferences(log, clarifications, refs), ...getEditErrors(edits, refs)]
 		if (errors.length > 0) return { decision: null, errors }
@@ -229,6 +252,16 @@ const decide = (valid: ValidatedCall[], refs: ParseRefs): Decision => {
 	}
 	if (clarifications.length > 0) return { decision: null, errors: [ONE_DECISION_ERROR] }
 	if (rejected) return { decision: { kind: 'not_food', reply: rejected.reply }, errors: [] }
+	if (photoUnusable) {
+		return {
+			decision: {
+				kind: 'photo_unusable',
+				reason: photoUnusable.reason,
+				reply: photoUnusable.reply,
+			},
+			errors: [],
+		}
+	}
 	if (!reply) return { decision: null, errors: [ONE_DECISION_ERROR] }
 	if (!isEditing) return { decision: { kind: 'reply', text: reply.text }, errors: [] }
 	const errors = getEditErrors(edits, refs)
@@ -236,7 +269,11 @@ const decide = (valid: ValidatedCall[], refs: ParseRefs): Decision => {
 	return { decision: { kind: 'edit', edits, text: reply.text }, errors: [] }
 }
 
-export const parseToolCalls = (rawCalls: RawToolCall[], refs: ParseRefs): FoodParseResult => {
+export const parseToolCalls = (
+	rawCalls: RawToolCall[],
+	refs: ParseRefs,
+	message: ParseMessageOptions = {},
+): FoodParseResult => {
 	if (rawCalls.length === 0) {
 		return { ok: false, errors: ['no tool call — always answer with a tool call'], calls: [] }
 	}
@@ -246,6 +283,6 @@ export const parseToolCalls = (rawCalls: RawToolCall[], refs: ParseRefs): FoodPa
 	if (callErrors.length > 0) return { ok: false, errors: callErrors, calls }
 
 	const valid = results.flatMap((result) => (result.valid ? [result.valid] : []))
-	const { decision, errors } = decide(valid, refs)
+	const { decision, errors } = decide(valid, refs, message)
 	return decision ? { ok: true, decision, calls } : { ok: false, errors, calls }
 }

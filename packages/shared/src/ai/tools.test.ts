@@ -16,8 +16,17 @@ describe('getAiFunctionTools', () => {
 			'restore_entry',
 			'resolve_clarification',
 			'not_food',
+			'photo_unusable',
 			'reply',
 		])
+	})
+
+	it('describes photo_unusable with its two reasons', () => {
+		const tool = tools.find((item) => item.function.name === 'photo_unusable')
+		const json = JSON.stringify(tool?.function.parameters)
+		expect(json).toContain('"no_food"')
+		expect(json).toContain('"unreadable"')
+		expect(json).toContain('"required":["reason","reply"]')
 	})
 
 	it('builds plain JSON schema with the category enum and nullable fields required', () => {
@@ -69,6 +78,31 @@ describe('buildFoodParseMessages', () => {
 		const messages = buildFoodParseMessages({ ...context, goal: null }, 'привіт')
 		expect(JSON.stringify(messages[1])).toContain('Goal: not set.')
 	})
+
+	it('puts a photo before the words as a data URL and keeps the prompt prefix unchanged', () => {
+		const image = { mimeType: 'image/jpeg' as const, base64: 'AAAA' }
+		const withPhoto = buildFoodParseMessages(context, '150 г', image)
+		const textOnly = buildFoodParseMessages(context, '150 г')
+		expect(withPhoto.slice(0, -1)).toEqual(textOnly.slice(0, -1))
+		expect(withPhoto.at(-1)).toEqual({
+			role: 'user',
+			content: [
+				{ type: 'image_url', image_url: { url: 'data:image/jpeg;base64,AAAA' } },
+				{ type: 'text', text: '150 г' },
+			],
+		})
+	})
+
+	it('sends a photo without words as the image alone', () => {
+		const messages = buildFoodParseMessages(context, '', {
+			mimeType: 'image/png',
+			base64: 'BBBB',
+		})
+		expect(messages.at(-1)).toEqual({
+			role: 'user',
+			content: [{ type: 'image_url', image_url: { url: 'data:image/png;base64,BBBB' } }],
+		})
+	})
 })
 
 describe('selectHistory', () => {
@@ -84,6 +118,19 @@ describe('selectHistory', () => {
 			'm7',
 			'm8',
 			'm9',
+		])
+	})
+
+	it('marks photo turns, with and without words, and never carries the image', () => {
+		const selected = selectHistory([
+			{ role: 'user', content: '', hasPhoto: true },
+			{ role: 'assistant', content: 'Записав' },
+			{ role: 'user', content: '150 г', hasPhoto: true },
+		])
+		expect(selected).toEqual([
+			{ role: 'user', content: '[фото]' },
+			{ role: 'assistant', content: 'Записав' },
+			{ role: 'user', content: '[фото] 150 г' },
 		])
 	})
 

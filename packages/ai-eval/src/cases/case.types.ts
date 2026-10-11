@@ -11,6 +11,7 @@ export const expectedDecisionSchema = z.enum([
 	'log_or_clarify',
 	'edit',
 	'not_food',
+	'photo_unusable',
 	'reply',
 ])
 

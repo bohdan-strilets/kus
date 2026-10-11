@@ -25,6 +25,7 @@ export const AI_TOOL_NAMES = {
 	restoreEntry: 'restore_entry',
 	resolveClarification: 'resolve_clarification',
 	notFood: 'not_food',
+	photoUnusable: 'photo_unusable',
 	reply: 'reply',
 } as const
 
@@ -181,6 +182,22 @@ export const notFoodInputSchema = z.object({
 
 export type NotFoodInput = z.infer<typeof notFoodInputSchema>
 
+/** no_food — nothing edible on the photo; unreadable — a label too blurry, dark or cut off to read. */
+export const photoUnusableReasonSchema = z.enum(['no_food', 'unreadable'])
+
+export type PhotoUnusableReason = z.infer<typeof photoUnusableReasonSchema>
+
+export const photoUnusableInputSchema = z.object({
+	reason: photoUnusableReasonSchema.describe(
+		'no_food: no food on the photo. unreadable: a label you cannot read (blur, dark, cut off)',
+	),
+	reply: replyTextSchema.describe(
+		'1–2 friendly short sentences in the language of the user asking to retake the photo or type what it was',
+	),
+})
+
+export type PhotoUnusableInput = z.infer<typeof photoUnusableInputSchema>
+
 export const replyInputSchema = z.object({
 	text: replyTextSchema.describe('1–2 short sentences in the language of the user'),
 })
@@ -195,6 +212,7 @@ export const AI_TOOL_SCHEMAS: Record<AiToolName, z.ZodType> = {
 	restore_entry: restoreEntryInputSchema,
 	resolve_clarification: resolveClarificationInputSchema,
 	not_food: notFoodInputSchema,
+	photo_unusable: photoUnusableInputSchema,
 	reply: replyInputSchema,
 }
 
@@ -211,6 +229,8 @@ const AI_TOOL_DESCRIPTIONS: Record<AiToolName, string> = {
 		'The user answers an open question in words: close it with the option that matches, with values between two options, or (both null) without values — then change the entry with correct_entry.',
 	not_food:
 		'The user claims to have eaten something inedible ("з\'їв камінь", "з\'їв телефон"). Nothing is logged.',
+	photo_unusable:
+		'Only for a message with a photo: there is no food on it, or the label cannot be read. Nothing is logged. Never for a text-only message.',
 	reply:
 		'Plain conversation: greetings, thanks, questions (including "how much can I still eat today" — answer from the day context). Nothing is logged. Also the chat answer of a message that only changes entries (correct_entry, delete_entry, restore_entry, resolve_clarification).',
 }

@@ -253,6 +253,44 @@ describe('parseToolCalls', () => {
 		const reply = parseToolCalls([call('reply', { text: 'Привіт!' })], options)
 		expect(reply).toMatchObject({ ok: true, decision: { kind: 'reply', text: 'Привіт!' } })
 	})
+
+	describe('photo_unusable', () => {
+		const unusable = call('photo_unusable', { reason: 'unreadable', reply: 'Сфотографуй ще раз' })
+
+		it('is a decision of its own for a message with a photo', () => {
+			expect(parseToolCalls([unusable], options, { hasImage: true })).toMatchObject({
+				ok: true,
+				decision: { kind: 'photo_unusable', reason: 'unreadable', reply: 'Сфотографуй ще раз' },
+			})
+		})
+
+		it('is rejected for a text-only message, with a hint to use reply', () => {
+			const result = parseToolCalls([unusable], options)
+			expect(result.ok).toBe(false)
+			if (result.ok) return
+			expect(result.errors[0]).toContain('no photo')
+		})
+
+		it('cannot come together with log_food or an edit', () => {
+			const withLog = parseToolCalls([logFood([egg]), unusable], options, { hasImage: true })
+			expect(withLog.ok).toBe(false)
+			const withEdit = parseToolCalls(
+				[unusable, call('restore_entry', { refs: ['e1'] })],
+				{ ...options, deletedEntryRefs: new Set(['e1']) },
+				{ hasImage: true },
+			)
+			expect(withEdit.ok).toBe(false)
+		})
+
+		it('rejects an unknown reason', () => {
+			const result = parseToolCalls(
+				[call('photo_unusable', { reason: 'dark', reply: 'Темно' })],
+				options,
+				{ hasImage: true },
+			)
+			expect(result.ok).toBe(false)
+		})
+	})
 })
 
 describe('filterClarifications', () => {

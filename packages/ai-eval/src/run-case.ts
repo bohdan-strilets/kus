@@ -83,6 +83,7 @@ const getReplyText = (decision: FoodParseDecision): string => {
 		case 'log':
 			return decision.log.reply
 		case 'not_food':
+		case 'photo_unusable':
 			return decision.reply
 		case 'edit':
 		case 'reply':

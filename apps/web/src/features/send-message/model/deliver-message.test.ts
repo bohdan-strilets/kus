@@ -10,6 +10,7 @@ import { MESSAGES_QUERY_KEY, type MessagesPage } from '@/entities/message'
 import { postMessage } from '../api/send-message'
 import { deliverMessage } from './deliver-message'
 import { useOutboxStore } from './outbox-store'
+import { usePhotoSessionStore } from './photo-session-store'
 
 vi.mock('../api/send-message', () => ({ postMessage: vi.fn() }))
 const photo = {
@@ -171,6 +172,7 @@ describe('deliverMessage', () => {
 describe('deliverMessage with a photo', () => {
 	beforeEach(() => {
 		useOutboxStore.setState({ items: {} })
+		usePhotoSessionStore.setState({ uploadProgress: {}, previews: {} })
 		vi.mocked(postMessage).mockReset()
 		vi.mocked(playSound).mockClear()
 	})
@@ -179,11 +181,11 @@ describe('deliverMessage with a photo', () => {
 		vi.unstubAllGlobals()
 	})
 
-	it('sends the picture as JPEG and writes the upload progress into the outbox', async () => {
+	it('sends the picture as JPEG, tracks the upload and keeps the picture for the bubble', async () => {
 		vi.stubGlobal('navigator', { onLine: true })
 		vi.mocked(postMessage).mockImplementationOnce((_body, options) => {
 			options?.onUploadProgress?.(0.5)
-			expect(useOutboxStore.getState().items[CLIENT_ID]?.uploadProgress).toBe(0.5)
+			expect(usePhotoSessionStore.getState().uploadProgress[CLIENT_ID]).toBe(0.5)
 			return Promise.resolve(turn)
 		})
 
@@ -194,6 +196,10 @@ describe('deliverMessage with a photo', () => {
 			photo: { mimeType: 'image/jpeg', data: 'AAAA' },
 		})
 		expect(useOutboxStore.getState().items).toEqual({})
+		expect(usePhotoSessionStore.getState()).toMatchObject({
+			uploadProgress: {},
+			previews: { [CLIENT_ID]: photo.previewUrl },
+		})
 	})
 
 	it('fails at once, without a request, when there is no connection', async () => {

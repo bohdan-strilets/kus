@@ -71,6 +71,9 @@ export const compressImage = async (file: File): Promise<CompressedPhoto> => {
 			if (!context) throw new PhotoError('unsupported')
 			context.drawImage(image, 0, 0, size.width, size.height)
 			const blob = await canvasToBlob(canvas, quality)
+			// Safari keeps the bitmap of a canvas until it is resized to nothing: up to 4 per photo
+			canvas.width = 0
+			canvas.height = 0
 			if (blob.size <= PHOTO_TARGET_BYTES) {
 				return { blob, base64: await blobToBase64(blob), ...size }
 			}

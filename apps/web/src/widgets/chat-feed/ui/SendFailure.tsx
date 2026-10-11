@@ -4,16 +4,16 @@ import { KusikRow, MessageBubble } from '@/entities/message'
 import type { SendError } from '@/features/send-message'
 import { Button, Icon, ICON_SIZE, Text } from '@/shared/ui'
 
-import type { RetryParams } from '../model/feed.types'
+import type { FeedDismiss, RetryParams } from '../model/feed.types'
 
 interface SendFailureProps {
 	error: SendError
 	/** null when resending the same text can't help (too long, the daily limit). */
 	retry: RetryParams | null
 	/** A photo that is gone can only be removed from the feed. */
-	dismiss: { clientMessageId: string } | null
+	dismiss: FeedDismiss | null
 	onRetry: (params: RetryParams) => void
-	onDismiss: (clientMessageId: string) => void
+	onDismiss: (dismiss: FeedDismiss) => void
 }
 
 /** Kusik's «ой» under a message that didn't go through (mockups/chat-error.html). */
@@ -30,7 +30,7 @@ export const SendFailure = ({ error, retry, dismiss, onRetry, onDismiss }: SendF
 						size="md"
 						className="self-start"
 						onClick={() => {
-							onDismiss(dismiss.clientMessageId)
+							onDismiss(dismiss)
 						}}
 					>
 						{t('chat.dismiss')}

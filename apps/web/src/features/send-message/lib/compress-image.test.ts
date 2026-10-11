@@ -1,12 +1,8 @@
 import { describe, expect, it } from 'vitest'
 
-import {
-	COMPRESSION_ATTEMPTS,
-	getTargetSize,
-	hasJpegExif,
-	PHOTO_MAX_SIDE_PX,
-} from './compress-image.helpers'
+import { COMPRESSION_ATTEMPTS, getTargetSize, PHOTO_MAX_SIDE_PX } from './compress-image.helpers'
 import { EXIF_GPS_JPEG_BASE64 } from './fixtures/exif-gps.fixture'
+import { hasJpegExif } from './fixtures/jpeg-exif'
 
 const SOI = [0xff, 0xd8]
 const EXIF_SEGMENT = [0xff, 0xe1, 0x00, 0x08, 0x45, 0x78, 0x69, 0x66, 0x00, 0x00]

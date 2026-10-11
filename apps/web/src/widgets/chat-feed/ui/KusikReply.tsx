@@ -4,13 +4,14 @@ import { KusikRow, type KusikReplyKind, MessageBubble } from '@/entities/message
 import { Text } from '@/shared/ui'
 
 import { getClarificationPlacement } from '../lib/get-clarification-placement'
+import type { FeedPhotoStatus } from '../model/feed.types'
 import { MealCard } from './MealCard'
 
 interface KusikReplyProps {
 	message: ChatMessage
 	isLatest: boolean
 	/** How the photo of the message this answers went. */
-	photoStatus?: 'PROCESSED' | 'FAILED'
+	photoStatus?: FeedPhotoStatus
 }
 
 const getReplyKind = (

@@ -4,7 +4,7 @@ import { DayDivider, TimeDivider, TypingIndicator } from '@/entities/message'
 import type { Addressee } from '@/entities/user'
 import { formatDayHeading, formatTime, toCalendarDate } from '@/shared/lib'
 
-import type { FeedItem, RetryParams } from '../model/feed.types'
+import type { FeedDismiss, FeedItem, RetryParams } from '../model/feed.types'
 import { KusikReply } from './KusikReply'
 import { NewDayGreeting } from './NewDayGreeting'
 import { SendFailure } from './SendFailure'
@@ -17,7 +17,7 @@ interface FeedItemViewProps {
 	addressee: Addressee
 	timeZone: string
 	onRetry: (params: RetryParams) => void
-	onDismiss: (clientMessageId: string) => void
+	onDismiss: (dismiss: FeedDismiss) => void
 }
 
 export const FeedItemView = ({

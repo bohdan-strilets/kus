@@ -14,6 +14,15 @@ export interface RetryParams {
 /** The picture in a user bubble: this device still has it, or only the fact that it was there. */
 export type FeedPhoto = { kind: 'preview'; url: string } | { kind: 'placeholder' }
 
+/** How the photo of a user message went on the server (it decides Kusik's face and the sound). */
+export type FeedPhotoStatus = 'PROCESSED' | 'FAILED'
+
+/**
+ * What «Прибрати» drops: a draft of this device (by clientMessageId) or a server message whose
+ * photo can't be resent (hidden by id).
+ */
+export type FeedDismiss = { target: 'outbox' | 'server'; id: string }
+
 export type TypingPhase = 'uploading' | 'thinking'
 
 export type FeedItem =
@@ -30,15 +39,13 @@ export type FeedItem =
 			/** 0..1 of the photo uploaded, while sending. */
 			uploadProgress?: number
 	  }
-	/** photoStatus: how the photo of the message this answers went (it decides the face and sound). */
-	| { kind: 'kusik'; key: string; message: ChatMessage; photoStatus?: 'PROCESSED' | 'FAILED' }
+	| { kind: 'kusik'; key: string; message: ChatMessage; photoStatus?: FeedPhotoStatus }
 	/** Kusik's «ой» under a message that didn't go through; no retry when resending can't help. */
 	| {
 			kind: 'failure'
 			key: string
 			error: SendError
 			retry: RetryParams | null
-			/** A photo that did not survive a reload can not be resent: «Прибрати» drops the bubble. */
-			dismiss: { clientMessageId: string } | null
+			dismiss: FeedDismiss | null
 	  }
 	| { kind: 'typing'; key: string; phase: TypingPhase }

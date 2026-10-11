@@ -12,6 +12,7 @@ export {
 	useOutboxStore,
 } from './model/outbox-store'
 export { type PhotoDraftPhoto, usePhotoDraftStore } from './model/photo-draft-store'
+export { usePhotoSessionStore } from './model/photo-session-store'
 export { type SendMessageActions, useSendMessage } from './model/use-send-message'
 export type {
 	ComposerPhotoState,

@@ -104,6 +104,8 @@ describe('entries from the API', () => {
 		)
 		expect(formatEntryAmount({ ...soup, source: 'LABEL' }, t)).toBe('300 г')
 		expect(formatEntryAmount({ ...soup, source: 'MANUAL' }, t)).toBe('300 г')
+		// the user typed the grams in the sheet: the backend keeps the source, the «≈» goes
+		expect(formatEntryAmount({ ...soup, source: 'ESTIMATE', isEdited: true }, t)).toBe('300 г')
 		expect(
 			toFoodEntryView(
 				{ ...soup, source: 'ESTIMATE' },

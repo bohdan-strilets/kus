@@ -8,6 +8,7 @@ import { playSound } from '@/shared/lib'
 import { postMessage } from '../api/send-message'
 import { getSendError, PHOTO_NEEDS_NETWORK_FAILURE } from '../lib/get-send-error'
 import { type OutboxPhoto, useOutboxStore } from './outbox-store'
+import { usePhotoSessionStore } from './photo-session-store'
 
 interface DeliverParams {
 	clientMessageId: string
@@ -16,6 +17,12 @@ interface DeliverParams {
 	photo?: OutboxPhoto
 	/** «Спробувати ще»: the server may replay a finished turn, without the cards it changed. */
 	isRetry?: boolean
+}
+
+/** The server has the message: the draft leaves, its picture stays for the bubble of the copy. */
+const handOver = (clientMessageId: string): void => {
+	const previewUrl = useOutboxStore.getState().complete(clientMessageId)
+	if (previewUrl) usePhotoSessionStore.getState().keepPreview(clientMessageId, previewUrl)
 }
 
 /**
@@ -27,12 +34,14 @@ export const deliverMessage = async (
 	{ clientMessageId, text, photo, isRetry = false }: DeliverParams,
 ): Promise<void> => {
 	const outbox = useOutboxStore.getState()
+	const session = usePhotoSessionStore.getState()
 	outbox.markSending({ clientMessageId, text, photo, createdAt: new Date().toISOString() })
 	// a photo is too heavy to wait in a queue: say so at once instead of a spinner that ends in a failure
 	if (photo && !navigator.onLine) {
 		outbox.markFailed(clientMessageId, PHOTO_NEEDS_NETWORK_FAILURE)
 		return
 	}
+	if (photo) session.setUploadProgress(clientMessageId, 0)
 	try {
 		const turn = await postMessage(
 			{
@@ -42,14 +51,14 @@ export const deliverMessage = async (
 			},
 			{
 				onUploadProgress: (ratio) => {
-					outbox.setUploadProgress(clientMessageId, ratio)
+					session.setUploadProgress(clientMessageId, ratio)
 				},
 			},
 		)
 		addTurnToFeed(queryClient, turn)
 		// earlier cards this turn corrected, deleted from or answered in words
 		for (const updated of turn.updatedMessages) replaceFeedMessage(queryClient, updated)
-		outbox.remove(clientMessageId)
+		handOver(clientMessageId)
 		if (turn.userMessage.photo?.status === 'FAILED') playSound('photoFail')
 		else if (turn.assistantMessage.meals.length > 0) playSound('kusik')
 		void queryClient.invalidateQueries({ queryKey: DAY_QUERY_KEY })
@@ -60,8 +69,10 @@ export const deliverMessage = async (
 		outbox.markFailed(clientMessageId, sendError)
 		// the first request is still running on the server: the feed polls its PENDING turn
 		if (sendError.messageKey === 'errors.api.MESSAGE_IN_PROGRESS') {
-			outbox.remove(clientMessageId)
+			handOver(clientMessageId)
 			void queryClient.invalidateQueries({ queryKey: MESSAGES_QUERY_KEY })
 		}
+	} finally {
+		session.clearUploadProgress(clientMessageId)
 	}
 }

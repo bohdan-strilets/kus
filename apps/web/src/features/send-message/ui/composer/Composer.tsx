@@ -11,8 +11,8 @@ import { ComposerPhotoPreview } from './ComposerPhotoPreview'
 import type { ComposerProps } from './composer.types'
 import { VoiceRecorder } from './VoiceRecorder'
 
-/** HEIC/HEIF come from the iPhone library; the canvas decodes them only where the browser can. */
-const PHOTO_INPUT_ACCEPT = 'image/jpeg,image/png,image/webp,image/heic,image/heif'
+/** No HEIC on purpose: without it iOS converts a library HEIC to JPEG before handing it over. */
+const PHOTO_INPUT_ACCEPT = 'image/jpeg,image/png,image/webp'
 
 /**
  * docs InputBar (the design spec wins over mockups/chat.html, which drew mic and send side by

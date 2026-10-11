@@ -192,8 +192,11 @@ describe('buildFeed with photos', () => {
 	const userItem = (feed: ReturnType<typeof buildFeed>) => feed.find((item) => item.kind === 'user')
 
 	it('shows the picture of a message on its way, with the upload progress and the uploading dots', () => {
-		const item = outboxItem({ photo: outboxPhoto, uploadProgress: 0.3 })
-		const feed = buildFeed(params([], { [item.clientMessageId]: item }))
+		const item = outboxItem({ photo: outboxPhoto })
+		const feed = buildFeed({
+			...params([], { [item.clientMessageId]: item }),
+			uploadProgress: { [item.clientMessageId]: 0.3 },
+		})
 
 		expect(userItem(feed)).toMatchObject({
 			photo: { kind: 'preview', url: outboxPhoto.previewUrl },
@@ -203,8 +206,11 @@ describe('buildFeed with photos', () => {
 	})
 
 	it('switches the dots to thinking once the upload is complete', () => {
-		const item = outboxItem({ photo: outboxPhoto, uploadProgress: 1 })
-		const feed = buildFeed(params([], { [item.clientMessageId]: item }))
+		const item = outboxItem({ photo: outboxPhoto })
+		const feed = buildFeed({
+			...params([], { [item.clientMessageId]: item }),
+			uploadProgress: { [item.clientMessageId]: 1 },
+		})
 
 		expect(feed.at(-1)).toMatchObject({ kind: 'typing', phase: 'thinking' })
 	})
@@ -231,7 +237,7 @@ describe('buildFeed with photos', () => {
 			retry: { clientMessageId: 'local-1', photo: outboxPhoto },
 			dismiss: null,
 		})
-		expect(failures[1]).toMatchObject({ retry: null, dismiss: { clientMessageId: 'local-2' } })
+		expect(failures[1]).toMatchObject({ retry: null, dismiss: { target: 'outbox', id: 'local-2' } })
 		expect(feed.filter((item) => item.kind === 'user')[1]).toMatchObject({
 			photo: { kind: 'placeholder' },
 		})
@@ -269,5 +275,24 @@ describe('buildFeed with photos', () => {
 
 		expect(userItem(feed)).toMatchObject({ photo: { kind: 'placeholder' } })
 		expect(feed.find((item) => item.kind === 'kusik')).toMatchObject({ photoStatus: 'FAILED' })
+	})
+
+	it('lets a photo message that failed on the server be hidden, and hides it', () => {
+		const failed = message({
+			createdAt: '2026-10-07T06:40:00Z',
+			content: null,
+			status: 'FAILED',
+			photo: { status: 'PENDING' },
+		})
+		const feed = buildFeed(params([failed]))
+
+		expect(feed.find((item) => item.kind === 'failure')).toMatchObject({
+			error: { messageKey: 'chat.photoLost', canRetry: false },
+			retry: null,
+			dismiss: { target: 'server', id: failed.id },
+		})
+
+		const hidden = buildFeed({ ...params([failed]), hiddenIds: new Set([failed.id]) })
+		expect(hidden.some((item) => item.kind === 'user' || item.kind === 'failure')).toBe(false)
 	})
 })

@@ -37,15 +37,17 @@ const formatPlainAmount = (
  * «3 шт · 150 г» when the user counted pieces, else «150 г». Drinks read in ml («250 мл»): their
  * grams already hold the volume (isLiquidCategory). A portion the AI guessed by eye (source
  * ESTIMATE — a plate, a photo) reads «≈ 150 г», as in mockups/chat-photo.html; label, reference,
- * saved and hand-typed amounts are exact.
+ * saved and hand-typed amounts are exact — so is a guess the user corrected in the sheet (isEdited:
+ * the backend keeps the source).
  */
 export const formatEntryAmount = (
 	entry: Pick<FoodEntryResponse, 'grams' | 'quantity' | 'category'> &
-		Partial<Pick<FoodEntryResponse, 'source'>>,
+		Partial<Pick<FoodEntryResponse, 'source' | 'isEdited'>>,
 	t: TFunction,
 ): string => {
 	const amount = formatPlainAmount(entry, t)
-	return entry.source === 'ESTIMATE' ? t('entry.amountApprox', { amount }) : amount
+	const isGuess = entry.source === 'ESTIMATE' && !entry.isEdited
+	return isGuess ? t('entry.amountApprox', { amount }) : amount
 }
 
 interface EntryViewOptions {

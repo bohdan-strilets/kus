@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 
 import { MessageBubble } from '@/entities/message'
+import { cn } from '@/shared/lib'
 import { Icon, ICON_SIZE, ProgressBar } from '@/shared/ui'
 
 import type { FeedItem } from '../model/feed.types'
@@ -35,7 +36,7 @@ export const UserMessage = ({ item }: { item: UserFeedItem }) => {
 					className="block max-h-37.5 max-w-55 rounded-tile object-cover"
 				/>
 			) : (
-				<span className={`flex items-center gap-2 ${PHOTO_TEXT_PADDING}`}>
+				<span className={cn('flex items-center gap-2', PHOTO_TEXT_PADDING)}>
 					<Icon name="image" size={ICON_SIZE.control} />
 					{t('chat.photoPlaceholder')}
 				</span>

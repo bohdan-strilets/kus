@@ -9,7 +9,14 @@ import {
 } from '@/features/send-message'
 import { getLocalDateString } from '@/shared/lib'
 
-import type { FeedItem, FeedPhoto, RetryParams, UserItemState } from '../model/feed.types'
+import type {
+	FeedDismiss,
+	FeedItem,
+	FeedPhoto,
+	FeedPhotoStatus,
+	RetryParams,
+	UserItemState,
+} from '../model/feed.types'
 
 /** A gap this long between messages shows the time again. */
 const TIME_GAP_MS = 60 * 60 * 1000
@@ -20,6 +27,10 @@ export interface BuildFeedParams {
 	outbox: Readonly<Record<string, OutboxItem>>
 	/** Pictures sent in this session, by clientMessageId (the server never has them). */
 	previews?: Readonly<Record<string, string>>
+	/** 0..1 of a photo uploaded, by clientMessageId, while its request runs. */
+	uploadProgress?: Readonly<Record<string, number>>
+	/** Server messages the user dropped with «Прибрати» (a photo that FAILED and can't be resent). */
+	hiddenIds?: ReadonlySet<string>
 	timeZone: string
 	today: string
 	yesterday: string
@@ -33,7 +44,7 @@ interface UserEntry {
 	state: UserItemState
 	error: SendError | null
 	retry: RetryParams | null
-	dismiss: { clientMessageId: string } | null
+	dismiss: FeedDismiss | null
 	photo: FeedPhoto | undefined
 	uploadProgress: number | undefined
 }
@@ -60,7 +71,7 @@ const getOutboxPhoto = (item: OutboxItem): FeedPhoto | undefined => {
 	return item.photoLost ? { kind: 'placeholder' } : undefined
 }
 
-const fromOutbox = (item: OutboxItem): UserEntry => ({
+const fromOutbox = (item: OutboxItem, params: BuildFeedParams): UserEntry => ({
 	key: item.clientMessageId,
 	text: item.text,
 	createdAt: item.createdAt,
@@ -69,9 +80,10 @@ const fromOutbox = (item: OutboxItem): UserEntry => ({
 	retry: item.photoLost
 		? null
 		: { clientMessageId: item.clientMessageId, text: item.text, photo: item.photo },
-	dismiss: item.photoLost ? { clientMessageId: item.clientMessageId } : null,
+	dismiss: item.photoLost ? { target: 'outbox', id: item.clientMessageId } : null,
 	photo: getOutboxPhoto(item),
-	uploadProgress: item.status === 'sending' ? item.uploadProgress : undefined,
+	uploadProgress:
+		item.status === 'sending' ? params.uploadProgress?.[item.clientMessageId] : undefined,
 })
 
 const getServerPhoto = (message: ChatMessage, params: BuildFeedParams): FeedPhoto | undefined => {
@@ -97,31 +109,34 @@ const toEntry = (message: ChatMessage, params: BuildFeedParams): Entry => {
 		return {
 			kind: 'user',
 			user: {
-				...fromOutbox(outboxItem),
+				...fromOutbox(outboxItem, params),
 				key: message.id,
 				createdAt: message.createdAt,
 				photo: getOutboxPhoto(outboxItem) ?? serverPhoto,
 			},
 		}
 	}
+	const { state, error } = getServerUserState(message, params.now)
 	return {
 		kind: 'user',
 		user: {
 			key: message.id,
 			text,
 			createdAt: message.createdAt,
+			state,
+			error,
 			retry,
-			dismiss: null,
+			// a photo that failed on the server stays a dead end otherwise: «Прибрати» hides it
+			dismiss: message.photo && state === 'failed' ? { target: 'server', id: message.id } : null,
 			photo: serverPhoto,
 			uploadProgress: undefined,
-			...getServerUserState(message, params.now),
 		},
 	}
 }
 
 /** How the photo of each user message went, by message id: the reply after it follows. */
-const getPhotoStatuses = ({ pages }: BuildFeedParams): Map<string, 'PROCESSED' | 'FAILED'> => {
-	const statuses = new Map<string, 'PROCESSED' | 'FAILED'>()
+const getPhotoStatuses = ({ pages }: BuildFeedParams): Map<string, FeedPhotoStatus> => {
+	const statuses = new Map<string, FeedPhotoStatus>()
 	for (const message of pages.flat()) {
 		const status = message.photo?.status
 		if (message.role === 'USER' && (status === 'PROCESSED' || status === 'FAILED')) {
@@ -131,14 +146,17 @@ const getPhotoStatuses = ({ pages }: BuildFeedParams): Map<string, 'PROCESSED' |
 	return statuses
 }
 
-/** Server messages oldest first, then what is still only on this device. */
+/** Server messages oldest first (minus the hidden ones), then what is still only on this device. */
 const getEntries = (params: BuildFeedParams): Entry[] => {
-	const messages = params.pages.flat().toReversed()
+	const messages = params.pages
+		.flat()
+		.toReversed()
+		.filter((message) => !(message.role === 'USER' && params.hiddenIds?.has(message.id)))
 	const knownIds = new Set(messages.flatMap((message) => message.clientMessageId ?? []))
 	const local = Object.values(params.outbox)
 		.filter((item) => !knownIds.has(item.clientMessageId))
 		.toSorted((a, b) => a.createdAt.localeCompare(b.createdAt))
-		.map((item): Entry => ({ kind: 'user', user: fromOutbox(item) }))
+		.map((item): Entry => ({ kind: 'user', user: fromOutbox(item, params) }))
 	return [...messages.map((message) => toEntry(message, params)), ...local]
 }
 

@@ -48,10 +48,11 @@ export const setupApp = (app: NestExpressApplication): void => {
 		app.use(createProxyGate({ secret: proxySecret, exemptPaths: [HEALTH_PATH] }))
 	}
 	app.use(cookieParser())
-	useBodyParsers(app)
 	app.enableCors({
 		origin: config.get('CORS_ORIGIN', { infer: true }),
 		credentials: true,
 	})
+	// after CORS: a 413 or a bad-JSON 400 from the parser must carry the CORS headers too
+	useBodyParsers(app)
 	app.enableShutdownHooks()
 }

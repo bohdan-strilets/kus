@@ -5,11 +5,12 @@ import { useTranslation } from 'react-i18next'
 
 import { messagesQueryOptions } from '@/entities/message'
 import type { Addressee } from '@/entities/user'
-import { useOutboxStore, useSendMessage } from '@/features/send-message'
+import { usePhotoSessionStore, useOutboxStore, useSendMessage } from '@/features/send-message'
 import { bubbleVariants, shiftLocalDate } from '@/shared/lib'
 import { Button, Loader, Text } from '@/shared/ui'
 
 import { buildFeed } from '../lib/build-feed'
+import type { FeedDismiss } from '../model/feed.types'
 import { useNow } from '../model/use-now'
 import { useFeedScroll } from '../model/use-feed-scroll'
 import { useNewItemKeys } from '../model/use-new-item-keys'
@@ -46,9 +47,12 @@ export const ChatFeed = ({
 	const { t } = useTranslation()
 	const query = useInfiniteQuery(messagesQueryOptions)
 	const outbox = useOutboxStore((state) => state.items)
-	const previews = useOutboxStore((state) => state.previews)
+	const hiddenIds = useOutboxStore((state) => state.hiddenIds)
+	const removeDraft = useOutboxStore((state) => state.remove)
+	const hideMessage = useOutboxStore((state) => state.hide)
+	const previews = usePhotoSessionStore((state) => state.previews)
+	const uploadProgress = usePhotoSessionStore((state) => state.uploadProgress)
 	const { retry } = useSendMessage()
-	const dismiss = useOutboxStore((state) => state.remove)
 	const topRef = useRef<HTMLDivElement>(null)
 	const now = useNow()
 
@@ -60,14 +64,20 @@ export const ChatFeed = ({
 						pages: pages.map((page) => page.messages),
 						outbox,
 						previews,
+						uploadProgress,
+						hiddenIds: new Set(hiddenIds),
 						timeZone,
 						today,
 						yesterday: shiftLocalDate(today, -1),
 						now,
 					})
 				: [],
-		[pages, outbox, previews, timeZone, today, now],
+		[pages, outbox, previews, uploadProgress, hiddenIds, timeZone, today, now],
 	)
+	const dismiss = (target: FeedDismiss): void => {
+		if (target.target === 'outbox') removeDraft(target.id)
+		else hideMessage(target.id)
+	}
 	const newKeys = useNewItemKeys(items)
 	const { scrollRef, contentRef } = useFeedScroll({
 		items,

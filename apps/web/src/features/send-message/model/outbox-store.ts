@@ -27,8 +27,6 @@ export interface OutboxItem {
 	photo?: OutboxPhoto
 	/** Back from storage after a reload: the words are here, the photo is not. */
 	photoLost?: boolean
-	/** 0..1 of the photo uploaded, while sending. */
-	uploadProgress?: number
 	/** ISO; places the bubble in the feed until the server copy arrives. */
 	createdAt: string
 	status: OutboxStatus
@@ -40,21 +38,24 @@ interface OutboxState {
 	ownerId: string | null
 	items: Record<string, OutboxItem>
 	/**
-	 * blob: URLs of the photos sent in this session, by clientMessageId: the bubble keeps showing
-	 * the picture after the server copy replaced the draft. In memory only, gone with a reload.
+	 * Server messages the user dropped from the feed with «Прибрати»: a photo message that FAILED
+	 * on the server can't be resent (the picture was never stored), so it is hidden here instead.
 	 */
-	previews: Record<string, string>
+	hiddenIds: string[]
 	/** The signed-in user (null after logout); a different one drops the drafts of the previous. */
 	claim: (userId: string | null) => void
 	markSending: (item: Pick<OutboxItem, 'clientMessageId' | 'text' | 'createdAt' | 'photo'>) => void
-	setUploadProgress: (clientMessageId: string, ratio: number) => void
 	markFailed: (clientMessageId: string, error: SendError) => void
+	/** The server has the turn: the item leaves; its picture is handed back for the server copy. */
+	complete: (clientMessageId: string) => string | null
+	/** «Прибрати» or a final failure: the item and its picture go. */
 	remove: (clientMessageId: string) => void
+	hide: (messageId: string) => void
 }
 
 export const OUTBOX_STORAGE_KEY = 'kusik-outbox'
-/** Pictures kept for the bubbles of sent messages; older ones become the «Фото» row. */
-export const PREVIEWS_MAX = 30
+/** Hidden server messages remembered; the oldest are forgotten (they are far up the history). */
+export const HIDDEN_MAX = 50
 const OUTBOX_STORAGE_VERSION = 2
 
 /** Only what the user typed: no server answers, no error details. */
@@ -70,18 +71,23 @@ const storedItemSchema = z
 
 type StoredItem = z.infer<typeof storedItemSchema>
 
-const storedStateSchema = z.object({ ownerId: z.uuid(), items: z.array(z.unknown()) })
+const storedStateSchema = z.object({
+	ownerId: z.uuid(),
+	items: z.array(z.unknown()),
+	hiddenIds: z.array(z.uuid()).optional(),
+})
 
 interface StoredState {
 	ownerId: string | null
 	items: StoredItem[]
+	hiddenIds: string[]
 }
 
 /**
  * «Не надіслано» survives a reload of the PWA; a message still sending is not stored. A photo is
  * never stored: only the fact that there was one, so the bubble can say it has to be retaken.
  */
-const toStoredState = ({ ownerId, items }: OutboxState): StoredState => ({
+const toStoredState = ({ ownerId, items, hiddenIds }: OutboxState): StoredState => ({
 	ownerId,
 	items: Object.values(items)
 		.filter((item) => item.status === 'failed')
@@ -91,14 +97,19 @@ const toStoredState = ({ ownerId, items }: OutboxState): StoredState => ({
 			createdAt,
 			...(photo || photoLost ? { photoLost: true as const } : {}),
 		})),
+	hiddenIds,
 })
 
+interface RestoredOutbox {
+	ownerId: string | null
+	items: Record<string, OutboxItem>
+	hiddenIds: string[]
+}
+
 /** Storage is outside the app's control: whatever does not parse is dropped, with its owner. */
-export const restoreOutbox = (
-	stored: unknown,
-): { ownerId: string | null; items: Record<string, OutboxItem> } => {
+export const restoreOutbox = (stored: unknown): RestoredOutbox => {
 	const state = storedStateSchema.safeParse(stored)
-	if (!state.success) return { ownerId: null, items: {} }
+	if (!state.success) return { ownerId: null, items: {}, hiddenIds: [] }
 	const items = state.data.items.flatMap((item) => {
 		const parsed = storedItemSchema.safeParse(item)
 		return parsed.success ? [parsed.data] : []
@@ -113,6 +124,7 @@ export const restoreOutbox = (
 					: { ...item, status: 'failed', error: RESTORED_FAILURE },
 			]),
 		),
+		hiddenIds: state.data.hiddenIds ?? [],
 	}
 }
 
@@ -120,83 +132,55 @@ const revokePreview = (item: OutboxItem | undefined): void => {
 	if (item?.photo) revokeSessionObjectUrl(item.photo.previewUrl)
 }
 
-const revokeAll = (previews: Record<string, string>): void => {
-	Object.values(previews).forEach(revokeSessionObjectUrl)
-}
-
-/** Adds the newest; past PREVIEWS_MAX the oldest are revoked (object keys keep insertion order). */
-const keepPreview = (
-	previews: Record<string, string>,
-	clientMessageId: string,
-	url: string,
-): Record<string, string> => {
-	const entries = [...Object.entries(previews), [clientMessageId, url] as const]
-	const excess = Math.max(0, entries.length - PREVIEWS_MAX)
-	entries.slice(0, excess).forEach(([, oldUrl]) => {
-		revokeSessionObjectUrl(oldUrl)
-	})
-	return Object.fromEntries(entries.slice(excess))
-}
-
 /** Outside React so a send finishes even if the chat unmounts (the user switched tabs). */
 export const useOutboxStore = create<OutboxState>()(
 	persist(
-		(set) => ({
+		(set, get) => ({
 			ownerId: null,
 			items: {},
-			previews: {},
+			hiddenIds: [],
 			claim: (userId) => {
 				set((state) => {
 					if (state.ownerId === userId) return state
 					Object.values(state.items).forEach(revokePreview)
-					revokeAll(state.previews)
-					return { ownerId: userId, items: {}, previews: {} }
+					return { ownerId: userId, items: {}, hiddenIds: [] }
 				})
 			},
 			markSending: (item) => {
 				set((state) => ({
 					items: {
 						...state.items,
-						[item.clientMessageId]: {
-							...item,
-							status: 'sending',
-							error: null,
-							...(item.photo ? { uploadProgress: 0 } : {}),
-						},
+						[item.clientMessageId]: { ...item, status: 'sending', error: null },
 					},
 				}))
-			},
-			setUploadProgress: (clientMessageId, ratio) => {
-				set((state) => {
-					const item = state.items[clientMessageId]
-					if (item?.status !== 'sending') return state
-					return {
-						items: { ...state.items, [clientMessageId]: { ...item, uploadProgress: ratio } },
-					}
-				})
 			},
 			markFailed: (clientMessageId, error) => {
 				set((state) => {
 					const item = state.items[clientMessageId]
 					if (!item) return state
 					return {
-						items: {
-							...state.items,
-							[clientMessageId]: { ...item, status: 'failed', error, uploadProgress: undefined },
-						},
+						items: { ...state.items, [clientMessageId]: { ...item, status: 'failed', error } },
 					}
 				})
+			},
+			complete: (clientMessageId) => {
+				const { [clientMessageId]: completed, ...items } = get().items
+				set({ items })
+				return completed?.photo?.previewUrl ?? null
 			},
 			remove: (clientMessageId) => {
 				set((state) => {
 					const { [clientMessageId]: removed, ...items } = state.items
-					// the picture stays for the bubble of the server copy; a dismissed failure has none
-					if (!removed?.photo) return { items }
-					return {
-						items,
-						previews: keepPreview(state.previews, clientMessageId, removed.photo.previewUrl),
-					}
+					revokePreview(removed)
+					return { items }
 				})
+			},
+			hide: (messageId) => {
+				set((state) => ({
+					hiddenIds: [...state.hiddenIds.filter((id) => id !== messageId), messageId].slice(
+						-HIDDEN_MAX,
+					),
+				}))
 			},
 		}),
 		{
@@ -205,7 +189,7 @@ export const useOutboxStore = create<OutboxState>()(
 			storage: createJSONStorage(() => localStorage),
 			partialize: toStoredState,
 			// an older or broken shape is dropped, not migrated: it holds only unsent drafts
-			migrate: () => ({ ownerId: null, items: [] }),
+			migrate: () => ({ ownerId: null, items: [], hiddenIds: [] }),
 			merge: (stored, current) => {
 				const restored = restoreOutbox(stored)
 				return {
@@ -213,6 +197,7 @@ export const useOutboxStore = create<OutboxState>()(
 					ownerId: restored.ownerId,
 					// what is in memory wins: a send may have started before the storage was read
 					items: { ...restored.items, ...current.items },
+					hiddenIds: [...new Set([...restored.hiddenIds, ...current.hiddenIds])],
 				}
 			},
 		},

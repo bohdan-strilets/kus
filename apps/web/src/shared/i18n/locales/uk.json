@@ -475,6 +475,7 @@
 		"amountPieces": "{{count}} шт · {{grams}} г",
 		"amountMl": "{{ml}} мл",
 		"amountPiecesMl": "{{count}} шт · {{ml}} мл",
+		"amountApprox": "≈ {{amount}}",
 		"answeredCaption": "{{amount}} · {{answer}}",
 		"editedCaption": "{{amount}} · змінено",
 		"mealTotal": "{{meal}} разом: {{kcal}} ккал"

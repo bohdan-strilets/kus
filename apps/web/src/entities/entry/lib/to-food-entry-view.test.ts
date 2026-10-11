@@ -95,6 +95,24 @@ describe('entries from the API', () => {
 		expect(formatEntryAmount({ grams: 150, quantity: null, category: 'yogurt' }, t)).toBe('150 г')
 	})
 
+	it('read a portion guessed by eye with «≈», exact ones without', () => {
+		if (!buckwheat) throw new Error('fixture')
+		const soup = { ...buckwheat, name: 'Борщ', grams: 300, category: 'soup' as const }
+		expect(formatEntryAmount({ ...soup, source: 'ESTIMATE' }, t)).toBe('≈ 300 г')
+		expect(formatEntryAmount({ ...soup, source: 'ESTIMATE', quantity: 2 }, t)).toBe(
+			'≈ 2 шт · 300 г',
+		)
+		expect(formatEntryAmount({ ...soup, source: 'LABEL' }, t)).toBe('300 г')
+		expect(formatEntryAmount({ ...soup, source: 'MANUAL' }, t)).toBe('300 г')
+		expect(
+			toFoodEntryView(
+				{ ...soup, source: 'ESTIMATE' },
+				{ isClarifying: false, answer: 'З олією' },
+				t,
+			).amount,
+		).toBe('≈ 300 г · з олією')
+	})
+
 	it('caption a saved food, an open question and a tapped answer', () => {
 		if (!buckwheat || !coffee) throw new Error('fixture')
 		const plain = { isClarifying: false, answer: null }

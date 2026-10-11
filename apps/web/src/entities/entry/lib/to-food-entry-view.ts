@@ -16,11 +16,7 @@ const MEAL_LABEL_KEY = {
 export const getMealLabelKey = (type: MealType): (typeof MEAL_LABEL_KEY)[MealType] =>
 	MEAL_LABEL_KEY[type]
 
-/**
- * «3 шт · 150 г» when the user counted pieces, else «150 г». Drinks read in ml («250 мл»): their
- * grams already hold the volume (isLiquidCategory).
- */
-export const formatEntryAmount = (
+const formatPlainAmount = (
 	{ grams, quantity, category }: Pick<FoodEntryResponse, 'grams' | 'quantity' | 'category'>,
 	t: TFunction,
 ): string => {
@@ -35,6 +31,21 @@ export const formatEntryAmount = (
 	return isLiquid
 		? t('entry.amountPiecesMl', { count, ml: amount })
 		: t('entry.amountPieces', { count, grams: amount })
+}
+
+/**
+ * «3 шт · 150 г» when the user counted pieces, else «150 г». Drinks read in ml («250 мл»): their
+ * grams already hold the volume (isLiquidCategory). A portion the AI guessed by eye (source
+ * ESTIMATE — a plate, a photo) reads «≈ 150 г», as in mockups/chat-photo.html; label, reference,
+ * saved and hand-typed amounts are exact.
+ */
+export const formatEntryAmount = (
+	entry: Pick<FoodEntryResponse, 'grams' | 'quantity' | 'category'> &
+		Partial<Pick<FoodEntryResponse, 'source'>>,
+	t: TFunction,
+): string => {
+	const amount = formatPlainAmount(entry, t)
+	return entry.source === 'ESTIMATE' ? t('entry.amountApprox', { amount }) : amount
 }
 
 interface EntryViewOptions {

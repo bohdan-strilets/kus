@@ -44,7 +44,7 @@
 - zod для env, DTO (через `nestjs-zod`) і всього, що повертає AI
 - JWT (access + refresh) в httpOnly cookie, argon2, helmet
 - AI через **OpenRouter** офіційним SDK `openai` (`baseURL: https://openrouter.ai/api/v1`), модель з env `AI_MODEL`
-- sharp — обробка фото, `@nestjs/throttler` — ліміти
+- `image-size` — перевірка фото (без sharp: фото перекодовує клієнт), `@nestjs/throttler` — ліміти
 
 ### Деплой
 - api і PostgreSQL — Railway; web — Vercel; помилки — Sentry
@@ -201,11 +201,11 @@ apps/api/src/
 
 ## 6. AI-модуль
 
-- Інструменти: `log_food`, `clarify`, `not_food` (лише «з'їв неїстівне»), `reply` (розмова й питання); далі `get_stats`, `save_recipe`, `save_fact`, `suggest_meal`. Опис — `packages/shared/src/ai/tools.ts`, промпт — `packages/shared/src/ai/prompt.ts`, потік — `docs/architecture.md` («AI-ядро»)
+- Інструменти: `log_food`, `clarify`, `not_food` (лише «з'їв неїстівне»), `photo_unusable` (лише для повідомлення з фото: не їжа чи нечитабельна етикетка), `reply` (розмова й питання); далі `get_stats`, `save_recipe`, `save_fact`, `suggest_meal`. Опис — `packages/shared/src/ai/tools.ts`, промпт — `packages/shared/src/ai/prompt.ts`, потік — `docs/architecture.md` («AI-ядро»)
 - Кожен запис має `source` (`label` | `memory` | `reference` | `estimate`), `confidence` і `assumption`
 - Уточнення — не більше 2 за раз і лише коли відповідь змінює ккал позицій на ≥ 80 ккал і ≥ 15 % (пороги в `packages/shared/src/ai/clarifications.ts`, бекенд відкидає решту). У повідомленні з кількома прийомами (цілий день) — максимум одне уточнення і лише з impact ≥ 150 ккал; решта — оцінка з короткою `assumption`. Навіть коли питає, AI записує найкращу оцінку
 - Тип прийому — на позицію (`log_food.items[].mealType`), інакше загальний `mealType`, інакше за локальною годиною; бекенд групує позиції в Meal за типом, відповідь API — `meals[]`
-- Фото: JPEG/PNG/WebP/HEIC; HEIC → JPEG, ресайз до ~1600 px (sharp) на бекенді; на клієнті — стиснення перед завантаженням. Оригінали у v0.1 не зберігаються
+- Фото: одне на повідомлення, JSON + base64 у `POST /messages`. Клієнт перекодовує будь-який формат (HEIC теж) через canvas у JPEG ≤ 1568 px, ≤ 1 МБ — без EXIF; бекенд приймає JPEG/PNG/WebP ≤ 1,4 МБ, перевіряє magic bytes і розміри, зрізає метадані JPEG. Фото не зберігається ніде (ні БД, ні диск, ні логи): лише `MessageAttachment` з типом, розмірами й статусом. Денний ліміт фото — `AI_DAILY_PHOTO_LIMIT`
 - Контекст моделі: промпт + релевантна пам'ять + підсумок дня + кілька останніх повідомлень. Ніколи вся історія
 - Логувати токени й вартість кожного запиту; денний ліміт повідомлень на користувача
 - Після зміни промпту чи моделі — `pnpm --filter ai-eval eval` і рядок у `PROMPT_CHANGELOG.md`

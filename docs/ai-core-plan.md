@@ -17,12 +17,14 @@ Prisma-enum `FoodCategory` і поле `category @default(plate)` у FoodEntry, 
 
 Порядок і чекліст — скіл `add-ai-tool` (`.claude/skills/add-ai-tool/`).
 
-## 3B — фото (наступне)
+## 3B — фото (зроблено як етап 7, 2026-10-11)
 
-- Той самий `POST /messages`, `multipart/form-data` (`photo` + `clientMessageId` + опційний `text`), ліміт 10 МБ, тип — за magic bytes.
-- **HEIC — на клієнті:** перед завантаженням canvas → JPEG ~1600 px (prebuilt sharp не має HEVC-декодера). Сервер приймає JPEG/PNG/WebP; HEIC пробує через sharp, інакше `415 UNSUPPORTED_IMAGE`. Після рішення — оновити CLAUDE.md §6 (зараз там «HEIC → JPEG на бекенді»).
-- sharp: `rotate()`, `resize(1600, 1600, inside)`, JPEG q≈80, **без метаданих** (GPS). Оригінал не зберігається (`storageKey = null`). `AI_MODEL_VISION`, `DailyUsage.photoCount` + `AI_DAILY_PHOTO_LIMIT`.
-- Eval: етикетки (`source = LABEL`) і страви; реальні фото — лише в `data/private/`.
+Реалізовано інакше, ніж планувалось; як працює — `docs/architecture.md`, «Фото».
+
+- Той самий `POST /messages`, але **JSON + base64** (`photo: { mimeType, data }`), не multipart: один DTO, одна zod-валідація, той самий e2e-харнес. Тіло ≤ 2 МБ (власний парсер лише для цього маршруту), фото ≤ 1,4 МБ.
+- **Без sharp.** Клієнт перекодовує все (включно з HEIC, який Safari декодує сам) через canvas у JPEG ≤ 1568 px, ≤ 1 МБ — EXIF зникає на телефоні. Сервер лише перевіряє (magic bytes, `image-size`, 64…2576 px) і зрізає APPn/COM із JPEG. Chrome/Firefox на десктопі HEIC не декодують — зрозуміла помилка; бібліотеку не додаємо, поки не впремось.
+- `AI_MODEL_VISION`, `DailyUsage.photoCount` + `AI_DAILY_PHOTO_LIMIT` (30) — як планувалось. Додано `FoodEntry.fromPhoto` і інструмент `photo_unusable`.
+- Eval: кейси з `image` у `data/private/`, метрика «джерела» (`expect.sources`), `--estimate` рахує патчі 28×28.
 
 ## 3C — уточнення й виправлення (наступне)
 

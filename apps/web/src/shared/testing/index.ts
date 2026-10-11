@@ -6,4 +6,5 @@ export {
 	type FakeHandler,
 	type FakeReply,
 } from './create-fake-adapter'
+export { stubMatchMedia } from './match-media'
 export { createWrapper, renderHookWithProviders, renderWithProviders } from './render'

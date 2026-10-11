@@ -16,6 +16,7 @@ describe('getKusikFace', () => {
 	it('follows the special replies from the mockups', () => {
 		expect(getKusikFace('suggestion')).toBe('happy')
 		expect(getKusikFace('error')).toBe('oops')
+		expect(getKusikFace('photoFail')).toBe('oops')
 		expect(getKusikFace('newDay')).toBe('smileOpen')
 		expect(getKusikFace('weeklySummary')).toBe('smileOpen')
 		expect(getKusikFace('newRecipe')).toBe('content')

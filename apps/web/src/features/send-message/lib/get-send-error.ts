@@ -5,6 +5,12 @@ export type SendErrorKey =
 	| 'errors.api.AI_UNAVAILABLE'
 	| 'errors.api.MESSAGE_TOO_LONG'
 	| 'errors.api.DAILY_LIMIT_REACHED'
+	| 'errors.api.DAILY_PHOTO_LIMIT_REACHED'
+	| 'chat.photoNeedsNetwork'
+	| 'chat.photoLost'
+	| 'chat.photoTooLarge'
+	| 'chat.photoUnsupported'
+	| 'chat.photoInvalid'
 	| 'errors.api.TOO_MANY_REQUESTS'
 	| 'errors.api.MESSAGE_IN_PROGRESS'
 	| 'errors.api.ENTRY_CHANGED'
@@ -21,6 +27,22 @@ export interface SendError {
 const FINAL_ERRORS: Partial<Record<string, SendErrorKey>> = {
 	MESSAGE_TOO_LONG: 'errors.api.MESSAGE_TOO_LONG',
 	DAILY_LIMIT_REACHED: 'errors.api.DAILY_LIMIT_REACHED',
+	DAILY_PHOTO_LIMIT_REACHED: 'errors.api.DAILY_PHOTO_LIMIT_REACHED',
+}
+
+/** The API's reason a photo was refused (details.fields.photo) → what Kusik says; resending won't help. */
+const PHOTO_FIELD_ERRORS: Partial<Record<string, SendErrorKey>> = {
+	PHOTO_TOO_LARGE: 'chat.photoTooLarge',
+	UNSUPPORTED_IMAGE: 'chat.photoUnsupported',
+	PHOTO_INVALID: 'chat.photoInvalid',
+}
+
+const VALIDATION_ERROR_CODE = 'VALIDATION_ERROR'
+
+const getPhotoFieldError = (details: Record<string, unknown>): SendErrorKey | undefined => {
+	const { fields } = details
+	if (typeof fields !== 'object' || fields === null || !('photo' in fields)) return undefined
+	return typeof fields.photo === 'string' ? PHOTO_FIELD_ERRORS[fields.photo] : undefined
 }
 
 const RETRIABLE_ERRORS: Partial<Record<string, SendErrorKey>> = {
@@ -37,6 +59,10 @@ export const getSendError = (error: ApiError): SendError => {
 	if (error.kind === 'network') return { messageKey: 'chat.networkError', canRetry: true }
 	if (error.kind === 'unknown') return { messageKey: 'errors.api.UNKNOWN', canRetry: true }
 
+	if (error.errorCode === VALIDATION_ERROR_CODE) {
+		const photoError = getPhotoFieldError(error.details)
+		if (photoError) return { messageKey: photoError, canRetry: false }
+	}
 	const final = FINAL_ERRORS[error.errorCode]
 	if (final) return { messageKey: final, canRetry: false }
 	const retriable = RETRIABLE_ERRORS[error.errorCode]
@@ -45,6 +71,15 @@ export const getSendError = (error: ApiError): SendError => {
 		return { messageKey: 'errors.api.SERVER', canRetry: true }
 	}
 	return { messageKey: 'errors.api.UNKNOWN', canRetry: true }
+}
+
+/** The photo of a failed message was only in memory: the text came back, the picture did not. */
+export const PHOTO_LOST_FAILURE: SendError = { messageKey: 'chat.photoLost', canRetry: false }
+
+/** Offline: the photo is too heavy to queue, so it waits for a connection to be sent again. */
+export const PHOTO_NEEDS_NETWORK_FAILURE: SendError = {
+	messageKey: 'chat.photoNeedsNetwork',
+	canRetry: true,
 }
 
 /** A draft brought back from storage after a reload: the reason wasn't kept, a resend may work. */

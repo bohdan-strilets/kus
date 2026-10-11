@@ -1,8 +1,9 @@
 import type { ChatMessage, SendMessageResponse } from '@kus/shared'
 import { QueryClient } from '@tanstack/react-query'
 import { AxiosError } from 'axios'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { playSound } from '@/shared/lib'
 import { DAY_QUERY_KEY } from '@/entities/day'
 import { MESSAGES_QUERY_KEY, type MessagesPage } from '@/entities/message'
 
@@ -11,6 +12,14 @@ import { deliverMessage } from './deliver-message'
 import { useOutboxStore } from './outbox-store'
 
 vi.mock('../api/send-message', () => ({ postMessage: vi.fn() }))
+const photo = {
+	previewUrl: 'blob:http://localhost/preview',
+	base64: 'AAAA',
+	mimeType: 'image/jpeg',
+	width: 800,
+	height: 600,
+} as const
+
 vi.mock('@/shared/lib', async (importOriginal) => ({
 	...(await importOriginal<object>()),
 	playSound: vi.fn(),
@@ -156,5 +165,61 @@ describe('deliverMessage', () => {
 		finish(turn)
 		await pending
 		expect(useOutboxStore.getState().items[CLIENT_ID]).toBeUndefined()
+	})
+})
+
+describe('deliverMessage with a photo', () => {
+	beforeEach(() => {
+		useOutboxStore.setState({ items: {} })
+		vi.mocked(postMessage).mockReset()
+		vi.mocked(playSound).mockClear()
+	})
+
+	afterEach(() => {
+		vi.unstubAllGlobals()
+	})
+
+	it('sends the picture as JPEG and writes the upload progress into the outbox', async () => {
+		vi.stubGlobal('navigator', { onLine: true })
+		vi.mocked(postMessage).mockImplementationOnce((_body, options) => {
+			options?.onUploadProgress?.(0.5)
+			expect(useOutboxStore.getState().items[CLIENT_ID]?.uploadProgress).toBe(0.5)
+			return Promise.resolve(turn)
+		})
+
+		await deliverMessage(createClient(), { clientMessageId: CLIENT_ID, text: '', photo })
+
+		expect(vi.mocked(postMessage).mock.calls[0]?.[0]).toEqual({
+			clientMessageId: CLIENT_ID,
+			photo: { mimeType: 'image/jpeg', data: 'AAAA' },
+		})
+		expect(useOutboxStore.getState().items).toEqual({})
+	})
+
+	it('fails at once, without a request, when there is no connection', async () => {
+		vi.stubGlobal('navigator', { onLine: false })
+
+		await deliverMessage(createClient(), { clientMessageId: CLIENT_ID, text: 'обід', photo })
+
+		expect(postMessage).not.toHaveBeenCalled()
+		expect(useOutboxStore.getState().items[CLIENT_ID]).toMatchObject({
+			status: 'failed',
+			error: { messageKey: 'chat.photoNeedsNetwork', canRetry: true },
+		})
+	})
+
+	it('plays the photo-fail sound, not the «кусь», when the photo was not food', async () => {
+		vi.stubGlobal('navigator', { onLine: true })
+		const meal = { id: 'meal' } as ChatMessage['meals'][number]
+		vi.mocked(postMessage).mockResolvedValueOnce({
+			...turn,
+			userMessage: message({ photo: { status: 'FAILED' } }),
+			assistantMessage: { ...turn.assistantMessage, meals: [meal] },
+		})
+
+		await deliverMessage(createClient(), { clientMessageId: CLIENT_ID, text: '', photo })
+
+		expect(playSound).toHaveBeenCalledWith('photoFail')
+		expect(playSound).not.toHaveBeenCalledWith('kusik')
 	})
 })

@@ -6,12 +6,14 @@ import { getApiError } from '@/shared/api'
 import { playSound } from '@/shared/lib'
 
 import { postMessage } from '../api/send-message'
-import { getSendError } from '../lib/get-send-error'
-import { useOutboxStore } from './outbox-store'
+import { getSendError, PHOTO_NEEDS_NETWORK_FAILURE } from '../lib/get-send-error'
+import { type OutboxPhoto, useOutboxStore } from './outbox-store'
 
 interface DeliverParams {
 	clientMessageId: string
+	/** Empty for a photo without words. */
 	text: string
+	photo?: OutboxPhoto
 	/** «Спробувати ще»: the server may replay a finished turn, without the cards it changed. */
 	isRetry?: boolean
 }
@@ -22,17 +24,34 @@ interface DeliverParams {
  */
 export const deliverMessage = async (
 	queryClient: QueryClient,
-	{ clientMessageId, text, isRetry = false }: DeliverParams,
+	{ clientMessageId, text, photo, isRetry = false }: DeliverParams,
 ): Promise<void> => {
 	const outbox = useOutboxStore.getState()
-	outbox.markSending({ clientMessageId, text, createdAt: new Date().toISOString() })
+	outbox.markSending({ clientMessageId, text, photo, createdAt: new Date().toISOString() })
+	// a photo is too heavy to wait in a queue: say so at once instead of a spinner that ends in a failure
+	if (photo && !navigator.onLine) {
+		outbox.markFailed(clientMessageId, PHOTO_NEEDS_NETWORK_FAILURE)
+		return
+	}
 	try {
-		const turn = await postMessage({ clientMessageId, text })
+		const turn = await postMessage(
+			{
+				clientMessageId,
+				text: text || undefined,
+				...(photo ? { photo: { mimeType: photo.mimeType, data: photo.base64 } } : {}),
+			},
+			{
+				onUploadProgress: (ratio) => {
+					outbox.setUploadProgress(clientMessageId, ratio)
+				},
+			},
+		)
 		addTurnToFeed(queryClient, turn)
 		// earlier cards this turn corrected, deleted from or answered in words
 		for (const updated of turn.updatedMessages) replaceFeedMessage(queryClient, updated)
 		outbox.remove(clientMessageId)
-		if (turn.assistantMessage.meals.length > 0) playSound('kusik')
+		if (turn.userMessage.photo?.status === 'FAILED') playSound('photoFail')
+		else if (turn.assistantMessage.meals.length > 0) playSound('kusik')
 		void queryClient.invalidateQueries({ queryKey: DAY_QUERY_KEY })
 		// a replayed turn returns no updatedMessages: reload the feed so edited cards are current
 		if (isRetry) void queryClient.invalidateQueries({ queryKey: MESSAGES_QUERY_KEY })

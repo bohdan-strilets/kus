@@ -15,7 +15,25 @@ const responseSchema = createDataResponseSchema(sendMessageResponseSchema)
  */
 const SEND_TIMEOUT_MS = 130_000
 
-export const postMessage = async (body: SendMessageRequest): Promise<SendMessageResponse> => {
-	const response = await httpClient.post<unknown>('/messages', body, { timeout: SEND_TIMEOUT_MS })
+interface PostMessageOptions {
+	/** 0..1 while the body (a photo) is on its way to the API. */
+	onUploadProgress?: (ratio: number) => void
+}
+
+const toRatio = (loaded: number, total: number | undefined): number =>
+	total ? Math.min(1, Math.max(0, loaded / total)) : 0
+
+export const postMessage = async (
+	body: SendMessageRequest,
+	{ onUploadProgress }: PostMessageOptions = {},
+): Promise<SendMessageResponse> => {
+	const response = await httpClient.post<unknown>('/messages', body, {
+		timeout: SEND_TIMEOUT_MS,
+		onUploadProgress: onUploadProgress
+			? (event) => {
+					onUploadProgress(toRatio(event.loaded, event.total))
+				}
+			: undefined,
+	})
 	return responseSchema.parse(response.data).data
 }

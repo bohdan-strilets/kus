@@ -2,14 +2,14 @@ import type { AuthUser } from '@kus/shared'
 import { hashKey, type QueryClient } from '@tanstack/react-query'
 
 import { SESSION_QUERY_KEY } from '@/entities/session'
-import { useComposerDraftStore, useOutboxStore } from '@/features/send-message'
+import { useComposerDraftStore, useOutboxStore, usePhotoDraftStore } from '@/features/send-message'
 
 const SESSION_HASH = hashKey(SESSION_QUERY_KEY)
 
 /**
- * Unsent messages and the text in the composer belong to the user who typed them: a login as
- * someone else, a logout or a dead refresh drops them from memory and storage, so they are never
- * shown or sent from another account.
+ * Unsent messages, the text and the photo in the composer belong to the user who typed them: a
+ * login as someone else, a logout or a dead refresh drops them from memory and storage, so they
+ * are never shown or sent from another account.
  */
 export const syncOutboxOwner = (queryClient: QueryClient): (() => void) => {
 	const claim = (): void => {
@@ -19,6 +19,7 @@ export const syncOutboxOwner = (queryClient: QueryClient): (() => void) => {
 		const ownerId = user?.id ?? null
 		useOutboxStore.getState().claim(ownerId)
 		useComposerDraftStore.getState().claim(ownerId)
+		usePhotoDraftStore.getState().claim(ownerId)
 	}
 	claim()
 	return queryClient.getQueryCache().subscribe((event) => {

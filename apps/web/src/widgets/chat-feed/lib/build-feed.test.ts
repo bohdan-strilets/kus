@@ -124,6 +124,7 @@ describe('buildFeed', () => {
 			kind: 'failure',
 			key: 'failure-local-1',
 			error: { messageKey: 'chat.networkError', canRetry: true },
+			dismiss: null,
 			retry: { clientMessageId: 'local-1', text: 'борщ' },
 		})
 	})
@@ -169,5 +170,104 @@ describe('buildFeed', () => {
 		expect(kinds(buildFeed(params([running]))).at(-1)).toBe('typing')
 		const lost = message({ createdAt: '2026-10-07T16:00:00Z', status: 'PENDING' })
 		expect(kinds(buildFeed(params([lost]))).at(-1)).toBe('failure')
+	})
+})
+
+describe('buildFeed with photos', () => {
+	const outboxPhoto = {
+		previewUrl: 'blob:http://localhost/preview',
+		base64: 'AAAA',
+		mimeType: 'image/jpeg',
+		width: 800,
+		height: 600,
+	} as const
+	const outboxItem = (overrides: Partial<OutboxItem>): OutboxItem => ({
+		clientMessageId: 'local-1',
+		text: '',
+		createdAt: '2026-10-07T16:10:00Z',
+		status: 'sending',
+		error: null,
+		...overrides,
+	})
+	const userItem = (feed: ReturnType<typeof buildFeed>) => feed.find((item) => item.kind === 'user')
+
+	it('shows the picture of a message on its way, with the upload progress and the uploading dots', () => {
+		const item = outboxItem({ photo: outboxPhoto, uploadProgress: 0.3 })
+		const feed = buildFeed(params([], { [item.clientMessageId]: item }))
+
+		expect(userItem(feed)).toMatchObject({
+			photo: { kind: 'preview', url: outboxPhoto.previewUrl },
+			uploadProgress: 0.3,
+		})
+		expect(feed.at(-1)).toMatchObject({ kind: 'typing', phase: 'uploading' })
+	})
+
+	it('switches the dots to thinking once the upload is complete', () => {
+		const item = outboxItem({ photo: outboxPhoto, uploadProgress: 1 })
+		const feed = buildFeed(params([], { [item.clientMessageId]: item }))
+
+		expect(feed.at(-1)).toMatchObject({ kind: 'typing', phase: 'thinking' })
+	})
+
+	it('offers a retry with the picture, and only «Прибрати» when the picture is gone', () => {
+		const retriable = outboxItem({
+			photo: outboxPhoto,
+			status: 'failed',
+			error: { messageKey: 'chat.networkError', canRetry: true },
+		})
+		const lost = outboxItem({
+			clientMessageId: 'local-2',
+			createdAt: '2026-10-07T16:11:00Z',
+			photoLost: true,
+			status: 'failed',
+			error: { messageKey: 'chat.photoLost', canRetry: false },
+		})
+		const feed = buildFeed(
+			params([], { [retriable.clientMessageId]: retriable, [lost.clientMessageId]: lost }),
+		)
+		const failures = feed.filter((item) => item.kind === 'failure')
+
+		expect(failures[0]).toMatchObject({
+			retry: { clientMessageId: 'local-1', photo: outboxPhoto },
+			dismiss: null,
+		})
+		expect(failures[1]).toMatchObject({ retry: null, dismiss: { clientMessageId: 'local-2' } })
+		expect(feed.filter((item) => item.kind === 'user')[1]).toMatchObject({
+			photo: { kind: 'placeholder' },
+		})
+	})
+
+	it('keeps showing the picture of a sent message while this session still has it', () => {
+		const sent = message({
+			createdAt: '2026-10-07T06:40:00Z',
+			content: '150 г',
+			photo: { status: 'PROCESSED' },
+		})
+		const feed = buildFeed({
+			...params([sent]),
+			previews: { [sent.clientMessageId ?? '']: 'blob:http://localhost/sent' },
+		})
+
+		expect(userItem(feed)).toMatchObject({
+			state: 'sent',
+			text: '150 г',
+			photo: { kind: 'preview', url: 'blob:http://localhost/sent' },
+		})
+	})
+
+	it('draws a placeholder for the photo of a server message and passes its status to the reply', () => {
+		const asked = message({
+			createdAt: '2026-10-07T06:40:00Z',
+			content: null,
+			photo: { status: 'FAILED' },
+		})
+		const answer = {
+			...reply('2026-10-07T06:40:06Z'),
+			replyToId: asked.id,
+		}
+		const feed = buildFeed(params([asked, answer]))
+
+		expect(userItem(feed)).toMatchObject({ photo: { kind: 'placeholder' } })
+		expect(feed.find((item) => item.kind === 'kusik')).toMatchObject({ photoStatus: 'FAILED' })
 	})
 })

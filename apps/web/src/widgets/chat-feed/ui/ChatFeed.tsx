@@ -46,7 +46,9 @@ export const ChatFeed = ({
 	const { t } = useTranslation()
 	const query = useInfiniteQuery(messagesQueryOptions)
 	const outbox = useOutboxStore((state) => state.items)
+	const previews = useOutboxStore((state) => state.previews)
 	const { retry } = useSendMessage()
+	const dismiss = useOutboxStore((state) => state.remove)
 	const topRef = useRef<HTMLDivElement>(null)
 	const now = useNow()
 
@@ -57,13 +59,14 @@ export const ChatFeed = ({
 				? buildFeed({
 						pages: pages.map((page) => page.messages),
 						outbox,
+						previews,
 						timeZone,
 						today,
 						yesterday: shiftLocalDate(today, -1),
 						now,
 					})
 				: [],
-		[pages, outbox, timeZone, today, now],
+		[pages, outbox, previews, timeZone, today, now],
 	)
 	const newKeys = useNewItemKeys(items)
 	const { scrollRef, contentRef } = useFeedScroll({
@@ -115,6 +118,7 @@ export const ChatFeed = ({
 					addressee={addressee}
 					timeZone={timeZone}
 					onRetry={retry}
+					onDismiss={dismiss}
 				/>
 			</motion.div>
 		))

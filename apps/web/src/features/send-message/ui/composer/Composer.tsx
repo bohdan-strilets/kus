@@ -1,4 +1,4 @@
-import { type KeyboardEvent, type SubmitEvent, useRef } from 'react'
+import { type ChangeEvent, type KeyboardEvent, type SubmitEvent, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { COARSE_POINTER_QUERY, cn, useMediaQuery } from '@/shared/lib'
@@ -7,15 +7,19 @@ import { Icon, ICON_SIZE, IconButton, Text, Textarea } from '@/shared/ui'
 import { getEnterAction } from '../../model/get-enter-action'
 import { useIsMultiline } from '../../model/use-is-multiline'
 import { ComposerAction } from './ComposerAction'
+import { ComposerPhotoPreview } from './ComposerPhotoPreview'
 import type { ComposerProps } from './composer.types'
 import { VoiceRecorder } from './VoiceRecorder'
+
+/** HEIC/HEIF come from the iPhone library; the canvas decodes them only where the browser can. */
+const PHOTO_INPUT_ACCEPT = 'image/jpeg,image/png,image/webp,image/heic,image/heif'
 
 /**
  * docs InputBar (the design spec wins over mockups/chat.html, which drew mic and send side by
  * side). One textarea for both layouts so it never remounts and keeps focus: single line — camera,
  * field and one primary slot that is the mic while empty and «надіслати» with text; long text
  * (chat-long-input.html) — the field on top, then camera, «Kusik розбере все на окремі продукти»
- * and send. Enter sends only with a physical keyboard (getEnterAction). While recording the bar
+ * and send. A picked photo is a row above the field. Enter sends only with a physical keyboard (getEnterAction). While recording the bar
  * turns into the voice recorder. Presentational: the caller owns the text and the actions.
  */
 export const Composer = ({
@@ -24,18 +28,21 @@ export const Composer = ({
 	onValueChange,
 	onSubmit,
 	onFocusChange,
-	onPhotoClick,
+	onPhotoPick,
 	onVoiceStart,
 	voice,
 	isPhotoEnabled = true,
 	isVoiceEnabled = true,
+	photo,
 	maxLength,
 }: ComposerProps) => {
 	const { t } = useTranslation()
 	const textareaRef = useRef<HTMLTextAreaElement>(null)
+	const fileInputRef = useRef<HTMLInputElement>(null)
 	const { isMultiline, measure } = useIsMultiline(textareaRef, value, !voice)
-	// whitespace alone is nothing to send
-	const canSend = value.trim().length > 0
+	// whitespace alone is nothing to send; a photo still being prepared isn't there yet
+	const hasContent = value.trim().length > 0 || photo?.status === 'ready'
+	const canSend = hasContent && photo?.status !== 'processing'
 	const isCoarsePointer = useMediaQuery(COARSE_POINTER_QUERY)
 
 	if (voice) return <VoiceRecorder {...voice} />
@@ -44,6 +51,17 @@ export const Composer = ({
 		event.preventDefault()
 		if (!canSend) return
 		onSubmit()
+	}
+
+	const openPhotoPicker = (): void => {
+		fileInputRef.current?.click()
+	}
+
+	const handlePhotoChange = (event: ChangeEvent<HTMLInputElement>): void => {
+		const file = event.target.files?.[0]
+		// the same file can be chosen again right after it was removed
+		event.target.value = ''
+		if (file) onPhotoPick?.(file)
 	}
 
 	const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>): void => {
@@ -67,10 +85,25 @@ export const Composer = ({
 				isMultiline ? 'rounded-card pt-3 pr-1.5 pb-1.5 pl-4' : 'rounded-panel p-1.5',
 			)}
 		>
+			{isPhotoEnabled && photo && (
+				<ComposerPhotoPreview photo={photo} onPickAgain={openPhotoPicker} />
+			)}
 			{isPhotoEnabled && (
-				<IconButton size="sm" label={t('composer.addPhoto')} onClick={onPhotoClick}>
-					<Icon name="camera" size={ICON_SIZE.control} />
-				</IconButton>
+				<>
+					{/* no capture: iOS offers camera or library itself */}
+					<input
+						ref={fileInputRef}
+						type="file"
+						accept={PHOTO_INPUT_ACCEPT}
+						tabIndex={-1}
+						aria-hidden="true"
+						className="hidden"
+						onChange={handlePhotoChange}
+					/>
+					<IconButton size="sm" label={t('composer.addPhoto')} onClick={openPhotoPicker}>
+						<Icon name="camera" size={ICON_SIZE.control} />
+					</IconButton>
+				</>
 			)}
 			<Textarea
 				ref={textareaRef}
@@ -96,7 +129,12 @@ export const Composer = ({
 					<Text as="span" variant="small" weight="regular" tone="muted" className="flex-1">
 						{t('composer.longHint')}
 					</Text>
-					<IconButton type="submit" variant="primary" label={t('composer.send')}>
+					<IconButton
+						type="submit"
+						variant="primary"
+						label={t('composer.send')}
+						disabled={!canSend}
+					>
 						<Icon name="send" size={ICON_SIZE.control} />
 					</IconButton>
 				</>

@@ -28,7 +28,7 @@ describe('useSendMessage', () => {
 		const { result } = setup()
 
 		act(() => {
-			result.current.send(' яблуко ')
+			result.current.send({ text: ' яблуко ' })
 		})
 
 		expect(unlockSound).toHaveBeenCalledTimes(1)

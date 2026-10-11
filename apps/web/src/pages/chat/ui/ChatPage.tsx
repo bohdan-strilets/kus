@@ -4,7 +4,12 @@ import { useLocalToday } from '@/entities/day'
 import { useSessionUser } from '@/entities/session'
 import type { Addressee } from '@/entities/user'
 import { EditEntrySheet } from '@/features/edit-entry'
-import { Composer, useComposerDraftStore, useSendMessage } from '@/features/send-message'
+import {
+	Composer,
+	useComposerDraftStore,
+	usePhotoDraftStore,
+	useSendMessage,
+} from '@/features/send-message'
 import { FEATURES } from '@/shared/config'
 import { ChatFeed } from '@/widgets/chat-feed'
 import { ChatHeader } from '@/widgets/chat-header'
@@ -31,6 +36,7 @@ const ChatScreen = ({ addressee, timeZone }: { addressee: Addressee; timeZone: s
 	const text = useComposerDraftStore((state) => state.text)
 	const setText = useComposerDraftStore((state) => state.setText)
 	const clearText = useComposerDraftStore((state) => state.clear)
+	const photoDraft = usePhotoDraftStore()
 	const { send } = useSendMessage()
 
 	return (
@@ -55,8 +61,16 @@ const ChatScreen = ({ addressee, timeZone }: { addressee: Addressee; timeZone: s
 					onValueChange={setText}
 					onFocusChange={header.onComposerFocusChange}
 					onSubmit={() => {
-						send(text)
+						send({ text, photo: photoDraft.photo })
 						clearText()
+						photoDraft.clear()
+					}}
+					onPhotoPick={(file) => void photoDraft.pick(file)}
+					photo={{
+						status: photoDraft.status,
+						previewUrl: photoDraft.photo?.previewUrl ?? null,
+						errorKey: photoDraft.errorKey,
+						onRemove: photoDraft.clear,
 					}}
 					isPhotoEnabled={FEATURES.photo}
 					isVoiceEnabled={FEATURES.voice}

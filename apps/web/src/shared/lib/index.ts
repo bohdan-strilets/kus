@@ -57,6 +57,11 @@ export {
 	useRevealedValue,
 } from './motion'
 export {
+	createSessionObjectUrl,
+	revokeSessionObjectUrl,
+	revokeSessionObjectUrls,
+} from './object-url/object-url'
+export {
 	HAPTICS,
 	playSound,
 	type SoundName,

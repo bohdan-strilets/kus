@@ -2,7 +2,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router'
 
 import { ROUTES } from '@/shared/config'
-import { getHistoryIndex, resetRevealedValues } from '@/shared/lib'
+import { getHistoryIndex, resetRevealedValues, revokeSessionObjectUrls } from '@/shared/lib'
 
 import { markPendingLoginPush, consumePendingLoginPush } from '../lib/pending-login-push'
 import { browserHistoryEnv, walkHistoryBack } from '../lib/walk-history-back'
@@ -22,6 +22,8 @@ export const useLeaveSession = (): { leave: () => void } => {
 	const leave = (): void => {
 		// the ring and bars of the next account must animate from 0, not from this one's values
 		resetRevealedValues()
+		// the photos of this account's chat must not stay in memory for the next one
+		revokeSessionObjectUrls()
 		const behind = getHistoryIndex(window.history.state)
 		if (behind === 0) {
 			// leave first: the session guard must not remember this page as «come back here»

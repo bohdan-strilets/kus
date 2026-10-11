@@ -5,7 +5,7 @@ import { act, cleanup, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { ROUTES } from '@/shared/config'
-import { resetRevealedValues } from '@/shared/lib'
+import { resetRevealedValues, revokeSessionObjectUrls } from '@/shared/lib'
 import { renderHookWithProviders } from '@/shared/testing'
 
 import { SESSION_QUERY_KEY, setSessionUser } from './session-query'
@@ -14,6 +14,7 @@ import { useLeaveSession } from './use-leave-session'
 vi.mock('@/shared/lib', async (importOriginal) => ({
 	...(await importOriginal<Record<string, unknown>>()),
 	resetRevealedValues: vi.fn(),
+	revokeSessionObjectUrls: vi.fn(),
 }))
 
 const user: AuthUser = {
@@ -49,6 +50,7 @@ describe('useLeaveSession', () => {
 		})
 
 		expect(resetRevealedValues).toHaveBeenCalledTimes(1)
+		expect(revokeSessionObjectUrls).toHaveBeenCalledTimes(1)
 		expect(queryClient.getQueryData(SESSION_QUERY_KEY)).toBeNull()
 		await waitFor(() => {
 			expect(paths.at(-1)).toBe(ROUTES.login)

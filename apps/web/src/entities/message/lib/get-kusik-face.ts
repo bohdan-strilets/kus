@@ -6,6 +6,8 @@ export type KusikReplyKind =
 	| 'mealLogged'
 	| 'clarify'
 	| 'photoEstimate'
+	/** The photo was not food or could not be read: Kusik apologises, like in chat-error. */
+	| 'photoFail'
 	| 'typing'
 	| 'suggestion'
 	| 'error'
@@ -28,6 +30,7 @@ const FACE_BY_REPLY: Record<KusikReplyKind, HamsterHeadMood> = {
 	mealLogged: 'smile',
 	clarify: 'smile',
 	photoEstimate: 'think',
+	photoFail: 'oops',
 	typing: 'think',
 	suggestion: 'happy',
 	error: 'oops',

@@ -10,17 +10,32 @@ interface SendFailureProps {
 	error: SendError
 	/** null when resending the same text can't help (too long, the daily limit). */
 	retry: RetryParams | null
+	/** A photo that is gone can only be removed from the feed. */
+	dismiss: { clientMessageId: string } | null
 	onRetry: (params: RetryParams) => void
+	onDismiss: (clientMessageId: string) => void
 }
 
 /** Kusik's «ой» under a message that didn't go through (mockups/chat-error.html). */
-export const SendFailure = ({ error, retry, onRetry }: SendFailureProps) => {
+export const SendFailure = ({ error, retry, dismiss, onRetry, onDismiss }: SendFailureProps) => {
 	const { t } = useTranslation()
 
 	return (
 		<KusikRow kind="error">
 			<MessageBubble tone="error">
 				<Text>{t(error.messageKey)}</Text>
+				{dismiss && (
+					<Button
+						variant="secondary"
+						size="md"
+						className="self-start"
+						onClick={() => {
+							onDismiss(dismiss.clientMessageId)
+						}}
+					>
+						{t('chat.dismiss')}
+					</Button>
+				)}
 				{retry && (
 					<Button
 						size="md"

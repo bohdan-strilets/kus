@@ -35,6 +35,30 @@ describe('getSendError', () => {
 		})
 	})
 
+	it('offers no retry after the daily photo limit', () => {
+		expect(getSendError(http(429, 'DAILY_PHOTO_LIMIT_REACHED'))).toEqual({
+			messageKey: 'errors.api.DAILY_PHOTO_LIMIT_REACHED',
+			canRetry: false,
+		})
+	})
+
+	it('says why the API refused the photo, without a retry', () => {
+		const refused = (photo: string) =>
+			({
+				kind: 'http',
+				status: 422,
+				errorCode: 'VALIDATION_ERROR',
+				details: { fields: { photo } },
+			}) as const
+		expect(getSendError(refused('PHOTO_TOO_LARGE'))).toEqual({
+			messageKey: 'chat.photoTooLarge',
+			canRetry: false,
+		})
+		expect(getSendError(refused('UNSUPPORTED_IMAGE')).messageKey).toBe('chat.photoUnsupported')
+		expect(getSendError(refused('PHOTO_INVALID')).messageKey).toBe('chat.photoInvalid')
+		expect(getSendError(refused('SOMETHING_NEW')).messageKey).toBe('errors.api.UNKNOWN')
+	})
+
 	it('falls back to a generic text for anything else', () => {
 		expect(getSendError(http(500, 'INTERNAL_ERROR')).messageKey).toBe('errors.api.SERVER')
 		expect(getSendError(http(422, 'VALIDATION_ERROR')).messageKey).toBe('errors.api.UNKNOWN')

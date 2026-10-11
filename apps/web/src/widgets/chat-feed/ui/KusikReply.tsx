@@ -9,13 +9,20 @@ import { MealCard } from './MealCard'
 interface KusikReplyProps {
 	message: ChatMessage
 	isLatest: boolean
+	/** How the photo of the message this answers went. */
+	photoStatus?: 'PROCESSED' | 'FAILED'
 }
 
-const getReplyKind = ({ replyToId, meals, clarifications }: ChatMessage): KusikReplyKind => {
+const getReplyKind = (
+	{ replyToId, meals, clarifications }: ChatMessage,
+	photoStatus: KusikReplyProps['photoStatus'],
+): KusikReplyKind => {
 	// the only message Kusik writes on his own, without a user turn: the welcome back after a restore
 	if (replyToId === null) return 'welcomeBack'
+	if (photoStatus === 'FAILED') return 'photoFail'
 	if (clarifications.some((item) => item.status === 'OPEN')) return 'clarify'
-	return meals.length > 0 ? 'mealLogged' : 'reply'
+	if (meals.length === 0) return 'reply'
+	return photoStatus === 'PROCESSED' ? 'photoEstimate' : 'mealLogged'
 }
 
 /**
@@ -23,9 +30,9 @@ const getReplyKind = ({ replyToId, meals, clarifications }: ChatMessage): KusikR
  * logged (a whole day → several), indented under the bubble as its attachments. Without words the
  * card itself sits next to the head (mockups/chat.html).
  */
-export const KusikReply = ({ message, isLatest }: KusikReplyProps) => {
+export const KusikReply = ({ message, isLatest, photoStatus }: KusikReplyProps) => {
 	const placement = getClarificationPlacement(message)
-	const kind = getReplyKind(message)
+	const kind = getReplyKind(message, photoStatus)
 	const renderCards = (hasTail: boolean) =>
 		message.meals.map((meal) => (
 			<MealCard

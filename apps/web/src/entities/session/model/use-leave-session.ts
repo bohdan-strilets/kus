@@ -2,8 +2,8 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router'
 
 import { ROUTES } from '@/shared/config'
+import { getHistoryIndex } from '@/shared/lib'
 
-import { getHistoryIndex } from '../lib/get-history-index'
 import { markPendingLoginPush, consumePendingLoginPush } from '../lib/pending-login-push'
 import { browserHistoryEnv, walkHistoryBack } from '../lib/walk-history-back'
 import { endSession } from './session-query'

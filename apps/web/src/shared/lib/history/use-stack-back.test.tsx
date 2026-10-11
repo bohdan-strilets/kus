@@ -1,0 +1,72 @@
+// @vitest-environment jsdom
+import { act, cleanup, render, screen } from '@testing-library/react'
+import { createBrowserRouter, useLocation, useNavigate } from 'react-router'
+import { RouterProvider } from 'react-router/dom'
+import { afterEach, describe, expect, it } from 'vitest'
+
+import { getHistoryIndex } from './get-history-index'
+import { useStackBack } from './use-stack-back'
+
+const PARENT = '/app/profile'
+const CHILD = '/app/settings'
+
+const Screen = () => {
+	const { pathname } = useLocation()
+	const navigate = useNavigate()
+	const goBack = useStackBack(PARENT)
+
+	return (
+		<div>
+			<output data-testid="path">{pathname}</output>
+			<button type="button" onClick={() => void navigate(CHILD)}>
+				open
+			</button>
+			<button type="button" onClick={goBack}>
+				back
+			</button>
+		</div>
+	)
+}
+
+/** jsdom keeps one session history per file: every test starts over at a fresh first entry. */
+const renderAt = (path: string): void => {
+	window.history.replaceState(null, '', path)
+	render(<RouterProvider router={createBrowserRouter([{ path: '*', element: <Screen /> }])} />)
+}
+
+const click = async (name: string): Promise<void> => {
+	await act(async () => {
+		screen.getByText(name).click()
+		await Promise.resolve()
+	})
+}
+
+const pathname = (): string => screen.getByTestId('path').textContent
+
+afterEach(cleanup)
+
+describe('useStackBack', () => {
+	it('goes back to the entry the screen was opened from', async () => {
+		renderAt('/app/today')
+		await click('open')
+		expect(pathname()).toBe(CHILD)
+		expect(getHistoryIndex(window.history.state)).toBe(1)
+
+		await click('back')
+		await act(async () => {
+			// jsdom traverses the history in a later task
+			await new Promise((resolve) => setTimeout(resolve, 20))
+		})
+		expect(pathname()).toBe('/app/today')
+		expect(getHistoryIndex(window.history.state)).toBe(0)
+	})
+
+	it('with nothing behind (a deep link) replaces the entry with the parent', async () => {
+		renderAt(CHILD)
+		expect(getHistoryIndex(window.history.state)).toBe(0)
+
+		await click('back')
+		expect(pathname()).toBe(PARENT)
+		expect(getHistoryIndex(window.history.state)).toBe(0)
+	})
+})

@@ -68,5 +68,6 @@ export {
 	useViewportBox,
 	type ViewportBox,
 } from './viewport'
+export { getHistoryIndex, useStackBack } from './history'
 export { useSvgId } from './use-svg-id'
 export { createUuid } from './uuid'

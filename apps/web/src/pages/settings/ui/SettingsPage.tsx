@@ -7,8 +7,6 @@ import { SoundSettingsRows } from '@/features/sound-settings'
 import { ROUTES } from '@/shared/config'
 import { ListRow, RowGroup, ScreenHeader, Text } from '@/shared/ui'
 
-import { getDisplayVersion } from '../lib/get-display-version'
-
 /** design/docs/screens.md → Налаштування (mockups/settings.html, settings-delete-confirm.html). */
 export const SettingsPage = () => {
 	const { t } = useTranslation()
@@ -47,7 +45,7 @@ export const SettingsPage = () => {
 					/>
 				</RowGroup>
 				<Text variant="small" tone="muted" className="self-center">
-					{t('settings.version', { version: getDisplayVersion(__APP_VERSION__) })}
+					{t('settings.version', { version: __APP_VERSION__ })}
 				</Text>
 			</div>
 			<DeleteAccountDialog isOpen={isDeleteOpen} onOpenChange={setIsDeleteOpen} />

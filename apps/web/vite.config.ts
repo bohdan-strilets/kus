@@ -21,7 +21,7 @@ const { version } = JSON.parse(
 ) as { version: string }
 
 export default defineConfig({
-	// the «Kusik · версія 0.1» line in Settings (__APP_VERSION__ in src/vite-env.d.ts)
+	// the «Kusik · версія 0.2.1» line in Settings (__APP_VERSION__ in src/vite-env.d.ts)
 	define: { __APP_VERSION__: JSON.stringify(version) },
 	plugins: [
 		react(),

@@ -4,6 +4,13 @@ All notable changes to Kusik are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- The audio is unlocked on the first tap anywhere in the app (one `click` listener in `RootLayout`), not only on «надіслати» ([72566a9])
+- Leaving the session (logout, account deletion) forgets what the calorie ring and the macro bars showed, so the next account animates from 0 ([30873de])
+
 ## [0.2.2] — 2026-10-11
 
 ### Fixed
@@ -33,6 +40,9 @@ All notable changes to Kusik are documented here. The format follows
 
 ## 0.2.0 / 0.1.0 — see tags
 
+[Unreleased]: https://github.com/bohdan-strilets/kus/compare/v0.2.2...HEAD
+[72566a9]: https://github.com/bohdan-strilets/kus/commit/72566a9a99eeb06effd5d398e09fa080ba109a8e
+[30873de]: https://github.com/bohdan-strilets/kus/commit/30873de814fb1bf4f206b67a54fa5111b198c9c0
 [0.2.2]: https://github.com/bohdan-strilets/kus/compare/v0.2.1...v0.2.2
 [4f65daf]: https://github.com/bohdan-strilets/kus/commit/4f65dafc15d9012d9ec776afd4ceaa535f15151b
 [f8bb810]: https://github.com/bohdan-strilets/kus/commit/f8bb81040677e24d44fcd449218286f4a04babaa

@@ -1,6 +1,14 @@
 import { motion, useReducedMotion } from 'motion/react'
 
-import { BAR_DELAY_MS, BAR_FILL_MS, BAR_STEP_MS, cn, EASE, formatInteger } from '@/shared/lib'
+import {
+	BAR_DELAY_MS,
+	BAR_FILL_MS,
+	BAR_STEP_MS,
+	cn,
+	EASE,
+	formatInteger,
+	useRevealedValue,
+} from '@/shared/lib'
 
 import { getProgressPercent } from './get-progress-percent'
 import {
@@ -18,6 +26,11 @@ export type ProgressBarProps = ProgressTrackVariantProps &
 		label: string
 		/** Position in a group: bars fill one after another, 80 ms apart (design/docs/motion.md). */
 		index?: number
+		/**
+		 * Names the bar across mounts: it fills on the first show per session and when the value
+		 * changes (from the previous width), not on every return to the screen. Without it — from 0.
+		 */
+		revealKey?: string
 		className?: string
 	}
 
@@ -28,12 +41,15 @@ export const ProgressBar = ({
 	max,
 	label,
 	index = 0,
+	revealKey,
 	track,
 	tone,
 	className,
 }: ProgressBarProps) => {
 	const shouldReduceMotion = useReducedMotion()
-	const width = `${getProgressPercent(value, max)}%`
+	const percent = getProgressPercent(value, max)
+	const reveal = useRevealedValue(revealKey ?? null, percent)
+	const isAnimated = !shouldReduceMotion && reveal.isAnimated
 
 	return (
 		<div
@@ -49,16 +65,16 @@ export const ProgressBar = ({
 			<motion.div
 				className={progressFillVariants({ tone })}
 				// width isn't a transform, so MotionConfig's reduced motion doesn't cover it
-				initial={shouldReduceMotion ? false : { width: 0 }}
-				animate={{ width }}
+				initial={isAnimated ? { width: `${reveal.from}%` } : false}
+				animate={{ width: `${percent}%` }}
 				transition={
-					shouldReduceMotion
-						? { duration: 0 }
-						: {
+					isAnimated
+						? {
 								duration: toSeconds(BAR_FILL_MS),
 								delay: toSeconds(BAR_DELAY_MS + index * BAR_STEP_MS),
 								ease: EASE.out,
 							}
+						: { duration: 0 }
 				}
 			/>
 		</div>

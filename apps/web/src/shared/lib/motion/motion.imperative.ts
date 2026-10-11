@@ -15,14 +15,17 @@ interface CountUpOptions {
 	format?: (value: number) => string
 }
 
-/** Number counter (kcal, kg), ease-out, uk-UA format «1 370». Returns a stop function. */
+/**
+ * Number counter (kcal, kg), ease-out, uk-UA format «1 370». Returns a stop function.
+ * The same number again (a value already on screen) is set at once, without a 500 ms no-op.
+ */
 export const countUp = (
 	element: Element,
 	from: number,
 	to: number,
 	{ durationMs = COUNT_DEFAULT_MS, format = formatInteger }: CountUpOptions = {},
 ): (() => void) => {
-	if (isReducedMotion()) {
+	if (isReducedMotion() || from === to || durationMs === 0) {
 		element.textContent = format(to)
 		return () => undefined
 	}
@@ -49,6 +52,7 @@ const clampRatio = (ratio: number): number => Math.min(1, Math.max(0, ratio))
 /**
  * Fills an arc via stroke-dashoffset. The length comes from getTotalLength(), so it works for
  * the «Сьогодні» half circle (170×96) and the chat header one (112×70) alike.
+ * From the ratio already drawn (or with a zero duration) the arc is set at once.
  */
 export const fillArc = async (
 	path: SVGPathElement,
@@ -58,7 +62,7 @@ export const fillArc = async (
 	const length = path.getTotalLength()
 	path.style.strokeDasharray = `${length} ${length}`
 	const target = length * (1 - clampRatio(ratio))
-	if (isReducedMotion()) {
+	if (isReducedMotion() || fromRatio === ratio || durationMs === 0) {
 		path.style.strokeDashoffset = String(target)
 		return
 	}

@@ -53,6 +53,7 @@ export {
 	TRANSITION,
 	useBlink,
 	useCountUp,
+	useRevealedValue,
 } from './motion'
 export { HAPTICS, playSound, type SoundName, unlockSound, useSoundSettingsStore } from './sound'
 export { focusDialogContainer } from './focus-dialog-container'

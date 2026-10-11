@@ -62,6 +62,7 @@ export const MacroTile = ({ macro, progress, variant = 'bar', index = 0 }: Macro
 					tone={macro}
 					track="white"
 					index={index}
+					revealKey={`macro-bar:${macro}`}
 				/>
 			)}
 		</div>

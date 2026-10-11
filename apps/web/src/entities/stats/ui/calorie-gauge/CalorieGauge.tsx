@@ -1,6 +1,13 @@
 import { useTranslation } from 'react-i18next'
 
-import { cn, formatInteger, formatSignedInteger, RING_FILL_MS, useCountUp } from '@/shared/lib'
+import {
+	cn,
+	formatInteger,
+	formatSignedInteger,
+	RING_FILL_MS,
+	useCountUp,
+	useRevealedValue,
+} from '@/shared/lib'
 import { Icon, Text } from '@/shared/ui'
 
 import { getGaugeState } from '../../lib/get-gauge-state'
@@ -29,7 +36,12 @@ export const CalorieGauge = ({ eaten, goal, size = 'large' }: CalorieGaugeProps)
 	const isLarge = size === 'large'
 	const hasGoal = goal !== null
 	const centreNumber = isLarge && hasGoal ? state.remaining : eaten
-	const countRef = useCountUp<HTMLSpanElement>(centreNumber, { durationMs: RING_FILL_MS })
+	// the same number as last time is set at once; a new one counts from the previous (motion.md)
+	const number = useRevealedValue(`calorie-gauge:${size}:number`, centreNumber)
+	const countRef = useCountUp<HTMLSpanElement>(centreNumber, {
+		durationMs: RING_FILL_MS,
+		from: number.from,
+	})
 
 	const renderCentre = () => {
 		if (!hasGoal) {

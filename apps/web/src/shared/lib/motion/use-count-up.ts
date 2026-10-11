@@ -5,6 +5,8 @@ import { countUp } from './motion.imperative'
 interface UseCountUpOptions {
 	durationMs?: number
 	format?: (value: number) => string
+	/** Start here instead of the value this hook showed last (useRevealedValue across mounts). */
+	from?: number
 }
 
 /**
@@ -13,18 +15,18 @@ interface UseCountUpOptions {
  */
 export const useCountUp = <T extends HTMLElement>(
 	value: number,
-	{ durationMs, format }: UseCountUpOptions = {},
+	{ durationMs, format, from }: UseCountUpOptions = {},
 ) => {
 	const ref = useRef<T>(null)
 	const previousValue = useRef(0)
 
 	useEffect(() => {
 		const element = ref.current
-		const from = previousValue.current
+		const start = from ?? previousValue.current
 		previousValue.current = value
 		if (!element) return
-		return countUp(element, from, value, { durationMs, format })
-	}, [value, durationMs, format])
+		return countUp(element, start, value, { durationMs, format })
+	}, [value, durationMs, format, from])
 
 	return ref
 }

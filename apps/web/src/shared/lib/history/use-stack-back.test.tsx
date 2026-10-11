@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, cleanup, render, screen } from '@testing-library/react'
+import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
 import { createBrowserRouter, useLocation, useNavigate } from 'react-router'
 import { RouterProvider } from 'react-router/dom'
 import { afterEach, describe, expect, it } from 'vitest'
@@ -63,12 +63,23 @@ describe('useStackBack', () => {
 		expect(pathname()).toBe(CHILD)
 		expect(getHistoryIndex(window.history.state)).toBe(1)
 
-		await click('back')
+		// jsdom traverses the history in a later task and reports through popstate, like a browser
 		await act(async () => {
-			// jsdom traverses the history in a later task
-			await new Promise((resolve) => setTimeout(resolve, 20))
+			const popped = new Promise<void>((resolve) => {
+				window.addEventListener(
+					'popstate',
+					() => {
+						resolve()
+					},
+					{ once: true },
+				)
+			})
+			screen.getByText('back').click()
+			await popped
 		})
-		expect(pathname()).toBe('/app/today')
+		await waitFor(() => {
+			expect(pathname()).toBe('/app/today')
+		})
 		expect(getHistoryIndex(window.history.state)).toBe(0)
 	})
 

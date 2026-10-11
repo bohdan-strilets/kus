@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import type { AuthUser } from '@kus/shared'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { act, cleanup, render, screen } from '@testing-library/react'
+import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
 import { I18nextProvider } from 'react-i18next'
 import { createBrowserRouter, Outlet, type RouteObject, useNavigate } from 'react-router'
 import { RouterProvider } from 'react-router/dom'
@@ -38,8 +38,6 @@ const user: AuthUser = {
 	pendingDeletion: false,
 	purgeAt: null,
 }
-/** jsdom traverses the history in a later task; this is long enough for the walk and the router. */
-const TRAVERSAL_MS = 30
 const originalAdapter = httpClient.defaults.adapter
 
 const Stub = ({ name }: { name: string }) => <output data-testid="screen">{name}</output>
@@ -143,9 +141,20 @@ const createRoutes = (queryClient: QueryClient): RouteObject[] => [
 	},
 ]
 
-const settle = async (): Promise<void> => {
+/** jsdom traverses the history in a later task and reports through popstate, like a browser. */
+const traverse = async (go: () => void): Promise<void> => {
 	await act(async () => {
-		await new Promise((resolve) => setTimeout(resolve, TRAVERSAL_MS))
+		const popped = new Promise<void>((resolve) => {
+			window.addEventListener(
+				'popstate',
+				() => {
+					resolve()
+				},
+				{ once: true },
+			)
+		})
+		go()
+		await popped
 	})
 }
 
@@ -153,8 +162,9 @@ const settle = async (): Promise<void> => {
 const resetHistory = async (path: string): Promise<void> => {
 	const behind = getHistoryIndex(window.history.state)
 	if (behind > 0) {
-		window.history.go(-behind)
-		await settle()
+		await traverse(() => {
+			window.history.go(-behind)
+		})
 	}
 	window.history.replaceState(null, '', path)
 }
@@ -193,24 +203,31 @@ const press = async (role: 'button' | 'link', name: string): Promise<void> => {
 	})
 }
 
-const tapBack = async (): Promise<void> => {
-	await act(async () => {
-		screen.getByRole('button', { name: i18n.t('common.back') }).click()
-		await Promise.resolve()
+const tapBack = (): Promise<void> => press('button', i18n.t('common.back'))
+
+const back = (): Promise<void> =>
+	traverse(() => {
+		window.history.back()
 	})
-	await settle()
+
+interface Place {
+	screen: string
+	path: string
+	index: number
 }
 
-const back = async (): Promise<void> => {
-	window.history.back()
-	await settle()
-}
-
-const where = (): { screen: string; path: string; index: number } => ({
+const where = (): Place => ({
 	screen: screen.getByTestId('screen').textContent,
 	path: window.location.pathname,
 	index: getHistoryIndex(window.history.state),
 })
+
+/** The router renders a traversal or a cache change on its own time: wait for the place, not a timer. */
+const expectAt = async (place: Place): Promise<void> => {
+	await waitFor(() => {
+		expect(where()).toEqual(place)
+	})
+}
 
 beforeEach(() => {
 	stubMatchMedia()
@@ -226,14 +243,15 @@ afterEach(() => {
 describe('navigation history', () => {
 	it('tabs switch in place: Back never flips between them', async () => {
 		await renderApp({ at: ROUTES.chat })
+		const entries = window.history.length
 
 		await press('link', i18n.t('nav.today'))
-		expect(where()).toEqual({ screen: 'today', path: ROUTES.today, index: 0 })
+		await expectAt({ screen: 'today', path: ROUTES.today, index: 0 })
 		await press('link', i18n.t('nav.chat'))
-		expect(where()).toEqual({ screen: 'chat', path: ROUTES.chat, index: 0 })
+		await expectAt({ screen: 'chat', path: ROUTES.chat, index: 0 })
 
-		await back()
-		expect(where()).toEqual({ screen: 'chat', path: ROUTES.chat, index: 0 })
+		// no entry was added: there is nothing for Back to return to but what was before the app
+		expect(window.history.length).toBe(entries)
 	})
 
 	it('profile → settings → back → back lands on the tab the profile was opened from', async () => {
@@ -241,24 +259,24 @@ describe('navigation history', () => {
 		await press('link', i18n.t('nav.today'))
 		await press('button', 'avatar')
 		await press('link', 'settings')
-		expect(where()).toEqual({ screen: 'settings', path: ROUTES.settings, index: 2 })
+		await expectAt({ screen: 'settings', path: ROUTES.settings, index: 2 })
 
 		await tapBack()
-		expect(where()).toEqual({ screen: 'profile', path: ROUTES.profile, index: 1 })
+		await expectAt({ screen: 'profile', path: ROUTES.profile, index: 1 })
 
 		await tapBack()
-		expect(where()).toEqual({ screen: 'today', path: ROUTES.today, index: 0 })
+		await expectAt({ screen: 'today', path: ROUTES.today, index: 0 })
 	})
 
 	it('a deep link into the stack unwinds to the parent, then the chat, with no new entries', async () => {
 		await renderApp({ at: ROUTES.settings })
-		expect(where()).toEqual({ screen: 'settings', path: ROUTES.settings, index: 0 })
+		await expectAt({ screen: 'settings', path: ROUTES.settings, index: 0 })
 
 		await tapBack()
-		expect(where()).toEqual({ screen: 'profile', path: ROUTES.profile, index: 0 })
+		await expectAt({ screen: 'profile', path: ROUTES.profile, index: 0 })
 
 		await tapBack()
-		expect(where()).toEqual({ screen: 'chat', path: ROUTES.chat, index: 0 })
+		await expectAt({ screen: 'chat', path: ROUTES.chat, index: 0 })
 	})
 
 	it('after a password change Back does not reopen the form', async () => {
@@ -267,51 +285,46 @@ describe('navigation history', () => {
 		await press('button', 'avatar')
 		await press('link', 'settings')
 		await press('link', 'password')
-		expect(where()).toEqual({ screen: 'password', path: ROUTES.settingsPassword, index: 3 })
+		await expectAt({ screen: 'password', path: ROUTES.settingsPassword, index: 3 })
 
 		await press('button', 'change')
-		await settle()
-		expect(where()).toEqual({ screen: 'settings', path: ROUTES.settings, index: 2 })
+		await expectAt({ screen: 'settings', path: ROUTES.settings, index: 2 })
 
 		await back()
-		expect(where()).toEqual({ screen: 'profile', path: ROUTES.profile, index: 1 })
+		await expectAt({ screen: 'profile', path: ROUTES.profile, index: 1 })
 	})
 
-	it('login → chat → Back does not return to the login', async () => {
+	it('login → chat: the login entry is replaced, nothing of it stays behind', async () => {
 		await renderApp({ at: ROUTES.login, isAuthenticated: false })
-		expect(where().screen).toBe('login')
+		await expectAt({ screen: 'login', path: ROUTES.login, index: 0 })
+		const entries = window.history.length
 
 		await press('button', 'login')
-		await settle()
-		expect(where()).toEqual({ screen: 'chat', path: ROUTES.chat, index: 0 })
-
-		await back()
-		expect(where()).toEqual({ screen: 'chat', path: ROUTES.chat, index: 0 })
+		await expectAt({ screen: 'chat', path: ROUTES.chat, index: 0 })
+		expect(window.history.length).toBe(entries)
 	})
 
 	it('a deep link while logged out returns there after login, still with nothing behind', async () => {
 		await renderApp({ at: ROUTES.settings, isAuthenticated: false })
-		expect(where()).toEqual({ screen: 'login', path: ROUTES.login, index: 0 })
+		await expectAt({ screen: 'login', path: ROUTES.login, index: 0 })
 
 		await press('button', 'login')
-		await settle()
-		expect(where()).toEqual({ screen: 'settings', path: ROUTES.settings, index: 0 })
+		await expectAt({ screen: 'settings', path: ROUTES.settings, index: 0 })
 
 		await tapBack()
-		expect(where()).toEqual({ screen: 'profile', path: ROUTES.profile, index: 0 })
+		await expectAt({ screen: 'profile', path: ROUTES.profile, index: 0 })
 	})
 
 	it('logout → Back shows no screen of the app', async () => {
 		httpClient.defaults.adapter = createFakeAdapter(() => ({ status: 204 })).adapter
 		await renderApp({ at: ROUTES.chat })
 		await press('button', 'avatar')
-		expect(where().index).toBe(1)
+		await expectAt({ screen: 'profile', path: ROUTES.profile, index: 1 })
 
 		await press('button', 'logout')
-		await settle()
-		expect(where()).toEqual({ screen: 'login', path: ROUTES.login, index: 1 })
+		await expectAt({ screen: 'login', path: ROUTES.login, index: 1 })
 
 		await back()
-		expect(where()).toEqual({ screen: 'login', path: ROUTES.login, index: 0 })
+		await expectAt({ screen: 'login', path: ROUTES.login, index: 0 })
 	})
 })

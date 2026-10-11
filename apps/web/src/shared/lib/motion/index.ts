@@ -15,7 +15,7 @@ export {
 } from './transition'
 export { useBlink } from './use-blink'
 export { useCountUp } from './use-count-up'
-export { type RevealedValue, useRevealedValue } from './use-revealed-value'
+export { resetRevealedValues, type RevealedValue, useRevealedValue } from './use-revealed-value'
 export {
 	bubbleVariants,
 	expandVariants,

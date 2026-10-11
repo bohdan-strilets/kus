@@ -38,7 +38,7 @@ export const useRevealedValue = (key: string | null, value: number): RevealedVal
 	return reveal
 }
 
-/** Tests only: forget everything shown so far. */
+/** Forget everything shown so far: on leaving the session, so the next account starts from 0. */
 export const resetRevealedValues = (): void => {
 	shownValues.clear()
 }

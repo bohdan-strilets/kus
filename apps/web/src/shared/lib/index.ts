@@ -52,6 +52,7 @@ export {
 	tabContentVariants,
 	TRANSITION,
 	useBlink,
+	resetRevealedValues,
 	useCountUp,
 	useRevealedValue,
 } from './motion'

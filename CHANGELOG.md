@@ -4,6 +4,14 @@ All notable changes to Kusik are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.2] — 2026-10-11
+
+### Fixed
+
+- Sounds on iPhone: the audio context is unlocked inside the tap on «надіслати» / «Спробувати ще», so the «кусь» that plays after the API answers is no longer blocked by iOS ([4f65daf])
+- The calorie ring, its number and the macro bars animate only on the first show per session and when the value changes — from the previous value, not from 0; a plain return to the tab draws the final state at once (`useRevealedValue` in `shared/lib/motion`) ([f8bb810])
+- Settings shows the full version («0.2.1»), not only major.minor ([18570d0])
+
 ## [0.2.1] — 2026-10-11
 
 ### Added
@@ -25,6 +33,10 @@ All notable changes to Kusik are documented here. The format follows
 
 ## 0.2.0 / 0.1.0 — see tags
 
+[0.2.2]: https://github.com/bohdan-strilets/kus/compare/v0.2.1...v0.2.2
+[4f65daf]: https://github.com/bohdan-strilets/kus/commit/4f65dafc15d9012d9ec776afd4ceaa535f15151b
+[f8bb810]: https://github.com/bohdan-strilets/kus/commit/f8bb81040677e24d44fcd449218286f4a04babaa
+[18570d0]: https://github.com/bohdan-strilets/kus/commit/18570d06389fd7a1da18507e9ef1e21719b4909c
 [0.2.1]: https://github.com/bohdan-strilets/kus/compare/v0.2.0...v0.2.1
 [e713895]: https://github.com/bohdan-strilets/kus/commit/e713895886266b251db80bea52145d44e7e8b7c2
 [b1fedb6]: https://github.com/bohdan-strilets/kus/commit/b1fedb65cb0642daef17d1286aec51190a64efa0

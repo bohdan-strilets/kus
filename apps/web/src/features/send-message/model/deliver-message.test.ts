@@ -1,11 +1,11 @@
 import type { ChatMessage, SendMessageResponse } from '@kus/shared'
 import { QueryClient } from '@tanstack/react-query'
-import { AxiosError } from 'axios'
+import { AxiosError, AxiosHeaders } from 'axios'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { playSound } from '@/shared/lib'
 import { DAY_QUERY_KEY } from '@/entities/day'
-import { MESSAGES_QUERY_KEY, type MessagesPage } from '@/entities/message'
+import { MESSAGES_QUERY_KEY, type MessagesPage, useFreshReplyStore } from '@/entities/message'
 
 import { postMessage } from '../api/send-message'
 import { deliverMessage } from './deliver-message'
@@ -267,5 +267,109 @@ describe('deliverMessage with a photo', () => {
 
 		expect(playSound).toHaveBeenCalledWith('photoFail')
 		expect(playSound).not.toHaveBeenCalledWith('kusik')
+	})
+})
+
+describe('deliverMessage sounds and fresh cards', () => {
+	const MEAL = { id: 'meal-1' } as ChatMessage['meals'][number]
+	const OPEN_CLARIFICATION = {
+		status: 'OPEN',
+	} as ChatMessage['clarifications'][number]
+
+	const turnWith = (reply: Partial<ChatMessage>): SendMessageResponse => ({
+		...turn,
+		assistantMessage: { ...turn.assistantMessage, ...reply },
+	})
+
+	const inProgressError = new AxiosError(
+		'conflict',
+		AxiosError.ERR_BAD_REQUEST,
+		undefined,
+		undefined,
+		{
+			status: 409,
+			statusText: '',
+			data: { statusCode: 409, errorCode: 'MESSAGE_IN_PROGRESS', details: {} },
+			headers: {},
+			config: { headers: new AxiosHeaders() },
+		},
+	)
+
+	beforeEach(() => {
+		useOutboxStore.setState({ items: {} })
+		usePhotoSessionStore.setState({ uploadProgress: {}, previews: {} })
+		useFreshReplyStore.setState({ ownerId: null, mealIds: {} })
+		vi.mocked(postMessage).mockReset()
+		vi.mocked(playSound).mockClear()
+		vi.stubGlobal('navigator', { onLine: true })
+	})
+
+	afterEach(() => {
+		vi.unstubAllGlobals()
+	})
+
+	it('marks the meals fresh before the feed gets the turn, and plays «kusik»', async () => {
+		const client = createClient()
+		const freshWhenFeedChanged: boolean[] = []
+		client.getQueryCache().subscribe((event) => {
+			if (event.type === 'updated' && event.action.type === 'success') {
+				freshWhenFeedChanged.push(useFreshReplyStore.getState().mealIds[MEAL.id] === true)
+			}
+		})
+		vi.mocked(postMessage).mockResolvedValueOnce(turnWith({ meals: [MEAL] }))
+
+		await deliverMessage(client, { clientMessageId: CLIENT_ID, text: 'тарілка супу' })
+
+		expect(useFreshReplyStore.getState().mealIds).toEqual({ [MEAL.id]: true })
+		expect(playSound).toHaveBeenCalledWith('kusik')
+		expect(freshWhenFeedChanged.length).toBeGreaterThan(0)
+		expect(freshWhenFeedChanged).not.toContain(false)
+	})
+
+	it('plays «clarify», not «kusik», when the reply has an open question and meals', async () => {
+		vi.mocked(postMessage).mockResolvedValueOnce(
+			turnWith({ meals: [MEAL], clarifications: [OPEN_CLARIFICATION] }),
+		)
+
+		await deliverMessage(createClient(), { clientMessageId: CLIENT_ID, text: 'тарілка супу' })
+
+		expect(playSound).toHaveBeenCalledWith('clarify')
+		expect(playSound).not.toHaveBeenCalledWith('kusik')
+	})
+
+	it('plays «oops» when the request fails on the network', async () => {
+		vi.mocked(postMessage).mockRejectedValueOnce(networkError)
+
+		await deliverMessage(createClient(), { clientMessageId: CLIENT_ID, text: 'тарілка супу' })
+
+		expect(playSound).toHaveBeenCalledWith('oops')
+		expect(useFreshReplyStore.getState().mealIds).toEqual({})
+	})
+
+	it('plays «oops» for a photo without a connection, with no request', async () => {
+		vi.stubGlobal('navigator', { onLine: false })
+
+		await deliverMessage(createClient(), { clientMessageId: CLIENT_ID, text: '', photo })
+
+		expect(postMessage).not.toHaveBeenCalled()
+		expect(playSound).toHaveBeenCalledWith('oops')
+	})
+
+	it('stays quiet while the first request is still running on the server', async () => {
+		vi.mocked(postMessage).mockRejectedValueOnce(inProgressError)
+
+		await deliverMessage(createClient(), { clientMessageId: CLIENT_ID, text: 'тарілка супу' })
+
+		expect(playSound).not.toHaveBeenCalledWith('oops')
+		expect(playSound).not.toHaveBeenCalled()
+	})
+
+	it('is silent for a reply without meals and questions', async () => {
+		vi.mocked(postMessage).mockResolvedValueOnce(turn)
+
+		await deliverMessage(createClient(), { clientMessageId: CLIENT_ID, text: 'привіт' })
+
+		expect(playSound).not.toHaveBeenCalled()
+		expect(useFreshReplyStore.getState().mealIds).toEqual({})
 	})
 })

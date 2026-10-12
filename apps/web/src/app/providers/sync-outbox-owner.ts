@@ -1,6 +1,7 @@
 import type { AuthUser } from '@kus/shared'
 import { hashKey, type QueryClient } from '@tanstack/react-query'
 
+import { useFreshReplyStore } from '@/entities/message'
 import { SESSION_QUERY_KEY } from '@/entities/session'
 import {
 	useComposerDraftStore,
@@ -26,6 +27,7 @@ export const syncOutboxOwner = (queryClient: QueryClient): (() => void) => {
 		useComposerDraftStore.getState().claim(ownerId)
 		usePhotoDraftStore.getState().claim(ownerId)
 		usePhotoSessionStore.getState().claim(ownerId)
+		useFreshReplyStore.getState().claim(ownerId)
 	}
 	claim()
 	return queryClient.getQueryCache().subscribe((event) => {

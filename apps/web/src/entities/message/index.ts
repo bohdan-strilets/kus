@@ -1,5 +1,6 @@
 export type { MessagesPage } from './api/get-messages'
 export { getKusikFace, type KusikReplyKind } from './lib/get-kusik-face'
+export { useFreshReplyStore, useIsFreshMeal } from './model/fresh-reply-store'
 export {
 	addTurnToFeed,
 	isLostTurn,

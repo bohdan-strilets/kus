@@ -1,6 +1,7 @@
 import { QueryClient } from '@tanstack/react-query'
 import { beforeEach, describe, expect, it } from 'vitest'
 
+import { useFreshReplyStore } from '@/entities/message'
 import { SESSION_QUERY_KEY } from '@/entities/session'
 import { useComposerDraftStore, useOutboxStore } from '@/features/send-message'
 
@@ -26,6 +27,25 @@ describe('syncOutboxOwner', () => {
 	beforeEach(() => {
 		useOutboxStore.setState({ ownerId: null, items: {} })
 		useComposerDraftStore.setState({ ownerId: null, text: '' })
+		useFreshReplyStore.setState({ ownerId: null, mealIds: {} })
+	})
+
+	it('drops the fresh-reply marks for another user and after logout, keeps them for the same one', () => {
+		const queryClient = new QueryClient()
+		const stop = syncOutboxOwner(queryClient)
+		queryClient.setQueryData(SESSION_QUERY_KEY, USER_A)
+		useFreshReplyStore.setState({ mealIds: { m1: true } })
+
+		queryClient.setQueryData(SESSION_QUERY_KEY, { ...USER_A })
+		expect(useFreshReplyStore.getState().mealIds).toEqual({ m1: true })
+
+		queryClient.setQueryData(SESSION_QUERY_KEY, USER_B)
+		expect(useFreshReplyStore.getState()).toMatchObject({ ownerId: USER_B.id, mealIds: {} })
+
+		useFreshReplyStore.setState({ mealIds: { m2: true } })
+		queryClient.setQueryData(SESSION_QUERY_KEY, null)
+		expect(useFreshReplyStore.getState()).toMatchObject({ ownerId: null, mealIds: {} })
+		stop()
 	})
 
 	it('keeps the drafts of the same user and drops them for another one or after logout', () => {

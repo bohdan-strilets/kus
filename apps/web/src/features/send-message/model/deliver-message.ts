@@ -1,11 +1,17 @@
 import type { QueryClient } from '@tanstack/react-query'
 
 import { DAY_QUERY_KEY } from '@/entities/day'
-import { addTurnToFeed, MESSAGES_QUERY_KEY, replaceFeedMessage } from '@/entities/message'
+import {
+	addTurnToFeed,
+	MESSAGES_QUERY_KEY,
+	replaceFeedMessage,
+	useFreshReplyStore,
+} from '@/entities/message'
 import { getApiError } from '@/shared/api'
 import { playSound } from '@/shared/lib'
 
 import { postMessage } from '../api/send-message'
+import { getReplySound } from '../lib/get-reply-sound'
 import { getSendError, PHOTO_NEEDS_NETWORK_FAILURE } from '../lib/get-send-error'
 import { type OutboxPhoto, useOutboxStore } from './outbox-store'
 import { usePhotoSessionStore } from './photo-session-store'
@@ -44,6 +50,7 @@ export const deliverMessage = async (
 	// tap on «Спробувати ще» would be swallowed; a resend goes to the network and fails there if it must
 	if (photo && !isRetry && !navigator.onLine) {
 		outbox.markFailed(clientMessageId, PHOTO_NEEDS_NETWORK_FAILURE)
+		playSound('oops')
 		return
 	}
 	if (photo) session.setUploadProgress(clientMessageId, 0)
@@ -60,18 +67,21 @@ export const deliverMessage = async (
 				},
 			},
 		)
+		// before the feed gets the turn, so the first render of its cards already sees them as fresh
+		useFreshReplyStore.getState().markFresh(turn.assistantMessage)
 		addTurnToFeed(queryClient, turn)
 		// earlier cards this turn corrected, deleted from or answered in words
 		for (const updated of turn.updatedMessages) replaceFeedMessage(queryClient, updated)
 		handOver(clientMessageId)
-		if (turn.userMessage.photo?.status === 'FAILED') playSound('photoFail')
-		else if (turn.assistantMessage.meals.length > 0) playSound('kusik')
+		const sound = getReplySound(turn)
+		if (sound) playSound(sound)
 		void queryClient.invalidateQueries({ queryKey: DAY_QUERY_KEY })
 		// a replayed turn returns no updatedMessages: reload the feed so edited cards are current
 		if (isRetry) void queryClient.invalidateQueries({ queryKey: MESSAGES_QUERY_KEY })
 	} catch (error) {
 		const sendError = getSendError(getApiError(error))
 		outbox.markFailed(clientMessageId, sendError)
+		if (sendError.messageKey !== 'errors.api.MESSAGE_IN_PROGRESS') playSound('oops')
 		// the first request is still running on the server: the feed polls its PENDING turn
 		if (sendError.messageKey === 'errors.api.MESSAGE_IN_PROGRESS') {
 			handOver(clientMessageId)

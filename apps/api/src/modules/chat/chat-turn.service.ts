@@ -2,8 +2,14 @@ import { Injectable } from '@nestjs/common'
 import type { AiFoodItem, FoodParseDecision, LogMeasurementInput } from '@kus/shared'
 
 import { formatDbDate, getLocalHour, getZonedMoment } from '../../common/time'
-import { AttachmentStatus, MeasurementSource, type Prisma } from '../../generated/prisma/client'
+import {
+	AttachmentStatus,
+	MeasurementKind,
+	MeasurementSource,
+	type Prisma,
+} from '../../generated/prisma/client'
 import { PrismaService } from '../../prisma'
+import { AchievementsService } from '../achievements/achievements.service'
 import { EntriesService } from '../entries/entries.service'
 import type { NewFoodEntry } from '../entries/entries.types'
 import { MeasurementsService } from '../measurements/measurements.service'
@@ -33,6 +39,9 @@ export interface TurnResult extends EditedMessages {
 
 const MEASUREMENT_BACKDATE_HOUR = 12
 
+const hasWeight = (measurements: LogMeasurementInput[]): boolean =>
+	measurements.some(({ kind }) => kind === MeasurementKind.WEIGHT)
+
 const getReplyText = (decision: FoodParseDecision): string => {
 	switch (decision.kind) {
 		case 'log':
@@ -58,6 +67,7 @@ export class ChatTurnService {
 		private readonly entriesService: EntriesService,
 		private readonly memoryService: MemoryService,
 		private readonly measurementsService: MeasurementsService,
+		private readonly achievementsService: AchievementsService,
 	) {}
 
 	saveDecision(
@@ -90,6 +100,17 @@ export class ChatTurnService {
 					{ userId, timezone, message, now, localDate, measurements: decision.measurements },
 					tx,
 				)
+				await this.achievementsService.recordForTurn(
+					{
+						userId,
+						timezone,
+						now,
+						replyMessageId: reply.id,
+						isFoodChanged: false,
+						isWeightLogged: hasWeight(decision.measurements),
+					},
+					tx,
+				)
 				return { ...NO_EDITED_MESSAGES, replacedMeasurementMessageIds: replaced }
 			}
 			if (decision.kind !== 'log' && decision.kind !== 'edit') {
@@ -100,7 +121,21 @@ export class ChatTurnService {
 				{ userId, userMessageId: message.id, edits: decision.edits, refIds },
 				tx,
 			)
-			if (decision.kind === 'edit') return { ...edited, replacedMeasurementMessageIds: [] }
+			if (decision.kind === 'edit') {
+				// a restored entry can complete a streak; corrections and deletions never do
+				await this.achievementsService.recordForTurn(
+					{
+						userId,
+						timezone,
+						now,
+						replyMessageId: reply.id,
+						isFoodChanged: decision.edits.restorations.length > 0,
+						isWeightLogged: false,
+					},
+					tx,
+				)
+				return { ...edited, replacedMeasurementMessageIds: [] }
+			}
 
 			// an item's own meal, else the message's, else the clock
 			const fallbackMealType =
@@ -141,6 +176,17 @@ export class ChatTurnService {
 			}
 			const replaced = await this.recordMeasurements(
 				{ userId, timezone, message, now, localDate, measurements: decision.measurements },
+				tx,
+			)
+			await this.achievementsService.recordForTurn(
+				{
+					userId,
+					timezone,
+					now,
+					replyMessageId: reply.id,
+					isFoodChanged: true,
+					isWeightLogged: hasWeight(decision.measurements),
+				},
 				tx,
 			)
 			// the meals it joined grew: earlier cards of them get a new «разом» line

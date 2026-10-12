@@ -72,6 +72,8 @@ describe('chatMessageSchema photo', () => {
 		createdAt: '2026-10-11T10:00:00.000Z',
 		meals: [],
 		clarifications: [],
+		measurements: [],
+		achievements: [],
 	}
 
 	it('is null or a status', () => {

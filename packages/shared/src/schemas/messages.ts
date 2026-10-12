@@ -2,6 +2,7 @@ import { z } from 'zod'
 
 import { AI_IMAGE_MIME_TYPES } from '../ai/context.js'
 import { clarifyOptionSchema } from '../ai/tools.js'
+import { achievementResponseSchema } from './achievements.js'
 import {
 	attachmentStatusSchema,
 	clarificationStatusSchema,
@@ -11,6 +12,7 @@ import {
 	messageRoleSchema,
 	messageStatusSchema,
 } from './enums.js'
+import { measurementCardSchema } from './measurements.js'
 
 export const MESSAGE_TEXT_MAX_LENGTH = 2000
 export const MESSAGES_PAGE_DEFAULT_LIMIT = 30
@@ -155,6 +157,10 @@ export const chatMessageSchema = z.object({
 	/** Assistant replies only: what this turn logged, one card per meal (a whole day → several). */
 	meals: z.array(loggedMealSchema),
 	clarifications: z.array(clarificationResponseSchema),
+	/** Assistant replies only: the weight or waist this turn recorded, one card per kind. */
+	measurements: z.array(measurementCardSchema),
+	/** Assistant replies only: the milestone this turn reached — the highest one per type. */
+	achievements: z.array(achievementResponseSchema),
 })
 
 export type ChatMessage = z.infer<typeof chatMessageSchema>

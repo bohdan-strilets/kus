@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common'
 
+import { AchievementsModule } from '../achievements/achievements.module'
 import { AiModule } from '../ai/ai.module'
 import { EntriesModule } from '../entries/entries.module'
 import { GoalsModule } from '../goals/goals.module'
@@ -11,6 +12,7 @@ import { ChatContextService } from './chat-context.service'
 import { ChatEditsService } from './chat-edits.service'
 import { ChatFeedService } from './chat-feed.service'
 import { ChatGreetingsService } from './chat-greetings.service'
+import { ChatMeasurementCardsService } from './chat-measurement-cards.service'
 import { ChatResponseService } from './chat-response.service'
 import { ChatTurnService } from './chat-turn.service'
 import { ChatController } from './chat.controller'
@@ -22,6 +24,7 @@ import { ClarificationsService } from './clarifications.service'
 
 @Module({
 	imports: [
+		AchievementsModule,
 		AiModule,
 		EntriesModule,
 		GoalsModule,
@@ -37,6 +40,7 @@ import { ClarificationsService } from './clarifications.service'
 		ChatGreetingsService,
 		ChatContextService,
 		ChatEditsService,
+		ChatMeasurementCardsService,
 		ChatRepository,
 		ChatResponseService,
 		ChatTurnService,

@@ -87,6 +87,20 @@ export class MeasurementsRepository {
 		})
 	}
 
+	/** The values that came from these user messages (the chat cards), WEIGHT before WAIST. */
+	findByMessageIds({
+		userId,
+		messageIds,
+	}: {
+		userId: string
+		messageIds: string[]
+	}): Promise<Measurement[]> {
+		return this.prisma.measurement.findMany({
+			where: { userId, messageId: { in: messageIds } },
+			orderBy: { kind: 'asc' },
+		})
+	}
+
 	/** Newest day first. */
 	findRecent(
 		{ userId, kind, take }: { userId: string; kind: MeasurementKind; take: number },

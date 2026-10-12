@@ -14,7 +14,10 @@ interface BuildResponseParams {
 	timezone: string
 	/** null for a replay: the day of the logged meal, else of the reply. */
 	localDate: Date | null
-	edited: EditedMessages
+	edited: EditedMessages & {
+		/** User messages whose weight or waist this turn replaced: their replies lose the card. */
+		replacedMeasurementMessageIds?: string[]
+	}
 }
 
 /** What POST /messages returns: the turn, the day totals and the earlier cards it changed. */
@@ -56,10 +59,20 @@ export class ChatResponseService {
 	/** The earlier replies whose cards or questions this turn changed, as they are now. */
 	private async findUpdatedMessages(
 		userId: string,
-		{ sourceMessageIds, replyIds }: EditedMessages,
+		{
+			sourceMessageIds,
+			replyIds,
+			replacedMeasurementMessageIds = [],
+		}: BuildResponseParams['edited'],
 		currentReplyId: string,
 	): Promise<ChatMessage[]> {
-		if (sourceMessageIds.length === 0 && replyIds.length === 0) return []
+		if (
+			sourceMessageIds.length === 0 &&
+			replyIds.length === 0 &&
+			replacedMeasurementMessageIds.length === 0
+		) {
+			return []
+		}
 		// a question answered in words changed the entries of the message it asked about
 		const answered = await this.chatRepository.findAssistantMessages({
 			userId,
@@ -71,11 +84,12 @@ export class ChatResponseService {
 			...answered.flatMap((message) => message.replyToId ?? []),
 		]
 		// every card of a meal tells the whole meal's kcal («Вечеря разом»)
-		const replyToIds = await this.entriesService.getMessagesSharingMeals(userId, changedSources)
+		const sharingMeals = await this.entriesService.getMessagesSharingMeals(userId, changedSources)
+		// a replaced weight has no meal, so the meals lookup would never find its message
 		const messages = await this.chatRepository.findAssistantMessages({
 			userId,
 			ids: replyIds,
-			replyToIds,
+			replyToIds: [...new Set([...sharingMeals, ...replacedMeasurementMessageIds])],
 		})
 		const earlier = messages.filter((message) => message.id !== currentReplyId)
 		return this.chatFeed.toChatMessages(userId, earlier)

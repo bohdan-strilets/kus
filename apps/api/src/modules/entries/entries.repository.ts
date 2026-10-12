@@ -88,16 +88,11 @@ export class EntriesRepository {
 	}
 
 	/** kcal of the active entries of active meals in [from, to], with their day. */
-	findRangeEntries({
-		userId,
-		from,
-		to,
-	}: {
-		userId: string
-		from: Date
-		to: Date
-	}): Promise<{ kcal: number; meal: { localDate: Date } }[]> {
-		return this.prisma.foodEntry.findMany({
+	findRangeEntries(
+		{ userId, from, to }: { userId: string; from: Date; to: Date },
+		tx?: Prisma.TransactionClient,
+	): Promise<{ kcal: number; meal: { localDate: Date } }[]> {
+		return (tx ?? this.prisma).foodEntry.findMany({
 			where: {
 				userId,
 				deletedAt: null,

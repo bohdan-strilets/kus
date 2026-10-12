@@ -2,6 +2,7 @@ import type { Measurement, MeasurementKind, MeasurementSource } from '../../gene
 
 /** A stored value with the Decimal turned into a number (one decimal). */
 export interface MeasurementValue {
+	id: string
 	kind: MeasurementKind
 	value: number
 	localDate: Date
@@ -11,6 +12,7 @@ export interface MeasurementValue {
 }
 
 export const toMeasurementValue = (row: Measurement): MeasurementValue => ({
+	id: row.id,
 	kind: row.kind,
 	value: row.value.toNumber(),
 	localDate: row.localDate,

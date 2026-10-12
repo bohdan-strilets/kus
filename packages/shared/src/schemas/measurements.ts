@@ -35,7 +35,7 @@ export type MeasurementChartPoint = z.infer<typeof measurementChartPointSchema>
 export const measurementCardSchema = measurementResponseSchema.extend({
 	/** Current minus the first weigh-in of this kind. */
 	fromStart: z.number().nullable(),
-	/** Distance to the target weight; null for WAIST, without a target, and for MAINTAIN. */
+	/** Kg left in the direction of the goal, never negative (0 once reached or passed); null for WAIST, without a target, and for MAINTAIN. */
 	toGoal: z.number().nullable(),
 	/** Target reached or passed in the goal direction (see getIsGoalReached); null without a direction. */
 	isGoalReached: z.boolean().nullable(),

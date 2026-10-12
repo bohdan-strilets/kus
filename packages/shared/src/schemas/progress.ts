@@ -34,7 +34,7 @@ export type ProgressWaist = z.infer<typeof progressWaistSchema>
 
 export const progressWeightSchema = progressWaistSchema.extend({
 	target: z.number().nullable(),
-	/** Null without a target and for MAINTAIN. */
+	/** Kg left in the direction of the goal, never negative (0 once reached); null without a target and for MAINTAIN. */
 	toGoal: z.number().nullable(),
 	isGoalReached: z.boolean().nullable(),
 })

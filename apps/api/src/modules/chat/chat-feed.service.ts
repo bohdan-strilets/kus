@@ -1,16 +1,20 @@
 import { Injectable } from '@nestjs/common'
 import {
+	type AchievementResponse,
 	type ChatMessage,
 	type ClarificationResponse,
 	clarifyOptionViewSchema,
 	type ListMessagesQuery,
 	type LoggedMeal,
+	type MeasurementCard,
 } from '@kus/shared'
 import { z } from 'zod'
 
 import { CursorPaginatedResult } from '../../common/pagination'
 import { MessageRole } from '../../generated/prisma/client'
+import { AchievementsService } from '../achievements/achievements.service'
 import { EntriesService } from '../entries/entries.service'
+import { ChatMeasurementCardsService } from './chat-measurement-cards.service'
 import { InvalidCursorException } from './chat.exceptions'
 import {
 	type ClarificationWithEntries,
@@ -39,11 +43,15 @@ const toClarificationResponse = (
 interface ChatMessageExtras {
 	meals: Map<string, LoggedMeal[]>
 	clarifications: ClarificationWithEntries[]
+	/** By the user message that recorded them. */
+	measurements: Map<string, MeasurementCard[]>
+	/** By the assistant reply that announced them. */
+	achievements: Map<string, AchievementResponse[]>
 }
 
 const toChatMessage = (
 	message: MessageWithAttachments,
-	{ meals, clarifications }: ChatMessageExtras,
+	{ meals, clarifications, measurements, achievements }: ChatMessageExtras,
 ): ChatMessage => {
 	const isAssistant = message.role === MessageRole.ASSISTANT
 	const [attachment] = message.attachments
@@ -62,6 +70,9 @@ const toChatMessage = (
 					.filter((clarification) => clarification.messageId === message.id)
 					.map(toClarificationResponse)
 			: [],
+		measurements:
+			isAssistant && message.replyToId ? (measurements.get(message.replyToId) ?? []) : [],
+		achievements: isAssistant ? (achievements.get(message.id) ?? []) : [],
 	}
 }
 
@@ -72,12 +83,14 @@ export class ChatFeedService {
 		private readonly chatRepository: ChatRepository,
 		private readonly clarificationsRepository: ClarificationsRepository,
 		private readonly entriesService: EntriesService,
+		private readonly measurementCards: ChatMeasurementCardsService,
+		private readonly achievementsService: AchievementsService,
 	) {}
 
 	async toChatMessages(userId: string, messages: MessageWithAttachments[]): Promise<ChatMessage[]> {
 		const replies = messages.filter((message) => message.role === MessageRole.ASSISTANT)
 		const sourceIds = replies.flatMap((message) => (message.replyToId ? [message.replyToId] : []))
-		const [meals, clarifications] = await Promise.all([
+		const [meals, clarifications, measurements, achievements] = await Promise.all([
 			this.entriesService.getLoggedMealsByMessage(userId, sourceIds),
 			replies.length > 0
 				? this.clarificationsRepository.findClarifications({
@@ -85,8 +98,15 @@ export class ChatFeedService {
 						messageIds: replies.map((message) => message.id),
 					})
 				: Promise.resolve([]),
+			this.measurementCards.getCardsByMessage(userId, sourceIds),
+			this.achievementsService.findByMessages(
+				userId,
+				replies.map((message) => message.id),
+			),
 		])
-		return messages.map((message) => toChatMessage(message, { meals, clarifications }))
+		return messages.map((message) =>
+			toChatMessage(message, { meals, clarifications, measurements, achievements }),
+		)
 	}
 
 	/** Newest first; `nextCursor` points at the next, older page. */

@@ -64,6 +64,15 @@ export class MeasurementsService {
 		return row ? toMeasurementValue(row) : null
 	}
 
+	async findByMessageIds(query: {
+		userId: string
+		messageIds: string[]
+	}): Promise<MeasurementValue[]> {
+		if (query.messageIds.length === 0) return []
+		const rows = await this.measurementsRepository.findByMessageIds(query)
+		return rows.map(toMeasurementValue)
+	}
+
 	/** Newest day first. */
 	async findRecent(
 		query: { userId: string; kind: MeasurementKind; take: number },

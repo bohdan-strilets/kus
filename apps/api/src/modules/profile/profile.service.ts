@@ -12,7 +12,12 @@ import {
 	type UpdateProfileRequest,
 } from '@kus/shared'
 
-import { GoalType, MeasurementKind, MeasurementSource } from '../../generated/prisma/client'
+import {
+	GoalType,
+	MeasurementKind,
+	MeasurementSource,
+	type Prisma,
+} from '../../generated/prisma/client'
 import { PrismaService } from '../../prisma'
 import { GoalsService } from '../goals/goals.service'
 import { MeasurementsService } from '../measurements/measurements.service'
@@ -26,7 +31,7 @@ import {
 	toProfileResponse,
 } from './profile.mapper'
 import { ProfileRepository } from './profile.repository'
-import type { LatestWeight } from './profile.types'
+import type { LatestWeight, WeightGoal } from './profile.types'
 
 /** «Мої дані», the latest weigh-in and the daily goals: reading, editing, recalculating. */
 @Injectable()
@@ -53,6 +58,16 @@ export class ProfileService {
 	async findTargetWeightKg(userId: string): Promise<number | null> {
 		const profile = await this.profileRepository.findProfile(userId)
 		return profile?.targetWeightKg ?? null
+	}
+
+	/** Where the weight should go: the direction, the target and the planned pace (positive kg a week). */
+	async findWeightGoal(userId: string, tx?: Prisma.TransactionClient): Promise<WeightGoal> {
+		const profile = await this.profileRepository.findProfile(userId, tx)
+		return {
+			goalType: profile?.goalType ?? null,
+			targetWeightKg: profile?.targetWeightKg ?? null,
+			paceKgPerWeek: profile?.paceKgPerWeek ?? null,
+		}
 	}
 
 	async getProfile(userId: string): Promise<ProfileResponse> {

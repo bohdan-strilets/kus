@@ -100,8 +100,9 @@ export class EntriesService {
 	async getDaysKcal(
 		userId: string,
 		{ from, to }: { from: Date; to: Date },
+		tx?: Prisma.TransactionClient,
 	): Promise<Map<string, { kcal: number; entryCount: number }>> {
-		const entries = await this.entriesRepository.findRangeEntries({ userId, from, to })
+		const entries = await this.entriesRepository.findRangeEntries({ userId, from, to }, tx)
 		const days = new Map<string, { kcal: number; entryCount: number }>()
 		for (const entry of entries) {
 			const localDate = formatDbDate(entry.meal.localDate)

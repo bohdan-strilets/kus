@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 
 import { DAY_QUERY_KEY } from '@/entities/day'
 import { MESSAGES_QUERY_KEY, replaceFeedMessage } from '@/entities/message'
+import { useGoalCelebrationStore } from '@/entities/stats'
 import { getApiError } from '@/shared/api'
 import { useToast } from '@/shared/ui'
 
@@ -28,6 +29,7 @@ export const useAnswerClarification = (): AnswerClarification => {
 		mutationFn: postClarificationAnswer,
 		onSuccess: (message) => {
 			replaceFeedMessage(queryClient, message)
+			useGoalCelebrationStore.getState().arm(message.id)
 			void queryClient.invalidateQueries({ queryKey: DAY_QUERY_KEY })
 			// the meal also holds other messages' food: their cards' «разом» changed too
 			if (message.meals.some((meal) => meal.mealTotalKcal !== null)) {

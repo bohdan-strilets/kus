@@ -3,6 +3,7 @@ import { hashKey, type QueryClient } from '@tanstack/react-query'
 
 import { useFreshReplyStore } from '@/entities/message'
 import { SESSION_QUERY_KEY } from '@/entities/session'
+import { useGoalCelebrationStore } from '@/entities/stats'
 import {
 	useComposerDraftStore,
 	useOutboxStore,
@@ -28,6 +29,7 @@ export const syncOutboxOwner = (queryClient: QueryClient): (() => void) => {
 		usePhotoDraftStore.getState().claim(ownerId)
 		usePhotoSessionStore.getState().claim(ownerId)
 		useFreshReplyStore.getState().claim(ownerId)
+		useGoalCelebrationStore.getState().claim(ownerId)
 	}
 	claim()
 	return queryClient.getQueryCache().subscribe((event) => {

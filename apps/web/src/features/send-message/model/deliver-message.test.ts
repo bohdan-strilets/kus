@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { playSound } from '@/shared/lib'
 import { DAY_QUERY_KEY } from '@/entities/day'
 import { MESSAGES_QUERY_KEY, type MessagesPage, useFreshReplyStore } from '@/entities/message'
+import { useGoalCelebrationStore } from '@/entities/stats'
 
 import { postMessage } from '../api/send-message'
 import { deliverMessage } from './deliver-message'
@@ -299,6 +300,12 @@ describe('deliverMessage sounds and fresh cards', () => {
 		useOutboxStore.setState({ items: {} })
 		usePhotoSessionStore.setState({ uploadProgress: {}, previews: {} })
 		useFreshReplyStore.setState({ ownerId: null, freshAt: {} })
+		useGoalCelebrationStore.setState({
+			ownerId: null,
+			armed: null,
+			pending: null,
+			celebratedReplyId: null,
+		})
 		vi.mocked(postMessage).mockReset()
 		vi.mocked(playSound).mockClear()
 		vi.stubGlobal('navigator', { onLine: true })
@@ -335,6 +342,38 @@ describe('deliverMessage sounds and fresh cards', () => {
 
 		expect(playSound).toHaveBeenCalledWith('clarify')
 		expect(playSound).not.toHaveBeenCalledWith('kusik')
+	})
+
+	it('arms the goal celebration with the reply id before the day refetch', async () => {
+		const client = createClient()
+		const armedWhenDayInvalidated: boolean[] = []
+		vi.spyOn(client, 'invalidateQueries').mockImplementation(() => {
+			armedWhenDayInvalidated.push(useGoalCelebrationStore.getState().isArmed())
+			return Promise.resolve()
+		})
+		vi.mocked(postMessage).mockResolvedValueOnce(turnWith({ meals: [MEAL] }))
+
+		await deliverMessage(client, { clientMessageId: CLIENT_ID, text: 'тарілка супу' })
+
+		expect(useGoalCelebrationStore.getState().isArmed()).toBe(true)
+		expect(useGoalCelebrationStore.getState().armed?.messageId).toBe(turn.assistantMessage.id)
+		expect(armedWhenDayInvalidated).toEqual([true])
+	})
+
+	it('does not arm the goal celebration when the request fails', async () => {
+		vi.mocked(postMessage).mockRejectedValueOnce(networkError)
+
+		await deliverMessage(createClient(), { clientMessageId: CLIENT_ID, text: 'тарілка супу' })
+
+		expect(useGoalCelebrationStore.getState().isArmed()).toBe(false)
+	})
+
+	it('does not arm the goal celebration for a photo without a connection', async () => {
+		vi.stubGlobal('navigator', { onLine: false })
+
+		await deliverMessage(createClient(), { clientMessageId: CLIENT_ID, text: '', photo })
+
+		expect(useGoalCelebrationStore.getState().isArmed()).toBe(false)
 	})
 
 	it('plays «oops» when the request fails on the network', async () => {

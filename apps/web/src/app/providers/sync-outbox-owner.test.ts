@@ -1,8 +1,9 @@
 import { QueryClient } from '@tanstack/react-query'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { useFreshReplyStore } from '@/entities/message'
 import { SESSION_QUERY_KEY } from '@/entities/session'
+import { hasCelebratedGoal, markGoalCelebrated, useGoalCelebrationStore } from '@/entities/stats'
 import { useComposerDraftStore, useOutboxStore } from '@/features/send-message'
 
 import { syncOutboxOwner } from './sync-outbox-owner'
@@ -23,11 +24,83 @@ const failDraft = (): void => {
 	})
 }
 
+const TODAY = '2026-10-12'
+
+const createMemoryStorage = (): Storage => {
+	const items = new Map<string, string>()
+	return {
+		get length() {
+			return items.size
+		},
+		clear: () => {
+			items.clear()
+		},
+		getItem: (key) => items.get(key) ?? null,
+		key: (index) => [...items.keys()][index] ?? null,
+		removeItem: (key) => {
+			items.delete(key)
+		},
+		setItem: (key, value) => {
+			items.set(key, value)
+		},
+	}
+}
+
 describe('syncOutboxOwner', () => {
 	beforeEach(() => {
+		vi.stubGlobal('localStorage', createMemoryStorage())
 		useOutboxStore.setState({ ownerId: null, items: {} })
 		useComposerDraftStore.setState({ ownerId: null, text: '' })
 		useFreshReplyStore.setState({ ownerId: null, freshAt: {} })
+		useGoalCelebrationStore.setState({
+			ownerId: null,
+			armed: null,
+			pending: null,
+			celebratedReplyId: null,
+		})
+	})
+
+	afterEach(() => {
+		vi.unstubAllGlobals()
+	})
+
+	it('resets the goal celebration and clears the previous user flags for another user, keeps them for the same one', () => {
+		const queryClient = new QueryClient()
+		const stop = syncOutboxOwner(queryClient)
+		queryClient.setQueryData(SESSION_QUERY_KEY, USER_A)
+		markGoalCelebrated(USER_A.id, TODAY)
+		useGoalCelebrationStore.getState().arm('m1')
+		useGoalCelebrationStore.setState({ celebratedReplyId: 'm1' })
+
+		queryClient.setQueryData(SESSION_QUERY_KEY, { ...USER_A })
+		expect(useGoalCelebrationStore.getState()).toMatchObject({
+			ownerId: USER_A.id,
+			celebratedReplyId: 'm1',
+		})
+		expect(hasCelebratedGoal(USER_A.id, TODAY)).toBe(true)
+
+		queryClient.setQueryData(SESSION_QUERY_KEY, USER_B)
+		expect(useGoalCelebrationStore.getState()).toMatchObject({
+			ownerId: USER_B.id,
+			armed: null,
+			pending: null,
+			celebratedReplyId: null,
+		})
+		expect(hasCelebratedGoal(USER_A.id, TODAY)).toBe(false)
+		stop()
+	})
+
+	it('clears the goal flags after logout', () => {
+		const queryClient = new QueryClient()
+		const stop = syncOutboxOwner(queryClient)
+		queryClient.setQueryData(SESSION_QUERY_KEY, USER_A)
+		markGoalCelebrated(USER_A.id, TODAY)
+
+		queryClient.setQueryData(SESSION_QUERY_KEY, null)
+
+		expect(useGoalCelebrationStore.getState().ownerId).toBeNull()
+		expect(hasCelebratedGoal(USER_A.id, TODAY)).toBe(false)
+		stop()
 	})
 
 	it('drops the fresh-reply marks for another user and after logout, keeps them for the same one', () => {

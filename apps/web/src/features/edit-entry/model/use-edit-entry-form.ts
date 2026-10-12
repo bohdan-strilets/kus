@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next'
 
 import { DAY_QUERY_KEY } from '@/entities/day'
 import { MESSAGES_QUERY_KEY } from '@/entities/message'
+import { useGoalCelebrationStore } from '@/entities/stats'
 import { getApiError } from '@/shared/api'
 import { useToast } from '@/shared/ui'
 
@@ -78,6 +79,7 @@ export const useEditEntryForm = ({
 	const update = useMutation({
 		mutationFn: patchFoodEntry,
 		onSuccess: () => {
+			useGoalCelebrationStore.getState().arm(null)
 			refresh()
 			onDone()
 		},
@@ -88,6 +90,7 @@ export const useEditEntryForm = ({
 	const removal = useMutation({
 		mutationFn: deleteFoodEntry,
 		onSuccess: () => {
+			useGoalCelebrationStore.getState().arm(null)
 			refresh()
 			onDone()
 		},

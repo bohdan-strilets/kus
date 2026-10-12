@@ -1,6 +1,18 @@
+export { detectGoalReached } from './lib/detect-goal-reached'
 export { getDayProgress } from './lib/get-day-progress'
 export { type DayStats, getDayStats } from './lib/get-day-stats'
 export { type GaugeState, getGaugeState, type GaugeStatus } from './lib/get-gauge-state'
+export {
+	clearGoalCelebratedFlags,
+	hasCelebratedGoal,
+	markGoalCelebrated,
+} from './lib/goal-celebrated-flag'
+export {
+	GOAL_ARM_WINDOW_MS,
+	GOAL_PENDING_TTL_MS,
+	type GoalCelebration,
+	useGoalCelebrationStore,
+} from './model/goal-celebration-store'
 export {
 	MACRO_ORDER,
 	type MacroKey,

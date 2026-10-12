@@ -7,6 +7,7 @@ import {
 	replaceFeedMessage,
 	useFreshReplyStore,
 } from '@/entities/message'
+import { useGoalCelebrationStore } from '@/entities/stats'
 import { getApiError } from '@/shared/api'
 import { playSound } from '@/shared/lib'
 
@@ -69,6 +70,8 @@ export const deliverMessage = async (
 		)
 		// before the feed gets the turn, so the first render of its cards already sees them as fresh
 		useFreshReplyStore.getState().markFresh(turn.assistantMessage)
+		// before the day refetch, so its result is seen as caused by this message
+		useGoalCelebrationStore.getState().arm(turn.assistantMessage.id)
 		addTurnToFeed(queryClient, turn)
 		// earlier cards this turn corrected, deleted from or answered in words
 		for (const updated of turn.updatedMessages) replaceFeedMessage(queryClient, updated)

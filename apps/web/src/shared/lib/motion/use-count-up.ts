@@ -7,6 +7,8 @@ interface UseCountUpOptions {
 	format?: (value: number) => string
 	/** Start here instead of the value this hook showed last (useRevealedValue across mounts). */
 	from?: number
+	/** First-show start value (default 0): a card that was already on screen must not count up from 0. */
+	initial?: number
 }
 
 /**
@@ -15,10 +17,10 @@ interface UseCountUpOptions {
  */
 export const useCountUp = <T extends HTMLElement>(
 	value: number,
-	{ durationMs, format, from }: UseCountUpOptions = {},
+	{ durationMs, format, from, initial }: UseCountUpOptions = {},
 ) => {
 	const ref = useRef<T>(null)
-	const previousValue = useRef(0)
+	const previousValue = useRef(initial ?? 0)
 
 	useEffect(() => {
 		const element = ref.current

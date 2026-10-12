@@ -31,6 +31,7 @@ const params: ParseFoodParams = {
 	localDate: new Date('2026-10-07T00:00:00Z'),
 	context: EMPTY_CONTEXT,
 	text: '3 варені яйця і 100 г гречки',
+	findPreviousWeight: () => Promise.resolve(null),
 }
 
 describe('AiService.parseFood', () => {

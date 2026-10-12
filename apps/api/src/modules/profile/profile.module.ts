@@ -11,5 +11,6 @@ import { ProfileService } from './profile.service'
 	imports: [UsersModule, GoalsModule, MeasurementsModule],
 	controllers: [ProfileController],
 	providers: [ProfileService, ProfileRepository],
+	exports: [ProfileService],
 })
 export class ProfileModule {}

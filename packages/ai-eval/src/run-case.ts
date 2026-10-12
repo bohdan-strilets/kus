@@ -28,6 +28,7 @@ export const BASE_CONTEXT: FoodParseContext = {
 	deletedEntries: [],
 	openClarifications: [],
 	goal: null,
+	measurements: { today: '2026-10-07', weights: [], waist: null, targetWeightKg: null },
 	memory: [],
 	history: [],
 }

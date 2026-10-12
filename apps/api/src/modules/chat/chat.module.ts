@@ -3,7 +3,9 @@ import { Module } from '@nestjs/common'
 import { AiModule } from '../ai/ai.module'
 import { EntriesModule } from '../entries/entries.module'
 import { GoalsModule } from '../goals/goals.module'
+import { MeasurementsModule } from '../measurements/measurements.module'
 import { MemoryModule } from '../memory/memory.module'
+import { ProfileModule } from '../profile/profile.module'
 import { UsersModule } from '../users/users.module'
 import { ChatContextService } from './chat-context.service'
 import { ChatEditsService } from './chat-edits.service'
@@ -19,7 +21,15 @@ import { ClarificationsRepository } from './clarifications.repository'
 import { ClarificationsService } from './clarifications.service'
 
 @Module({
-	imports: [AiModule, EntriesModule, GoalsModule, MemoryModule, UsersModule],
+	imports: [
+		AiModule,
+		EntriesModule,
+		GoalsModule,
+		MeasurementsModule,
+		MemoryModule,
+		ProfileModule,
+		UsersModule,
+	],
 	controllers: [ChatController, ClarificationsController],
 	providers: [
 		ChatService,

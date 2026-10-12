@@ -1,16 +1,17 @@
 import { Injectable, Logger } from '@nestjs/common'
 import type { SendMessageResponse } from '@kus/shared'
 
-import { getLocalDate } from '../../common/time'
-import { MessageStatus, Prisma } from '../../generated/prisma/client'
+import { formatDbDate, getLocalDate } from '../../common/time'
+import { MeasurementKind, MessageStatus, Prisma } from '../../generated/prisma/client'
 import { AiUsageService } from '../ai/ai-usage.service'
 import { AiService } from '../ai/ai.service'
+import { MeasurementsService } from '../measurements/measurements.service'
 import { MemoryService } from '../memory/memory.service'
 import { UsersService } from '../users/users.service'
 import { ChatContextService } from './chat-context.service'
-import { type EditedMessages, NO_EDITED_MESSAGES } from './chat-edits.service'
+import { NO_EDITED_MESSAGES } from './chat-edits.service'
 import { ChatResponseService } from './chat-response.service'
-import { ChatTurnService, type TurnParams } from './chat-turn.service'
+import { ChatTurnService, type TurnParams, type TurnResult } from './chat-turn.service'
 import { STALE_PENDING_MS } from './chat.constants'
 import { ClientMessageIdReusedException, MessageInProgressException } from './chat.exceptions'
 import { ChatRepository, type MessageWithAttachments } from './chat.repository'
@@ -41,6 +42,7 @@ export class ChatService {
 		private readonly aiUsage: AiUsageService,
 		private readonly memoryService: MemoryService,
 		private readonly usersService: UsersService,
+		private readonly measurementsService: MeasurementsService,
 	) {}
 
 	async sendMessage(
@@ -124,7 +126,7 @@ export class ChatService {
 		return { ...existing, status: MessageStatus.PENDING }
 	}
 
-	private async processTurn(params: TurnParams): Promise<EditedMessages> {
+	private async processTurn(params: TurnParams): Promise<TurnResult> {
 		const { userId, message, photo } = params
 		try {
 			await this.aiUsage.reserveUsage({
@@ -142,6 +144,16 @@ export class ChatService {
 				messageId: message.id,
 				localDate: params.localDate,
 				context,
+				findPreviousWeight: async (localDate) => {
+					const previous = await this.measurementsService.findBefore({
+						userId,
+						kind: MeasurementKind.WEIGHT,
+						before: new Date(`${localDate}T00:00:00Z`),
+					})
+					return previous
+						? { value: previous.value, localDate: formatDbDate(previous.localDate) }
+						: null
+				},
 				text: params.text ?? '',
 				// the only place the bytes become base64: it goes straight into the request body
 				image: photo

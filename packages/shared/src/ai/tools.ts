@@ -2,7 +2,7 @@
 // After any change here: run `pnpm --filter ai-eval eval` and add a line to PROMPT_CHANGELOG.md.
 import { z } from 'zod'
 
-import { mealTypeSchema } from '../schemas/enums.js'
+import { mealTypeSchema, measurementKindSchema } from '../schemas/enums.js'
 import {
 	foodEntryBaseSchema,
 	MAX_ENTRY_GRAMS,
@@ -19,6 +19,7 @@ import {
 
 export const AI_TOOL_NAMES = {
 	logFood: 'log_food',
+	logMeasurement: 'log_measurement',
 	clarify: 'clarify',
 	correctEntry: 'correct_entry',
 	deleteEntry: 'delete_entry',
@@ -204,8 +205,30 @@ export const replyInputSchema = z.object({
 
 export type ReplyInput = z.infer<typeof replyInputSchema>
 
+export const logMeasurementInputSchema = z.object({
+	kind: measurementKindSchema.describe('WEIGHT in kg, WAIST in cm'),
+	value: z
+		.number()
+		.positive()
+		.describe('The number as the user wrote it, one decimal: 82.4 (kg) or 94 (cm)'),
+	date: z.iso
+		.date()
+		.nullable()
+		.default(null)
+		.describe(
+			'YYYY-MM-DD when the user names another day ("вчора", "у понеділок"), at most 7 days back; null for today',
+		),
+	confirmedJump: z
+		.boolean()
+		.default(false)
+		.describe('true only after the user confirmed an unusual weight change in a later message'),
+})
+
+export type LogMeasurementInput = z.infer<typeof logMeasurementInputSchema>
+
 export const AI_TOOL_SCHEMAS: Record<AiToolName, z.ZodType> = {
 	log_food: logFoodInputSchema,
+	log_measurement: logMeasurementInputSchema,
 	clarify: clarifyInputSchema,
 	correct_entry: correctEntryInputSchema,
 	delete_entry: deleteEntryInputSchema,
@@ -219,6 +242,8 @@ export const AI_TOOL_SCHEMAS: Record<AiToolName, z.ZodType> = {
 const AI_TOOL_DESCRIPTIONS: Record<AiToolName, string> = {
 	log_food:
 		'Log everything the user says they ate or drank in this message. Always log your best estimate, even when you also ask a clarify question. Never to fix something already logged.',
+	log_measurement:
+		'Log body weight (kg) or waist (cm) the user reports. Fix a wrong value of a day by logging it again for that date. confirmedJump only after the user confirmed an unusual change in a later message.',
 	clarify:
 		'Ask about logged items only when the answer changes their kcal a lot (by 80+ kcal and 15%+), or with kind "rename" which real food a strange name was (no kcal threshold). Call together with log_food, at most 2 per message.',
 	correct_entry:

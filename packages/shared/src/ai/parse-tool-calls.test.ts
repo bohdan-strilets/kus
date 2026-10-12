@@ -60,6 +60,7 @@ const options: ParseRefs = {
 	entries: new Map(),
 	deletedEntryRefs: new Set(),
 	clarifications: new Map(),
+	today: '2026-10-07',
 }
 
 describe('parseToolCalls', () => {

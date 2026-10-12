@@ -9,6 +9,8 @@ import {
 	type ClarifyInput,
 	clarifyInputSchema,
 	type LogFoodInput,
+	type LogMeasurementInput,
+	logMeasurementInputSchema,
 	logFoodInputSchema,
 	type NotFoodInput,
 	notFoodInputSchema,
@@ -36,6 +38,7 @@ import {
 	restoreEntryInputSchema,
 } from './edit-tools.js'
 import { getEditErrors, type ParseRefs } from './entry-edits.js'
+import { getMeasurementErrors } from './measurements.js'
 
 /** Hints appended to validation errors so the model can fix them on the retry. */
 const ERROR_HINTS: Record<string, string> = {
@@ -57,13 +60,22 @@ export interface ParsedToolCall {
 	error: string | null
 }
 
-/** `log` may also change earlier entries; `edit` only changes them and answers with `text`. */
+/**
+ * `log` may also change earlier entries; `edit` only changes them and answers with `text`.
+ * Weight and waist ride along with `log` and `reply`.
+ */
 export type FoodParseDecision =
-	| { kind: 'log'; log: LogFoodInput; clarifications: ClarificationResult[]; edits: EntryEdits }
+	| {
+			kind: 'log'
+			log: LogFoodInput
+			clarifications: ClarificationResult[]
+			edits: EntryEdits
+			measurements: LogMeasurementInput[]
+	  }
 	| { kind: 'edit'; edits: EntryEdits; text: string }
 	| { kind: 'not_food'; reply: string }
 	| { kind: 'photo_unusable'; reason: PhotoUnusableReason; reply: string }
-	| { kind: 'reply'; text: string }
+	| { kind: 'reply'; text: string; measurements: LogMeasurementInput[] }
 
 export type FoodParseResult =
 	| { ok: true; decision: FoodParseDecision; calls: ParsedToolCall[] }
@@ -79,6 +91,7 @@ export interface ParseMessageOptions {
 
 type ValidatedCall =
 	| { name: typeof AI_TOOL_NAMES.logFood; data: LogFoodInput }
+	| { name: typeof AI_TOOL_NAMES.logMeasurement; data: LogMeasurementInput }
 	| { name: typeof AI_TOOL_NAMES.clarify; data: ClarifyInput }
 	| { name: typeof AI_TOOL_NAMES.correctEntry; data: CorrectEntryInput }
 	| { name: typeof AI_TOOL_NAMES.deleteEntry; data: DeleteEntryInput }
@@ -102,6 +115,8 @@ const parseInput = (name: AiToolName, value: unknown): InputParse => {
 	switch (name) {
 		case AI_TOOL_NAMES.logFood:
 			return toInputParse(logFoodInputSchema.safeParse(value), (data) => ({ name, data }))
+		case AI_TOOL_NAMES.logMeasurement:
+			return toInputParse(logMeasurementInputSchema.safeParse(value), (data) => ({ name, data }))
 		case AI_TOOL_NAMES.clarify:
 			return toInputParse(clarifyInputSchema.safeParse(value), (data) => ({ name, data }))
 		case AI_TOOL_NAMES.correctEntry:
@@ -201,6 +216,9 @@ const ONE_DECISION_ERROR =
 const NO_PHOTO_ERROR =
 	'photo_unusable: this message has no photo — answer with reply (or not_food) instead'
 
+const MEASUREMENT_WITH_ANSWER_ERROR =
+	'log_measurement goes together with exactly one log_food or reply — not with not_food, photo_unusable or edit tools'
+
 type Decision = { decision: FoodParseDecision; errors: [] } | { decision: null; errors: string[] }
 
 const collectEdits = (valid: ValidatedCall[]): EntryEdits => ({
@@ -232,6 +250,9 @@ const decide = (
 		call.name === AI_TOOL_NAMES.photoUnusable ? [call.data] : [],
 	)
 	const replies = valid.flatMap((call) => (call.name === AI_TOOL_NAMES.reply ? [call.data] : []))
+	const measurements = valid.flatMap((call) =>
+		call.name === AI_TOOL_NAMES.logMeasurement ? [call.data] : [],
+	)
 	const edits = collectEdits(valid)
 	const isEditing = hasEdits(edits)
 	const [log] = logs
@@ -244,11 +265,23 @@ const decide = (
 	if (answers !== 1 || ((rejected || photoUnusable) && isEditing))
 		return { decision: null, errors: [ONE_DECISION_ERROR] }
 	if (photoUnusable && !hasImage) return { decision: null, errors: [NO_PHOTO_ERROR] }
+	const hasMeasurements = measurements.length > 0
+	if (hasMeasurements && (rejected || photoUnusable || (reply && isEditing))) {
+		return { decision: null, errors: [MEASUREMENT_WITH_ANSWER_ERROR] }
+	}
+	const measurementErrors = getMeasurementErrors(measurements, refs)
 	if (log) {
-		const errors = [...checkLogReferences(log, clarifications, refs), ...getEditErrors(edits, refs)]
+		const errors = [
+			...checkLogReferences(log, clarifications, refs),
+			...getEditErrors(edits, refs),
+			...measurementErrors,
+		]
 		if (errors.length > 0) return { decision: null, errors }
 		const selected = filterClarifications(log, clarifications)
-		return { decision: { kind: 'log', log, clarifications: selected, edits }, errors: [] }
+		return {
+			decision: { kind: 'log', log, clarifications: selected, edits, measurements },
+			errors: [],
+		}
 	}
 	if (clarifications.length > 0) return { decision: null, errors: [ONE_DECISION_ERROR] }
 	if (rejected) return { decision: { kind: 'not_food', reply: rejected.reply }, errors: [] }
@@ -263,7 +296,10 @@ const decide = (
 		}
 	}
 	if (!reply) return { decision: null, errors: [ONE_DECISION_ERROR] }
-	if (!isEditing) return { decision: { kind: 'reply', text: reply.text }, errors: [] }
+	if (!isEditing) {
+		if (measurementErrors.length > 0) return { decision: null, errors: measurementErrors }
+		return { decision: { kind: 'reply', text: reply.text, measurements }, errors: [] }
+	}
 	const errors = getEditErrors(edits, refs)
 	if (errors.length > 0) return { decision: null, errors }
 	return { decision: { kind: 'edit', edits, text: reply.text }, errors: [] }

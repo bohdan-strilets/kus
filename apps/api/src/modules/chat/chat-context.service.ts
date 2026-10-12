@@ -7,13 +7,16 @@ import {
 	HISTORY_MAX_MESSAGES,
 	type HistoryTurn,
 	MAX_CONTEXT_OPEN_CLARIFICATIONS,
+	type MeasurementsContext,
 	type MemoryFoodContext,
 } from '@kus/shared'
 
 import { formatDbDate, formatLocalTime } from '../../common/time'
-import { MessageRole } from '../../generated/prisma/client'
+import { MeasurementKind, MessageRole } from '../../generated/prisma/client'
 import { type DaySummary, EntriesService } from '../entries/entries.service'
 import { GoalsService } from '../goals/goals.service'
+import { MeasurementsService } from '../measurements/measurements.service'
+import { ProfileService } from '../profile/profile.service'
 import { ChatRepository, type MessageWithAttachments } from './chat.repository'
 import { ClarificationsRepository } from './clarifications.repository'
 import { buildEditContext, type EditRefIds } from './edit-context'
@@ -42,6 +45,13 @@ const toHistoryTurn = (message: MessageWithAttachments): HistoryTurn[] => {
 	return message.content === null ? [] : [{ role, content: message.content }]
 }
 
+const CONTEXT_WEIGHT_COUNT = 2
+
+const toPoint = ({ value, localDate }: { value: number; localDate: Date }) => ({
+	value,
+	localDate: formatDbDate(localDate),
+})
+
 /** What the model gets besides the message: day so far, goal, matching saved foods, last turns. */
 @Injectable()
 export class ChatContextService {
@@ -50,6 +60,8 @@ export class ChatContextService {
 		private readonly clarificationsRepository: ClarificationsRepository,
 		private readonly entriesService: EntriesService,
 		private readonly goalsService: GoalsService,
+		private readonly measurementsService: MeasurementsService,
+		private readonly profileService: ProfileService,
 	) {}
 
 	/** Day totals vs goal; the remainder is computed here, never by the model. */
@@ -70,6 +82,28 @@ export class ChatContextService {
 		}
 	}
 
+	/** The latest weights and waist to compare a new one with; the model calculates nothing. */
+	private async getMeasurementsContext(
+		userId: string,
+		localDate: Date,
+	): Promise<MeasurementsContext> {
+		const [weights, waist, targetWeightKg] = await Promise.all([
+			this.measurementsService.findRecent({
+				userId,
+				kind: MeasurementKind.WEIGHT,
+				take: CONTEXT_WEIGHT_COUNT,
+			}),
+			this.measurementsService.findLatest({ userId, kind: MeasurementKind.WAIST }),
+			this.profileService.findTargetWeightKg(userId),
+		])
+		return {
+			today: formatDbDate(localDate),
+			weights: weights.map(toPoint),
+			waist: waist ? toPoint(waist) : null,
+			targetWeightKg,
+		}
+	}
+
 	/** The model input and the ref → id map its edit tools are checked against. */
 	async buildContext({
 		userId,
@@ -79,7 +113,7 @@ export class ChatContextService {
 		localDate,
 		memory,
 	}: BuildContextParams): Promise<{ context: FoodParseContext; refIds: EditRefIds }> {
-		const [{ summary, goal, totals }, history, editable] = await Promise.all([
+		const [{ summary, goal, totals }, history, editable, measurements] = await Promise.all([
 			this.getDayOverview(userId, localDate),
 			this.chatRepository.findHistory({
 				userId,
@@ -87,6 +121,7 @@ export class ChatContextService {
 				limit: HISTORY_MAX_MESSAGES,
 			}),
 			this.entriesService.getEditableEntries(userId, localDate),
+			this.getMeasurementsContext(userId, localDate),
 		])
 		const clarifications = await this.clarificationsRepository.findOpenClarifications({
 			userId,
@@ -113,6 +148,7 @@ export class ChatContextService {
 				meals: summary.meals,
 				...edit,
 				goal: goalContext,
+				measurements,
 				memory,
 				history: history.reverse().flatMap(toHistoryTurn),
 			},

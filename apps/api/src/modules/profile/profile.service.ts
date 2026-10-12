@@ -50,6 +50,11 @@ export class ProfileService {
 		return latest ? { value: latest.value, localDate: latest.localDate } : null
 	}
 
+	async findTargetWeightKg(userId: string): Promise<number | null> {
+		const profile = await this.profileRepository.findProfile(userId)
+		return profile?.targetWeightKg ?? null
+	}
+
 	async getProfile(userId: string): Promise<ProfileResponse> {
 		const user = await this.usersService.getMe(userId)
 		const { today, year } = getClock(user.timezone)

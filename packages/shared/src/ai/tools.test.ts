@@ -10,6 +10,7 @@ describe('getAiFunctionTools', () => {
 	it('exposes the tools in a stable order', () => {
 		expect(tools.map((tool) => tool.function.name)).toEqual([
 			'log_food',
+			'log_measurement',
 			'clarify',
 			'correct_entry',
 			'delete_entry',
@@ -60,6 +61,7 @@ const context: FoodParseContext = {
 	deletedEntries: [],
 	openClarifications: [],
 	goal: { dailyKcal: 2000, protein: 140, fat: 70, carbs: 200, remainingKcal: 1580 },
+	measurements: { today: '2026-10-07', weights: [], waist: null, targetWeightKg: null },
 	memory: [],
 	history: [],
 }

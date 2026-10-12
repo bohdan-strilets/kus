@@ -11,9 +11,14 @@ import {
 	createFoodParseRequest,
 	type FoodParseContext,
 	type FoodParseDecision,
+	type FoodParseResult,
+	getJumpErrors,
+	getMeasurementDay,
 	getParseRefs,
 	getRawToolCalls,
 	isOutputTruncated,
+	type LogMeasurementInput,
+	type MeasurementPoint,
 	type ParsedToolCall,
 	parseToolCalls,
 } from '@kus/shared'
@@ -52,6 +57,11 @@ export interface ParseFoodParams {
 	text: string
 	/** The photo of the message. Its base64 only goes into the request body, never into a log. */
 	image?: AiImageInput
+	/**
+	 * The user's nearest weight before a day (`YYYY-MM-DD`), for the jump check: it asks the database,
+	 * not the context, so a backdated weight is compared with its real neighbour.
+	 */
+	findPreviousWeight: (localDate: string) => Promise<MeasurementPoint | null>
 }
 
 interface CompletionResult {
@@ -115,9 +125,12 @@ export class AiService {
 
 		for (let attempt = 0; attempt <= AI_VALIDATION_RETRY_COUNT; attempt += 1) {
 			const { completion, durationMs } = await this.requestCompletion(params, messages, signal)
-			const result = parseToolCalls(getRawToolCalls(completion), refs, {
-				hasImage: params.image !== undefined,
-			})
+			const result = await this.checkWeightJumps(
+				parseToolCalls(getRawToolCalls(completion), refs, {
+					hasImage: params.image !== undefined,
+				}),
+				params,
+			)
 			const isTruncated = isOutputTruncated(completion)
 			await this.recordRun(params, {
 				completion,
@@ -131,6 +144,25 @@ export class AiService {
 			messages = [...messages, ...buildRetryMessages(completion, result.errors)]
 		}
 		throw new AiUnavailableException()
+	}
+
+	/** A big jump needs the user's word: the model gets the same retry as for any invalid call. */
+	private async checkWeightJumps(
+		result: FoodParseResult,
+		{ context, findPreviousWeight }: ParseFoodParams,
+	): Promise<FoodParseResult> {
+		if (!result.ok) return result
+		const { decision } = result
+		const measurements: LogMeasurementInput[] =
+			decision.kind === 'log' || decision.kind === 'reply' ? decision.measurements : []
+		const { today } = context.measurements
+		const errors: string[] = []
+		for (const input of measurements) {
+			if (input.kind !== 'WEIGHT' || input.confirmedJump) continue
+			const previous = await findPreviousWeight(getMeasurementDay(input, today))
+			errors.push(...getJumpErrors(input, previous, today))
+		}
+		return errors.length === 0 ? result : { ok: false, errors, calls: result.calls }
 	}
 
 	private getModel({ image }: ParseFoodParams): string {

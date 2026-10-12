@@ -6,6 +6,7 @@ import {
 	type OpenClarificationContext,
 	type TodayEntryContext,
 } from './edit-context.js'
+import type { MeasurementPoint } from './measurements.js'
 import { SYSTEM_PROMPT } from './prompt.js'
 
 /** Rough size estimate; good enough to cap history without shipping a tokenizer. */
@@ -62,6 +63,16 @@ const toHistoryText = ({ content, hasPhoto = false }: HistoryTurn): string => {
 	return content.length > 0 ? `${PHOTO_HISTORY_MARKER} ${content}` : PHOTO_HISTORY_MARKER
 }
 
+/** The latest body measurements; the model compares them with a new one and never calculates. */
+export interface MeasurementsContext {
+	/** The user's local day, `YYYY-MM-DD`. */
+	today: string
+	/** The two latest weights, newest first. */
+	weights: MeasurementPoint[]
+	waist: MeasurementPoint | null
+	targetWeightKg: number | null
+}
+
 export interface FoodParseContext {
 	/** Local wall-clock time of the user, `YYYY-MM-DD HH:mm, Weekday`. */
 	localTime: string
@@ -72,6 +83,7 @@ export interface FoodParseContext {
 	deletedEntries: DeletedEntryContext[]
 	openClarifications: OpenClarificationContext[]
 	goal: GoalContext | null
+	measurements: MeasurementsContext
 	memory: MemoryFoodContext[]
 	/** Oldest first. */
 	history: HistoryTurn[]
@@ -134,6 +146,23 @@ const formatGoal = (goal: GoalContext | null): string => {
 	return `Goal: ${formatMacros({ kcal: goal.dailyKcal, protein: goal.protein, fat: goal.fat, carbs: goal.carbs })} per day. ${remaining}`
 }
 
+const formatPoint = ({ value, localDate }: MeasurementPoint, unit: string): string =>
+	`${value} ${unit} on ${localDate}`
+
+export const formatMeasurements = ({
+	weights,
+	waist,
+	targetWeightKg,
+}: MeasurementsContext): string => {
+	const weight =
+		weights.length === 0
+			? 'Weight: none logged.'
+			: `Weight: ${weights.map((point) => formatPoint(point, 'kg')).join('; ')}.`
+	const waistLine = waist ? ` Waist: ${formatPoint(waist, 'cm')}.` : ''
+	const target = targetWeightKg === null ? '' : ` Target weight: ${targetWeightKg} kg.`
+	return `${weight}${waistLine}${target}`
+}
+
 const formatMemoryFood = (food: MemoryFoodContext): string => {
 	const aliases = food.aliases.length > 0 ? ` (also: ${food.aliases.join(', ')})` : ''
 	const piece = food.pieceGrams === null ? '' : `; 1 piece = ${food.pieceGrams} g`
@@ -159,6 +188,7 @@ export const formatContext = (context: FoodParseContext): string => {
 		...meals,
 		...formatEditContext(context),
 		formatGoal(context.goal),
+		formatMeasurements(context.measurements),
 		memory,
 	].join('\n')
 }

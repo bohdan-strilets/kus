@@ -1,11 +1,12 @@
 import { Injectable } from '@nestjs/common'
-import type { AiFoodItem, FoodParseDecision } from '@kus/shared'
+import type { AiFoodItem, FoodParseDecision, LogMeasurementInput } from '@kus/shared'
 
-import { getLocalHour } from '../../common/time'
-import { AttachmentStatus } from '../../generated/prisma/client'
+import { formatDbDate, getLocalHour, getZonedMoment } from '../../common/time'
+import { AttachmentStatus, MeasurementSource, type Prisma } from '../../generated/prisma/client'
 import { PrismaService } from '../../prisma'
 import { EntriesService } from '../entries/entries.service'
 import type { NewFoodEntry } from '../entries/entries.types'
+import { MeasurementsService } from '../measurements/measurements.service'
 import { MemoryService, type RelevantFoods } from '../memory/memory.service'
 import { ChatEditsService, type EditedMessages, NO_EDITED_MESSAGES } from './chat-edits.service'
 import { MessageInProgressException } from './chat.exceptions'
@@ -24,6 +25,13 @@ export interface TurnParams {
 	now: Date
 	localDate: Date
 }
+
+/** What an edited turn changed, and the messages whose measurement card a new value replaced. */
+export interface TurnResult extends EditedMessages {
+	replacedMeasurementMessageIds: string[]
+}
+
+const MEASUREMENT_BACKDATE_HOUR = 12
 
 const getReplyText = (decision: FoodParseDecision): string => {
 	switch (decision.kind) {
@@ -49,13 +57,14 @@ export class ChatTurnService {
 		private readonly chatEdits: ChatEditsService,
 		private readonly entriesService: EntriesService,
 		private readonly memoryService: MemoryService,
+		private readonly measurementsService: MeasurementsService,
 	) {}
 
 	saveDecision(
 		{ userId, timezone, message, photo, now, localDate }: TurnParams,
 		decision: FoodParseDecision,
 		{ memory, refIds }: { memory: RelevantFoods; refIds: EditRefIds },
-	): Promise<EditedMessages> {
+	): Promise<TurnResult> {
 		return this.prisma.$transaction(async (tx) => {
 			const reply = await this.chatRepository.completeTurn(
 				{ userId, userMessageId: message.id, replyText: getReplyText(decision) },
@@ -76,13 +85,22 @@ export class ChatTurnService {
 					tx,
 				)
 			}
-			if (decision.kind !== 'log' && decision.kind !== 'edit') return NO_EDITED_MESSAGES
+			if (decision.kind === 'reply') {
+				const replaced = await this.recordMeasurements(
+					{ userId, timezone, message, now, localDate, measurements: decision.measurements },
+					tx,
+				)
+				return { ...NO_EDITED_MESSAGES, replacedMeasurementMessageIds: replaced }
+			}
+			if (decision.kind !== 'log' && decision.kind !== 'edit') {
+				return { ...NO_EDITED_MESSAGES, replacedMeasurementMessageIds: [] }
+			}
 			// earlier entries first: their refs describe the day before this message
 			const edited = await this.chatEdits.applyEdits(
 				{ userId, userMessageId: message.id, edits: decision.edits, refIds },
 				tx,
 			)
-			if (decision.kind === 'edit') return edited
+			if (decision.kind === 'edit') return { ...edited, replacedMeasurementMessageIds: [] }
 
 			// an item's own meal, else the message's, else the clock
 			const fallbackMealType =
@@ -121,9 +139,62 @@ export class ChatTurnService {
 					tx,
 				)
 			}
+			const replaced = await this.recordMeasurements(
+				{ userId, timezone, message, now, localDate, measurements: decision.measurements },
+				tx,
+			)
 			// the meals it joined grew: earlier cards of them get a new «разом» line
-			return { ...edited, sourceMessageIds: [...edited.sourceMessageIds, message.id] }
+			return {
+				...edited,
+				sourceMessageIds: [...edited.sourceMessageIds, message.id],
+				replacedMeasurementMessageIds: replaced,
+			}
 		})
+	}
+
+	/**
+	 * Weight and waist of the message, one per day and kind: a second value of a day replaces the
+	 * first. Returns the messages that carried the replaced values.
+	 */
+	private async recordMeasurements(
+		{
+			userId,
+			timezone,
+			message,
+			now,
+			localDate,
+			measurements,
+		}: Pick<TurnParams, 'userId' | 'timezone' | 'message' | 'now' | 'localDate'> & {
+			measurements: LogMeasurementInput[]
+		},
+		tx: Prisma.TransactionClient,
+	): Promise<string[]> {
+		const replacedMessageIds: string[] = []
+		for (const { kind, value, date } of measurements) {
+			const day = date === null ? localDate : new Date(`${date}T00:00:00Z`)
+			const isToday = formatDbDate(day) === formatDbDate(localDate)
+			const previous = await this.measurementsService.findByDate(
+				{ userId, kind, localDate: day },
+				tx,
+			)
+			await this.measurementsService.record(
+				{
+					userId,
+					kind,
+					value,
+					localDate: day,
+					// a past day has no real time of day: noon keeps it on that date in any timezone
+					measuredAt: isToday ? now : getZonedMoment(day, MEASUREMENT_BACKDATE_HOUR, timezone),
+					source: MeasurementSource.CHAT,
+					messageId: message.id,
+				},
+				tx,
+			)
+			if (previous?.messageId && previous.messageId !== message.id) {
+				replacedMessageIds.push(previous.messageId)
+			}
+		}
+		return replacedMessageIds
 	}
 
 	/** A memory item takes its numbers from the saved food, scaled by the backend. */

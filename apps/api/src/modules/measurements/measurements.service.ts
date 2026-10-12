@@ -47,4 +47,29 @@ export class MeasurementsService {
 		const rows = await this.measurementsRepository.findInRange(query, tx)
 		return rows.map(toMeasurementValue)
 	}
+
+	async findByDate(
+		query: { userId: string; kind: MeasurementKind; localDate: Date },
+		tx?: Prisma.TransactionClient,
+	): Promise<MeasurementValue | null> {
+		const row = await this.measurementsRepository.findByDate(query, tx)
+		return row ? toMeasurementValue(row) : null
+	}
+
+	async findBefore(
+		query: { userId: string; kind: MeasurementKind; before: Date },
+		tx?: Prisma.TransactionClient,
+	): Promise<MeasurementValue | null> {
+		const row = await this.measurementsRepository.findBefore(query, tx)
+		return row ? toMeasurementValue(row) : null
+	}
+
+	/** Newest day first. */
+	async findRecent(
+		query: { userId: string; kind: MeasurementKind; take: number },
+		tx?: Prisma.TransactionClient,
+	): Promise<MeasurementValue[]> {
+		const rows = await this.measurementsRepository.findRecent(query, tx)
+		return rows.map(toMeasurementValue)
+	}
 }

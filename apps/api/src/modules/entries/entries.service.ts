@@ -39,6 +39,12 @@ export interface DaySummary {
 	meals: DayMealContext[]
 }
 
+export interface DayTotals {
+	kcal: number
+	proteinG: number
+	entryCount: number
+}
+
 @Injectable()
 export class EntriesService {
 	constructor(private readonly entriesRepository: EntriesRepository) {}
@@ -99,18 +105,37 @@ export class EntriesService {
 	/** Per `YYYY-MM-DD` of the range: the kcal summed by the backend and how many entries. */
 	async getDaysKcal(
 		userId: string,
-		{ from, to }: { from: Date; to: Date },
+		range: { from: Date; to: Date },
 		tx?: Prisma.TransactionClient,
 	): Promise<Map<string, { kcal: number; entryCount: number }>> {
+		const totals = await this.getDaysTotals(userId, range, tx)
+		return new Map(
+			[...totals].map(([localDate, { kcal, entryCount }]) => [localDate, { kcal, entryCount }]),
+		)
+	}
+
+	/** Per `YYYY-MM-DD` of the range with entries: kcal and protein summed by the backend, and the entry count. */
+	async getDaysTotals(
+		userId: string,
+		{ from, to }: { from: Date; to: Date },
+		tx?: Prisma.TransactionClient,
+	): Promise<Map<string, DayTotals>> {
 		const entries = await this.entriesRepository.findRangeEntries({ userId, from, to }, tx)
-		const days = new Map<string, { kcal: number; entryCount: number }>()
+		const days = new Map<string, DayTotals>()
 		for (const entry of entries) {
 			const localDate = formatDbDate(entry.meal.localDate)
-			const day = days.get(localDate) ?? { kcal: 0, entryCount: 0 }
-			days.set(localDate, { kcal: day.kcal + entry.kcal, entryCount: day.entryCount + 1 })
+			const day = days.get(localDate) ?? { kcal: 0, proteinG: 0, entryCount: 0 }
+			days.set(localDate, {
+				kcal: day.kcal + entry.kcal,
+				proteinG: day.proteinG + entry.proteinG,
+				entryCount: day.entryCount + 1,
+			})
 		}
 		return new Map(
-			[...days].map(([localDate, day]) => [localDate, { ...day, kcal: roundNutrition(day.kcal) }]),
+			[...days].map(([localDate, day]) => [
+				localDate,
+				{ ...day, kcal: roundNutrition(day.kcal), proteinG: roundNutrition(day.proteinG) },
+			]),
 		)
 	}
 

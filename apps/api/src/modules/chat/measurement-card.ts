@@ -8,40 +8,16 @@ import {
 import { addDays, formatDbDate } from '../../common/time'
 import { GoalType, MeasurementKind } from '../../generated/prisma/client'
 import type { MeasurementValue } from '../measurements/measurements.mapper'
+import {
+	DAYS_IN_WEEK,
+	findWeekAgo,
+	getKgToGoal,
+	subtractTenths,
+} from '../measurements/measurements.utils'
 import type { WeightGoal } from '../profile/profile.types'
-
-const TENTHS = 10
-const DAYS_IN_WEEK = 7
-/** «Тиждень тому» is the nearest value 5–9 days back. */
-const WEEK_CHANGE_MIN_DAYS = 5
-const WEEK_CHANGE_MAX_DAYS = 9
 
 /** How far back the chart reaches: its weekly windows end on the card's day. */
 export const MEASUREMENT_CHART_SPAN_DAYS = MEASUREMENT_CHART_MAX_POINTS * DAYS_IN_WEEK - 1
-
-const MS_IN_DAY = 24 * 60 * 60 * 1000
-
-const getDayDistance = (later: Date, earlier: Date): number =>
-	Math.round((later.getTime() - earlier.getTime()) / MS_IN_DAY)
-
-/** a − b for one-decimal values, taken in tenths so the result carries no float noise. */
-const subtract = (a: number, b: number): number =>
-	(Math.round(a * TENTHS) - Math.round(b * TENTHS)) / TENTHS
-
-/**
- * The value `weekChange` compares with: of the rows 5–9 days before the card's day, the nearest
- * to 7 days (a tie takes the later day). null when there is none.
- */
-const findWeekAgo = (row: MeasurementValue, history: MeasurementValue[]): MeasurementValue | null =>
-	history.reduce<MeasurementValue | null>((best, candidate) => {
-		const age = getDayDistance(row.localDate, candidate.localDate)
-		if (age < WEEK_CHANGE_MIN_DAYS || age > WEEK_CHANGE_MAX_DAYS) return best
-		if (best === null) return candidate
-		const bestOffset = Math.abs(getDayDistance(row.localDate, best.localDate) - DAYS_IN_WEEK)
-		const offset = Math.abs(age - DAYS_IN_WEEK)
-		const isLater = candidate.localDate.getTime() > best.localDate.getTime()
-		return offset < bestOffset || (offset === bestOffset && isLater) ? candidate : best
-	}, null)
 
 /**
  * Up to 5 weekly points ending on the card's day: the week i is the 7 days ending `7·i` days before
@@ -67,23 +43,6 @@ const buildChart = (
 		if (latest) points.unshift({ localDate: formatDbDate(latest.localDate), value: latest.value })
 	}
 	return points
-}
-
-/** Kg left in the direction of the goal; 0 once reached or passed, null without a target. */
-const getKgToGoal = ({
-	goalType,
-	current,
-	target,
-}: {
-	goalType: GoalType | null
-	current: number
-	target: number | null
-}): number | null => {
-	if (target === null) return null
-	return Math.max(
-		0,
-		goalType === GoalType.LOSE ? subtract(current, target) : subtract(target, current),
-	)
 }
 
 interface MeasurementCardInput {
@@ -113,14 +72,14 @@ export const buildMeasurementCard = ({
 		localDate: formatDbDate(row.localDate),
 		source: row.source,
 		// the first value has nothing to be compared with
-		fromStart: start && start.id !== row.id ? subtract(row.value, start.value) : null,
+		fromStart: start && start.id !== row.id ? subtractTenths(row.value, start.value) : null,
 		toGoal: hasDirection
 			? getKgToGoal({ goalType, current: row.value, target: targetWeightKg })
 			: null,
 		isGoalReached: isWeight
 			? getIsGoalReached({ goalType, current: row.value, target: targetWeightKg })
 			: null,
-		weekChange: weekAgo ? subtract(row.value, weekAgo.value) : null,
+		weekChange: weekAgo ? subtractTenths(row.value, weekAgo.value) : null,
 		planPaceKgPerWeek: hasDirection ? goal.paceKgPerWeek : null,
 		chart: buildChart(row, history),
 	}

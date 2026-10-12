@@ -91,14 +91,14 @@ export class EntriesRepository {
 	findRangeEntries(
 		{ userId, from, to }: { userId: string; from: Date; to: Date },
 		tx?: Prisma.TransactionClient,
-	): Promise<{ kcal: number; meal: { localDate: Date } }[]> {
+	): Promise<{ kcal: number; proteinG: number; meal: { localDate: Date } }[]> {
 		return (tx ?? this.prisma).foodEntry.findMany({
 			where: {
 				userId,
 				deletedAt: null,
 				meal: { deletedAt: null, localDate: { gte: from, lte: to } },
 			},
-			select: { kcal: true, meal: { select: { localDate: true } } },
+			select: { kcal: true, proteinG: true, meal: { select: { localDate: true } } },
 		})
 	}
 

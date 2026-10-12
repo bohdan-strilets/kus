@@ -70,3 +70,13 @@ export const formatDbDate = (date: Date): string => date.toISOString().slice(0, 
 
 export const addDays = (date: Date, days: number): Date =>
 	new Date(date.getTime() + days * MS_IN_DAY)
+
+/** `YYYY-MM-DD` of every day from `from` to `to`, both included. */
+export const listDays = (from: string, to: string): string[] => {
+	const first = new Date(`${from}T00:00:00Z`)
+	const count =
+		Math.round((new Date(`${to}T00:00:00Z`).getTime() - first.getTime()) / MS_IN_DAY) + 1
+	return Array.from({ length: Math.max(count, 0) }, (_, index) =>
+		formatDbDate(addDays(first, index)),
+	)
+}

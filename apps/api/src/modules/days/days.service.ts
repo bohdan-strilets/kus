@@ -1,25 +1,13 @@
 import { Injectable } from '@nestjs/common'
-import {
-	type DayInRange,
-	type DayResponse,
-	type DaysRangeQuery,
-	countRangeDays,
-	getDayStatus,
-} from '@kus/shared'
+import { type DayInRange, type DayResponse, type DaysRangeQuery, getDayStatus } from '@kus/shared'
 
-import { addDays, formatDbDate, getLocalDateString } from '../../common/time'
+import { addDays, getLocalDateString, listDays } from '../../common/time'
 import { EntriesService } from '../entries/entries.service'
 import { GoalsService } from '../goals/goals.service'
 import { UsersService } from '../users/users.service'
 import { DayInFutureException } from './days.exceptions'
 
 const toDbDate = (localDate: string): Date => new Date(`${localDate}T00:00:00Z`)
-
-/** `YYYY-MM-DD` of every day from `from` to `to`, both included. */
-const listDays = (from: string, to: string): string[] =>
-	Array.from({ length: countRangeDays(from, to) }, (_, index) =>
-		formatDbDate(addDays(toDbDate(from), index)),
-	)
 
 /** A whole calendar day of the user: meals, totals and the goal in force; the backend sums. */
 @Injectable()

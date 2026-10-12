@@ -6,4 +6,5 @@ export {
 	getLocalDateString,
 	getLocalHour,
 	getZonedMoment,
+	listDays,
 } from './local-date'

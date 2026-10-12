@@ -18,6 +18,7 @@ import { DaysModule } from './modules/days/days.module'
 import { FoodEntriesModule } from './modules/food-entries/food-entries.module'
 import { HealthModule } from './modules/health/health.module'
 import { ProfileModule } from './modules/profile/profile.module'
+import { ProgressModule } from './modules/progress/progress.module'
 import { UsersModule } from './modules/users/users.module'
 import { PrismaModule } from './prisma'
 
@@ -43,6 +44,7 @@ const DEFAULT_THROTTLE = { ttl: minutes(1), limit: 100 }
 		ChatModule,
 		DaysModule,
 		FoodEntriesModule,
+		ProgressModule,
 	],
 	providers: [
 		// order matters: rate limiting runs before auth, so unauthenticated floods are limited too;

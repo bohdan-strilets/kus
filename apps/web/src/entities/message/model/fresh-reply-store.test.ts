@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 import type { ChatMessage } from '@kus/shared'
-import { act, renderHook } from '@testing-library/react'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { cleanup, renderHook } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { useFreshReplyStore, useIsFreshMeal } from './fresh-reply-store'
+import { FRESH_TTL_MS, useFreshReplyStore } from './fresh-reply-store'
+import { useFreshOnMount } from './use-fresh-on-mount'
 
 const USER_A = '0199b3a4-0000-7000-8000-00000000000a'
 const USER_B = '0199b3a4-0000-7000-8000-00000000000b'
@@ -18,28 +19,28 @@ const reply = (mealIds: string[]): ChatMessage =>
 
 describe('useFreshReplyStore', () => {
 	beforeEach(() => {
-		useFreshReplyStore.setState({ ownerId: null, mealIds: {} })
+		useFreshReplyStore.setState({ ownerId: null, freshAt: {} })
 	})
 
 	it('marks every meal of the reply as fresh', () => {
 		useFreshReplyStore.getState().markFresh(reply(['m1', 'm2']))
 
-		expect(useFreshReplyStore.getState().mealIds).toEqual({ m1: true, m2: true })
+		expect(Object.keys(useFreshReplyStore.getState().freshAt).sort()).toEqual(['m1', 'm2'])
 	})
 
 	it('keeps earlier marks when another reply arrives', () => {
 		useFreshReplyStore.getState().markFresh(reply(['m1']))
 		useFreshReplyStore.getState().markFresh(reply(['m2']))
 
-		expect(Object.keys(useFreshReplyStore.getState().mealIds).sort()).toEqual(['m1', 'm2'])
+		expect(Object.keys(useFreshReplyStore.getState().freshAt).sort()).toEqual(['m1', 'm2'])
 	})
 
 	it('adds nothing for a reply without meals', () => {
-		const before = useFreshReplyStore.getState().mealIds
+		const before = useFreshReplyStore.getState().freshAt
 
 		useFreshReplyStore.getState().markFresh(reply([]))
 
-		expect(useFreshReplyStore.getState().mealIds).toBe(before)
+		expect(useFreshReplyStore.getState().freshAt).toBe(before)
 		expect(before).toEqual({})
 	})
 
@@ -48,16 +49,16 @@ describe('useFreshReplyStore', () => {
 
 		useFreshReplyStore.getState().release('m1')
 
-		expect(useFreshReplyStore.getState().mealIds).toEqual({ m2: true })
+		expect(Object.keys(useFreshReplyStore.getState().freshAt)).toEqual(['m2'])
 	})
 
 	it('ignores releasing an unknown meal', () => {
 		useFreshReplyStore.getState().markFresh(reply(['m1']))
-		const before = useFreshReplyStore.getState().mealIds
+		const before = useFreshReplyStore.getState().freshAt
 
 		useFreshReplyStore.getState().release('unknown')
 
-		expect(useFreshReplyStore.getState().mealIds).toBe(before)
+		expect(useFreshReplyStore.getState().freshAt).toBe(before)
 	})
 
 	it('drops the marks when another user claims the store, and after logout', () => {
@@ -65,11 +66,11 @@ describe('useFreshReplyStore', () => {
 		useFreshReplyStore.getState().markFresh(reply(['m1']))
 
 		useFreshReplyStore.getState().claim(USER_B)
-		expect(useFreshReplyStore.getState()).toMatchObject({ ownerId: USER_B, mealIds: {} })
+		expect(useFreshReplyStore.getState()).toMatchObject({ ownerId: USER_B, freshAt: {} })
 
 		useFreshReplyStore.getState().markFresh(reply(['m2']))
 		useFreshReplyStore.getState().claim(null)
-		expect(useFreshReplyStore.getState()).toMatchObject({ ownerId: null, mealIds: {} })
+		expect(useFreshReplyStore.getState()).toMatchObject({ ownerId: null, freshAt: {} })
 	})
 
 	it('keeps the marks when the same user claims again', () => {
@@ -78,38 +79,130 @@ describe('useFreshReplyStore', () => {
 
 		useFreshReplyStore.getState().claim(USER_A)
 
-		expect(useFreshReplyStore.getState().mealIds).toEqual({ m1: true })
+		expect(Object.keys(useFreshReplyStore.getState().freshAt)).toEqual(['m1'])
 	})
 })
 
-describe('useIsFreshMeal', () => {
+describe('fresh reply TTL', () => {
 	beforeEach(() => {
-		useFreshReplyStore.setState({ ownerId: null, mealIds: {} })
+		vi.useFakeTimers()
+		useFreshReplyStore.setState({ ownerId: null, freshAt: {} })
 	})
 
-	it('is true for a fresh meal, false for others, and follows release', () => {
+	afterEach(() => {
+		vi.useRealTimers()
+	})
+
+	it('is fresh at the moment of marking and up to the last ms before the TTL', () => {
 		useFreshReplyStore.getState().markFresh(reply(['m1']))
-		const fresh = renderHook(() => useIsFreshMeal('m1'))
-		const other = renderHook(() => useIsFreshMeal('m2'))
 
-		expect(fresh.result.current).toBe(true)
-		expect(other.result.current).toBe(false)
-
-		act(() => {
-			useFreshReplyStore.getState().release('m1')
-		})
-
-		expect(fresh.result.current).toBe(false)
+		expect(useFreshReplyStore.getState().isFresh('m1')).toBe(true)
+		vi.advanceTimersByTime(FRESH_TTL_MS - 1)
+		expect(useFreshReplyStore.getState().isFresh('m1')).toBe(true)
 	})
 
-	it('turns true when the meal is marked after the first render', () => {
-		const { result } = renderHook(() => useIsFreshMeal('m1'))
-		expect(result.current).toBe(false)
+	it('is not fresh at exactly the TTL and later', () => {
+		useFreshReplyStore.getState().markFresh(reply(['m1']))
 
-		act(() => {
-			useFreshReplyStore.getState().markFresh(reply(['m1']))
-		})
+		vi.advanceTimersByTime(FRESH_TTL_MS)
+		expect(useFreshReplyStore.getState().isFresh('m1')).toBe(false)
+		vi.advanceTimersByTime(60_000)
+		expect(useFreshReplyStore.getState().isFresh('m1')).toBe(false)
+	})
+
+	it('is not fresh for an unknown meal or after release', () => {
+		useFreshReplyStore.getState().markFresh(reply(['m1']))
+		useFreshReplyStore.getState().release('m1')
+
+		expect(useFreshReplyStore.getState().isFresh('m1')).toBe(false)
+		expect(useFreshReplyStore.getState().isFresh('unknown')).toBe(false)
+	})
+
+	it('accepts an explicit now', () => {
+		useFreshReplyStore.getState().markFresh(reply(['m1']), 1000)
+
+		expect(useFreshReplyStore.getState().isFresh('m1', 1000 + FRESH_TTL_MS - 1)).toBe(true)
+		expect(useFreshReplyStore.getState().isFresh('m1', 1000 + FRESH_TTL_MS)).toBe(false)
+	})
+
+	it('drops expired marks on the next write and keeps the alive ones', () => {
+		useFreshReplyStore.getState().markFresh(reply(['old']))
+		vi.advanceTimersByTime(FRESH_TTL_MS / 2)
+		useFreshReplyStore.getState().markFresh(reply(['middle']))
+		vi.advanceTimersByTime(FRESH_TTL_MS / 2)
+
+		useFreshReplyStore.getState().markFresh(reply(['new']))
+
+		expect(Object.keys(useFreshReplyStore.getState().freshAt).sort()).toEqual(['middle', 'new'])
+	})
+
+	it('re-marking a meal restarts its TTL', () => {
+		useFreshReplyStore.getState().markFresh(reply(['m1']))
+		vi.advanceTimersByTime(FRESH_TTL_MS - 1)
+		useFreshReplyStore.getState().markFresh(reply(['m1']))
+		vi.advanceTimersByTime(FRESH_TTL_MS - 1)
+
+		expect(useFreshReplyStore.getState().isFresh('m1')).toBe(true)
+	})
+})
+
+describe('useFreshOnMount', () => {
+	beforeEach(() => {
+		vi.useFakeTimers()
+		useFreshReplyStore.setState({ ownerId: null, freshAt: {} })
+	})
+
+	afterEach(() => {
+		cleanup()
+		vi.useRealTimers()
+	})
+
+	it('is true when the chat is entered within the TTL after the reply', () => {
+		useFreshReplyStore.getState().markFresh(reply(['m1']))
+		vi.advanceTimersByTime(FRESH_TTL_MS - 1)
+
+		expect(renderHook(() => useFreshOnMount('m1')).result.current).toBe(true)
+	})
+
+	it('is false when the chat is entered after the TTL', () => {
+		useFreshReplyStore.getState().markFresh(reply(['m1']))
+		vi.advanceTimersByTime(FRESH_TTL_MS + 1)
+
+		expect(renderHook(() => useFreshOnMount('m1')).result.current).toBe(false)
+	})
+
+	it('is false for another meal than the fresh one', () => {
+		useFreshReplyStore.getState().markFresh(reply(['m1']))
+
+		expect(renderHook(() => useFreshOnMount('m2')).result.current).toBe(false)
+	})
+
+	it('stays true after the TTL runs out while mounted', () => {
+		useFreshReplyStore.getState().markFresh(reply(['m1']))
+		const { result, rerender } = renderHook(() => useFreshOnMount('m1'))
+
+		vi.advanceTimersByTime(FRESH_TTL_MS + 1)
+		rerender()
 
 		expect(result.current).toBe(true)
+	})
+
+	it('stays true after a release while mounted', () => {
+		useFreshReplyStore.getState().markFresh(reply(['m1']))
+		const { result, rerender } = renderHook(() => useFreshOnMount('m1'))
+
+		useFreshReplyStore.getState().release('m1')
+		rerender()
+
+		expect(result.current).toBe(true)
+	})
+
+	it('stays false when the meal becomes fresh only after the mount', () => {
+		const { result, rerender } = renderHook(() => useFreshOnMount('m1'))
+
+		useFreshReplyStore.getState().markFresh(reply(['m1']))
+		rerender()
+
+		expect(result.current).toBe(false)
 	})
 })

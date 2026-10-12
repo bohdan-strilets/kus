@@ -21,10 +21,15 @@ export const useCountUp = <T extends HTMLElement>(
 ) => {
 	const ref = useRef<T>(null)
 	const previousValue = useRef(initial ?? 0)
+	const lastRun = useRef<{ value: number; start: number } | null>(null)
 
 	useEffect(() => {
 		const element = ref.current
-		const start = from ?? previousValue.current
+		// the same value again (StrictMode's second run, a changed format) repeats the same count
+		// instead of starting from the value it has just set
+		const start =
+			from ?? (lastRun.current?.value === value ? lastRun.current.start : previousValue.current)
+		lastRun.current = { value, start }
 		previousValue.current = value
 		if (!element) return
 		return countUp(element, start, value, { durationMs, format })

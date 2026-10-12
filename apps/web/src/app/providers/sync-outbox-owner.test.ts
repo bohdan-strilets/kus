@@ -27,24 +27,24 @@ describe('syncOutboxOwner', () => {
 	beforeEach(() => {
 		useOutboxStore.setState({ ownerId: null, items: {} })
 		useComposerDraftStore.setState({ ownerId: null, text: '' })
-		useFreshReplyStore.setState({ ownerId: null, mealIds: {} })
+		useFreshReplyStore.setState({ ownerId: null, freshAt: {} })
 	})
 
 	it('drops the fresh-reply marks for another user and after logout, keeps them for the same one', () => {
 		const queryClient = new QueryClient()
 		const stop = syncOutboxOwner(queryClient)
 		queryClient.setQueryData(SESSION_QUERY_KEY, USER_A)
-		useFreshReplyStore.setState({ mealIds: { m1: true } })
+		useFreshReplyStore.setState({ freshAt: { m1: 1 } })
 
 		queryClient.setQueryData(SESSION_QUERY_KEY, { ...USER_A })
-		expect(useFreshReplyStore.getState().mealIds).toEqual({ m1: true })
+		expect(useFreshReplyStore.getState().freshAt).toEqual({ m1: 1 })
 
 		queryClient.setQueryData(SESSION_QUERY_KEY, USER_B)
-		expect(useFreshReplyStore.getState()).toMatchObject({ ownerId: USER_B.id, mealIds: {} })
+		expect(useFreshReplyStore.getState()).toMatchObject({ ownerId: USER_B.id, freshAt: {} })
 
-		useFreshReplyStore.setState({ mealIds: { m2: true } })
+		useFreshReplyStore.setState({ freshAt: { m2: 1 } })
 		queryClient.setQueryData(SESSION_QUERY_KEY, null)
-		expect(useFreshReplyStore.getState()).toMatchObject({ ownerId: null, mealIds: {} })
+		expect(useFreshReplyStore.getState()).toMatchObject({ ownerId: null, freshAt: {} })
 		stop()
 	})
 

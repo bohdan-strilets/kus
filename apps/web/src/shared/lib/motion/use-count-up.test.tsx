@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { cleanup, render } from '@testing-library/react'
+import { StrictMode } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { countUp } from './motion.imperative'
@@ -77,6 +78,20 @@ describe('useCountUp', () => {
 
 		expect(stops[0]).toHaveBeenCalledTimes(1)
 		expect(stops[1]).not.toHaveBeenCalled()
+	})
+
+	it('counts from 0 under StrictMode, whose second effect run must not start from the final value', () => {
+		render(
+			<StrictMode>
+				<Probe value={370} />
+			</StrictMode>,
+		)
+
+		expect(countUpMock).toHaveBeenCalledTimes(2)
+		expect(countUpMock.mock.calls.map(([, start, end]) => [start, end])).toEqual([
+			[0, 370],
+			[0, 370],
+		])
 	})
 
 	it('stops the running count on unmount', () => {

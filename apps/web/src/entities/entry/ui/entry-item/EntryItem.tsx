@@ -1,7 +1,7 @@
 import { motion } from 'motion/react'
 import { useTranslation } from 'react-i18next'
 
-import { cn, formatInteger, PRESS } from '@/shared/lib'
+import { cn, formatInteger, PRESS, useCountUp } from '@/shared/lib'
 import { FoodIcon, Text } from '@/shared/ui'
 
 import type { FoodEntryView } from '../../model/entry.types'
@@ -16,6 +16,8 @@ export interface EntryItemProps {
 	 */
 	onEdit?: () => void
 }
+
+const CHANGE_COUNT_MS = 300
 
 const ROW_CLASS = 'flex items-center gap-2.5 px-1.5 py-1'
 
@@ -66,6 +68,12 @@ const EntryCaption = ({ entry, onHintClick }: Pick<EntryItemProps, 'entry' | 'on
 
 /** One food line in a meal card (mockups/chat.html): food icon, name 14/600, caption, kcal 14/700. */
 export const EntryItem = ({ entry, onHintClick, onEdit }: EntryItemProps) => {
+	// only a change (a recount after a clarification or an edit) animates, not the first show
+	const kcalRef = useCountUp<HTMLSpanElement>(entry.kcal, {
+		durationMs: CHANGE_COUNT_MS,
+		initial: entry.kcal,
+		format: formatInteger,
+	})
 	const content = (
 		<>
 			<FoodIcon category={entry.category} />
@@ -76,7 +84,7 @@ export const EntryItem = ({ entry, onHintClick, onEdit }: EntryItemProps) => {
 				<EntryCaption entry={entry} onHintClick={onEdit ? undefined : onHintClick} />
 			</div>
 			<Text as="span" variant="cardTitle" isTabular>
-				{formatInteger(entry.kcal)}
+				<span ref={kcalRef}>{formatInteger(entry.kcal)}</span>
 			</Text>
 		</>
 	)

@@ -298,7 +298,7 @@ describe('deliverMessage sounds and fresh cards', () => {
 	beforeEach(() => {
 		useOutboxStore.setState({ items: {} })
 		usePhotoSessionStore.setState({ uploadProgress: {}, previews: {} })
-		useFreshReplyStore.setState({ ownerId: null, mealIds: {} })
+		useFreshReplyStore.setState({ ownerId: null, freshAt: {} })
 		vi.mocked(postMessage).mockReset()
 		vi.mocked(playSound).mockClear()
 		vi.stubGlobal('navigator', { onLine: true })
@@ -313,14 +313,14 @@ describe('deliverMessage sounds and fresh cards', () => {
 		const freshWhenFeedChanged: boolean[] = []
 		client.getQueryCache().subscribe((event) => {
 			if (event.type === 'updated' && event.action.type === 'success') {
-				freshWhenFeedChanged.push(useFreshReplyStore.getState().mealIds[MEAL.id] === true)
+				freshWhenFeedChanged.push(useFreshReplyStore.getState().freshAt[MEAL.id] !== undefined)
 			}
 		})
 		vi.mocked(postMessage).mockResolvedValueOnce(turnWith({ meals: [MEAL] }))
 
 		await deliverMessage(client, { clientMessageId: CLIENT_ID, text: 'тарілка супу' })
 
-		expect(useFreshReplyStore.getState().mealIds).toEqual({ [MEAL.id]: true })
+		expect(Object.keys(useFreshReplyStore.getState().freshAt)).toEqual([MEAL.id])
 		expect(playSound).toHaveBeenCalledWith('kusik')
 		expect(freshWhenFeedChanged.length).toBeGreaterThan(0)
 		expect(freshWhenFeedChanged).not.toContain(false)
@@ -343,7 +343,7 @@ describe('deliverMessage sounds and fresh cards', () => {
 		await deliverMessage(createClient(), { clientMessageId: CLIENT_ID, text: 'тарілка супу' })
 
 		expect(playSound).toHaveBeenCalledWith('oops')
-		expect(useFreshReplyStore.getState().mealIds).toEqual({})
+		expect(useFreshReplyStore.getState().freshAt).toEqual({})
 	})
 
 	it('plays «oops» for a photo without a connection, with no request', async () => {
@@ -370,6 +370,6 @@ describe('deliverMessage sounds and fresh cards', () => {
 		await deliverMessage(createClient(), { clientMessageId: CLIENT_ID, text: 'привіт' })
 
 		expect(playSound).not.toHaveBeenCalled()
-		expect(useFreshReplyStore.getState().mealIds).toEqual({})
+		expect(useFreshReplyStore.getState().freshAt).toEqual({})
 	})
 })

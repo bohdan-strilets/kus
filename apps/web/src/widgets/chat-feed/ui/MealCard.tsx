@@ -5,11 +5,14 @@ import { useTranslation } from 'react-i18next'
 import {
 	ClarifyCard,
 	EntryCard,
+	EntryCardRow,
 	EntryItem,
 	type FoodEntryView,
 	getMealLabelKey,
+	LoggedBadge,
 	toFoodEntryView,
 } from '@/entities/entry'
+import { useFreshOnMount, useFreshReplyStore } from '@/entities/message'
 import { useAnswerClarification } from '@/features/answer-clarify'
 import { useEditEntryStore } from '@/features/edit-entry'
 import { formatTime } from '@/shared/lib'
@@ -28,6 +31,8 @@ interface MealCardProps {
 	isLatestReply: boolean
 	/** Next to Kusik's head; under his words it is an attachment without the tail. */
 	hasTail: boolean
+	/** Position of the card in the reply: the badge pops cascade, only the first throws crumbs. */
+	index: number
 }
 
 /** The tapped label or the user's words. */
@@ -44,8 +49,10 @@ export const MealCard = ({
 	placement,
 	isLatestReply,
 	hasTail,
+	index,
 }: MealCardProps) => {
 	const { t } = useTranslation()
+	const isFresh = useFreshOnMount(meal.id)
 	const { answer, pending } = useAnswerClarification()
 	const openEditor = useEditEntryStore((state) => state.open)
 	const [openedIds, setOpenedIds] = useState<ReadonlySet<string>>(() =>
@@ -72,6 +79,18 @@ export const MealCard = ({
 			kcal={meal.totals.kcal}
 			macros={meal.totals}
 			hasTail={hasTail}
+			isRevealing={isFresh}
+			badge={
+				isFresh ? (
+					<LoggedBadge
+						index={index}
+						hasCrumbs={index === 0}
+						onDone={() => {
+							useFreshReplyStore.getState().release(meal.id)
+						}}
+					/>
+				) : undefined
+			}
 			footnote={getMealTotalNote(meal, t) ?? undefined}
 			// one line opens its form at once; several — the picker first
 			onEdit={() => {
@@ -107,13 +126,15 @@ export const MealCard = ({
 
 				return (
 					<Fragment key={entry.id}>
-						<EntryItem
-							entry={isHinted ? { ...view, captionState: 'hint', hint } : view}
-							onHintClick={() => {
-								if (!clarification) return
-								setOpenedIds((ids) => new Set(ids).add(clarification.id))
-							}}
-						/>
+						<EntryCardRow>
+							<EntryItem
+								entry={isHinted ? { ...view, captionState: 'hint', hint } : view}
+								onHintClick={() => {
+									if (!clarification) return
+									setOpenedIds((ids) => new Set(ids).add(clarification.id))
+								}}
+							/>
+						</EntryCardRow>
 						{clarification && isAskedHere && isExpanded && (
 							<ClarifyCard
 								question={clarification.question}

@@ -35,7 +35,7 @@ export const KusikReply = ({ message, isLatest, photoStatus }: KusikReplyProps) 
 	const placement = getClarificationPlacement(message)
 	const kind = getReplyKind(message, photoStatus)
 	const renderCards = (hasTail: boolean) =>
-		message.meals.map((meal) => (
+		message.meals.map((meal, index) => (
 			<MealCard
 				key={meal.id}
 				meal={meal}
@@ -43,6 +43,7 @@ export const KusikReply = ({ message, isLatest, photoStatus }: KusikReplyProps) 
 				placement={placement}
 				isLatestReply={isLatest}
 				hasTail={hasTail}
+				index={index}
 			/>
 		))
 

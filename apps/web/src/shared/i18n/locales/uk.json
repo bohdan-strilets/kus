@@ -466,6 +466,7 @@
 	},
 	"entry": {
 		"kcal": "{{kcal}} ккал",
+		"logged": "Записано",
 		"macroLine": "Б {{protein}} · В {{carbs}} · Ж {{fat}}",
 		"edit": "Редагувати",
 		"usual": "як завжди",

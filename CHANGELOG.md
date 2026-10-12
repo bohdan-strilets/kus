@@ -6,6 +6,21 @@ All notable changes to Kusik are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.4.0] — 2026-10-12
+
+### Added
+
+- Fresh meal cards in the chat come alive: the lines cascade in 60 ms apart, the kcal in the card header and in every line count up (from 0 for a new card, over 300 ms when a value changes), and a green «Записано» badge pops in the top right corner with four crumbs, holds for 1.5 s and fades out. Only for replies that arrived in this session and are not older than 10 s, so history, a reload and a late return to the chat stay still ([ad922dd], [db239b6])
+- Sounds in the chat: `clarify` when Kusik asks a question (instead of `kusik` for a reply that also logged food), `oops` when a message could not be sent, including a photo without a connection (not while the server is still finishing the turn); one sound per reply, `photoFail` > `clarify` > `kusik` ([db239b6])
+- The hamster hops when its mood changes (`useHopOnMoodChange`, off under reduced motion); the unused `.k-hop` CSS is gone ([c788432])
+- Day goal celebration: when the user's own action (a message, an answer to a question, an edit or a removal) moves the calorie ring from under the goal into the 97–103 % band, the ring glows (`success` layer, opacity and scale only, new token `--blur-glow`), 12 particles fly around it (40 px in the collapsed chat header) and `goal` sounds once the ring is drawn; the reply that closed the goal gets the `happy` face. Once per user and local day (`kusik-goal-celebrated:<userId>:<date>` in localStorage, no food data); a detected goal expires after 3 s if no ring is on screen and is never replayed; nothing on open, reload, a jump past the band or a goal change ([279739a], [f06b7ff])
+
+### Changed
+
+- `useCountUp` takes an `initial` start value, and its second effect run under StrictMode repeats the same count instead of starting from the final value ([4212861], [ad922dd])
+- The `add-sound` skill and the dev-ui sounds hint match the code: file names, and both switches are on by default ([6e5c3a0])
+- The `ui-checker` agent is limited to 2 AI calls per check, shoots animations as paused frames and deletes its test users ([a6cb8ae])
+
 ## [0.3.1] — 2026-10-12
 
 ### Fixed
@@ -62,7 +77,16 @@ All notable changes to Kusik are documented here. The format follows
 
 ## 0.2.0 / 0.1.0 — see tags
 
-[Unreleased]: https://github.com/bohdan-strilets/kus/compare/v0.3.1...HEAD
+[Unreleased]: https://github.com/bohdan-strilets/kus/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/bohdan-strilets/kus/compare/v0.3.1...v0.4.0
+[ad922dd]: https://github.com/bohdan-strilets/kus/commit/ad922dd3b587f9a6f0bf976c1d98165120caa1f8
+[db239b6]: https://github.com/bohdan-strilets/kus/commit/db239b6be2f3ba6780a0db2815ff354c5b0b1237
+[c788432]: https://github.com/bohdan-strilets/kus/commit/c788432b8a538eef96f2778367222e8fc0361e14
+[279739a]: https://github.com/bohdan-strilets/kus/commit/279739af62a7da28a6b202a72aa299aed2c659a8
+[f06b7ff]: https://github.com/bohdan-strilets/kus/commit/f06b7ffa090095e1a34cf7b4a90dde22599f267b
+[4212861]: https://github.com/bohdan-strilets/kus/commit/42128610a36d02cdb13f103a494d7ec39acb5a46
+[6e5c3a0]: https://github.com/bohdan-strilets/kus/commit/6e5c3a06d45b8b51a8cf532be96fe5bed3df7769
+[a6cb8ae]: https://github.com/bohdan-strilets/kus/commit/a6cb8ae272815692fef8403a100d75eefdc8616e
 [0.3.1]: https://github.com/bohdan-strilets/kus/compare/v0.3.0...v0.3.1
 [57772fe]: https://github.com/bohdan-strilets/kus/commit/57772feea55a7b1b2774932664eb96b1d3234d5d
 [0.3.0]: https://github.com/bohdan-strilets/kus/compare/v0.2.2...v0.3.0

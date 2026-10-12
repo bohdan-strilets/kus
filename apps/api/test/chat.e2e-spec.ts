@@ -339,6 +339,37 @@ describe('chat messages (e2e, real DB, fake model)', () => {
 		expect(await prisma.message.count({ where: { status: 'FAILED' } })).toBe(1)
 	})
 
+	it('counts two parallel first turns of the day without a 500', async () => {
+		await start()
+		const owner = await registerUser('owner@kus.app')
+		fake.respond(createCompletion([logFoodCall()]), createCompletion([logFoodCall()]))
+
+		const responses = await Promise.all([send(owner, '3 яйця'), send(owner, '3 яйця')])
+
+		expect(responses.map((response) => response.status)).toEqual([201, 201])
+		const usage = await prisma.dailyUsage.findMany({ where: { userId: owner.userId } })
+		expect(usage).toHaveLength(1)
+		expect(usage[0]?.messageCount).toBe(2)
+	})
+
+	it('lets only the limit through when parallel first turns exceed it', async () => {
+		await start({ AI_DAILY_MESSAGE_LIMIT: '2' })
+		const owner = await registerUser('owner@kus.app')
+		fake.respond(createCompletion([logFoodCall()]), createCompletion([logFoodCall()]))
+
+		const responses = await Promise.all([
+			send(owner, '3 яйця'),
+			send(owner, '3 яйця'),
+			send(owner, '3 яйця'),
+		])
+
+		expect(responses.map((response) => response.status).sort()).toEqual([201, 201, 429])
+		const usage = await prisma.dailyUsage.findMany({ where: { userId: owner.userId } })
+		expect(usage).toHaveLength(1)
+		expect(usage[0]?.messageCount).toBe(2)
+		expect(fake.bodies).toHaveLength(2)
+	})
+
 	it('gives the model day totals, the goal and only the own saved foods', async () => {
 		await start()
 		const owner = await registerUser('owner@kus.app')

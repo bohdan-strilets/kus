@@ -388,10 +388,6 @@ describe('measurement cards and achievements in chat messages (e2e, real DB, fak
 			await start()
 			const owner = await registerUser('owner@kus.app')
 			await seedFoodDaysBack(owner.userId, 2)
-			// the day's usage row is created by the first turn with an upsert that races with a parallel one
-			await prisma.dailyUsage.create({
-				data: { userId: owner.userId, localDate: await getToday(owner.userId) },
-			})
 			fake.respond(createCompletion([logFoodCall]), createCompletion([logFoodCall]))
 
 			const [first, second] = await Promise.all([send(owner, '2 яйця'), send(owner, '2 яйця')])

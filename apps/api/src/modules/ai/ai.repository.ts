@@ -53,11 +53,11 @@ export class AiRepository {
 		messageLimit,
 		photoLimit,
 	}: DailyUsageKey & DailyUsageLimits & { hasPhoto: boolean }): Promise<boolean> {
-		// full unique (userId, localDate), so upsert is safe here (docs/database.md)
-		await this.prisma.dailyUsage.upsert({
-			where: { userId_localDate: { userId, localDate } },
-			create: { userId, localDate },
-			update: {},
+		// INSERT ... ON CONFLICT DO NOTHING: two parallel first turns of the day both pass, where
+		// upsert (select, then insert) would fail the loser with P2002
+		await this.prisma.dailyUsage.createMany({
+			data: [{ userId, localDate }],
+			skipDuplicates: true,
 		})
 		const { count } = await this.prisma.dailyUsage.updateMany({
 			where: {

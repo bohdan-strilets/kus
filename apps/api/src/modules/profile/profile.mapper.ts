@@ -9,10 +9,11 @@ import {
 } from '@kus/shared'
 
 import { formatDbDate, getLocalDate, getLocalDateString } from '../../common/time'
-import { GoalType, type UserProfile, type WeightEntry } from '../../generated/prisma/client'
+import { GoalType, type UserProfile } from '../../generated/prisma/client'
 import { WEIGHT_DECIMALS } from './profile.constants'
 import { ProfileIncompleteException } from './profile.exceptions'
 import type { ProfileFields } from './profile.repository'
+import type { LatestWeight } from './profile.types'
 
 /** The user's "now": the moment, their calendar day and year; the age and the goal day depend on them. */
 export interface Clock {
@@ -55,7 +56,7 @@ export const toProfileResponse = ({
 }: {
 	user: AuthUser
 	profile: UserProfile | null
-	weight: WeightEntry | null
+	weight: LatestWeight | null
 	goals: ProfileGoals | null
 	year: number
 }): ProfileResponse => ({
@@ -71,12 +72,12 @@ export const toProfileResponse = ({
 		goalType: profile?.goalType ?? null,
 		paceKgPerWeek: profile?.paceKgPerWeek ?? null,
 	},
-	weight: weight ? { kg: weight.weightKg, localDate: formatDbDate(weight.localDate) } : null,
+	weight: weight ? { kg: weight.value, localDate: formatDbDate(weight.localDate) } : null,
 	goals,
 })
 
 /** The fields of «Мої дані» the calculation still lacks; names as the client sends them. */
-const getMissingFields = (profile: UserProfile | null, weight: WeightEntry | null): string[] => {
+const getMissingFields = (profile: UserProfile | null, weight: LatestWeight | null): string[] => {
 	const missing: string[] = []
 	if (!profile?.sex) missing.push('sex')
 	if (profile?.birthYear == null) missing.push('age')
@@ -96,7 +97,7 @@ export const toCalculationInput = ({
 	year,
 }: {
 	profile: UserProfile | null
-	weight: WeightEntry | null
+	weight: LatestWeight | null
 	year: number
 }): CalculateGoalsInput => {
 	const missing = getMissingFields(profile, weight)
@@ -117,7 +118,7 @@ export const toCalculationInput = ({
 		sex: profile.sex,
 		age: getAgeFromBirthYear(profile.birthYear, year),
 		heightCm: profile.heightCm,
-		weightKg: weight.weightKg,
+		weightKg: weight.value,
 		targetWeightKg: profile.targetWeightKg,
 		activityLevel: profile.activityLevel,
 		goalType: profile.goalType,

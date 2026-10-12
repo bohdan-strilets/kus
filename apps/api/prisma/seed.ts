@@ -12,6 +12,8 @@ import {
 	FactStatus,
 	FoodSource,
 	GoalType,
+	MeasurementKind,
+	MeasurementSource,
 	type Prisma,
 	PrismaClient,
 } from '../src/generated/prisma/client'
@@ -144,9 +146,11 @@ const seedUser = async (
 					},
 				],
 			},
-			weightEntries: {
+			measurements: {
 				create: DEMO_WEIGHTS.map(({ daysAgo, weightKg }) => ({
-					weightKg,
+					kind: MeasurementKind.WEIGHT,
+					value: weightKg,
+					source: MeasurementSource.PROFILE,
 					measuredAt: getUtcTimeOnLocalDate(daysAgo, 5),
 					localDate: getLocalDate(daysAgo),
 				})),

@@ -192,6 +192,7 @@ describe('account deletion (e2e, real DB)', () => {
 		const pending = await registerUser('pending@kus.app')
 		const active = await registerUser('active@kus.app')
 		await expired.agent.patch('/api/v1/profile').send({ weightKg: 80 }).expect(200)
+		expect(await prisma.measurement.count({ where: { userId: expired.userId } })).toBe(1)
 		const now = new Date()
 		await prisma.user.update({
 			where: { id: expired.userId },
@@ -208,7 +209,7 @@ describe('account deletion (e2e, real DB)', () => {
 		expect(await prisma.user.findUnique({ where: { id: expired.userId } })).toBeNull()
 		expect(await prisma.session.count({ where: { userId: expired.userId } })).toBe(0)
 		expect(await prisma.authCredentials.count({ where: { userId: expired.userId } })).toBe(0)
-		expect(await prisma.weightEntry.count({ where: { userId: expired.userId } })).toBe(0)
+		expect(await prisma.measurement.count({ where: { userId: expired.userId } })).toBe(0)
 		expect(await prisma.user.count()).toBe(2)
 		await active.agent.get(ME_URL).expect(200)
 		// idempotent

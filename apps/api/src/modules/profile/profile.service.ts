@@ -12,9 +12,10 @@ import {
 	type UpdateProfileRequest,
 } from '@kus/shared'
 
-import { GoalType } from '../../generated/prisma/client'
+import { GoalType, MeasurementKind, MeasurementSource } from '../../generated/prisma/client'
 import { PrismaService } from '../../prisma'
 import { GoalsService } from '../goals/goals.service'
+import { MeasurementsService } from '../measurements/measurements.service'
 import { UsersService } from '../users/users.service'
 import { GoalsInconsistentException } from './profile.exceptions'
 import {
@@ -25,6 +26,7 @@ import {
 	toProfileResponse,
 } from './profile.mapper'
 import { ProfileRepository } from './profile.repository'
+import type { LatestWeight } from './profile.types'
 
 /** «Мої дані», the latest weigh-in and the daily goals: reading, editing, recalculating. */
 @Injectable()
@@ -36,14 +38,24 @@ export class ProfileService {
 		private readonly profileRepository: ProfileRepository,
 		private readonly goalsService: GoalsService,
 		private readonly usersService: UsersService,
+		private readonly measurementsService: MeasurementsService,
 	) {}
+
+	/** «Вага зараз»: the latest weight measurement. */
+	private async findLatestWeight(userId: string): Promise<LatestWeight | null> {
+		const latest = await this.measurementsService.findLatest({
+			userId,
+			kind: MeasurementKind.WEIGHT,
+		})
+		return latest ? { value: latest.value, localDate: latest.localDate } : null
+	}
 
 	async getProfile(userId: string): Promise<ProfileResponse> {
 		const user = await this.usersService.getMe(userId)
 		const { today, year } = getClock(user.timezone)
 		const [profile, weight, goals] = await Promise.all([
 			this.profileRepository.findProfile(userId),
-			this.profileRepository.findLatestWeight(userId),
+			this.findLatestWeight(userId),
 			this.goalsService.getProfileGoals(userId, today),
 		])
 		return toProfileResponse({ user, profile, weight, goals, year })
@@ -63,8 +75,15 @@ export class ProfileService {
 
 			await this.profileRepository.upsertProfile({ userId, data: fields }, tx)
 			if (body.weightKg !== undefined) {
-				await this.profileRepository.upsertWeight(
-					{ userId, localDate: today, measuredAt: now, weightKg: roundWeight(body.weightKg) },
+				await this.measurementsService.record(
+					{
+						userId,
+						kind: MeasurementKind.WEIGHT,
+						value: roundWeight(body.weightKg),
+						localDate: today,
+						measuredAt: now,
+						source: MeasurementSource.PROFILE,
+					},
 					tx,
 				)
 			}
@@ -79,7 +98,7 @@ export class ProfileService {
 		const { today, year } = getClock(user.timezone)
 		const [profile, weight, current] = await Promise.all([
 			this.profileRepository.findProfile(userId),
-			this.profileRepository.findLatestWeight(userId),
+			this.findLatestWeight(userId),
 			this.goalsService.getProfileGoals(userId, today),
 		])
 		return { ...calculateGoals(toCalculationInput({ profile, weight, year })), current }
@@ -94,7 +113,7 @@ export class ProfileService {
 		const { today, year } = getClock(user.timezone)
 		const [profile, weight] = await Promise.all([
 			this.profileRepository.findProfile(userId),
-			this.profileRepository.findLatestWeight(userId),
+			this.findLatestWeight(userId),
 		])
 
 		if (isManualGoalsRequest(body)) {

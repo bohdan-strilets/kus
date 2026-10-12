@@ -138,7 +138,13 @@ describe('profile (e2e, real DB)', () => {
 			kg: 82.4,
 			localDate: today(),
 		})
-		expect(await prisma.weightEntry.count({ where: { userId: owner.userId } })).toBe(1)
+		const rows = await prisma.measurement.findMany({ where: { userId: owner.userId } })
+		expect(rows).toHaveLength(1)
+		expect(rows[0]?.kind).toBe('WEIGHT')
+		expect(rows[0]?.source).toBe('PROFILE')
+		expect(rows[0]?.value.toNumber()).toBe(82.4)
+		// the old table is no longer written
+		expect(await prisma.weightEntry.count({ where: { userId: owner.userId } })).toBe(0)
 		// a partial edit leaves the rest alone
 		expect(profileResponse.parse(again.body).data.profile.heightCm).toBe(182)
 	})

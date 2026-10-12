@@ -15,7 +15,10 @@ interface DeliverParams {
 	/** Empty for a photo without words. */
 	text: string
 	photo?: OutboxPhoto
-	/** «Спробувати ще»: the server may replay a finished turn, without the cards it changed. */
+	/**
+	 * «Спробувати ще»: the server may replay a finished turn, without the cards it changed. The
+	 * request is always made, whatever navigator.onLine says.
+	 */
 	isRetry?: boolean
 }
 
@@ -36,8 +39,10 @@ export const deliverMessage = async (
 	const outbox = useOutboxStore.getState()
 	const session = usePhotoSessionStore.getState()
 	outbox.markSending({ clientMessageId, text, photo, createdAt: new Date().toISOString() })
-	// a photo is too heavy to wait in a queue: say so at once instead of a spinner that ends in a failure
-	if (photo && !navigator.onLine) {
+	// a photo is too heavy to wait in a queue: say so at once instead of a spinner that ends in a failure.
+	// Only for the first send: after airplane mode iOS keeps onLine false for a few seconds, and the
+	// tap on «Спробувати ще» would be swallowed; a resend goes to the network and fails there if it must
+	if (photo && !isRetry && !navigator.onLine) {
 		outbox.markFailed(clientMessageId, PHOTO_NEEDS_NETWORK_FAILURE)
 		return
 	}

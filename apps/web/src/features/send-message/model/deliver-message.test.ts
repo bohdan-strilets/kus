@@ -214,6 +214,46 @@ describe('deliverMessage with a photo', () => {
 		})
 	})
 
+	it('resends on «Спробувати ще» even while navigator.onLine still says offline', async () => {
+		// iOS keeps onLine false for a few seconds after airplane mode is switched off
+		vi.stubGlobal('navigator', { onLine: false })
+		vi.mocked(postMessage).mockResolvedValueOnce(turn)
+
+		await deliverMessage(createClient(), {
+			clientMessageId: CLIENT_ID,
+			text: 'обід',
+			photo,
+			isRetry: true,
+		})
+
+		expect(vi.mocked(postMessage).mock.calls[0]?.[0]).toEqual({
+			clientMessageId: CLIENT_ID,
+			text: 'обід',
+			photo: { mimeType: 'image/jpeg', data: 'AAAA' },
+		})
+		expect(useOutboxStore.getState().items).toEqual({})
+		expect(usePhotoSessionStore.getState().previews[CLIENT_ID]).toBe(photo.previewUrl)
+	})
+
+	it('shows the network failure when a resend really has no connection', async () => {
+		vi.stubGlobal('navigator', { onLine: false })
+		vi.mocked(postMessage).mockRejectedValueOnce(networkError)
+
+		await deliverMessage(createClient(), {
+			clientMessageId: CLIENT_ID,
+			text: 'обід',
+			photo,
+			isRetry: true,
+		})
+
+		expect(postMessage).toHaveBeenCalledTimes(1)
+		expect(useOutboxStore.getState().items[CLIENT_ID]).toMatchObject({
+			status: 'failed',
+			error: { messageKey: 'chat.networkError', canRetry: true },
+		})
+		expect(usePhotoSessionStore.getState().uploadProgress).toEqual({})
+	})
+
 	it('plays the photo-fail sound, not the «кусь», when the photo was not food', async () => {
 		vi.stubGlobal('navigator', { onLine: true })
 		const meal = { id: 'meal' } as ChatMessage['meals'][number]

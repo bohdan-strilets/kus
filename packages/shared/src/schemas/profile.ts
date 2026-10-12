@@ -3,11 +3,12 @@ import { z } from 'zod'
 import { GOAL_WARNINGS, PACE_OPTIONS_KG_PER_WEEK } from '../goals/calculate-goals.js'
 import { activityLevelSchema, goalSourceSchema, goalTypeSchema, sexSchema } from './enums.js'
 import { GOAL_KCAL, GOAL_MACRO_GRAMS } from './goals.js'
+import { MEASUREMENT_LIMITS } from './measurements.js'
 
 export const PROFILE_LIMITS = {
 	age: { min: 18, max: 100 },
 	heightCm: { min: 120, max: 230 },
-	weightKg: { min: 30, max: 300 },
+	weightKg: MEASUREMENT_LIMITS.WEIGHT,
 } as const
 
 /** The four levels of «Активність» (onboarding-3-activity); VERY_ACTIVE exists only in the DB. */

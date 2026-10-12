@@ -121,3 +121,12 @@ export const foodCategorySchema = z.enum(FOOD_CATEGORIES)
 export type FoodCategory = z.infer<typeof foodCategorySchema>
 /** Unknown or unsure → plate, never empty (the DB default too). */
 export const FALLBACK_FOOD_CATEGORY: FoodCategory = 'plate'
+
+export const measurementKindSchema = z.enum(['WEIGHT', 'WAIST'])
+export type MeasurementKind = z.infer<typeof measurementKindSchema>
+
+export const measurementSourceSchema = z.enum(['CHAT', 'PROFILE', 'EDIT'])
+export type MeasurementSource = z.infer<typeof measurementSourceSchema>
+
+export const achievementTypeSchema = z.enum(['WEIGHT_KG_LOST', 'FOOD_STREAK'])
+export type AchievementType = z.infer<typeof achievementTypeSchema>

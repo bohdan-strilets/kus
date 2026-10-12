@@ -1,7 +1,7 @@
 import { FOOD_CATEGORIES } from '@kus/shared'
 import { describe, expect, it } from 'vitest'
 
-import { type EvalCase, REPO_CASES } from './cases/index.js'
+import { type EvalCase, type ExpectedMeasurement, REPO_CASES } from './cases/index.js'
 import type { CaseResult } from './eval.types.js'
 import {
 	countCategoryMatches,
@@ -9,6 +9,7 @@ import {
 	getErrorPct,
 	isDecisionCorrect,
 	isEditsCorrect,
+	isMeasurementsCorrect,
 	summarize,
 } from './metrics.js'
 
@@ -24,6 +25,7 @@ const result = (overrides: Partial<CaseResult>): CaseResult => ({
 	categories: [],
 	replyText: null,
 	edits: null,
+	measurements: [],
 	costUsd: 0.001,
 	latencyMs: 1000,
 	inputTokens: 3000,
@@ -162,6 +164,52 @@ describe('repo cases', () => {
 			'not_food',
 			'reply',
 		])
+	})
+})
+
+describe('isMeasurementsCorrect', () => {
+	const today = '2026-10-07'
+	const weight = { kind: 'WEIGHT', value: 82.4, date: today, confirmedJump: false } as const
+
+	it('accepts the same set, today and no confirmation by default', () => {
+		expect(isMeasurementsCorrect([{ kind: 'WEIGHT', value: 82.4 }], [weight], today)).toBe(true)
+	})
+
+	it('rejects another value, kind, day or confirmation', () => {
+		const expected: ExpectedMeasurement[] = [{ kind: 'WEIGHT', value: 82.4 }]
+		expect(isMeasurementsCorrect(expected, [{ ...weight, value: 82.6 }], today)).toBe(false)
+		expect(isMeasurementsCorrect(expected, [{ ...weight, kind: 'WAIST' }], today)).toBe(false)
+		expect(isMeasurementsCorrect(expected, [{ ...weight, date: '2026-10-06' }], today)).toBe(false)
+		expect(isMeasurementsCorrect(expected, [{ ...weight, confirmedJump: true }], today)).toBe(false)
+	})
+
+	it('wants the given day and confirmation', () => {
+		const expected: ExpectedMeasurement[] = [
+			{ kind: 'WEIGHT', value: 87, date: '2026-10-06', confirmedJump: true },
+		]
+		const actual = [{ ...weight, value: 87, date: '2026-10-06', confirmedJump: true }]
+		expect(isMeasurementsCorrect(expected, actual, today)).toBe(true)
+	})
+
+	it('needs exactly the expected set: [] means nothing, extras fail', () => {
+		expect(isMeasurementsCorrect([], [], today)).toBe(true)
+		expect(isMeasurementsCorrect([], [weight], today)).toBe(false)
+		expect(isMeasurementsCorrect([{ kind: 'WEIGHT', value: 82.4 }], [], today)).toBe(false)
+	})
+
+	it('counts only the cases that expect measurements', () => {
+		const summary = summarize('m', [
+			{
+				evalCase: evalCase({ decision: 'reply', measurements: [{ kind: 'WEIGHT', value: 82.4 }] }),
+				result: result({ decision: 'reply', measurements: [weight] }),
+			},
+			{
+				evalCase: evalCase({ decision: 'reply', measurements: [] }),
+				result: result({ decision: 'reply', measurements: [weight] }),
+			},
+			{ evalCase: evalCase({ decision: 'reply' }), result: result({ decision: 'reply' }) },
+		])
+		expect(summary.measurements).toEqual({ correct: 1, total: 2 })
 	})
 })
 

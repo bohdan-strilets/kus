@@ -13,10 +13,12 @@ import {
 	parseToolCalls,
 } from '@kus/shared'
 
+import { EVAL_TODAY } from './cases/case-builders.js'
 import type { EvalCase } from './cases/index.js'
 import type { ActualDecision, CaseResult, LoggedItem } from './eval.types.js'
 import { getClarifyCalls } from './clarify-calls.js'
 import { getEditResult } from './edit-result.js'
+import { getMeasuredItems } from './measurement-result.js'
 import { type EvalModelOptions, requestFoodParse } from './openrouter.js'
 
 /** Fixed clock, so meal-type guesses and reruns compare like for like. */
@@ -28,7 +30,7 @@ export const BASE_CONTEXT: FoodParseContext = {
 	deletedEntries: [],
 	openClarifications: [],
 	goal: null,
-	measurements: { today: '2026-10-07', weights: [], waist: null, targetWeightKg: null },
+	measurements: { today: EVAL_TODAY, weights: [], waist: null, targetWeightKg: null },
 	memory: [],
 	history: [],
 }
@@ -113,6 +115,7 @@ const failedResult = (
 	categories: [],
 	replyText: null,
 	edits: null,
+	measurements: [],
 	wasRetried: attempts > 1,
 })
 
@@ -166,6 +169,7 @@ export const runCase = async (
 					categories: items.map((item) => item.category),
 					replyText: getReplyText(result.decision),
 					edits: getEditResult(result.decision, context),
+					measurements: getMeasuredItems(result.decision, context.measurements.today),
 					items: items.map((item) =>
 						toLoggedItem(
 							item,

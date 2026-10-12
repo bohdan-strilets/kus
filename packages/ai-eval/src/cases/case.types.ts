@@ -3,6 +3,7 @@ import {
 	type FoodParseContext,
 	foodSourceSchema,
 	loggableMealTypeSchema,
+	measurementKindSchema,
 } from '@kus/shared'
 import { z } from 'zod'
 
@@ -67,6 +68,17 @@ export const expectedEditsSchema = z.object({
 		.optional(),
 })
 
+/** One log_measurement the answer must contain; the whole set must match, `[]` = nothing recorded. */
+export const expectedMeasurementSchema = z.object({
+	kind: measurementKindSchema,
+	value: z.number().positive(),
+	/** `YYYY-MM-DD`; without it — the case's today. */
+	date: z.iso.date().optional(),
+	/** Without it — must not be true. */
+	confirmedJump: z.boolean().optional(),
+})
+
+export type ExpectedMeasurement = z.infer<typeof expectedMeasurementSchema>
 export type ExpectedEdits = z.infer<typeof expectedEditsSchema>
 export type ResolutionKind = z.infer<typeof resolutionKindSchema>
 
@@ -89,6 +101,7 @@ export const evalCaseSchema = z
 			/** Lower-case stems the answer must not contain — claims of a change that didn't happen ("змінив"). */
 			replyExcludes: z.array(z.string()).optional(),
 			edits: expectedEditsSchema.optional(),
+			measurements: z.array(expectedMeasurementSchema).optional(),
 			/** Some kept clarify option renames the item ("Макарони сухі"). */
 			clarifyRenames: z.boolean().optional(),
 			/** Whole-day cases: an item (name stem) must land in this meal. */

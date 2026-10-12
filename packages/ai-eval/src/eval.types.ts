@@ -1,4 +1,4 @@
-import type { ClarifyKind } from '@kus/shared'
+import type { ClarifyKind, MeasurementKind } from '@kus/shared'
 
 export type ActualDecision =
 	'log' | 'clarify' | 'edit' | 'not_food' | 'photo_unusable' | 'reply' | 'error'
@@ -19,6 +19,8 @@ export interface CaseResult {
 	replyText: string | null
 	/** What the edit tools changed (refs of the case context); null when the answer changed nothing. */
 	edits: EditResult | null
+	/** What log_measurement recorded (the day resolved); empty when nothing was. */
+	measurements: MeasuredItem[]
 	costUsd: number
 	latencyMs: number
 	inputTokens: number
@@ -42,6 +44,14 @@ export interface ClarifyCall {
 	kind: ClarifyKind
 	/** Passed the thresholds (≥ 80 kcal and ≥ 15 %, or a rename; max 2) and would reach the user. */
 	isKept: boolean
+}
+
+export interface MeasuredItem {
+	kind: MeasurementKind
+	value: number
+	/** `YYYY-MM-DD` */
+	date: string
+	confirmedJump: boolean
 }
 
 export interface EditResult {
@@ -96,6 +106,8 @@ export interface ModelSummary {
 	meals: RateStats
 	/** Cases with expected edits whose edits all matched. */
 	edits: RateStats
+	/** Cases with expected measurements whose recorded set matched exactly (none expected = none recorded). */
+	measurements: RateStats
 	/** Cases with expected sources whose every logged item carries one of them (labels → LABEL). */
 	sources: RateStats
 	decisions: RateStats & { byExpected: Record<string, RateStats> }

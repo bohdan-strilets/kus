@@ -7,6 +7,7 @@ import {
 } from './clarify-analysis.js'
 import {
 	getErrorPct,
+	isCaseMeasurementsCorrect,
 	isDecisionCorrect,
 	isEditsCorrect,
 	isSourcesCorrect,
@@ -26,8 +27,8 @@ const formatRate = ({ correct, total }: RateStats): string =>
 
 export const formatSummaryTable = (summaries: ModelSummary[]): string => {
 	const header = [
-		'| Модель | ккал точні: сер / мед | ккал діапазон | білок точні | білок діапазон | категорії | прийоми | правки | джерела | рішення | без інструмента | повтор / збій / обрізано | $/запит | мс p50 / p95 | токени in / out | cached/запит |',
-		'|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|',
+		'| Модель | ккал точні: сер / мед | ккал діапазон | білок точні | білок діапазон | категорії | прийоми | правки | виміри | джерела | рішення | без інструмента | повтор / збій / обрізано | $/запит | мс p50 / p95 | токени in / out | cached/запит |',
+		'|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|',
 	]
 	const rows = summaries.map((summary) => {
 		const { inputPerCase, outputPerCase, cachedPerCase } = summary.tokens
@@ -41,6 +42,7 @@ export const formatSummaryTable = (summaries: ModelSummary[]): string => {
 			formatRate(summary.categories),
 			formatRate(summary.meals),
 			formatRate(summary.edits),
+			formatRate(summary.measurements),
 			formatRate(summary.sources),
 			formatRate(summary.decisions),
 			formatRate({ correct: summary.modelCalls.textOnly, total: summary.modelCalls.total }),
@@ -100,6 +102,13 @@ const describeMiss = (evalCase: EvalCase, result: CaseResult): Miss[] => {
 		misses.push({
 			caseId: evalCase.id,
 			issue: `рішення: правки ${JSON.stringify(result.edits)}`,
+			errorPct: null,
+		})
+	}
+	if (!isCaseMeasurementsCorrect(evalCase, result)) {
+		misses.push({
+			caseId: evalCase.id,
+			issue: `рішення: виміри ${JSON.stringify(result.measurements)}`,
 			errorPct: null,
 		})
 	}

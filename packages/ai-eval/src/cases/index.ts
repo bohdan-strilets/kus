@@ -5,11 +5,18 @@ import { DECISION_CASES } from './decision.cases.js'
 import { EDIT_CASES } from './edit.cases.js'
 import { EXACT_CASES } from './exact.cases.js'
 import { MEAL_TYPE_CASES } from './meal-type.cases.js'
+import { MEASUREMENT_CASES } from './measurement.cases.js'
 import { MEMORY_OVERRIDE_CASES } from './memory-override.cases.js'
 import { loadPrivateCases } from './private-cases.js'
 import { RANGE_CASES } from './range.cases.js'
 
-export type { EvalCase, ExpectedDecision, ExpectedEdits, ExpectedValue } from './case.types.js'
+export type {
+	EvalCase,
+	ExpectedDecision,
+	ExpectedEdits,
+	ExpectedMeasurement,
+	ExpectedValue,
+} from './case.types.js'
 
 export const REPO_CASES: EvalCase[] = [
 	...EXACT_CASES,
@@ -20,6 +27,7 @@ export const REPO_CASES: EvalCase[] = [
 	...MEAL_TYPE_CASES,
 	...MEMORY_OVERRIDE_CASES,
 	...EDIT_CASES,
+	...MEASUREMENT_CASES,
 ]
 
 export const loadCases = async (): Promise<EvalCase[]> => [

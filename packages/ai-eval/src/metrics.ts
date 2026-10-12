@@ -1,10 +1,12 @@
-import type { EvalCase, ExpectedEdits, ExpectedValue } from './cases/index.js'
+import { EVAL_TODAY } from './cases/case-builders.js'
+import type { EvalCase, ExpectedEdits, ExpectedMeasurement, ExpectedValue } from './cases/index.js'
 import type {
 	ActualDecision,
 	CaseResult,
 	EditResult,
 	ErrorStats,
 	LoggedItem,
+	MeasuredItem,
 	ModelSummary,
 } from './eval.types.js'
 
@@ -78,6 +80,33 @@ export const isEditsCorrect = (expected: ExpectedEdits, actual: EditResult | nul
 		})
 	)
 }
+
+const MEASUREMENT_VALUE_TOLERANCE = 0.05
+
+/** Exactly the expected measurements were recorded: kind, value, day (default today), confirmedJump (default false). */
+export const isMeasurementsCorrect = (
+	expected: ExpectedMeasurement[],
+	actual: MeasuredItem[],
+	today: string,
+): boolean =>
+	expected.length === actual.length &&
+	expected.every((want) =>
+		actual.some(
+			(got) =>
+				got.kind === want.kind &&
+				Math.abs(got.value - want.value) < MEASUREMENT_VALUE_TOLERANCE &&
+				got.date === (want.date ?? today) &&
+				got.confirmedJump === (want.confirmedJump ?? false),
+		),
+	)
+
+export const isCaseMeasurementsCorrect = (evalCase: EvalCase, result: CaseResult): boolean =>
+	evalCase.expect.measurements === undefined ||
+	isMeasurementsCorrect(
+		evalCase.expect.measurements,
+		result.measurements,
+		evalCase.context?.measurements?.today ?? EVAL_TODAY,
+	)
 
 /** Every logged item carries an allowed source; nothing logged is a miss too (a label must be read). */
 export const isSourcesCorrect = (expected: string[], items: LoggedItem[]): boolean =>
@@ -202,6 +231,13 @@ export const summarize = (model: string, pairs: Pair[]): ModelSummary => {
 					isEditsCorrect(evalCase.expect.edits, result.edits),
 			).length,
 			total: pairs.filter(({ evalCase }) => evalCase.expect.edits !== undefined).length,
+		},
+		measurements: {
+			correct: pairs.filter(
+				({ evalCase, result }) =>
+					evalCase.expect.measurements !== undefined && isCaseMeasurementsCorrect(evalCase, result),
+			).length,
+			total: pairs.filter(({ evalCase }) => evalCase.expect.measurements !== undefined).length,
 		},
 		sources: {
 			correct: pairs.filter(

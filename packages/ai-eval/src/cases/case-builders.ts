@@ -4,6 +4,9 @@ import type { ExpectedValue } from './case.types.js'
 
 const DECIMALS = 10
 
+/** The fixed local day of the eval clock (see BASE_CONTEXT); measurement dates are judged against it. */
+export const EVAL_TODAY = '2026-10-07'
+
 /** Value for a weighed portion from per-100 g reference data. */
 export const per100 = (valuePer100g: number, grams: number): ExpectedValue => ({
 	exact: Math.round(((valuePer100g * grams) / 100) * DECIMALS) / DECIMALS,

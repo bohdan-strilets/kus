@@ -7,6 +7,7 @@ import { cn, useBlink, useSvgId } from '@/shared/lib'
 import { Body, Cookie, CookieDefs, PawLeft, PawWave } from './hamster-parts'
 import { HAMSTER_MOODS } from './hamster.moods'
 import type { HamsterProps } from './hamster.types'
+import { useHopOnMoodChange } from './use-hop-on-mood-change'
 
 /**
  * Kusik's mascot, full body with the cookie in its paws:
@@ -26,6 +27,7 @@ export const Hamster = ({
 }: HamsterProps) => {
 	const ref = useRef<SVGSVGElement>(null)
 	useBlink(ref, { isEnabled: isBlinking })
+	useHopOnMoodChange(ref, mood)
 	const gradientId = useSvgId('kg')
 	const maskId = useSvgId('kb')
 	const parts = HAMSTER_MOODS[mood]

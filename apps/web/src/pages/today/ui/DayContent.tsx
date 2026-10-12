@@ -16,13 +16,21 @@ const SKELETON_ROWS = 3
 interface DayContentProps {
 	query: UseQueryResult<DayResponse>
 	isToday: boolean
+	/** Only for today: the day goal closing celebrates in the card's ring. */
+	celebration?: { userId: string; today: string }
 	onGoalClick: () => void
 	/** The empty state's action: the chat today, back to today for a past day. */
 	onEmptyAction: () => void
 }
 
 /** The chosen day on «Сьогодні»: its card, meals and a word of support — or why there is nothing. */
-export const DayContent = ({ query, isToday, onGoalClick, onEmptyAction }: DayContentProps) => {
+export const DayContent = ({
+	query,
+	isToday,
+	celebration,
+	onGoalClick,
+	onEmptyAction,
+}: DayContentProps) => {
 	const { t } = useTranslation()
 
 	if (query.isPending) {
@@ -50,6 +58,7 @@ export const DayContent = ({ query, isToday, onGoalClick, onEmptyAction }: DayCo
 				eaten={eaten}
 				goal={goal}
 				macros={macros}
+				celebration={celebration}
 				goalAction={{ label: t(goal === null ? 'goal.set' : 'goal.change'), onClick: onGoalClick }}
 			/>
 			<MealsList meals={query.data.meals} />

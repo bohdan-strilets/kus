@@ -5,6 +5,10 @@ import { Surface, Text } from '@/shared/ui'
 
 import type { MacroProgressSet } from '../../model/macro.types'
 import { CalorieGauge } from '../calorie-gauge/CalorieGauge'
+import {
+	GoalCelebrationFrame,
+	type GoalCelebrationFrameProps,
+} from '../goal-celebration-frame/GoalCelebrationFrame'
 import { MacroTiles } from '../macro-tiles/MacroTiles'
 
 export interface DayStatsCardProps {
@@ -14,6 +18,8 @@ export interface DayStatsCardProps {
 	macros: MacroProgressSet
 	/** A tap on «ціль» opens the goal sheet; label — «Змінити ціль» / «Задати ціль». */
 	goalAction?: { label: string; onClick: () => void }
+	/** Given for today's card: closing the day goal lights the ring up. */
+	celebration?: GoalCelebrationFrameProps['celebration']
 }
 
 const STAT_CLASS = 'flex w-17.5 flex-col items-center'
@@ -34,7 +40,13 @@ const SideStatContent = ({ value, label }: { value: string; label: string }) => 
  * half-ring in the middle, the goal on the right, then the three macro tiles with bars. Without a
  * goal the ring itself shows what was eaten, so the left side stays empty.
  */
-export const DayStatsCard = ({ eaten, goal, macros, goalAction }: DayStatsCardProps) => {
+export const DayStatsCard = ({
+	eaten,
+	goal,
+	macros,
+	goalAction,
+	celebration,
+}: DayStatsCardProps) => {
 	const { t } = useTranslation()
 	const goalStat = (
 		<SideStatContent value={goal === null ? '—' : formatInteger(goal)} label={t('gauge.goal')} />
@@ -48,7 +60,9 @@ export const DayStatsCard = ({ eaten, goal, macros, goalAction }: DayStatsCardPr
 						<SideStatContent value={formatInteger(eaten)} label={t('gauge.eaten')} />
 					)}
 				</div>
-				<CalorieGauge eaten={eaten} goal={goal} size="large" />
+				<GoalCelebrationFrame celebration={celebration} className="shrink-0">
+					<CalorieGauge eaten={eaten} goal={goal} size="large" />
+				</GoalCelebrationFrame>
 				{goalAction ? (
 					<button
 						type="button"

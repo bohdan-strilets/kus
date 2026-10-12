@@ -8,6 +8,8 @@ export type KusikReplyKind =
 	| 'photoEstimate'
 	/** The photo was not food or could not be read: Kusik apologises, like in chat-error. */
 	| 'photoFail'
+	/** This reply's card closed the day goal: Kusik is glad (the face swaps in with the ring glow). */
+	| 'goalReached'
 	| 'typing'
 	| 'suggestion'
 	| 'error'
@@ -22,7 +24,7 @@ export type KusikReplyKind =
  * Face per reply, taken from the avatars in design/mockups/chat*.html (and docs/components.md):
  * chat / chat-clarify (meal card) → smile, chat-photo and chat-typing → think, chat «що на вечерю»
  * → happy, chat-error → oops, chat-new-day and chat-weekly-summary → smileOpen, chat-new-recipe →
- * content, chat-weight → proud; the welcome back is glad to see the user → happy. hungry is used
+ * content, chat-weight → proud; the welcome back is glad to see the user → happy; a reply that closed the day goal → happy (smile → happy hops). hungry is used
  * outside chat bubbles (the dinner tip on «Сьогодні»).
  */
 const FACE_BY_REPLY: Record<KusikReplyKind, HamsterHeadMood> = {
@@ -31,6 +33,7 @@ const FACE_BY_REPLY: Record<KusikReplyKind, HamsterHeadMood> = {
 	clarify: 'smile',
 	photoEstimate: 'think',
 	photoFail: 'oops',
+	goalReached: 'happy',
 	typing: 'think',
 	suggestion: 'happy',
 	error: 'oops',

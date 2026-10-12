@@ -8,6 +8,11 @@ import { Text } from '@/shared/ui'
 
 import { getGaugeState } from '../../lib/get-gauge-state'
 import type { MacroProgress } from '../../model/macro.types'
+import { COMPACT_GOAL_DISTANCE } from '../goal-celebration-frame/goal-celebration-frame.constants'
+import {
+	GoalCelebrationFrame,
+	type GoalCelebrationFrameProps,
+} from '../goal-celebration-frame/GoalCelebrationFrame'
 import { MiniRing } from './MiniRing'
 
 export interface CompactDayBarProps {
@@ -17,6 +22,8 @@ export interface CompactDayBarProps {
 	protein: MacroProgress
 	/** Given: the bar is a button that expands the header (while typing) instead of a link. */
 	onExpand?: () => void
+	/** Given while today is shown: closing the day goal lights the mini ring up. */
+	celebration?: GoalCelebrationFrameProps['celebration']
 }
 
 const BAR_CLASS =
@@ -26,7 +33,13 @@ const BAR_CLASS =
  * docs CompactBar — the chat header collapsed on scroll (mockups/chat-compact.html):
  * a mini ring, «1 370 / 2 200» and «Б 78/140»; a tap opens «Сьогодні», or expands the header.
  */
-export const CompactDayBar = ({ eaten, goal, protein, onExpand }: CompactDayBarProps) => {
+export const CompactDayBar = ({
+	eaten,
+	goal,
+	protein,
+	onExpand,
+	celebration,
+}: CompactDayBarProps) => {
 	const { t } = useTranslation()
 	const eatenText = formatInteger(eaten)
 	const goalText = goal === null ? null : formatInteger(goal)
@@ -44,7 +57,13 @@ export const CompactDayBar = ({ eaten, goal, protein, onExpand }: CompactDayBarP
 
 	const content: ReactNode = (
 		<>
-			<MiniRing state={getGaugeState(eaten, goal ?? 0)} />
+			<GoalCelebrationFrame
+				celebration={celebration}
+				particleDistance={COMPACT_GOAL_DISTANCE}
+				className="shrink-0"
+			>
+				<MiniRing state={getGaugeState(eaten, goal ?? 0)} />
+			</GoalCelebrationFrame>
 			<Text as="span" weight="extrabold" isTabular className="whitespace-nowrap">
 				{eatenText}{' '}
 				<Text as="span" variant="small" tone="muted">

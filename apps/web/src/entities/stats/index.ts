@@ -24,6 +24,14 @@ export { CompactDayBar, type CompactDayBarProps } from './ui/compact-day-bar/Com
 export { DayRecapCard, type DayRecapCardProps } from './ui/day-recap-card/DayRecapCard'
 export { DayStatsCard, type DayStatsCardProps } from './ui/day-stats-card/DayStatsCard'
 export { DaySummaryCard, type DaySummaryCardProps } from './ui/day-summary-card/DaySummaryCard'
+export {
+	COMPACT_GOAL_DISTANCE,
+	DEFAULT_GOAL_PARTICLE_DISTANCE,
+} from './ui/goal-celebration-frame/goal-celebration-frame.constants'
+export {
+	GoalCelebrationFrame,
+	type GoalCelebrationFrameProps,
+} from './ui/goal-celebration-frame/GoalCelebrationFrame'
 export { MacroTile, type MacroTileProps } from './ui/macro-tile/MacroTile'
 export { MacroTiles, type MacroTilesProps } from './ui/macro-tiles/MacroTiles'
 export { SupportCard, type SupportCardProps } from './ui/support-card/SupportCard'

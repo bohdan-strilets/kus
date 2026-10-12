@@ -23,6 +23,10 @@ describe('getKusikFace', () => {
 		expect(getKusikFace('weight')).toBe('proud')
 	})
 
+	it('is glad when the reply closed the day goal', () => {
+		expect(getKusikFace('goalReached')).toBe('happy')
+	})
+
 	it('is glad to see the user back after a restore', () => {
 		expect(getKusikFace('welcomeBack')).toBe('happy')
 	})

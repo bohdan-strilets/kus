@@ -7,6 +7,10 @@ import { Surface } from '@/shared/ui'
 
 import type { MacroProgressSet } from '../../model/macro.types'
 import { CalorieGauge } from '../calorie-gauge/CalorieGauge'
+import {
+	GoalCelebrationFrame,
+	type GoalCelebrationFrameProps,
+} from '../goal-celebration-frame/GoalCelebrationFrame'
 import { MacroTiles } from '../macro-tiles/MacroTiles'
 
 export interface DaySummaryCardProps {
@@ -17,6 +21,8 @@ export interface DaySummaryCardProps {
 	goalAction?: { label: string; onClick: () => void }
 	/** Under the gauge, outside the link: «Задати ціль» while there is no goal. */
 	footer?: ReactNode
+	/** Given while today is shown: closing the day goal lights the ring up. */
+	celebration?: GoalCelebrationFrameProps['celebration']
 }
 
 /**
@@ -30,8 +36,13 @@ export const DaySummaryCard = ({
 	macros,
 	goalAction,
 	footer,
+	celebration,
 }: DaySummaryCardProps) => {
-	const gauge = <CalorieGauge eaten={eaten} goal={goal} size="compact" />
+	const gauge = (
+		<GoalCelebrationFrame celebration={celebration} className="shrink-0">
+			<CalorieGauge eaten={eaten} goal={goal} size="compact" />
+		</GoalCelebrationFrame>
+	)
 	const tiles = <MacroTiles macros={macros} variant="compact" className="min-w-0 flex-1" />
 	const rowClass = cn('flex items-center gap-3.5 px-4 pt-3.5', footer ? 'pb-0' : 'pb-3.5')
 

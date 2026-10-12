@@ -203,6 +203,10 @@
 	/* added: list cards in profile, my-data, settings */
 	--shadow-list: 0 8px 22px rgb(80 50 20 / 0.08);
 
+	/* added: static blur of the goal-celebration glow layer (design/interactive/motion.html, drop-shadow 14px);
+	   only its opacity and scale are animated */
+	--blur-glow: 14px;
+
 	/* ── Motion ── */
 	/* appear */
 	--ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);

@@ -100,15 +100,23 @@ describe('useGoalCelebrationStore', () => {
 			expect(store().consume({ userId: USER_A, today: TODAY, now: T0 })).toBeNull()
 		})
 
-		it('returns the event, writes the flag and remembers the reply', () => {
+		it('returns the event with detectedAt, writes no flag and does not reveal the reply yet', () => {
 			detect()
 
 			const event = store().consume({ userId: USER_A, today: TODAY, now: T0 + 1000 })
 
-			expect(event).toEqual({ localDate: TODAY, messageId: REPLY_ID })
-			expect(hasCelebratedGoal(USER_A, TODAY)).toBe(true)
-			expect(store().celebratedReplyId).toBe(REPLY_ID)
+			expect(event).toEqual({ localDate: TODAY, messageId: REPLY_ID, detectedAt: T0 })
+			expect(hasCelebratedGoal(USER_A, TODAY)).toBe(false)
+			expect(store().celebratedReplyId).toBeNull()
 			expect(store().pending).toBeNull()
+		})
+
+		it('reveals the reply only through revealReply', () => {
+			store().revealReply(REPLY_ID)
+			expect(store().celebratedReplyId).toBe(REPLY_ID)
+
+			store().revealReply(null)
+			expect(store().celebratedReplyId).toBeNull()
 		})
 
 		it('is atomic: the second consume returns nothing', () => {
@@ -183,8 +191,50 @@ describe('useGoalCelebrationStore', () => {
 			expect(store().consume({ userId: USER_A, today: TODAY, now: T0 })).toEqual({
 				localDate: TODAY,
 				messageId: null,
+				detectedAt: T0,
 			})
 			expect(store().celebratedReplyId).toBeNull()
+		})
+	})
+
+	describe('restorePending', () => {
+		const event = { localDate: TODAY, messageId: REPLY_ID, detectedAt: T0 }
+
+		it('puts the event back as pending with its original detectedAt', () => {
+			store().restorePending(event)
+
+			expect(store().pending).toEqual({ localDate: TODAY, messageId: REPLY_ID, detectedAt: T0 })
+		})
+
+		it('does nothing when a newer event is already pending', () => {
+			store().arm(null, T0 + 500)
+			store().setPending('2026-10-13', T0 + 500)
+			const before = store().pending
+
+			store().restorePending(event)
+
+			expect(store().pending).toEqual(before)
+		})
+
+		it('ages from the detection: a restored stale event is dropped by consume without a flag', () => {
+			store().restorePending(event)
+
+			const result = store().consume({
+				userId: USER_A,
+				today: TODAY,
+				now: T0 + GOAL_PENDING_TTL_MS + 1,
+			})
+
+			expect(result).toBeNull()
+			expect(store().pending).toBeNull()
+			expect(hasCelebratedGoal(USER_A, TODAY)).toBe(false)
+		})
+
+		it('a restored fresh event is consumed again, still without a flag', () => {
+			store().restorePending(event)
+
+			expect(store().consume({ userId: USER_A, today: TODAY, now: T0 + 1000 })).toEqual(event)
+			expect(hasCelebratedGoal(USER_A, TODAY)).toBe(false)
 		})
 	})
 

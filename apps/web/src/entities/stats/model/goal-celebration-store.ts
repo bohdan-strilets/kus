@@ -1,10 +1,6 @@
 import { create } from 'zustand'
 
-import {
-	clearGoalCelebratedFlags,
-	hasCelebratedGoal,
-	markGoalCelebrated,
-} from '../lib/goal-celebrated-flag'
+import { clearGoalCelebratedFlags, hasCelebratedGoal } from '../lib/goal-celebrated-flag'
 
 /** A local action arms the detector for this long: a refetch that lands later is not «ours». */
 export const GOAL_ARM_WINDOW_MS = 30_000
@@ -25,6 +21,8 @@ interface PendingGoal {
 export interface GoalCelebration {
 	localDate: string
 	messageId: string | null
+	/** Kept so a restored event ages from its detection, not from its return. */
+	detectedAt: number
 }
 
 interface ConsumeParams {
@@ -44,7 +42,12 @@ interface GoalCelebrationState {
 	arm: (messageId: string | null, now?: number) => void
 	isArmed: (now?: number) => boolean
 	setPending: (localDate: string, now?: number) => void
+	/** Takes the event without marking the day: the caller marks it when the celebration really plays. */
 	consume: (params: ConsumeParams) => GoalCelebration | null
+	/** Puts back an event whose celebration did not play (the ring unmounted), if nothing is pending. */
+	restorePending: (event: GoalCelebration) => void
+	/** Called by the ring at the moment of the celebration, so the face changes together with the glow. */
+	revealReply: (messageId: string | null) => void
 }
 
 export const useGoalCelebrationStore = create<GoalCelebrationState>()((set, get) => ({
@@ -85,8 +88,20 @@ export const useGoalCelebrationStore = create<GoalCelebrationState>()((set, get)
 			set({ pending: null })
 			return null
 		}
-		markGoalCelebrated(userId, localDate)
-		set({ pending: null, celebratedReplyId: messageId })
-		return { localDate, messageId }
+		set({ pending: null })
+		return { localDate, messageId, detectedAt }
+	},
+	restorePending: (event) => {
+		if (get().pending !== null) return
+		set({
+			pending: {
+				localDate: event.localDate,
+				messageId: event.messageId,
+				detectedAt: event.detectedAt,
+			},
+		})
+	},
+	revealReply: (messageId) => {
+		set({ celebratedReplyId: messageId })
 	},
 }))

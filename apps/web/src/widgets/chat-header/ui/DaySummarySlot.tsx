@@ -8,7 +8,12 @@ import { EditGoalsSheet, SetGoalLink, toGoalValues } from '@/features/edit-goals
 import { InlineError, Skeleton, Surface } from '@/shared/ui'
 
 /** The day card under the chat header in its three states: loading, failed, the day. */
-export const DaySummarySlot = ({ query }: { query: UseQueryResult<DayResponse> }) => {
+interface DaySummarySlotProps {
+	query: UseQueryResult<DayResponse>
+	celebration?: { userId: string; today: string }
+}
+
+export const DaySummarySlot = ({ query, celebration }: DaySummarySlotProps) => {
 	const { t } = useTranslation()
 	const [isGoalOpen, setIsGoalOpen] = useState(false)
 	const openGoal = (): void => {
@@ -38,6 +43,7 @@ export const DaySummarySlot = ({ query }: { query: UseQueryResult<DayResponse> }
 				eaten={eaten}
 				goal={goal}
 				macros={macros}
+				celebration={celebration}
 				goalAction={goal === null ? undefined : { label: t('goal.change'), onClick: openGoal }}
 				footer={goal === null ? <SetGoalLink onClick={openGoal} /> : undefined}
 			/>

@@ -1,5 +1,6 @@
 import type { ChatMessage } from '@kus/shared'
 
+import { useGoalCelebrationStore } from '@/entities/stats'
 import { KusikRow, type KusikReplyKind, MessageBubble } from '@/entities/message'
 import { Text } from '@/shared/ui'
 
@@ -14,14 +15,19 @@ interface KusikReplyProps {
 	photoStatus?: FeedPhotoStatus
 }
 
-const getReplyKind = (
-	{ replyToId, meals, clarifications }: ChatMessage,
-	photoStatus: KusikReplyProps['photoStatus'],
-): KusikReplyKind => {
+interface ReplyKindParams {
+	message: ChatMessage
+	photoStatus: KusikReplyProps['photoStatus']
+	isGoalReached: boolean
+}
+
+const getReplyKind = ({ message, photoStatus, isGoalReached }: ReplyKindParams): KusikReplyKind => {
+	const { replyToId, meals, clarifications } = message
 	// the only message Kusik writes on his own, without a user turn: the welcome back after a restore
 	if (replyToId === null) return 'welcomeBack'
 	if (photoStatus === 'FAILED') return 'photoFail'
 	if (clarifications.some((item) => item.status === 'OPEN')) return 'clarify'
+	if (isGoalReached) return 'goalReached'
 	if (meals.length === 0) return 'reply'
 	return photoStatus === 'PROCESSED' ? 'photoEstimate' : 'mealLogged'
 }
@@ -33,7 +39,8 @@ const getReplyKind = (
  */
 export const KusikReply = ({ message, isLatest, photoStatus }: KusikReplyProps) => {
 	const placement = getClarificationPlacement(message)
-	const kind = getReplyKind(message, photoStatus)
+	const isGoalReached = useGoalCelebrationStore((state) => state.celebratedReplyId === message.id)
+	const kind = getReplyKind({ message, photoStatus, isGoalReached })
 	const renderCards = (hasTail: boolean) =>
 		message.meals.map((meal, index) => (
 			<MealCard

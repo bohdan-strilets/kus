@@ -23,10 +23,10 @@ export const TodayPage = () => {
 	const user = useSessionUser()
 	// the session guard renders /app only with a user; this keeps the types honest
 	if (!user) return null
-	return <TodayScreen timeZone={user.timezone} />
+	return <TodayScreen userId={user.id} timeZone={user.timezone} />
 }
 
-const TodayScreen = ({ timeZone }: { timeZone: string }) => {
+const TodayScreen = ({ userId, timeZone }: { userId: string; timeZone: string }) => {
 	const { t } = useTranslation()
 	const navigate = useNavigate()
 	const today = useLocalToday(timeZone)
@@ -77,6 +77,7 @@ const TodayScreen = ({ timeZone }: { timeZone: string }) => {
 				<DayContent
 					query={dayQuery}
 					isToday={isToday}
+					celebration={isToday ? { userId, today } : undefined}
 					onGoalClick={() => {
 						setIsGoalOpen(true)
 					}}

@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { useNavigate } from 'react-router'
 
 import { dayQueryOptions } from '@/entities/day'
+import { useSessionUser } from '@/entities/session'
 import { CompactDayBar, getDayStats } from '@/entities/stats'
 import { type Addressee, useGreeting, UserAvatar } from '@/entities/user'
 import { ROUTES } from '@/shared/config'
@@ -42,6 +43,8 @@ export const ChatHeader = ({
 }: ChatHeaderProps) => {
 	const navigate = useNavigate()
 	const greeting = useGreeting({ addressee, timeZone })
+	const user = useSessionUser()
+	const celebration = user ? { userId: user.id, today } : undefined
 	const dayQuery = useQuery(dayQueryOptions(today))
 	const stats = dayQuery.data ? getDayStats(dayQuery.data) : null
 	const openProfile = (): void => {
@@ -63,6 +66,7 @@ export const ChatHeader = ({
 							goal={stats.goal}
 							protein={stats.macros.protein}
 							onExpand={onExpand}
+							celebration={celebration}
 						/>
 					) : (
 						<span className="flex-1" />
@@ -89,7 +93,7 @@ export const ChatHeader = ({
 						<UserAvatar name={addressee.name ?? ''} onClick={openProfile} />
 					</div>
 					<div className="px-gutter">
-						<DaySummarySlot query={dayQuery} />
+						<DaySummarySlot query={dayQuery} celebration={celebration} />
 					</div>
 				</motion.header>
 			)}

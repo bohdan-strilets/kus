@@ -6,6 +6,12 @@ All notable changes to Kusik are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.3.1] — 2026-10-12
+
+### Fixed
+
+- «Спробувати ще» under a photo works on the first tap after airplane mode: the `navigator.onLine` check, which iOS keeps false for a few seconds after reconnecting, now guards only the first send; a resend always goes to the network and shows the network failure if there really is no connection ([57772fe])
+
 ## [0.3.0] — 2026-10-12
 
 ### Added
@@ -56,7 +62,9 @@ All notable changes to Kusik are documented here. The format follows
 
 ## 0.2.0 / 0.1.0 — see tags
 
-[Unreleased]: https://github.com/bohdan-strilets/kus/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/bohdan-strilets/kus/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/bohdan-strilets/kus/compare/v0.3.0...v0.3.1
+[57772fe]: https://github.com/bohdan-strilets/kus/commit/57772feea55a7b1b2774932664eb96b1d3234d5d
 [0.3.0]: https://github.com/bohdan-strilets/kus/compare/v0.2.2...v0.3.0
 [9287baa]: https://github.com/bohdan-strilets/kus/commit/9287baa8b63eaa64ce02f58ac66ba87610f5d112
 [9b60374]: https://github.com/bohdan-strilets/kus/commit/9b603743f718e799ce6b557ff661f14fecc3c7d1

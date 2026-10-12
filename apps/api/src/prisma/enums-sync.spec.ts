@@ -1,4 +1,5 @@
 import {
+	achievementTypeSchema,
 	activityLevelSchema,
 	aiRunPurposeSchema,
 	aiRunStatusSchema,
@@ -13,6 +14,8 @@ import {
 	goalTypeSchema,
 	localeSchema,
 	mealTypeSchema,
+	measurementKindSchema,
+	measurementSourceSchema,
 	messageRoleSchema,
 	messageStatusSchema,
 	myFoodSourceSchema,
@@ -46,6 +49,9 @@ const ENUM_PAIRS: [string, Record<string, string>, readonly string[]][] = [
 	['FactStatus', PrismaEnums.FactStatus, factStatusSchema.options],
 	['ExerciseSource', PrismaEnums.ExerciseSource, exerciseSourceSchema.options],
 	['FoodCategory', PrismaEnums.FoodCategory, foodCategorySchema.options],
+	['MeasurementKind', PrismaEnums.MeasurementKind, measurementKindSchema.options],
+	['MeasurementSource', PrismaEnums.MeasurementSource, measurementSourceSchema.options],
+	['AchievementType', PrismaEnums.AchievementType, achievementTypeSchema.options],
 ]
 
 describe('shared zod enums ↔ Prisma enums', () => {

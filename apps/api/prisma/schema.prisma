@@ -121,6 +121,28 @@ enum ClarificationStatus {
   @@map("clarification_status")
 }
 
+enum MeasurementKind {
+  WEIGHT
+  WAIST
+
+  @@map("measurement_kind")
+}
+
+enum MeasurementSource {
+  CHAT
+  PROFILE
+  EDIT
+
+  @@map("measurement_source")
+}
+
+enum AchievementType {
+  WEIGHT_KG_LOST
+  FOOD_STREAK
+
+  @@map("achievement_type")
+}
+
 enum MealType {
   BREAKFAST
   LUNCH
@@ -254,6 +276,8 @@ model User {
   profile            UserProfile?
   goals              UserGoal[]
   weightEntries      WeightEntry[]
+  measurements       Measurement[]
+  achievements       Achievement[]
   messages           Message[]
   aiRuns             AiRun[]
   clarifications     Clarification[]
@@ -364,6 +388,7 @@ model UserGoal {
   @@map("user_goals")
 }
 
+// Deprecated: replaced by Measurement (kind WEIGHT); drop after 0.5.0 verification
 // One weigh-in per local day (a second one that day rewrites it); «вага зараз» = the latest row
 model WeightEntry {
   id         String   @id @default(uuid(7)) @db.Uuid
@@ -380,6 +405,49 @@ model WeightEntry {
 
   @@unique([userId, localDate])
   @@map("weight_entries")
+}
+
+// Body measurements (weight kg, waist cm): one per kind per local day, a second one that day rewrites it
+model Measurement {
+  id         String            @id @default(uuid(7)) @db.Uuid
+  userId     String            @map("user_id") @db.Uuid
+  kind       MeasurementKind
+  // one decimal, rounded by the backend
+  value      Decimal           @db.Decimal(4, 1)
+  localDate  DateTime          @map("local_date") @db.Date
+  measuredAt DateTime          @map("measured_at") @db.Timestamptz
+  source     MeasurementSource
+  // user message the value came from
+  messageId  String?           @map("message_id") @db.Uuid
+  createdAt  DateTime          @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt  DateTime          @updatedAt @map("updated_at") @db.Timestamptz
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  message Message? @relation(fields: [messageId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, kind, localDate])
+  @@index([messageId])
+  @@map("measurements")
+}
+
+// Immutable milestones: one row per (type, value) per user, so a milestone is celebrated once
+model Achievement {
+  id         String          @id @default(uuid(7)) @db.Uuid
+  userId     String          @map("user_id") @db.Uuid
+  type       AchievementType
+  // kg lost or streak days
+  value      Int
+  achievedAt DateTime        @map("achieved_at") @db.Timestamptz
+  // assistant reply that announced it
+  messageId  String?         @map("message_id") @db.Uuid
+  createdAt  DateTime        @default(now()) @map("created_at") @db.Timestamptz
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  message Message? @relation(fields: [messageId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, type, value])
+  @@index([messageId])
+  @@map("achievements")
 }
 
 // ───────────────────────── Chat & AI ─────────────────────────
@@ -410,6 +478,8 @@ model Message {
   foodEntries        FoodEntry[]
   facts              UserFact[]
   exerciseEntries    ExerciseEntry[]
+  measurements       Measurement[]
+  achievements       Achievement[]
 
   @@unique([userId, clientMessageId])
   @@index([userId, createdAt])

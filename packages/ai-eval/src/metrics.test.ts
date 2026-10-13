@@ -35,6 +35,8 @@ const result = (overrides: Partial<CaseResult>): CaseResult => ({
 	items: [],
 	clarifyCalls: [],
 	truncated: false,
+	validationErrors: [],
+	mixedScriptWords: [],
 	...overrides,
 })
 
@@ -76,6 +78,13 @@ describe('isDecisionCorrect', () => {
 		const remaining = evalCase({ decision: 'reply', replyIncludes: ['760'] })
 		expect(isDecisionCorrect(remaining, 'reply', 'Ще 760 ккал')).toBe(true)
 		expect(isDecisionCorrect(remaining, 'reply', 'Ще трохи')).toBe(false)
+	})
+
+	it('accepts any of replyIncludesAny, case-insensitively', () => {
+		const asks = evalCase({ decision: 'reply', replyIncludesAny: ['перевір', 'підтверд'] })
+		expect(isDecisionCorrect(asks, 'reply', 'Перевір, будь ласка, число')).toBe(true)
+		expect(isDecisionCorrect(asks, 'reply', 'Підтверди 87 кг')).toBe(true)
+		expect(isDecisionCorrect(asks, 'reply', 'Записав 87')).toBe(false)
 	})
 })
 

@@ -98,6 +98,8 @@ export const evalCaseSchema = z
 			categories: z.array(foodCategorySchema).optional(),
 			/** For reply cases: substrings the answer must contain (e.g. the remaining kcal). */
 			replyIncludes: z.array(z.string()).optional(),
+			/** Lower-case substrings; the answer must contain at least one of them. */
+			replyIncludesAny: z.array(z.string()).optional(),
 			/** Lower-case stems the answer must not contain — claims of a change that didn't happen ("змінив"). */
 			replyExcludes: z.array(z.string()).optional(),
 			edits: expectedEditsSchema.optional(),

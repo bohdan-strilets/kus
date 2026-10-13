@@ -3,6 +3,14 @@ import type { ClarifyKind, MeasurementKind } from '@kus/shared'
 export type ActualDecision =
 	'log' | 'clarify' | 'edit' | 'not_food' | 'photo_unusable' | 'reply' | 'error'
 
+export interface ValidationAttempt {
+	attempt: number
+	/** Tools the model called in this attempt (empty = a text-only answer). */
+	callNames: string[]
+	/** parseToolCalls error texts (code-generated, cut to 200 chars; no user message content). */
+	errors: string[]
+}
+
 export interface CaseResult {
 	caseId: string
 	model: string
@@ -34,6 +42,10 @@ export interface CaseResult {
 	truncated: boolean
 	/** Model calls answered with text instead of a tool call (possible with tool_choice "auto"). */
 	textOnlyAnswers: number
+	/** Every failed validation attempt, also when a retry then succeeded; empty when the first try passed. */
+	validationErrors: ValidationAttempt[]
+	/** Words in the reply that mix Cyrillic and Latin letters. */
+	mixedScriptWords: string[]
 }
 
 export interface ClarifyCall {

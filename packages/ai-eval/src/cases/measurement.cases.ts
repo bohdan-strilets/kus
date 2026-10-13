@@ -72,6 +72,8 @@ const PORTION_ASKED: Partial<FoodParseContext> = {
 }
 
 const ASKS_A_QUESTION = ['?']
+/** Asks to check or confirm the number — with or without a question mark. */
+const ASKS_TO_CHECK = ['перевір', 'підтверд', 'точно', 'правильн']
 
 /** A weigh-in reply is a warm sentence without numbers: the card shows them. */
 const NO_DIGITS = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
@@ -222,7 +224,7 @@ export const MEASUREMENT_CASES: EvalCase[] = [
 		id: 'weight-jump-with-word',
 		text: 'вага 87',
 		context: LAST_WEIGHT_TWO_DAYS_AGO,
-		expect: { decision: 'reply', replyIncludes: ASKS_A_QUESTION, measurements: [] },
+		expect: { decision: 'reply', replyIncludesAny: ASKS_TO_CHECK, measurements: [] },
 		reference: 'Same jump with the word «вага»: still asks, never confirmedJump on the first try',
 	},
 	{

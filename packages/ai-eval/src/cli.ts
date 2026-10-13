@@ -21,7 +21,9 @@ import {
 	formatClarifyReport,
 	formatDecisionBreakdown,
 	formatMisses,
+	formatMixedScript,
 	formatSummaryTable,
+	formatValidationRetries,
 } from './report.js'
 import { type ModelRun, runModel } from './runner.js'
 
@@ -143,6 +145,9 @@ const main = async (): Promise<void> => {
 		print(`\nУточнення ${run.model}:\n${formatClarifyReport(run.pairs)}`)
 		const misses = formatMisses(run.pairs)
 		if (misses) print(`\nПромахи ${run.model}:\n${misses}`)
+		const retries = formatValidationRetries(run.pairs)
+		if (retries) print(`\nПомилки валідації ${run.model}:\n${retries}`)
+		print(`\n${run.model}: ${formatMixedScript(run.pairs)}`)
 		if (run.skipped > 0)
 			print(`\n⚠ ${run.model}: пропущено ${run.skipped} кейсів — вичерпано --max-cost`)
 	}

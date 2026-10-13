@@ -36,9 +36,11 @@ export const isDecisionCorrect = (
 	if (expected !== actual) return false
 	const text = (replyText ?? '').toLowerCase()
 	const mustInclude = evalCase.expect.replyIncludes ?? []
+	const mustIncludeAny = evalCase.expect.replyIncludesAny ?? []
 	const mustExclude = evalCase.expect.replyExcludes ?? []
 	return (
 		mustInclude.every((part) => (replyText ?? '').includes(part)) &&
+		(mustIncludeAny.length === 0 || mustIncludeAny.some((part) => text.includes(part))) &&
 		mustExclude.every((stem) => !text.includes(stem))
 	)
 }

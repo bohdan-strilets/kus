@@ -16,6 +16,12 @@ import {
 
 const PERCENT = 100
 const WORST_CASES_SHOWN = 8
+const SHORT_ERROR_LENGTH = 120
+
+const shorten = (text: string): string =>
+	text.length > SHORT_ERROR_LENGTH ? `${text.slice(0, SHORT_ERROR_LENGTH)}…` : text
+
+const INVALID_TOOL_CALLS = 'INVALID_TOOL_CALLS'
 
 const formatPct = (value: number | null): string => (value === null ? '—' : `${value.toFixed(1)}%`)
 
@@ -77,10 +83,18 @@ interface Miss {
 	errorPct: number | null
 }
 
+/** For a failed validation: the first error text and the tools called in the last attempt. */
+const describeInvalidCalls = (result: CaseResult): string => {
+	if (result.error !== INVALID_TOOL_CALLS) return ''
+	const last = result.validationErrors.at(-1)
+	if (!last) return ''
+	return `: ${shorten(last.errors[0] ?? '')}; інструменти: ${last.callNames.join(', ') || 'жодного'}`
+}
+
 const describeMiss = (evalCase: EvalCase, result: CaseResult): Miss[] => {
 	const misses: Miss[] = []
 	if (!isDecisionCorrect(evalCase, result.decision, result.replyText)) {
-		const detail = result.error ? ` (${result.error})` : ''
+		const detail = result.error ? ` (${result.error}${describeInvalidCalls(result)})` : ''
 		misses.push({
 			caseId: evalCase.id,
 			issue: `рішення ${result.decision}${detail}, очікувалось ${evalCase.expect.decision}`,
@@ -170,4 +184,25 @@ export const formatClarifyReport = (pairs: Pair[]): string => {
 	).length
 	const withMemory = `Рішення з урахуванням пам'яті: ${formatRate({ correct, total: pairs.length })}`
 	return [withMemory, ...reasons].join('\n')
+}
+
+/** Cases whose validation failed at least once, also when the retry succeeded. */
+export const formatValidationRetries = (pairs: Pair[]): string =>
+	pairs
+		.filter(({ result }) => result.validationErrors.length > 0)
+		.map(({ evalCase, result }) => {
+			const outcome = result.error === INVALID_TOOL_CALLS ? 'збій' : 'повтор вдався'
+			const first = result.validationErrors[0]
+			const tools = first?.callNames.join(', ') || 'жодного'
+			return `- ${evalCase.id}: ${outcome}, спроб з помилкою ${result.validationErrors.length}: ${shorten(first?.errors[0] ?? '')}; інструменти: ${tools}`
+		})
+		.join('\n')
+
+/** Replies with words that mix Cyrillic and Latin letters: count of cases, then case id + words. */
+export const formatMixedScript = (pairs: Pair[]): string => {
+	const flagged = pairs.filter(({ result }) => result.mixedScriptWords.length > 0)
+	const lines = flagged.map(
+		({ evalCase, result }) => `- ${evalCase.id}: ${result.mixedScriptWords.join(', ')}`,
+	)
+	return [`Змішані алфавіти: ${flagged.length} кейсів`, ...lines].join('\n')
 }

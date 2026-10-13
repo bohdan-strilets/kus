@@ -15,10 +15,11 @@ import {
 
 import { EVAL_TODAY } from './cases/case-builders.js'
 import type { EvalCase } from './cases/index.js'
-import type { ActualDecision, CaseResult, LoggedItem } from './eval.types.js'
+import type { ActualDecision, CaseResult, LoggedItem, ValidationAttempt } from './eval.types.js'
 import { getClarifyCalls } from './clarify-calls.js'
 import { getEditResult } from './edit-result.js'
 import { getMeasuredItems } from './measurement-result.js'
+import { findMixedScriptWords } from './mixed-script.js'
 import { type EvalModelOptions, requestFoodParse } from './openrouter.js'
 
 /** Fixed clock, so meal-type guesses and reruns compare like for like. */
@@ -37,6 +38,17 @@ export const BASE_CONTEXT: FoodParseContext = {
 
 const GRAMS_PER_100 = 100
 const OUTPUT_TRUNCATED = 'OUTPUT_TRUNCATED'
+const MAX_VALIDATION_ERROR_LENGTH = 200
+
+const toValidationAttempt = (
+	attempt: number,
+	callNames: string[],
+	errors: string[],
+): ValidationAttempt => ({
+	attempt,
+	callNames,
+	errors: errors.map((text) => text.slice(0, MAX_VALIDATION_ERROR_LENGTH)),
+})
 
 /** Per item: a memory item's numbers come from the saved food, scaled by grams — as the backend does. */
 const getItemTotals = (
@@ -100,7 +112,15 @@ const failedResult = (
 		CaseResult,
 		'costUsd' | 'latencyMs' | 'inputTokens' | 'outputTokens' | 'cachedTokens' | 'textOnlyAnswers'
 	>,
-	{ error, attempts }: { error: string; attempts: number },
+	{
+		error,
+		attempts,
+		validationErrors = [],
+	}: {
+		error: string
+		attempts: number
+		validationErrors?: ValidationAttempt[]
+	},
 ): CaseResult => ({
 	...base,
 	...usage,
@@ -117,6 +137,8 @@ const failedResult = (
 	edits: null,
 	measurements: [],
 	wasRetried: attempts > 1,
+	validationErrors,
+	mixedScriptWords: [],
 })
 
 export const runCase = async (
@@ -139,6 +161,7 @@ export const runCase = async (
 	const base = { caseId: evalCase.id, model: options.model }
 
 	let attemptsMade = 0
+	const validationErrors: ValidationAttempt[] = []
 	try {
 		for (let attempt = 1; attempt <= 1 + AI_VALIDATION_RETRY_COUNT; attempt += 1) {
 			attemptsMade = attempt
@@ -151,11 +174,16 @@ export const runCase = async (
 
 			// same rule as the backend: a cut-off answer is not retried
 			if (isOutputTruncated(completion))
-				return failedResult(base, usage, { error: OUTPUT_TRUNCATED, attempts: attempt })
+				return failedResult(base, usage, {
+					error: OUTPUT_TRUNCATED,
+					attempts: attempt,
+					validationErrors,
+				})
 			const rawCalls = getRawToolCalls(completion)
 			if (rawCalls.length === 0) usage.textOnlyAnswers += 1
 			const result = parseToolCalls(rawCalls, refs, { hasImage })
 			if (result.ok) {
+				const replyText = getReplyText(result.decision)
 				const items = getLoggedItems(result.decision)
 				const totals = items.length > 0 ? sumItems(items, memory) : null
 				return {
@@ -167,7 +195,7 @@ export const runCase = async (
 					kcal: totals?.kcal ?? null,
 					protein: totals?.protein ?? null,
 					categories: items.map((item) => item.category),
-					replyText: getReplyText(result.decision),
+					replyText,
 					edits: getEditResult(result.decision, context),
 					measurements: getMeasuredItems(result.decision, context.measurements.today),
 					items: items.map((item) =>
@@ -180,18 +208,29 @@ export const runCase = async (
 					clarifyCalls: getClarifyCalls(rawCalls, result.decision),
 					truncated: false,
 					wasRetried: attempt > 1,
+					validationErrors,
+					mixedScriptWords: findMixedScriptWords(replyText),
 				}
 			}
+			validationErrors.push(
+				toValidationAttempt(
+					attempt,
+					rawCalls.map((call) => call.name),
+					result.errors,
+				),
+			)
 			messages = [...messages, ...buildRetryMessages(completion, result.errors)]
 		}
 		return failedResult(base, usage, {
 			error: 'INVALID_TOOL_CALLS',
 			attempts: 1 + AI_VALIDATION_RETRY_COUNT,
+			validationErrors,
 		})
 	} catch (error) {
 		return failedResult(base, usage, {
 			error: error instanceof Error ? error.message.slice(0, 200) : 'UNKNOWN',
 			attempts: attemptsMade,
+			validationErrors,
 		})
 	}
 }

@@ -56,6 +56,8 @@ const result = (overrides: Partial<CaseResult>): CaseResult => ({
 	items: [],
 	clarifyCalls: [],
 	truncated: false,
+	validationErrors: [],
+	mixedScriptWords: [],
 	...overrides,
 })
 

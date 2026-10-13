@@ -4,6 +4,9 @@ services:
     image: postgres:17
     container_name: kus-db
     restart: unless-stopped
+    # After an unclean stop Postgres fsyncs every file in the data dir before accepting connections; on Docker Desktop
+    # that takes up to an hour once e2e TRUNCATEs leave tens of thousands of files. syncfs flushes the filesystem once.
+    command: ['postgres', '-c', 'recovery_init_sync_method=syncfs']
     environment:
       POSTGRES_USER: kus
       POSTGRES_PASSWORD: kus

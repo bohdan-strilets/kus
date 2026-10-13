@@ -6,6 +6,37 @@ All notable changes to Kusik are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.5.0] — 2026-10-13
+
+> **Deploy note:** the release carries a migration. Take a `pg_dump` first (`docs/deploy.md`); the migration aborts, changing nothing, if `weight_entries` holds a `note` or two rows for one `(user_id, local_date)`.
+
+### Added
+
+- Weight and waist from the chat: the `log_measurement` tool (`kind`, `value`, `date`, `confirmedJump`) next to `log_food` or `reply`; a value is checked for range (weight 30–300 kg, waist 40–200 cm), date (not in the future, at most 7 days back) and one measurement per kind in a message; a weight more than 3 kg from the nearest earlier one within 7 days, or more than 15 kg from the last one of any age, is not logged until the user confirms it; a fix of a day's value replaces it and the old reply loses its card ([ad91622], [3a054aa], [26644b6])
+- `Measurement` and `Achievement` tables, with a guarded backfill of `weight_entries` (it fails loudly on a `note` or duplicate days instead of losing data) ([ee7ffc5], [84eab64])
+- «Вагу записано» / «Талію записано» card in the chat: value, five-week sparkline, from start, to goal («Ціль досягнута» at the goal), a pace sentence and a link to the progress tab ([4007f0c])
+- «Прогрес» tab: a 7 / 30 / 90 day switch for weight and waist, the calorie and protein week (always 7 days, today paler, goal dashes), averages, a template insight from the hamster, an empty state and a note when the chosen range has no weighings; `GET /api/v1/progress?range=7|30|90` with date bounds in the user's timezone ([35cec38], [ba56acd])
+- Achievements: every whole kilogram below the first recorded weight (goal LOSE or none) and food streaks of 3, 7, 14, 30, 60 and 100 days, written in the chat turn transaction with `ON CONFLICT DO NOTHING`; a fresh one shows a card with a pop, a count-up, confetti, the `achieve` sound and a vibration, and mutes the day-goal celebration so the sounds do not overlap; a step of more than 3 kg awards nothing ([a243e49], [8fbbe08], [3a054aa])
+- «Додати вагу» chip above the composer: puts «вага » into the field and focuses it, shared with «Записати вагу» on the progress tab; the row folds away while the draft has text or a photo ([be4e082])
+- ai-eval: 25 measurement cases, the validation errors and tool names of every failed attempt in the results JSON, a mixed Cyrillic / Latin word check, and `replyIncludesAny` ([bcaf8df], [79b513a])
+
+### Changed
+
+- The profile reads and writes the current weight through `measurements`; `weight_entries` is deprecated and is dropped by a separate migration in the next release ([26644b6])
+- Prompt 2026-10-13.5: a section on weight and waist, a bare number is a weight only when the previous weight is within 15 kg (otherwise Kusik asks what it is), `log_measurement` is not called when nothing is logged, and replies avoid past-tense verbs and short adjectives about the user ([ad91622], [3a054aa], [2c5f417], [aa23cb4], [e4861eb])
+- `CLAUDE.md`: `prompt.ts` changes only with verbatim text the author approved, and only one test pass runs at a time because the e2e tests share and truncate `kus_test` ([9844536], [c0d47d2])
+- Architecture and database docs describe measurements, achievements and the progress endpoint ([fe88f81])
+- API e2e test timeout raised to 30 s ([2caafc7])
+
+### Fixed
+
+- Two parallel first turns of the day no longer fail with a unique violation when the daily usage row is created ([2843d76])
+- One pace sentence, one set of `uk.json` keys and the same grades for the chat card and the progress insight; the chart label no longer claims five weeks, and the tap zones of the range switch and the progress link are 44 px ([8adeea6], [79a499e], [5d500bd])
+
+### Tests
+
+- Coverage for the measurements repository, achievement edges, progress bounds, `log_measurement` parsing and the new hooks ([8c1de34])
+
 ## [0.4.0] — 2026-10-12
 
 ### Added
@@ -77,7 +108,34 @@ All notable changes to Kusik are documented here. The format follows
 
 ## 0.2.0 / 0.1.0 — see tags
 
-[Unreleased]: https://github.com/bohdan-strilets/kus/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/bohdan-strilets/kus/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/bohdan-strilets/kus/compare/v0.4.0...v0.5.0
+[ad91622]: https://github.com/bohdan-strilets/kus/commit/ad916222f9b06cda897381d50193284e94566ad8
+[ee7ffc5]: https://github.com/bohdan-strilets/kus/commit/ee7ffc545603d467ae5abd4db4aaea7461a0cf5b
+[26644b6]: https://github.com/bohdan-strilets/kus/commit/26644b6d45eda7725e1207253283d43cd111ba47
+[4007f0c]: https://github.com/bohdan-strilets/kus/commit/4007f0c65e90e020dc18acb35c25f5b50ff5bd8c
+[35cec38]: https://github.com/bohdan-strilets/kus/commit/35cec38f5550bad70e828d3ff59a6a2ba69e7f7d
+[ba56acd]: https://github.com/bohdan-strilets/kus/commit/ba56acd775c146b85aca6bb4beb10655c29962cb
+[a243e49]: https://github.com/bohdan-strilets/kus/commit/a243e49fbf7e3d606ff2bc0e721dbe8f44f42cfb
+[8fbbe08]: https://github.com/bohdan-strilets/kus/commit/8fbbe08301b0e12b6001c20bf45dc812f81fd13f
+[be4e082]: https://github.com/bohdan-strilets/kus/commit/be4e0826707b842a71b6086181fe9d4d3113e528
+[bcaf8df]: https://github.com/bohdan-strilets/kus/commit/bcaf8df157742391c96d122a9b3638009ac26cb3
+[79b513a]: https://github.com/bohdan-strilets/kus/commit/79b513a8601df0264c9ad1ed4cf3981572071850
+[2c5f417]: https://github.com/bohdan-strilets/kus/commit/2c5f4170e237d3405d76bd06b1eab0eb71bd626c
+[1a5afd0]: https://github.com/bohdan-strilets/kus/commit/1a5afd0ac8a050850228149e5a2e8ba8ed35ad23
+[e4861eb]: https://github.com/bohdan-strilets/kus/commit/e4861eb2672a3b399b3cb0206d498eeee04de89c
+[9844536]: https://github.com/bohdan-strilets/kus/commit/9844536f11985741187db960219331ae41988c43
+[c0d47d2]: https://github.com/bohdan-strilets/kus/commit/c0d47d22ae54d69ee3b4b79fcb59510ae3e4dc36
+[2caafc7]: https://github.com/bohdan-strilets/kus/commit/2caafc7f0396ed26ee94297add9ae484ba78bba7
+[fe88f81]: https://github.com/bohdan-strilets/kus/commit/fe88f8133e1458bbd97baef7eb51f2c3a468918e
+[2843d76]: https://github.com/bohdan-strilets/kus/commit/2843d7671ad0f826e73364acab47e1e63648bdf6
+[8adeea6]: https://github.com/bohdan-strilets/kus/commit/8adeea61c4c352fd71da14a07ab145ad075a197e
+[79a499e]: https://github.com/bohdan-strilets/kus/commit/79a499ed84c17bba02b039e4d0014044f9e6b905
+[5d500bd]: https://github.com/bohdan-strilets/kus/commit/5d500bd312dceaf6c8c4e497b670447678e5c5b0
+[8c1de34]: https://github.com/bohdan-strilets/kus/commit/8c1de3402bf65e29ff73ebdbff871c02583130a5
+[84eab64]: https://github.com/bohdan-strilets/kus/commit/84eab649f893b7c6be4360313ecb3b9886335db2
+[3a054aa]: https://github.com/bohdan-strilets/kus/commit/3a054aae5b93e5d2baccc6fe905f65bb79bc301f
+[aa23cb4]: https://github.com/bohdan-strilets/kus/commit/aa23cb4b3b034d52ed2338c3ea201abd5d0d9e7d
 [0.4.0]: https://github.com/bohdan-strilets/kus/compare/v0.3.1...v0.4.0
 [ad922dd]: https://github.com/bohdan-strilets/kus/commit/ad922dd3b587f9a6f0bf976c1d98165120caa1f8
 [db239b6]: https://github.com/bohdan-strilets/kus/commit/db239b6be2f3ba6780a0db2815ff354c5b0b1237

@@ -54,4 +54,11 @@ describe('WeekBarsChart', () => {
 		).toBeTruthy()
 		expect(screen.getByText((text) => plain(text) === '2 420')).toBeTruthy()
 	})
+
+	it('names the chart of a week without food', () => {
+		const none = days.map((day) => ({ ...day, kcal: 0, proteinG: 0, status: 'empty' as const }))
+		render(<WeekBarsChart days={none} goalKcal={2200} today={TODAY} />)
+
+		expect(screen.getByRole('img', { name: 'Калорії по днях: записів ще немає' })).toBeTruthy()
+	})
 })

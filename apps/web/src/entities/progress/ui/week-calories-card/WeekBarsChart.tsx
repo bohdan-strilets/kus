@@ -32,7 +32,7 @@ export const WeekBarsChart = ({ days, goalKcal, today }: WeekBarsChartProps) => 
 	const { t } = useTranslation()
 	const { bars, goalY, maxIndex } = getWeekBars({ days, goalKcal, today })
 	const maxBar = maxIndex === null ? undefined : bars[maxIndex]
-	const label = getWeekChartSummary({ days, today })
+	const summary = getWeekChartSummary({ days, today })
 		.map((part) => {
 			if (part.key === 'progress.week.chart.range') {
 				return t(part.key, { min: formatInteger(part.min), max: formatInteger(part.max) })
@@ -40,6 +40,8 @@ export const WeekBarsChart = ({ days, goalKcal, today }: WeekBarsChartProps) => 
 			return t(part.key, { value: formatInteger(part.value) })
 		})
 		.join(', ')
+	// a week without food has no summary, but the image still needs a name
+	const label = summary === '' ? t('progress.week.chart.empty') : summary
 
 	return (
 		<div className="flex flex-col gap-1">

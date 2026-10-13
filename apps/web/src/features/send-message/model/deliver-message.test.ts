@@ -364,6 +364,32 @@ describe('deliverMessage sounds and fresh cards', () => {
 		expect(armedWhenDayInvalidated).toEqual([true])
 	})
 
+	it('arms the goal celebration normally when the reply has no achievement', async () => {
+		vi.mocked(postMessage).mockResolvedValueOnce(turnWith({ meals: [MEAL] }))
+
+		await deliverMessage(createClient(), { clientMessageId: CLIENT_ID, text: 'тарілка супу' })
+
+		expect(useGoalCelebrationStore.getState().armed?.isQuiet).toBe(false)
+	})
+
+	it('arms it quietly and plays only «achieve» when the reply has an achievement', async () => {
+		const achievement = {
+			id: 'a1',
+			type: 'FOOD_STREAK',
+			value: 7,
+		} as ChatMessage['achievements'][number]
+		vi.mocked(postMessage).mockResolvedValueOnce(
+			turnWith({ meals: [MEAL], achievements: [achievement] }),
+		)
+
+		await deliverMessage(createClient(), { clientMessageId: CLIENT_ID, text: 'тарілка супу' })
+
+		expect(useGoalCelebrationStore.getState().armed?.isQuiet).toBe(true)
+		expect(useFreshReplyStore.getState().freshAt['achievement:a1']).toBeDefined()
+		expect(playSound).toHaveBeenCalledTimes(1)
+		expect(playSound).toHaveBeenCalledWith('achieve')
+	})
+
 	it('does not arm the goal celebration when the request fails', async () => {
 		vi.mocked(postMessage).mockRejectedValueOnce(networkError)
 

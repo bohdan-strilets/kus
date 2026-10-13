@@ -57,3 +57,14 @@ export const HOP_TRANSITION: Transition = { duration: 0.3, ease: EASE.spring, ti
 /** Field error: 300 ms linear shake. */
 export const SHAKE_KEYFRAMES = { x: [0, -6, 6, -4, 4, 0] }
 export const SHAKE_TRANSITION: Transition = { duration: 0.3, ease: 'linear' }
+
+/** Achievement card (level 3): pops 0.9 → 1.04 → 1 over 380 ms (design/docs/motion.md). */
+export const ACHIEVEMENT_POP_S = 0.38
+export const achievementPopVariants: Variants = {
+	hidden: { opacity: 0, scale: 0.9 },
+	visible: {
+		opacity: 1,
+		scale: [0.9, 1.04, 1],
+		transition: { duration: ACHIEVEMENT_POP_S, ease: EASE.spring, times: [0, 0.6, 1] },
+	},
+}

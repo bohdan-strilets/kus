@@ -54,7 +54,7 @@ const advance = (ms: number) => {
 
 const setPending = (localDate = TODAY, now = Date.now()) => {
 	act(() => {
-		store().arm(REPLY_ID, now)
+		store().arm(REPLY_ID, { now })
 		store().setPending(localDate, now)
 	})
 }
@@ -123,6 +123,22 @@ describe('useGoalCelebration', () => {
 		expect(store().celebratedReplyId).toBe(REPLY_ID)
 	})
 
+	it('a quiet event marks the day and swaps the face but plays no sound, glow or particles', () => {
+		renderCelebration()
+		act(() => {
+			store().arm(REPLY_ID, { isQuiet: true, now: Date.now() })
+			store().setPending(TODAY, Date.now())
+		})
+
+		advance(RING_FILL_MS)
+
+		expect(hasCelebratedGoal(USER, TODAY)).toBe(true)
+		expect(store().celebratedReplyId).toBe(REPLY_ID)
+		expect(playSound).not.toHaveBeenCalled()
+		expect(burst).not.toHaveBeenCalled()
+		expect(animate).not.toHaveBeenCalled()
+	})
+
 	it('does not celebrate a stale pending goal and writes no flag', () => {
 		renderCelebration()
 		setPending(TODAY, T0 - GOAL_PENDING_TTL_MS - 1)
@@ -188,7 +204,12 @@ describe('useGoalCelebration', () => {
 			advance(RING_FILL_MS - 100)
 			unmount()
 
-			expect(store().pending).toEqual({ localDate: TODAY, messageId: REPLY_ID, detectedAt: T0 })
+			expect(store().pending).toEqual({
+				localDate: TODAY,
+				messageId: REPLY_ID,
+				detectedAt: T0,
+				isQuiet: false,
+			})
 			expect(hasCelebratedGoal(USER, TODAY)).toBe(false)
 			advance(RING_FILL_MS * 2)
 			expect(playSound).not.toHaveBeenCalled()
@@ -285,7 +306,7 @@ describe('useGoalCelebration', () => {
 
 	it('in StrictMode an existing pending event is played exactly once', () => {
 		act(() => {
-			store().arm(REPLY_ID, T0)
+			store().arm(REPLY_ID, { now: T0 })
 			store().setPending(TODAY, T0)
 		})
 		const refs = createRefs()

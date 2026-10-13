@@ -1,11 +1,14 @@
 import type { ChatMessage } from '@kus/shared'
 
+import { pickAchievement } from '@/entities/achievement'
 import { useGoalCelebrationStore } from '@/entities/stats'
 import { KusikRow, type KusikReplyKind, MessageBubble } from '@/entities/message'
 import { Text } from '@/shared/ui'
 
 import { getClarificationPlacement } from '../lib/get-clarification-placement'
 import type { FeedPhotoStatus } from '../model/feed.types'
+import { useAchievementFace } from '../model/use-achievement-face'
+import { AchievementCard } from './AchievementCard'
 import { MealCard } from './MealCard'
 import { MeasurementCard } from './MeasurementCard'
 
@@ -22,15 +25,22 @@ interface ReplyKindParams {
 	message: ChatMessage
 	photoStatus: KusikReplyProps['photoStatus']
 	isGoalReached: boolean
+	/** A fresh achievement card has popped: the same glad face as for the day goal. */
+	isAchievementReached: boolean
 }
 
-const getReplyKind = ({ message, photoStatus, isGoalReached }: ReplyKindParams): KusikReplyKind => {
+const getReplyKind = ({
+	message,
+	photoStatus,
+	isGoalReached,
+	isAchievementReached,
+}: ReplyKindParams): KusikReplyKind => {
 	const { replyToId, meals, measurements, clarifications } = message
 	// the only message Kusik writes on his own, without a user turn: the welcome back after a restore
 	if (replyToId === null) return 'welcomeBack'
 	if (photoStatus === 'FAILED') return 'photoFail'
 	if (clarifications.some((item) => item.status === 'OPEN')) return 'clarify'
-	if (isGoalReached) return 'goalReached'
+	if (isGoalReached || isAchievementReached) return 'goalReached'
 	if (meals.length === 0) return measurements.length > 0 ? 'weight' : 'reply'
 	return photoStatus === 'PROCESSED' ? 'photoEstimate' : 'mealLogged'
 }
@@ -47,9 +57,11 @@ const ATTACHMENTS_CLASS = 'flex flex-col gap-1.5 pr-4 pl-10.5'
 export const KusikReply = ({ message, isLatest, today, photoStatus }: KusikReplyProps) => {
 	const placement = getClarificationPlacement(message)
 	const isGoalReached = useGoalCelebrationStore((state) => state.celebratedReplyId === message.id)
-	const kind = getReplyKind({ message, photoStatus, isGoalReached })
+	const isAchievementReached = useAchievementFace(message)
+	const kind = getReplyKind({ message, photoStatus, isGoalReached, isAchievementReached })
 	const hasMeals = message.meals.length > 0
 	const hasMeasurements = message.measurements.length > 0
+	const achievement = pickAchievement(message.achievements)
 	const renderMeals = (hasTail: boolean) =>
 		message.meals.map((meal, index) => (
 			<MealCard
@@ -73,6 +85,9 @@ export const KusikReply = ({ message, isLatest, today, photoStatus }: KusikReply
 			/>
 		))
 
+	// the rarest thing a reply brings goes last, under the meal and measurement cards
+	const renderAchievement = () => achievement && <AchievementCard achievement={achievement} />
+
 	if (hasMeasurements && !hasMeals) {
 		const [firstCard, ...otherCards] = renderMeasurements({
 			hasTail: true,
@@ -81,7 +96,12 @@ export const KusikReply = ({ message, isLatest, today, photoStatus }: KusikReply
 		return (
 			<div className="flex flex-col gap-1.5 self-stretch">
 				<KusikRow kind={kind}>{firstCard}</KusikRow>
-				{otherCards.length > 0 && <div className={ATTACHMENTS_CLASS}>{otherCards}</div>}
+				{(otherCards.length > 0 || achievement) && (
+					<div className={ATTACHMENTS_CLASS}>
+						{otherCards}
+						{renderAchievement()}
+					</div>
+				)}
 			</div>
 		)
 	}
@@ -92,6 +112,7 @@ export const KusikReply = ({ message, isLatest, today, photoStatus }: KusikReply
 				<div className="flex flex-col gap-1.5">
 					{renderMeals(true)}
 					{renderMeasurements({ hasTail: false })}
+					{renderAchievement()}
 				</div>
 			</KusikRow>
 		)
@@ -103,10 +124,11 @@ export const KusikReply = ({ message, isLatest, today, photoStatus }: KusikReply
 					<Text>{message.content}</Text>
 				</MessageBubble>
 			</KusikRow>
-			{(hasMeals || hasMeasurements) && (
+			{(hasMeals || hasMeasurements || achievement) && (
 				<div className={ATTACHMENTS_CLASS}>
 					{renderMeals(false)}
 					{renderMeasurements({ hasTail: false })}
+					{renderAchievement()}
 				</div>
 			)}
 		</div>

@@ -17,6 +17,8 @@ export { useBlink } from './use-blink'
 export { useCountUp } from './use-count-up'
 export { resetRevealedValues, type RevealedValue, useRevealedValue } from './use-revealed-value'
 export {
+	ACHIEVEMENT_POP_S,
+	achievementPopVariants,
 	bubbleVariants,
 	expandVariants,
 	HOP_KEYFRAMES,

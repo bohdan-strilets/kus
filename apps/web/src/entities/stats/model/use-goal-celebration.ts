@@ -30,6 +30,8 @@ interface UseGoalCelebrationParams {
  * ring has filled, the sound, the glow, 12 particles and the happy face go together. The event is
  * consumed the moment it appears, but the day is marked as celebrated only when the timer fires;
  * a ring that unmounts before that puts the event back for the next one (the TTL drops a stale one).
+ * A quiet event (a level 3 achievement came with it) still marks the day and swaps the face, but
+ * has no sound, glow or particles.
  */
 export const useGoalCelebration = ({
 	userId,
@@ -58,9 +60,10 @@ export const useGoalCelebration = ({
 				eventRef.current = null
 				markGoalCelebrated(userId, event.localDate)
 				const isReduced = isReducedMotion()
-				playSound('goal')
+				// an achievement of the same reply has the stage: its sound and confetti are not mixed with ours
+				if (!event.isQuiet) playSound('goal')
 				useGoalCelebrationStore.getState().revealReply(event.messageId)
-				if (isReduced) return
+				if (event.isQuiet || isReduced) return
 				if (glowRef.current) {
 					void animate(
 						glowRef.current,

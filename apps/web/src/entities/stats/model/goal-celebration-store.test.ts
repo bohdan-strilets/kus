@@ -57,7 +57,7 @@ describe('useGoalCelebrationStore', () => {
 		})
 
 		it('stays armed inside the window and stops exactly at its end', () => {
-			store().arm(REPLY_ID, T0)
+			store().arm(REPLY_ID, { now: T0 })
 
 			expect(store().isArmed(T0)).toBe(true)
 			expect(store().isArmed(T0 + GOAL_ARM_WINDOW_MS - 1)).toBe(true)
@@ -77,7 +77,7 @@ describe('useGoalCelebrationStore', () => {
 		})
 
 		it('is one-shot: a detection takes the messageId and disarms', () => {
-			store().arm(REPLY_ID, T0)
+			store().arm(REPLY_ID, { now: T0 })
 
 			store().setPending(TODAY, T0 + 100)
 
@@ -86,13 +86,14 @@ describe('useGoalCelebrationStore', () => {
 				localDate: TODAY,
 				messageId: REPLY_ID,
 				detectedAt: T0 + 100,
+				isQuiet: false,
 			})
 		})
 	})
 
 	describe('consume', () => {
 		const detect = (messageId: string | null = REPLY_ID): void => {
-			store().arm(messageId, T0)
+			store().arm(messageId, { now: T0 })
 			store().setPending(TODAY, T0)
 		}
 
@@ -105,7 +106,12 @@ describe('useGoalCelebrationStore', () => {
 
 			const event = store().consume({ userId: USER_A, today: TODAY, now: T0 + 1000 })
 
-			expect(event).toEqual({ localDate: TODAY, messageId: REPLY_ID, detectedAt: T0 })
+			expect(event).toEqual({
+				localDate: TODAY,
+				messageId: REPLY_ID,
+				detectedAt: T0,
+				isQuiet: false,
+			})
 			expect(hasCelebratedGoal(USER_A, TODAY)).toBe(false)
 			expect(store().celebratedReplyId).toBeNull()
 			expect(store().pending).toBeNull()
@@ -185,6 +191,18 @@ describe('useGoalCelebrationStore', () => {
 			expect(store().celebratedReplyId).toBeNull()
 		})
 
+		it('carries a quiet arming (an achievement came with the reply) into the event', () => {
+			store().arm(REPLY_ID, { isQuiet: true, now: T0 })
+			store().setPending(TODAY, T0)
+
+			expect(store().consume({ userId: USER_A, today: TODAY, now: T0 })).toEqual({
+				localDate: TODAY,
+				messageId: REPLY_ID,
+				detectedAt: T0,
+				isQuiet: true,
+			})
+		})
+
 		it('has no reply for an edit (armed without a message)', () => {
 			detect(null)
 
@@ -192,22 +210,28 @@ describe('useGoalCelebrationStore', () => {
 				localDate: TODAY,
 				messageId: null,
 				detectedAt: T0,
+				isQuiet: false,
 			})
 			expect(store().celebratedReplyId).toBeNull()
 		})
 	})
 
 	describe('restorePending', () => {
-		const event = { localDate: TODAY, messageId: REPLY_ID, detectedAt: T0 }
+		const event = { localDate: TODAY, messageId: REPLY_ID, detectedAt: T0, isQuiet: false }
 
 		it('puts the event back as pending with its original detectedAt', () => {
 			store().restorePending(event)
 
-			expect(store().pending).toEqual({ localDate: TODAY, messageId: REPLY_ID, detectedAt: T0 })
+			expect(store().pending).toEqual({
+				localDate: TODAY,
+				messageId: REPLY_ID,
+				detectedAt: T0,
+				isQuiet: false,
+			})
 		})
 
 		it('does nothing when a newer event is already pending', () => {
-			store().arm(null, T0 + 500)
+			store().arm(null, { now: T0 + 500 })
 			store().setPending('2026-10-13', T0 + 500)
 			const before = store().pending
 
@@ -240,9 +264,9 @@ describe('useGoalCelebrationStore', () => {
 
 	describe('claim', () => {
 		const fill = (): void => {
-			store().arm(REPLY_ID, Date.now())
+			store().arm(REPLY_ID, { now: Date.now() })
 			useGoalCelebrationStore.setState({
-				pending: { localDate: TODAY, messageId: REPLY_ID, detectedAt: T0 },
+				pending: { localDate: TODAY, messageId: REPLY_ID, detectedAt: T0, isQuiet: false },
 				celebratedReplyId: REPLY_ID,
 			})
 		}

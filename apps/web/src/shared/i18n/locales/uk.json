@@ -522,6 +522,13 @@
 			}
 		}
 	},
+	"achievement": {
+		"title": "Досягнення",
+		"weightKgLost": "Мінус {{value}} кг від старту",
+		"foodStreak_one": "{{value}} день поспіль із записами",
+		"foodStreak_few": "{{value}} дні поспіль із записами",
+		"foodStreak_many": "{{value}} днів поспіль із записами"
+	},
 	"editEntry": {
 		"subtitle": "{{meal}} · {{time}}",
 		"pick": "{{time}} · обери, що змінити",

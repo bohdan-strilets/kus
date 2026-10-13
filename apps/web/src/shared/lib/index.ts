@@ -23,6 +23,8 @@ export {
 	MINUS_SIGN,
 } from './format'
 export {
+	ACHIEVEMENT_POP_S,
+	achievementPopVariants,
 	BAR_DELAY_MS,
 	BAR_FILL_MS,
 	BAR_STEP_MS,

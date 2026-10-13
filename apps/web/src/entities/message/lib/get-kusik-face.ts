@@ -8,7 +8,7 @@ export type KusikReplyKind =
 	| 'photoEstimate'
 	/** The photo was not food or could not be read: Kusik apologises, like in chat-error. */
 	| 'photoFail'
-	/** This reply's card closed the day goal: Kusik is glad (the face swaps in with the ring glow). */
+	/** This reply closed the day goal or brought a fresh achievement: Kusik is glad (the face hops in with the ring glow / the card pop). */
 	| 'goalReached'
 	| 'typing'
 	| 'suggestion'

@@ -10,12 +10,14 @@ export const GOAL_PENDING_TTL_MS = 3_000
 interface Armed {
 	at: number
 	messageId: string | null
+	isQuiet: boolean
 }
 
 interface PendingGoal {
 	localDate: string
 	messageId: string | null
 	detectedAt: number
+	isQuiet: boolean
 }
 
 export interface GoalCelebration {
@@ -23,6 +25,13 @@ export interface GoalCelebration {
 	messageId: string | null
 	/** Kept so a restored event ages from its detection, not from its return. */
 	detectedAt: number
+	/** An achievement (level 3) came with the goal: the day is marked, but nothing sounds or flies. */
+	isQuiet: boolean
+}
+
+interface ArmOptions {
+	isQuiet?: boolean
+	now?: number
 }
 
 interface ConsumeParams {
@@ -39,7 +48,7 @@ interface GoalCelebrationState {
 	/** The reply whose card caused the celebration (null for an edit). */
 	celebratedReplyId: string | null
 	claim: (userId: string | null) => void
-	arm: (messageId: string | null, now?: number) => void
+	arm: (messageId: string | null, options?: ArmOptions) => void
 	isArmed: (now?: number) => boolean
 	setPending: (localDate: string, now?: number) => void
 	/** Takes the event without marking the day: the caller marks it when the celebration really plays. */
@@ -62,8 +71,8 @@ export const useGoalCelebrationStore = create<GoalCelebrationState>()((set, get)
 		if (ownerId !== null) clearGoalCelebratedFlags(ownerId)
 		set({ ownerId: userId, armed: null, pending: null, celebratedReplyId: null })
 	},
-	arm: (messageId, now = Date.now()) => {
-		set({ armed: { at: now, messageId } })
+	arm: (messageId, { isQuiet = false, now = Date.now() } = {}) => {
+		set({ armed: { at: now, messageId, isQuiet } })
 	},
 	isArmed: (now = Date.now()) => {
 		const { armed } = get()
@@ -72,14 +81,19 @@ export const useGoalCelebrationStore = create<GoalCelebrationState>()((set, get)
 	setPending: (localDate, now = Date.now()) => {
 		// one arming explains one detection
 		set((state) => ({
-			pending: { localDate, messageId: state.armed?.messageId ?? null, detectedAt: now },
+			pending: {
+				localDate,
+				messageId: state.armed?.messageId ?? null,
+				detectedAt: now,
+				isQuiet: state.armed?.isQuiet ?? false,
+			},
 			armed: null,
 		}))
 	},
 	consume: ({ userId, today, now = Date.now() }) => {
 		const { pending } = get()
 		if (pending === null) return null
-		const { localDate, messageId, detectedAt } = pending
+		const { localDate, messageId, detectedAt, isQuiet } = pending
 		if (now - detectedAt > GOAL_PENDING_TTL_MS || localDate !== today) {
 			set({ pending: null })
 			return null
@@ -89,16 +103,12 @@ export const useGoalCelebrationStore = create<GoalCelebrationState>()((set, get)
 			return null
 		}
 		set({ pending: null })
-		return { localDate, messageId, detectedAt }
+		return { localDate, messageId, detectedAt, isQuiet }
 	},
 	restorePending: (event) => {
 		if (get().pending !== null) return
 		set({
-			pending: {
-				localDate: event.localDate,
-				messageId: event.messageId,
-				detectedAt: event.detectedAt,
-			},
+			pending: { ...event },
 		})
 	},
 	revealReply: (messageId) => {

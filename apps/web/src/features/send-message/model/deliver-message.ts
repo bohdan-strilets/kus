@@ -71,7 +71,10 @@ export const deliverMessage = async (
 		// before the feed gets the turn, so the first render of its cards already sees them as fresh
 		useFreshReplyStore.getState().markFresh(turn.assistantMessage)
 		// before the day refetch, so its result is seen as caused by this message
-		useGoalCelebrationStore.getState().arm(turn.assistantMessage.id)
+		// an achievement (level 3) outranks the day goal (level 2): the goal is marked but stays quiet
+		useGoalCelebrationStore
+			.getState()
+			.arm(turn.assistantMessage.id, { isQuiet: turn.assistantMessage.achievements.length > 0 })
 		addTurnToFeed(queryClient, turn)
 		// earlier cards this turn corrected, deleted from or answered in words
 		for (const updated of turn.updatedMessages) replaceFeedMessage(queryClient, updated)

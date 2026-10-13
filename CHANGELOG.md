@@ -6,6 +6,19 @@ All notable changes to Kusik are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.5.1] — 2026-10-13
+
+### Added
+
+- "Талія" row in "Мої дані" under the current weight: the latest waist or "Не вказано", a number sheet in cm with tenths (40–200); `PATCH /api/v1/profile` takes `waistCm` and writes a `WAIST` measurement for today with source `PROFILE` (one per day, upsert), and the profile response carries `waist` ([5f774cf])
+- A caption under the "Тіло" section with the "Навіщо й як міряти" link and a sheet that explains why Kusik asks for weight and waist and how to weigh and measure; one-line hints under the weight and waist fields ([5f774cf])
+- "Додати талію" chip next to "Додати вагу" above the composer: puts «талія » into the field and focuses it ([88b5448])
+
+### Changed
+
+- `useStartWeightDraft` became `useStartMeasurementDraft(kind)`, shared by the two chips and the progress tab ([88b5448])
+- The weight and waist number field keeps one decimal at most while typing; saving the waist also refreshes the day, which feeds the progress tab ([5f774cf])
+
 ## [0.5.0] — 2026-10-13
 
 > **Deploy note:** the release carries a migration. Take a `pg_dump` first (`docs/deploy.md`); the migration aborts, changing nothing, if `weight_entries` holds a `note` or two rows for one `(user_id, local_date)`.
@@ -108,7 +121,10 @@ All notable changes to Kusik are documented here. The format follows
 
 ## 0.2.0 / 0.1.0 — see tags
 
-[Unreleased]: https://github.com/bohdan-strilets/kus/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/bohdan-strilets/kus/compare/v0.5.1...HEAD
+[5f774cf]: https://github.com/bohdan-strilets/kus/commit/5f774cf062a22eb490272e215a643a3a798fbd92
+[88b5448]: https://github.com/bohdan-strilets/kus/commit/88b54489b697818590e07c349e6e6c40fa490160
+[0.5.1]: https://github.com/bohdan-strilets/kus/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/bohdan-strilets/kus/compare/v0.4.0...v0.5.0
 [ad91622]: https://github.com/bohdan-strilets/kus/commit/ad916222f9b06cda897381d50193284e94566ad8
 [ee7ffc5]: https://github.com/bohdan-strilets/kus/commit/ee7ffc545603d467ae5abd4db4aaea7461a0cf5b

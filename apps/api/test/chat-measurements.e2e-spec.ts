@@ -174,6 +174,104 @@ describe('weight and waist from chat (e2e, real DB, fake model)', () => {
 		expect(row?.localDate.getTime()).toBe(yesterday.getTime())
 	})
 
+	it('stamps a past day at noon of that day and today at the moment of the message', async () => {
+		await start()
+		const owner = await registerUser('owner@kus.app')
+		const { timezone } = await prisma.user.findUniqueOrThrow({ where: { id: owner.userId } })
+		const today = await getToday(owner.userId)
+		const yesterday = addDays(today, -1)
+		fake.respond(
+			createCompletion([measurementCall({ value: 83, date: formatDbDate(yesterday) }), replyCall]),
+			createCompletion([measurementCall({ kind: 'WAIST', value: 94 }), replyCall]),
+		)
+
+		const before = Date.now()
+		await send(owner, 'вчора важив 83').expect(201)
+		await send(owner, 'талія 94').expect(201)
+
+		const weight = await prisma.measurement.findFirstOrThrow({
+			where: { userId: owner.userId, kind: MeasurementKind.WEIGHT },
+		})
+		const waist = await prisma.measurement.findFirstOrThrow({
+			where: { userId: owner.userId, kind: MeasurementKind.WAIST },
+		})
+		expect(getLocalDate(weight.measuredAt, timezone).getTime()).toBe(yesterday.getTime())
+		expect(
+			Number(
+				weight.measuredAt.toLocaleString('en-GB', {
+					timeZone: timezone,
+					hour: '2-digit',
+					hour12: false,
+				}),
+			),
+		).toBe(12)
+		expect(waist.measuredAt.getTime()).toBeGreaterThanOrEqual(before)
+		expect(waist.measuredAt.getTime()).toBeLessThanOrEqual(Date.now())
+	})
+
+	it('sends an out-of-range weight back to the model and logs nothing', async () => {
+		await start()
+		const owner = await registerUser('owner@kus.app')
+		fake.respond(
+			createCompletion([measurementCall({ value: 29.9 }), replyCall]),
+			createCompletion([{ name: 'reply', args: { text: 'Перевір число' } }]),
+		)
+
+		const response = await send(owner, 'вага 29,9').expect(201)
+
+		const { data } = sendResponseSchema.parse(response.body)
+		expect(data.assistantMessage.content).toBe('Перевір число')
+		expect(await findWeights(owner.userId)).toHaveLength(0)
+		expect(JSON.stringify(fake.bodies[1])).toContain('outside 30–300 kg')
+	})
+
+	it('rejects a future date and a date more than 7 days back', async () => {
+		await start()
+		const owner = await registerUser('owner@kus.app')
+		const today = await getToday(owner.userId)
+		fake.respond(
+			createCompletion([
+				measurementCall({ value: 83, date: formatDbDate(addDays(today, 1)) }),
+				replyCall,
+			]),
+			createCompletion([{ name: 'reply', args: { text: 'Завтра ще не настало' } }]),
+			createCompletion([
+				measurementCall({ value: 83, date: formatDbDate(addDays(today, -8)) }),
+				replyCall,
+			]),
+			createCompletion([{ name: 'reply', args: { text: 'Лише останні 7 днів' } }]),
+		)
+
+		await send(owner, 'завтра 83').expect(201)
+		await send(owner, 'вісім днів тому 83').expect(201)
+
+		expect(await findWeights(owner.userId)).toHaveLength(0)
+		expect(JSON.stringify(fake.bodies[1])).toContain('is in the future')
+		expect(JSON.stringify(fake.bodies[3])).toContain('days back')
+	})
+
+	it('does not ask to confirm a big change of the waist', async () => {
+		await start()
+		const owner = await registerUser('owner@kus.app')
+		const today = await getToday(owner.userId)
+		await prisma.measurement.create({
+			data: {
+				userId: owner.userId,
+				kind: MeasurementKind.WAIST,
+				value: 94,
+				localDate: addDays(today, -2),
+				measuredAt: addDays(today, -2),
+				source: MeasurementSource.CHAT,
+			},
+		})
+		fake.respond(createCompletion([measurementCall({ kind: 'WAIST', value: 110 }), replyCall]))
+
+		await send(owner, 'талія 110').expect(201)
+
+		expect(fake.bodies).toHaveLength(1)
+		expect(await prisma.measurement.count({ where: { userId: owner.userId } })).toBe(2)
+	})
+
 	it('sends a jump of more than 3 kg back to the model and logs nothing', async () => {
 		await start()
 		const owner = await registerUser('owner@kus.app')

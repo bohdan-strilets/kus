@@ -71,3 +71,11 @@ describe('getWeekChartSummary', () => {
 		])
 	})
 })
+
+describe('getWeekChartSummary without food', () => {
+	it('has nothing to say for a week without food', () => {
+		const none = days.map((day) => ({ ...day, kcal: 0, proteinG: 0, status: 'empty' as const }))
+
+		expect(getWeekChartSummary({ days: none, today: TODAY })).toEqual([])
+	})
+})

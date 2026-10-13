@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
-import { FOOD_STREAK_MILESTONES } from './achievements.js'
-import { MEASUREMENT_LIMITS, getIsGoalReached } from './measurements.js'
+import { achievementResponseSchema, FOOD_STREAK_MILESTONES } from './achievements.js'
+import { getIsGoalReached, MEASUREMENT_LIMITS, measurementCardSchema } from './measurements.js'
 import { PROFILE_LIMITS, updateProfileRequestSchema } from './profile.js'
 import { progressQuerySchema } from './progress.js'
 
@@ -66,5 +66,50 @@ describe('getIsGoalReached', () => {
 		expect(getIsGoalReached({ goalType: 'MAINTAIN', current: 75, target: 75 })).toBeNull()
 		expect(getIsGoalReached({ goalType: null, current: 75, target: 75 })).toBeNull()
 		expect(getIsGoalReached({ goalType: 'LOSE', current: 75, target: null })).toBeNull()
+	})
+})
+
+describe('measurementCardSchema', () => {
+	const point = (day: number) => ({
+		localDate: `2026-10-${String(day).padStart(2, '0')}`,
+		value: 82,
+	})
+	const card = (chart: unknown[]) => ({
+		id: '01999a00-0000-7000-8000-000000000001',
+		kind: 'WEIGHT',
+		value: 82,
+		localDate: '2026-10-07',
+		source: 'CHAT',
+		fromStart: null,
+		toGoal: null,
+		isGoalReached: null,
+		weekChange: null,
+		planPaceKgPerWeek: null,
+		chart,
+	})
+
+	it('allows up to 5 chart points and rejects the sixth', () => {
+		expect(measurementCardSchema.safeParse(card([1, 2, 3, 4, 5].map(point))).success).toBe(true)
+		expect(measurementCardSchema.safeParse(card([1, 2, 3, 4, 5, 6].map(point))).success).toBe(false)
+	})
+
+	it('accepts an empty chart', () => {
+		expect(measurementCardSchema.safeParse(card([])).success).toBe(true)
+	})
+})
+
+describe('achievementResponseSchema', () => {
+	const achievement = (value: number) => ({
+		id: '01999a00-0000-7000-8000-000000000001',
+		type: 'FOOD_STREAK',
+		value,
+		achievedAt: '2026-10-07T10:00:00.000Z',
+	})
+
+	it('needs a positive whole value', () => {
+		expect(achievementResponseSchema.safeParse(achievement(3)).success).toBe(true)
+		expect(achievementResponseSchema.safeParse(achievement(0)).success).toBe(false)
+		expect(achievementResponseSchema.safeParse(achievement(-1)).success).toBe(false)
+		expect(achievementResponseSchema.safeParse(achievement(1.5)).success).toBe(false)
 	})
 })

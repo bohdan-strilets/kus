@@ -329,6 +329,27 @@ describe('measurement cards and achievements in chat messages (e2e, real DB, fak
 			expect(await findAchievements(owner.userId)).toEqual([])
 		})
 
+		it('does not celebrate a waist, and does not repeat a kilogram already celebrated', async () => {
+			await start()
+			const owner = await registerUser('owner@kus.app')
+			const today = await getToday(owner.userId)
+			await seedWeight(owner.userId, addDays(today, -10), 84)
+			fake.respond(
+				createCompletion([measurementCall({ kind: 'WAIST', value: 90 }), replyCall]),
+				createCompletion([measurementCall({ value: 83 }), replyCall]),
+				createCompletion([measurementCall({ value: 83.2 }), replyCall]),
+			)
+
+			const waist = await send(owner, 'талія 90')
+			const first = await send(owner, 'вага 83')
+			const fixed = await send(owner, 'ні, 83,2')
+
+			expect(waist.assistantMessage.achievements).toEqual([])
+			expect(first.assistantMessage.achievements.map((item) => item.value)).toEqual([1])
+			expect(fixed.assistantMessage.achievements).toEqual([])
+			expect(await findAchievements(owner.userId)).toHaveLength(1)
+		})
+
 		it('stores every kilogram reached and announces the highest', async () => {
 			await start()
 			const owner = await registerUser('owner@kus.app')
@@ -382,6 +403,59 @@ describe('measurement cards and achievements in chat messages (e2e, real DB, fak
 			const rows = await findAchievements(owner.userId)
 			expect(rows.map((row) => row.value)).toEqual([3, 7, 14])
 			expect(rows.filter((row) => row.messageId !== null).map((row) => row.value)).toEqual([14])
+		})
+
+		it('does not check the streak on a reply that only records a weight', async () => {
+			await start()
+			const owner = await registerUser('owner@kus.app')
+			const today = await getToday(owner.userId)
+			await seedFoodDaysBack(owner.userId, 2)
+			await seedFoodDay(owner.userId, today)
+			fake.respond(createCompletion([measurementCall({ value: 82 }), replyCall]))
+
+			const { assistantMessage } = await send(owner, 'вага 82')
+
+			expect(assistantMessage.achievements).toEqual([])
+			expect(await findAchievements(owner.userId)).toEqual([])
+		})
+
+		it('announces both a streak and a lost kilogram from one turn', async () => {
+			await start()
+			const owner = await registerUser('owner@kus.app')
+			const today = await getToday(owner.userId)
+			await seedFoodDaysBack(owner.userId, 2)
+			await seedWeight(owner.userId, addDays(today, -10), 84)
+			fake.respond(createCompletion([logFoodCall, measurementCall({ value: 83 })]))
+
+			const { assistantMessage } = await send(owner, '2 яйця, вага 83')
+
+			expect(assistantMessage.achievements.map((item) => [item.type, item.value]).sort()).toEqual([
+				['FOOD_STREAK', 3],
+				['WEIGHT_KG_LOST', 1],
+			])
+		})
+
+		it('completes a streak when an entry is brought back, but not when one is deleted', async () => {
+			await start()
+			const owner = await registerUser('owner@kus.app')
+			await seedFoodDaysBack(owner.userId, 2)
+			fake.respond(
+				createCompletion([logFoodCall]),
+				createCompletion([{ name: 'delete_entry', args: { refs: ['e1'] } }, replyCall]),
+				createCompletion([{ name: 'restore_entry', args: { refs: ['e1'] } }, replyCall]),
+			)
+			await send(owner, '2 яйця')
+			// the streak was announced once; forget it to see whether a later turn checks again
+			await prisma.achievement.deleteMany({ where: { userId: owner.userId } })
+
+			const deleted = await send(owner, 'видали')
+			expect(deleted.assistantMessage.achievements).toEqual([])
+			expect(await findAchievements(owner.userId)).toEqual([])
+
+			const { assistantMessage } = await send(owner, 'поверни')
+
+			expect(assistantMessage.achievements.map((item) => item.value)).toEqual([3])
+			expect((await findAchievements(owner.userId)).map((row) => row.value)).toEqual([3])
 		})
 
 		it('gives one achievement to two parallel turns', async () => {

@@ -198,6 +198,83 @@ describe('AchievementsService.recordForTurn', () => {
 		})
 	})
 
+	it('reaches the last milestone at exactly 100 days and reads no more than 100 days', async () => {
+		const dates = Array.from({ length: 100 }, (_, index) =>
+			new Date(Date.UTC(2026, 9, 12 - index)).toISOString().slice(0, 10),
+		)
+		entries.getDaysKcal.mockResolvedValue(toDays(dates))
+
+		await recordFood(new Date('2026-10-12T12:00:00Z'))
+
+		expect(entries.getDaysKcal.mock.calls[0]?.[1]).toEqual({
+			from: new Date('2026-07-05T00:00:00Z'),
+			to: new Date('2026-10-12T00:00:00Z'),
+		})
+		expect(repository.createMissing.mock.calls[0]?.[0].values).toEqual([3, 7, 14, 30, 60, 100])
+		expect(repository.attachToMessage).toHaveBeenCalledWith(
+			{ userId: USER_ID, id: 'row-100', messageId: REPLY_ID },
+			tx,
+		)
+	})
+
+	it('stops at 99 days: the 100 milestone is not reached', async () => {
+		const dates = Array.from({ length: 99 }, (_, index) =>
+			new Date(Date.UTC(2026, 9, 12 - index)).toISOString().slice(0, 10),
+		)
+		entries.getDaysKcal.mockResolvedValue(toDays(dates))
+
+		await recordFood(new Date('2026-10-12T12:00:00Z'))
+
+		expect(repository.createMissing.mock.calls[0]?.[0].values).toEqual([3, 7, 14, 30, 60])
+	})
+
+	it('writes no kg achievement without a first or a latest weight', async () => {
+		measurements.findFirst.mockResolvedValue(null)
+		measurements.findLatest.mockResolvedValue(null)
+
+		await service.recordForTurn(
+			{
+				userId: USER_ID,
+				timezone: TIMEZONE,
+				now: new Date('2026-10-12T12:00:00Z'),
+				replyMessageId: REPLY_ID,
+				isFoodChanged: false,
+				isWeightLogged: true,
+			},
+			tx,
+		)
+
+		expect(repository.createMissing).not.toHaveBeenCalled()
+	})
+
+	it('writes no kg achievement when the weight went up from the start', async () => {
+		const weigh = (value: number) => ({
+			id: 'm',
+			kind: 'WEIGHT' as const,
+			value,
+			localDate: new Date('2026-10-12T00:00:00Z'),
+			measuredAt: new Date(),
+			source: 'CHAT' as const,
+			messageId: null,
+		})
+		measurements.findFirst.mockResolvedValue(weigh(80))
+		measurements.findLatest.mockResolvedValue(weigh(85))
+
+		await service.recordForTurn(
+			{
+				userId: USER_ID,
+				timezone: TIMEZONE,
+				now: new Date('2026-10-12T12:00:00Z'),
+				replyMessageId: REPLY_ID,
+				isFoodChanged: false,
+				isWeightLogged: true,
+			},
+			tx,
+		)
+
+		expect(repository.createMissing).not.toHaveBeenCalled()
+	})
+
 	it('checks nothing when the turn neither changed food nor logged a weight', async () => {
 		await service.recordForTurn(
 			{

@@ -392,6 +392,98 @@ describe('progress (e2e, real DB)', () => {
 		expect(week.days.at(-1)?.status).toBe('empty')
 	})
 
+	it('includes the first day of the 30 and 90 day ranges and drops the day before it', async () => {
+		await start()
+		const owner = await registerUser('owner@kus.app')
+		const today = await getToday(owner.userId)
+		for (const [back, value] of [
+			[91, 90],
+			[90, 89],
+			[89, 88],
+			[31, 85],
+			[30, 84],
+			[29, 83],
+			[0, 82],
+		] as const) {
+			await seedWeight(owner.userId, addDays(today, -back), value)
+		}
+
+		const month = await getProgress(owner, 30)
+		const quarter = await getProgress(owner, 90)
+
+		expect(month.weight?.points.map((point) => point.value)).toEqual([83, 82])
+		expect(month.from).toBe(formatDbDate(addDays(today, -29)))
+		expect(month.to).toBe(formatDbDate(today))
+		expect(quarter.weight?.points.map((point) => point.value)).toEqual([88, 85, 84, 83, 82])
+		expect(quarter.from).toBe(formatDbDate(addDays(today, -89)))
+	})
+
+	it('counts weigh-ins for the empty state only within the last 90 days', async () => {
+		await start()
+		const inside = await registerUser('inside@kus.app')
+		const outside = await registerUser('outside@kus.app')
+		const today = await getToday(inside.userId)
+		await seedWeight(inside.userId, today, 82)
+		await seedWeight(inside.userId, addDays(today, -89), 85)
+		await seedWeight(outside.userId, today, 82)
+		await seedWeight(outside.userId, addDays(today, -90), 85)
+
+		expect((await getProgress(inside)).isEmpty).toBe(false)
+		expect((await getProgress(outside)).isEmpty).toBe(true)
+	})
+
+	it('gives a weekly pace only when the latest weigh-in is at most 6 days old', async () => {
+		await start()
+		const fresh = await registerUser('fresh@kus.app')
+		const stale = await registerUser('stale@kus.app')
+		const today = await getToday(fresh.userId)
+		await seedWeight(fresh.userId, addDays(today, -6), 82)
+		await seedWeight(fresh.userId, addDays(today, -12), 83)
+		await seedWeight(stale.userId, addDays(today, -7), 82)
+		await seedWeight(stale.userId, addDays(today, -13), 83)
+
+		expect((await getProgress(fresh)).insight.weekPaceKg).toBe(-1)
+		expect((await getProgress(stale)).insight.weekPaceKg).toBeNull()
+	})
+
+	it('counts the way to a GAIN goal upwards and has no way to go without a target', async () => {
+		await start()
+		const owner = await registerUser('owner@kus.app')
+		const today = await getToday(owner.userId)
+		await seedWeight(owner.userId, today, 70.2)
+		await setWeightGoal(owner.userId, GoalType.GAIN, 75)
+
+		expect((await getProgress(owner)).weight).toMatchObject({
+			toGoal: 4.8,
+			isGoalReached: false,
+		})
+
+		await setWeightGoal(owner.userId, GoalType.GAIN, 70)
+		expect((await getProgress(owner)).weight).toMatchObject({ toGoal: 0, isGoalReached: true })
+
+		await setWeightGoal(owner.userId, GoalType.LOSE, null)
+		expect((await getProgress(owner)).weight).toMatchObject({
+			target: null,
+			toGoal: null,
+			isGoalReached: null,
+		})
+	})
+
+	it('keeps the waist current value when it is older than the range, without points', async () => {
+		await start()
+		const owner = await registerUser('owner@kus.app')
+		const today = await getToday(owner.userId)
+		await seedMeasurement(owner.userId, MeasurementKind.WAIST, addDays(today, -20), 96)
+
+		const { waist } = await getProgress(owner, 7)
+
+		expect(waist).toMatchObject({
+			current: { value: 96, localDate: formatDbDate(addDays(today, -20)) },
+			changeInRange: null,
+			points: [],
+		})
+	})
+
 	it('never mixes in the data of another user', async () => {
 		await start()
 		const owner = await registerUser('owner@kus.app')

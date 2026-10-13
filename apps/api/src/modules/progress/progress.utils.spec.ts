@@ -79,6 +79,21 @@ describe('getWeekPaceKg', () => {
 	})
 })
 
+describe('getWeekPaceKg age limit', () => {
+	const today = new Date('2026-10-12T00:00:00Z')
+
+	it('still counts a latest weight that is 6 days old, but not 7', () => {
+		const sixDays = weight('2026-10-06', 82)
+		expect(
+			getWeekPaceKg({ latest: sixDays, history: [weight('2026-09-30', 83), sixDays], today }),
+		).toBe(-1)
+		const sevenDays = weight('2026-10-05', 82)
+		expect(
+			getWeekPaceKg({ latest: sevenDays, history: [weight('2026-09-29', 83), sevenDays], today }),
+		).toBeNull()
+	})
+})
+
 describe('averageOrNull', () => {
 	it('rounds to a whole number and is null for no values', () => {
 		expect(averageOrNull([2420, 1970])).toBe(2195)

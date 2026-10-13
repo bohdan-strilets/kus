@@ -33,6 +33,9 @@ export interface ComposerProps {
 	photo?: ComposerPhotoState
 	/** The API limit for one message. */
 	maxLength?: number
+	/** True: put the cursor into the field, then call onFocusHandled (a chip or a button asked). */
+	shouldFocus?: boolean
+	onFocusHandled?: () => void
 	/** While recording, the field becomes the wave (mockups/chat-voice.html). */
 	voice?: ComposerVoiceState
 }

@@ -416,6 +416,11 @@
 		"profile": "Профіль"
 	},
 	"chat": {
+		"weightDraft": "вага ",
+		"quickChips": {
+			"label": "Швидкі дії",
+			"addWeight": "Додати вагу"
+		},
 		"waiting": {
 			"thinking": "Думаю…",
 			"second": "Ще секунду…",
@@ -525,7 +530,6 @@
 		"loadError": "Не вдалося завантажити прогрес.",
 		"noWeighIns": "За цей період зважувань немає",
 		"noMeasurements": "За цей період замірів немає",
-		"recordWeightDraft": "вага ",
 		"discuss": "Обговорити в чаті",
 		"range": {
 			"label": "Період",

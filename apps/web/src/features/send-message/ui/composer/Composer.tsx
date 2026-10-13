@@ -1,4 +1,4 @@
-import { type ChangeEvent, type KeyboardEvent, type SubmitEvent, useRef } from 'react'
+import { type ChangeEvent, type KeyboardEvent, type SubmitEvent, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { COARSE_POINTER_QUERY, cn, useMediaQuery } from '@/shared/lib'
@@ -35,6 +35,8 @@ export const Composer = ({
 	isVoiceEnabled = true,
 	photo,
 	maxLength,
+	shouldFocus = false,
+	onFocusHandled,
 }: ComposerProps) => {
 	const { t } = useTranslation()
 	const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -44,6 +46,14 @@ export const Composer = ({
 	const hasContent = value.trim().length > 0 || photo?.status === 'ready'
 	const canSend = hasContent && photo?.status !== 'processing'
 	const isCoarsePointer = useMediaQuery(COARSE_POINTER_QUERY)
+
+	// a DOM side effect, not derived state: the field exists only after the render
+	useEffect(() => {
+		const textarea = textareaRef.current
+		if (!shouldFocus || !textarea) return
+		textarea.focus()
+		onFocusHandled?.()
+	}, [shouldFocus, onFocusHandled])
 
 	if (voice) return <VoiceRecorder {...voice} />
 

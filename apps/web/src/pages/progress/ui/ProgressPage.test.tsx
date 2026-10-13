@@ -30,7 +30,7 @@ const showsProgress = (progress: ProgressResponse): void => {
 }
 
 beforeEach(() => {
-	useComposerDraftStore.setState({ text: '' })
+	useComposerDraftStore.setState({ text: '', isFocusRequested: false })
 })
 
 afterEach(() => {
@@ -121,6 +121,7 @@ describe('ProgressPage', () => {
 
 		expect(screen.getByText('2 195 ккал')).toBeTruthy()
 		expect(useComposerDraftStore.getState().text).toBe('вага ')
+		expect(useComposerDraftStore.getState().isFocusRequested).toBe(true)
 		await waitFor(() => {
 			expect(paths.at(-1)).toBe(ROUTES.chat)
 		})
@@ -193,6 +194,7 @@ describe('ProgressPage', () => {
 		fireEvent.click(screen.getByRole('button', { name: 'Записати вагу' }))
 
 		expect(useComposerDraftStore.getState().text).toBe('вага ')
+		expect(useComposerDraftStore.getState().isFocusRequested).toBe(true)
 		await waitFor(() => {
 			expect(paths.at(-1)).toBe(ROUTES.chat)
 		})

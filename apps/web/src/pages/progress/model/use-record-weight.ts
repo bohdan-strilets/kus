@@ -1,20 +1,15 @@
-import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
 
-import { useComposerDraftStore } from '@/features/send-message'
+import { useStartWeightDraft } from '@/features/send-message'
 import { ROUTES } from '@/shared/config'
 
-/**
- * «Записати вагу»: into the chat with «вага » waiting in the composer, so only the number is left
- * to type. A draft the user already has is not overwritten.
- */
+/** «Записати вагу»: into the chat with «вага » waiting in the focused composer. */
 export const useRecordWeight = (): (() => void) => {
-	const { t } = useTranslation()
 	const navigate = useNavigate()
+	const startWeightDraft = useStartWeightDraft()
 
 	return () => {
-		const { text, setText } = useComposerDraftStore.getState()
-		if (text.trim() === '') setText(t('progress.recordWeightDraft'))
+		startWeightDraft()
 		void navigate(ROUTES.chat)
 	}
 }

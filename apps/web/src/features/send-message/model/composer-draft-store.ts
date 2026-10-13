@@ -7,10 +7,14 @@ interface ComposerDraftState {
 	/** Whose text it is: another user (or none after logout) never sees it. */
 	ownerId: string | null
 	text: string
+	/** Something asked the field for focus (not persisted): the chat takes it once it is on screen. */
+	isFocusRequested: boolean
 	/** The signed-in user (null after logout); a different one drops the previous one's text. */
 	claim: (userId: string | null) => void
 	setText: (text: string) => void
 	clear: () => void
+	requestFocus: () => void
+	resolveFocus: () => void
 }
 
 export const COMPOSER_DRAFT_STORAGE_KEY = 'kusik-composer-draft'
@@ -36,6 +40,7 @@ export const useComposerDraftStore = create<ComposerDraftState>()(
 		(set) => ({
 			ownerId: null,
 			text: '',
+			isFocusRequested: false,
 			claim: (userId) => {
 				set((state) => (state.ownerId === userId ? state : { ownerId: userId, text: '' }))
 			},
@@ -44,6 +49,12 @@ export const useComposerDraftStore = create<ComposerDraftState>()(
 			},
 			clear: () => {
 				set({ text: '' })
+			},
+			requestFocus: () => {
+				set({ isFocusRequested: true })
+			},
+			resolveFocus: () => {
+				set({ isFocusRequested: false })
 			},
 		}),
 		{

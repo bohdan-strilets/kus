@@ -20,3 +20,6 @@ export type {
 	ComposerVoiceState,
 } from './ui/composer/composer.types'
 export { Composer } from './ui/composer/Composer'
+export { useStartWeightDraft } from './model/use-start-weight-draft'
+export { QuickChips } from './ui/quick-chips/QuickChips'
+export { shouldShowQuickChips } from './lib/should-show-quick-chips'

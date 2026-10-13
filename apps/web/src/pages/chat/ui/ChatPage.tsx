@@ -6,6 +6,8 @@ import type { Addressee } from '@/entities/user'
 import { EditEntrySheet } from '@/features/edit-entry'
 import {
 	Composer,
+	QuickChips,
+	shouldShowQuickChips,
 	useComposerDraftStore,
 	usePhotoDraftStore,
 	useSendMessage,
@@ -36,8 +38,16 @@ const ChatScreen = ({ addressee, timeZone }: { addressee: Addressee; timeZone: s
 	const text = useComposerDraftStore((state) => state.text)
 	const setText = useComposerDraftStore((state) => state.setText)
 	const clearText = useComposerDraftStore((state) => state.clear)
+	const isFocusRequested = useComposerDraftStore((state) => state.isFocusRequested)
+	const resolveFocus = useComposerDraftStore((state) => state.resolveFocus)
 	const photoDraft = usePhotoDraftStore()
 	const { send } = useSendMessage()
+	const features: Record<keyof typeof FEATURES, boolean> = FEATURES
+	const hasQuickChips = shouldShowQuickChips({
+		isEnabled: features.quickChips,
+		draftText: text,
+		photoStatus: photoDraft.status,
+	})
 
 	return (
 		<div className="flex min-h-0 flex-1 flex-col">
@@ -56,6 +66,7 @@ const ChatScreen = ({ addressee, timeZone }: { addressee: Addressee; timeZone: s
 				isComposerFocused={header.isComposerFocused}
 			/>
 			<div className="px-gutter pb-2.5">
+				<QuickChips isShown={hasQuickChips} />
 				<Composer
 					value={text}
 					onValueChange={setText}
@@ -75,6 +86,8 @@ const ChatScreen = ({ addressee, timeZone }: { addressee: Addressee; timeZone: s
 					isPhotoEnabled={FEATURES.photo}
 					isVoiceEnabled={FEATURES.voice}
 					maxLength={MESSAGE_TEXT_MAX_LENGTH}
+					shouldFocus={isFocusRequested}
+					onFocusHandled={resolveFocus}
 				/>
 			</div>
 			<EditEntrySheet />

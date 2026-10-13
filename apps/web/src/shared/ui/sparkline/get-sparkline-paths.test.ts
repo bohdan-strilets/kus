@@ -29,4 +29,23 @@ describe('getSparklinePaths', () => {
 		expect(area).toBeNull()
 		expect(points).toEqual([{ x: 260, y: 32 }])
 	})
+
+	it('draws a reference near the data and stretches the chart to it', () => {
+		const { referenceY, points } = getSparklinePaths([84, 83, 82], 81)
+
+		expect(referenceY).not.toBeNull()
+		expect(referenceY ?? 0).toBeGreaterThan(points[2]?.y ?? 0)
+	})
+
+	it('hides a reference far from the data and leaves the points as they were', () => {
+		const withFar = getSparklinePaths([84, 83, 82], 70)
+
+		expect(withFar.referenceY).toBeNull()
+		expect(withFar.line).toBe(getSparklinePaths([84, 83, 82]).line)
+	})
+
+	it('has no reference for a flat series or a single point', () => {
+		expect(getSparklinePaths([82, 82], 81).referenceY).toBeNull()
+		expect(getSparklinePaths([82], 81).referenceY).toBeNull()
+	})
 })

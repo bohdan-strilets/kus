@@ -30,3 +30,11 @@ export const formatMeasurementDelta = (
 	t(UNIT_KEY[kind], {
 		value: isWholeWaist(value, kind) ? formatSignedInteger(value) : formatSignedDecimal(value, 1),
 	})
+
+/** «78 кг», «78,5 кг» — a goal weight, with a decimal only when it has one. */
+export const formatTargetWeight = (value: number, t: TFunction): string =>
+	t(UNIT_KEY.WEIGHT, {
+		value: Number.isInteger(Number(value.toFixed(1)))
+			? formatInteger(value)
+			: formatDecimal(value, 1),
+	})

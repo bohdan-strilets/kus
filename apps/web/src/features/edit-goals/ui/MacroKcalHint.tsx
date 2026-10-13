@@ -1,3 +1,4 @@
+import type { TFunction } from 'i18next'
 import { useTranslation } from 'react-i18next'
 
 import { formatInteger } from '@/shared/lib'
@@ -11,7 +12,7 @@ interface MacroKcalHintProps {
 	errorMessage?: string
 }
 
-const getHintText = (hint: MacroHint, t: ReturnType<typeof useTranslation>['t']): string => {
+const getHintText = (hint: MacroHint, t: TFunction): string => {
 	if (hint.isConsistent) return t('editGoals.hintOk', { macroKcal: formatInteger(hint.macroKcal) })
 	return t(hint.deltaPct > 0 ? 'editGoals.hintMore' : 'editGoals.hintLess', {
 		macroKcal: formatInteger(hint.macroKcal),

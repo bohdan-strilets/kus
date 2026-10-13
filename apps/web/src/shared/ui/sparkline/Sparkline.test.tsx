@@ -32,4 +32,12 @@ describe('Sparkline', () => {
 
 		expect(container.firstChild).toBeNull()
 	})
+
+	it('draws a dashed goal line only when a reference is given and close', () => {
+		const { container, rerender } = render(<Sparkline values={[84, 83, 82]} label="x" />)
+		expect(container.querySelector('line')).toBeNull()
+
+		rerender(<Sparkline values={[84, 83, 82]} label="x" reference={81} />)
+		expect(container.querySelector('line')?.getAttribute('stroke-dasharray')).toBe('4 4')
+	})
 })

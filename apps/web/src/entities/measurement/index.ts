@@ -2,6 +2,7 @@ export {
 	formatMeasurement,
 	formatMeasurementDelta,
 	formatMeasurementNumber,
+	formatTargetWeight,
 } from './lib/format-measurement'
 export { getGoalTile, type GoalTile } from './lib/get-goal-tile'
 export { getPaceSentenceKey, type PaceSentenceKey } from './lib/get-pace-sentence-key'

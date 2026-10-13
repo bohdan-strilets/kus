@@ -238,6 +238,13 @@ New Project → цей репозиторій.
 - **`JWT_ACCESS_SECRET`**: змінити в Railway → redeploy. Чинні access-токени стануть недійсними; тихий refresh видасть нові, тож вхід заново не потрібен.
 - **`OPENROUTER_API_KEY`**: новий ключ в OpenRouter → змінна в Railway → redeploy → старий ключ відкликати.
 
+## Відомі вразливості залежностей
+
+Стан `pnpm audit` на 2026-10-13: усі знахідки приходять через devDependency `prisma@7.10.0` (`apps/api`), у рантайм API не потрапляють.
+
+- **`deepmerge-ts@7.1.5`, GHSA-ggr8-5vv4-36mx (high) — прийнятий ризик.** Шлях: `prisma` → `@prisma/config` → `deepmerge-ts`. Використовується лише CLI (`prisma.config.ts` під час `migrate` / `generate`); API працює через `PrismaPg`-адаптер, а `@prisma/client` від `@prisma/config` не залежить, тож у рантайм він не завантажується. Виправлення (≥ 8.0.0) недоступне: `@prisma/config` 7.10 тягне 7.x, тому override не ставимо. Перевірити при кожному оновленні Prisma.
+- **`mysql2`, GHSA-3f6p-5ww8-9rcr (high) і GHSA-rgwj-5xj2-c3m3 (moderate) — закрито.** `prisma` тягне `mysql2@3.15.3` для CLI/studio; у `pnpm-workspace.yaml` стоїть `overrides: mysql2: 3.23.1` (мінімальна версія з обома виправленнями). Override можна прибрати, коли Prisma сама оновить `mysql2` до ≥ 3.23.1.
+
 ## Типові збої
 
 | Симптом                                         | Причина                                                                |

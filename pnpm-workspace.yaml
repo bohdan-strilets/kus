@@ -8,3 +8,6 @@ onlyBuiltDependencies:
   - '@swc/core'
   - esbuild
   - prisma
+
+overrides:
+  mysql2: 3.23.1

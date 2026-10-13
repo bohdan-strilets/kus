@@ -17,14 +17,19 @@ describe('Sparkline', () => {
 		const { container } = render(<Sparkline values={[84, 83, 82.4]} label="x" />)
 
 		expect(container.querySelectorAll('path')).toHaveLength(2)
-		expect(container.querySelector('circle')).toBeNull()
+		expect(container.querySelector('[data-sparkline-dot]')).toBeNull()
 	})
 
-	it('draws only a dot, no line, for one point', () => {
+	it('draws only a round dot, no line, for one point', () => {
 		const { container } = render(<Sparkline values={[82.4]} label="x" />)
 
 		expect(container.querySelector('path')).toBeNull()
-		expect(container.querySelectorAll('circle')).toHaveLength(1)
+		// the dot lives outside the stretched SVG, with a fixed square size: it cannot become an oval
+		expect(container.querySelector('svg circle')).toBeNull()
+		const dot = container.querySelector('[data-sparkline-dot]')
+		expect(dot?.className).toContain('size-2')
+		expect(dot?.className).toContain('rounded-full')
+		expect((dot as HTMLElement).style.left).toContain('96.29')
 	})
 
 	it('draws nothing for no values', () => {

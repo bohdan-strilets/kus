@@ -130,7 +130,7 @@ describe('WeightCard', () => {
 		expect(screen.queryByText(/ · /)).toBeNull()
 		expect(screen.getByRole('img', { name: 'Вага: 82,4 кг' })).toBeTruthy()
 		expect(container.querySelector('svg path')).toBeNull()
-		expect(container.querySelector('svg circle')).not.toBeNull()
+		expect(container.querySelector('[data-sparkline-dot]')).not.toBeNull()
 	})
 
 	it('dates the last chart label when the weigh-in is not from today', () => {

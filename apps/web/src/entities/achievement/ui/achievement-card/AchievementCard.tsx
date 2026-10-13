@@ -76,7 +76,7 @@ export const AchievementCard = ({
 			<div ref={hostRef} className="relative">
 				<Surface role="status" radius="card" className="flex items-center gap-3 p-3.5">
 					<div ref={originRef} className="shrink-0">
-						<Hamster mood="proud" size={ACHIEVEMENT_HAMSTER_SIZE} isBlinking={false} />
+						<Hamster mood="happy" size={ACHIEVEMENT_HAMSTER_SIZE} isBlinking={false} />
 					</div>
 					<div className="flex min-w-0 flex-col gap-0.5">
 						<Text as="span" variant="eyebrow" tone="muted">

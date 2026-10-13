@@ -25,12 +25,12 @@ export const QuickChips = ({ isShown }: { isShown: boolean }) => {
 					animate="visible"
 					exit="hidden"
 					transition={shouldReduceMotion ? { duration: 0 } : TRANSITION.fast}
-					className="overflow-hidden"
+					className="-mx-1 overflow-hidden px-1"
 				>
 					<div
 						role="group"
 						aria-label={t('chat.quickChips.label')}
-						className="flex gap-2 px-1 pt-1 pb-3"
+						className="flex gap-2 pt-1 pb-3"
 					>
 						<Chip onClick={startWeightDraft}>{t('chat.quickChips.addWeight')}</Chip>
 					</div>

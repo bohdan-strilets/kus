@@ -41,10 +41,10 @@ export const WeightProgressCard = ({ weight, range, today }: WeightProgressCardP
 			: t('measurement.chart.single.WEIGHT', {
 					value: formatMeasurement(last?.value ?? current.value, 'WEIGHT', t),
 				})
-	const lastLabel =
-		last?.localDate === today
-			? t('measurement.chart.today')
-			: formatDayMonthShort(toCalendarDate(last?.localDate ?? current.localDate))
+	const isLastToday = last?.localDate === today
+	const lastLabel = isLastToday
+		? t('measurement.chart.today')
+		: formatDayMonthShort(toCalendarDate(last?.localDate ?? current.localDate))
 	const goalCaption = (): string | null => {
 		if (isGoalReached === true) return t('measurement.goalReached')
 		if (target === null) return null
@@ -95,8 +95,8 @@ export const WeightProgressCard = ({ weight, range, today }: WeightProgressCardP
 						className="h-28"
 					/>
 					<div className="flex justify-between text-small text-muted tabular-nums">
-						{hasHistory && <span>{formatDayMonthShort(toCalendarDate(first.localDate))}</span>}
-						<span className="ml-auto">{lastLabel}</span>
+						<span>{formatDayMonthShort(toCalendarDate(first.localDate))}</span>
+						{(hasHistory || isLastToday) && <span className="ml-auto">{lastLabel}</span>}
 					</div>
 				</div>
 			) : (

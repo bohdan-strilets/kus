@@ -140,7 +140,7 @@ export const WeightCard = ({
 
 				<Link
 					to={ROUTES.progress}
-					className="inline-flex min-h-tap items-center self-start rounded-tile-sm"
+					className="-my-3 inline-flex min-h-tap items-center self-start rounded-tile-sm"
 				>
 					<Text as="span" variant="cardTitle" tone="primary">
 						{t('measurement.openProgress')}

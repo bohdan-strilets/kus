@@ -165,7 +165,7 @@ apps/api/src/
 
 ### Дані
 - Prisma 7 з адаптером `PrismaPg`, PostgreSQL на Railway
-- Схема спроєктована одразу на весь домен, реалізація — по roadmap. Моделі: User, AuthCredentials, Session, VerificationToken, UserProfile, UserGoal, WeightEntry, Message, MessageAttachment, AiRun, AiToolCall, Clarification, ClarificationEntry, Meal, FoodEntry, MyFood, Recipe, RecipeIngredient, Correction, UserFact, DailyUsage, ExerciseEntry. Опис і діаграма — `docs/database.md`
+- Схема спроєктована одразу на весь домен, реалізація — по roadmap. Моделі: User, AuthCredentials, Session, VerificationToken, UserProfile, UserGoal, Measurement, Achievement, Message, MessageAttachment, AiRun, AiToolCall, Clarification, ClarificationEntry, Meal, FoodEntry, MyFood, Recipe, RecipeIngredient, Correction, UserFact, DailyUsage, ExerciseEntry. Опис і діаграма — `docs/database.md`
 - Enum'и схеми дзеркаляться zod-enum'ами в `packages/shared/src/schemas/enums.ts` — змінюєш одне, змінюй і друге
 - Перед додаванням поля чи моделі — перевір актуальну `schema.prisma`, не опис у документах
 - Soft delete (`deletedAt`) для записів користувача (Meal, FoodEntry, MyFood, Recipe, UserFact, ExerciseEntry) — завжди фільтр `deletedAt: null`; це дає «скасувати» в чаті

@@ -275,7 +275,6 @@ model User {
   verificationTokens VerificationToken[]
   profile            UserProfile?
   goals              UserGoal[]
-  weightEntries      WeightEntry[]
   measurements       Measurement[]
   achievements       Achievement[]
   messages           Message[]
@@ -386,25 +385,6 @@ model UserGoal {
 
   @@unique([userId, validFrom])
   @@map("user_goals")
-}
-
-// Deprecated: replaced by Measurement (kind WEIGHT); drop after 0.5.0 verification
-// One weigh-in per local day (a second one that day rewrites it); «вага зараз» = the latest row
-model WeightEntry {
-  id         String   @id @default(uuid(7)) @db.Uuid
-  userId     String   @map("user_id") @db.Uuid
-  // one decimal, rounded by the backend
-  weightKg   Float    @map("weight_kg")
-  measuredAt DateTime @map("measured_at") @db.Timestamptz
-  localDate  DateTime @map("local_date") @db.Date
-  note       String?
-  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, localDate])
-  @@map("weight_entries")
 }
 
 // Body measurements (weight kg, waist cm): one per kind per local day, a second one that day rewrites it

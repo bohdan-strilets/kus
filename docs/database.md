@@ -24,7 +24,6 @@ erDiagram
     User ||--o{ VerificationToken : "has"
     User ||--o| UserProfile : "has"
     User ||--o{ UserGoal : "history"
-    User ||--o{ WeightEntry : "logs (deprecated)"
     User ||--o{ Measurement : "measures"
     User ||--o{ Achievement : "earns"
     User ||--o{ Message : "chat"
@@ -79,7 +78,6 @@ erDiagram
 
 - **UserProfile** (1:1) — «Мої дані»: стать, рік народження, зріст, рівень активності, бажана вага, ціль (`goalType`) і темп (`paceKgPerWeek`: 0,25 / 0,5 / 0,75, завжди додатний; `null` для MAINTAIN) — вхід для `calculateGoals` у `packages/shared`. `birthYear` назовні не виходить: `GET/PATCH /profile` працюють з `age`, сервіс переводить через поточний рік у `User.timezone` (тому в день народження вік може «стрибнути» на рік); вік лише 18–100 — Kusik для дорослих (`AGE_BELOW_MINIMUM`). У zod профілю лише 4 рівні активності; `VERY_ACTIVE` лишається в enum без використання.
 - **UserGoal** — історія цілей. Ціль на день D — запис з найбільшим `validFrom <= D`, тож минулі дні рахуються за ціллю, що діяла тоді. Одна ціль на день (`unique(userId, validFrom)`): повторна зміна того ж дня перезаписує її. `source` — `CALCULATED` (сервер порахував з профілю, `PUT /profile/goals { source: "calculated" }`) або `MANUAL` (числа вручну: `PUT /profile/goals { source: "manual", … }` з перевіркою `|4Б + 4В + 9Ж − ккал| ≤ 15 %`); дефолт `MANUAL` переніс цілі, створені до розрахунку. `targetWeightKg` більше не пишеться — див. [Відкладено](#відкладено).
-- **WeightEntry** — **deprecated**, замінена **Measurement**. Дані скопійовано в `measurements` міграцією `20261012184805_measurements_achievements`; вона падає з `RAISE EXCEPTION`, якщо в `weight_entries` є `note` або дублі `(user_id, local_date)`, щоб автоматичний `migrate deploy` нічого не втратив. Код таблицю більше не читає й не пише; вона лишається до звірки на проді й видаляється окремою міграцією в наступному релізі.
 
 ### Вимірювання і досягнення
 
@@ -118,7 +116,6 @@ erDiagram
 | sessions              | `refresh_token_hash` UNIQUE; `token_family`; `(user_id, expires_at)`                                        | refresh-ротація, відкликання сім'ї, активні сесії |
 | verification_tokens   | `token_hash` UNIQUE; `(user_id, type)`                                                                      | перевірка токена, інвалідація старих              |
 | user_goals            | `(user_id, valid_from)` UNIQUE                                                                              | ціль на дату                                      |
-| weight_entries        | `(user_id, local_date)` (deprecated)                                                                        | вага за період                                    |
 | measurements          | `(user_id, kind, local_date)` UNIQUE; `message_id`                                                          | вага / талія за період; джерело вимірювання       |
 | achievements          | `(user_id, type, value)` UNIQUE; `message_id`                                                               | віхи досягнень; анонс в чаті                      |
 | messages              | `(user_id, created_at)`; `(user_id, client_message_id)` UNIQUE; `reply_to_id`                               | останні N повідомлень, ідемпотентність            |

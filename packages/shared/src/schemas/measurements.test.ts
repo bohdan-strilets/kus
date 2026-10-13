@@ -22,6 +22,25 @@ describe('MEASUREMENT_LIMITS', () => {
 	it('keeps waist inside 40–200 cm', () => {
 		expect(MEASUREMENT_LIMITS.WAIST).toEqual({ min: 40, max: 200 })
 	})
+
+	it('feeds the profile waist limit', () => {
+		expect(PROFILE_LIMITS.waistCm).toBe(MEASUREMENT_LIMITS.WAIST)
+	})
+
+	it('accepts the profile waist with a decimal, at the limits, and rejects just outside', () => {
+		const { min, max } = MEASUREMENT_LIMITS.WAIST
+		const parse = (waistCm: number) => updateProfileRequestSchema.safeParse({ waistCm }).success
+		expect(parse(min)).toBe(true)
+		expect(parse(max)).toBe(true)
+		expect(parse(82.4)).toBe(true)
+		expect(parse(min - 0.1)).toBe(false)
+		expect(parse(max + 0.1)).toBe(false)
+	})
+
+	it('counts waistCm alone as a non-empty profile update', () => {
+		expect(updateProfileRequestSchema.safeParse({ waistCm: 82 }).success).toBe(true)
+		expect(updateProfileRequestSchema.safeParse({}).success).toBe(false)
+	})
 })
 
 describe('progressQuerySchema', () => {

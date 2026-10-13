@@ -19,6 +19,8 @@ export type FieldDefinition =
 			inputMode: 'numeric' | 'decimal'
 			isInteger: boolean
 			limits: NumberLimits
+			/** A one-line tip under the field. */
+			hintKey?: ParseKeys
 	  }
 	| { kind: 'activity' }
 	| { kind: 'pace' }

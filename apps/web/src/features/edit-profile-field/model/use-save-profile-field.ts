@@ -17,7 +17,7 @@ interface UseSaveProfileFieldParams {
 	onFieldError?: (message: string) => void
 }
 
-/** Saves one field (PATCH /profile) and refreshes the profile, and the day when the weight changed. */
+/** Saves one field (PATCH /profile) and refreshes the profile, and the day when the weight or the waist changed. */
 export const useSaveProfileField = ({
 	field,
 	onSaved,
@@ -31,8 +31,9 @@ export const useSaveProfileField = ({
 		onSuccess: (profile) => {
 			queryClient.setQueryData(PROFILE_QUERY_KEY, profile)
 			void queryClient.invalidateQueries({ queryKey: PROFILE_QUERY_KEY })
-			// the weight shows in the day too
-			if (field === 'weightKg') void queryClient.invalidateQueries({ queryKey: DAY_QUERY_KEY })
+			// the weight shows in the day, the waist on «Прогрес» (cached under the day key)
+			if (field === 'weightKg' || field === 'waistCm')
+				void queryClient.invalidateQueries({ queryKey: DAY_QUERY_KEY })
 			onSaved()
 		},
 		onError: (error) => {

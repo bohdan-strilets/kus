@@ -9,6 +9,7 @@ export const PROFILE_LIMITS = {
 	age: { min: 18, max: 100 },
 	heightCm: { min: 120, max: 230 },
 	weightKg: MEASUREMENT_LIMITS.WEIGHT,
+	waistCm: MEASUREMENT_LIMITS.WAIST,
 } as const
 
 /** The four levels of «Активність» (onboarding-3-activity); VERY_ACTIVE exists only in the DB. */
@@ -18,10 +19,11 @@ export type ProfileActivityLevel = z.infer<typeof profileActivityLevelSchema>
 export const paceKgPerWeekSchema = z.literal([...PACE_OPTIONS_KG_PER_WEEK])
 
 const weightKgSchema = z.number().min(PROFILE_LIMITS.weightKg.min).max(PROFILE_LIMITS.weightKg.max)
+const waistCmSchema = z.number().min(PROFILE_LIMITS.waistCm.min).max(PROFILE_LIMITS.waistCm.max)
 
 /**
  * Body of PATCH /profile: every field optional, at least one present. `age` is stored as a birth
- * year; `weightKg` becomes today's weigh-in. MAINTAIN clears the pace on the server.
+ * year; `weightKg` becomes today's weigh-in, `waistCm` today's waist measurement. MAINTAIN clears the pace on the server.
  */
 export const updateProfileRequestSchema = z
 	.object({
@@ -40,6 +42,7 @@ export const updateProfileRequestSchema = z
 			.max(PROFILE_LIMITS.heightCm.max)
 			.optional(),
 		weightKg: weightKgSchema.optional(),
+		waistCm: waistCmSchema.optional(),
 		/** null clears it; protein is then sized to the current weight. */
 		targetWeightKg: weightKgSchema.nullable().optional(),
 		activityLevel: profileActivityLevelSchema.optional(),
@@ -81,6 +84,8 @@ export const profileResponseSchema = z.object({
 	}),
 	/** The latest weigh-in («вага зараз»). */
 	weight: z.object({ kg: z.number(), localDate: z.iso.date() }).nullable(),
+	/** The latest waist measurement («талія»). */
+	waist: z.object({ cm: z.number(), localDate: z.iso.date() }).nullable(),
 	goals: profileGoalsSchema.nullable(),
 })
 

@@ -104,6 +104,7 @@ describe('toPlanProfile', () => {
 			paceKgPerWeek: 0.25,
 		},
 		weight: { kg: 82.4, localDate: '2026-01-01' },
+		waist: null,
 		goals: null,
 	}
 

@@ -22,6 +22,7 @@ const makeProfile = (overrides: Partial<ProfileResponse['profile']> = {}): Profi
 		...overrides,
 	},
 	weight: { kg: 82.4, localDate: '2026-10-07' },
+	waist: { cm: 91.5, localDate: '2026-10-07' },
 	goals: null,
 })
 
@@ -37,6 +38,7 @@ describe('getProfileRows', () => {
 			'age',
 			'heightCm',
 			'weightKg',
+			'waistCm',
 			'activityLevel',
 		])
 		expect(body.map((row) => normalize(row.value))).toEqual([
@@ -44,6 +46,7 @@ describe('getProfileRows', () => {
 			'30 років',
 			'182 см',
 			'82,4 кг',
+			'91,5 см',
 			'Трохи руху',
 		])
 	})
@@ -64,6 +67,17 @@ describe('getProfileRows', () => {
 		expect(goal.map((row) => row.key)).toEqual(['goalType', 'targetWeightKg'])
 	})
 
+	it('shows a whole waist without a decimal and a missing waist as null', () => {
+		const whole = getProfileRows(
+			{ ...makeProfile(), waist: { cm: 82, localDate: '2026-10-07' } },
+			t,
+		)
+		const missing = getProfileRows({ ...makeProfile(), waist: null }, t)
+
+		expect(normalize(whole.body.find((row) => row.key === 'waistCm')?.value ?? null)).toBe('82 см')
+		expect(missing.body.find((row) => row.key === 'waistCm')?.value).toBeNull()
+	})
+
 	it('gives null for what is not set', () => {
 		const empty = makeProfile({
 			sex: null,
@@ -74,7 +88,7 @@ describe('getProfileRows', () => {
 			goalType: null,
 			paceKgPerWeek: null,
 		})
-		const { body, goal } = getProfileRows({ ...empty, weight: null }, t)
+		const { body, goal } = getProfileRows({ ...empty, weight: null, waist: null }, t)
 
 		expect([...body, ...goal].every((row) => row.value === null)).toBe(true)
 	})

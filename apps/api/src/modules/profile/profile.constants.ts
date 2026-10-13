@@ -8,3 +8,5 @@ export const SAVE_GOALS_THROTTLE = { default: { limit: 10, ttl: minutes(1) } }
 
 /** Weights are shown and stored with one decimal («82,4 кг»). */
 export const WEIGHT_DECIMALS = 1
+/** Waist is stored with one decimal too («82,4 см»). */
+export const WAIST_DECIMALS = 1

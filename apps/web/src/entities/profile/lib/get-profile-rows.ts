@@ -20,12 +20,19 @@ export const getProfileRows = (profile: ProfileResponse, t: TFunction): ProfileR
 	const { sex, age, heightCm, activityLevel, goalType, targetWeightKg, paceKgPerWeek } =
 		profile.profile
 	const weightKg = profile.weight?.kg ?? null
+	const waistCm = profile.waist?.cm ?? null
 
 	// «82,4 кг», but a whole number stays «78 кг» (mockup my-data)
 	const formatKg = (kg: number | null): string | null =>
 		kg === null
 			? null
 			: t('profile.data.values.kg', { value: formatDecimal(kg, Number.isInteger(kg) ? 0 : 1) })
+
+	// the waist has tenths too: «82,4 см», a whole number stays «82 см»
+	const formatCm = (cm: number | null): string | null =>
+		cm === null
+			? null
+			: t('profile.data.values.cm', { value: formatDecimal(cm, Number.isInteger(cm) ? 0 : 1) })
 
 	const body: ProfileRow[] = [
 		{
@@ -44,6 +51,7 @@ export const getProfileRows = (profile: ProfileResponse, t: TFunction): ProfileR
 			value: heightCm === null ? null : t('profile.data.values.cm', { value: heightCm }),
 		},
 		{ key: 'weightKg', label: t('profile.data.fields.weightKg'), value: formatKg(weightKg) },
+		{ key: 'waistCm', label: t('profile.data.fields.waistCm'), value: formatCm(waistCm) },
 		{
 			key: 'activityLevel',
 			label: t('profile.data.fields.activityLevel'),

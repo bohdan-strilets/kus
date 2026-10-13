@@ -4,8 +4,9 @@ import { Controller, useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 
 import type { ProfileFieldKey } from '@/entities/profile'
-import { Button, NumberField } from '@/shared/ui'
+import { Button, NumberField, Text } from '@/shared/ui'
 
+import { limitDecimals } from '../lib/limit-decimals'
 import type { FieldDefinition } from '../model/field-definitions.types'
 import {
 	createNumberFieldSchema,
@@ -13,6 +14,9 @@ import {
 	type NumberFieldValues,
 } from '../model/number-field.schema'
 import { useSaveProfileField } from '../model/use-save-profile-field'
+
+/** Weight and waist are kept to tenths; the server rounds the same way. */
+const MAX_DECIMALS = 1
 
 interface NumberBodyProps {
 	field: ProfileFieldKey
@@ -25,7 +29,7 @@ interface NumberBodyProps {
 /** «Число з одиницею»: one big number, validated on the go, errors under it. */
 export const NumberBody = ({ field, definition, initialValue, onSaved }: NumberBodyProps) => {
 	const { t } = useTranslation()
-	const { isInteger, limits, inputLabelKey, unitKey, inputMode } = definition
+	const { isInteger, limits, inputLabelKey, unitKey, inputMode, hintKey } = definition
 	const schema = useMemo(
 		() => createNumberFieldSchema(t, { isInteger, min: limits.min, max: limits.max }),
 		[t, isInteger, limits.min, limits.max],
@@ -62,7 +66,9 @@ export const NumberBody = ({ field, definition, initialValue, onSaved }: NumberB
 						unit={t(unitKey)}
 						inputMode={inputMode}
 						value={input.value}
-						onChange={input.onChange}
+						onChange={(text) => {
+							input.onChange(isInteger ? text : limitDecimals(text, MAX_DECIMALS))
+						}}
 						onBlur={input.onBlur}
 						name={input.name}
 						error={fieldState.error?.message}
@@ -70,6 +76,11 @@ export const NumberBody = ({ field, definition, initialValue, onSaved }: NumberB
 					/>
 				)}
 			/>
+			{hintKey && (
+				<Text variant="caption" weight="regular" tone="mutedStrong">
+					{t(hintKey)}
+				</Text>
+			)}
 			<Button type="submit" isFullWidth isLoading={isSaving}>
 				{t('profile.data.edit.save')}
 			</Button>

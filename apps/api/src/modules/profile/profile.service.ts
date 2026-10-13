@@ -25,13 +25,14 @@ import { UsersService } from '../users/users.service'
 import { GoalsInconsistentException } from './profile.exceptions'
 import {
 	getClock,
+	roundWaist,
 	roundWeight,
 	toCalculationInput,
 	toProfileFields,
 	toProfileResponse,
 } from './profile.mapper'
 import { ProfileRepository } from './profile.repository'
-import type { LatestWeight, WeightGoal } from './profile.types'
+import type { LatestWaist, LatestWeight, WeightGoal } from './profile.types'
 
 /** «Мої дані», the latest weigh-in and the daily goals: reading, editing, recalculating. */
 @Injectable()
@@ -55,6 +56,15 @@ export class ProfileService {
 		return latest ? { value: latest.value, localDate: latest.localDate } : null
 	}
 
+	/** «Талія»: the latest waist measurement. */
+	private async findLatestWaist(userId: string): Promise<LatestWaist | null> {
+		const latest = await this.measurementsService.findLatest({
+			userId,
+			kind: MeasurementKind.WAIST,
+		})
+		return latest ? { value: latest.value, localDate: latest.localDate } : null
+	}
+
 	async findTargetWeightKg(userId: string): Promise<number | null> {
 		const profile = await this.profileRepository.findProfile(userId)
 		return profile?.targetWeightKg ?? null
@@ -73,15 +83,16 @@ export class ProfileService {
 	async getProfile(userId: string): Promise<ProfileResponse> {
 		const user = await this.usersService.getMe(userId)
 		const { today, year } = getClock(user.timezone)
-		const [profile, weight, goals] = await Promise.all([
+		const [profile, weight, waist, goals] = await Promise.all([
 			this.profileRepository.findProfile(userId),
 			this.findLatestWeight(userId),
+			this.findLatestWaist(userId),
 			this.goalsService.getProfileGoals(userId, today),
 		])
-		return toProfileResponse({ user, profile, weight, goals, year })
+		return toProfileResponse({ user, profile, weight, waist, goals, year })
 	}
 
-	/** A partial edit; a new weight becomes today's weigh-in. Goals don't move until recalculated. */
+	/** A partial edit; a new weight or waist becomes today's measurement. Goals don't move until recalculated. */
 	async updateProfile(userId: string, body: UpdateProfileRequest): Promise<ProfileResponse> {
 		const user = await this.usersService.getMe(userId)
 		const { now, today, year } = getClock(user.timezone)
@@ -100,6 +111,19 @@ export class ProfileService {
 						userId,
 						kind: MeasurementKind.WEIGHT,
 						value: roundWeight(body.weightKg),
+						localDate: today,
+						measuredAt: now,
+						source: MeasurementSource.PROFILE,
+					},
+					tx,
+				)
+			}
+			if (body.waistCm !== undefined) {
+				await this.measurementsService.record(
+					{
+						userId,
+						kind: MeasurementKind.WAIST,
+						value: roundWaist(body.waistCm),
 						localDate: today,
 						measuredAt: now,
 						source: MeasurementSource.PROFILE,

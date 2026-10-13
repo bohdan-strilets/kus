@@ -101,6 +101,7 @@ describe('profile (e2e, real DB)', () => {
 				paceKgPerWeek: null,
 			},
 			weight: null,
+			waist: null,
 			goals: null,
 		})
 	})
@@ -147,6 +148,61 @@ describe('profile (e2e, real DB)', () => {
 		expect(await prisma.weightEntry.count({ where: { userId: owner.userId } })).toBe(0)
 		// a partial edit leaves the rest alone
 		expect(profileResponse.parse(again.body).data.profile.heightCm).toBe(182)
+	})
+
+	it('saves the waist as today’s PROFILE measurement with one decimal, once a day', async () => {
+		await start()
+		const owner = await registerUser('owner@kus.app')
+
+		const first = await owner.agent.patch(PROFILE_URL).send({ waistCm: 82.46 }).expect(200)
+		expect(profileResponse.parse(first.body).data.waist).toEqual({ cm: 82.5, localDate: today() })
+
+		const again = await owner.agent.patch(PROFILE_URL).send({ waistCm: 81.2 }).expect(200)
+		expect(profileResponse.parse(again.body).data.waist).toEqual({ cm: 81.2, localDate: today() })
+		const rows = await prisma.measurement.findMany({ where: { userId: owner.userId } })
+		expect(rows).toHaveLength(1)
+		expect(rows[0]?.kind).toBe('WAIST')
+		expect(rows[0]?.source).toBe('PROFILE')
+		expect(rows[0]?.value.toNumber()).toBe(81.2)
+		// the waist is not a profile column and moves neither the weight nor the goals
+		const body = profileResponse.parse(again.body).data
+		expect(body.weight).toBeNull()
+		expect(body.goals).toBeNull()
+		expect(await prisma.userGoal.count({ where: { userId: owner.userId } })).toBe(0)
+	})
+
+	it('rejects a waist outside 40–200 cm', async () => {
+		await start()
+		const owner = await registerUser('owner@kus.app')
+
+		const low = await owner.agent.patch(PROFILE_URL).send({ waistCm: 39.9 }).expect(422)
+		const high = await owner.agent.patch(PROFILE_URL).send({ waistCm: 200.1 }).expect(422)
+
+		expect(apiErrorResponseSchema.parse(low.body)).toMatchObject({
+			errorCode: 'VALIDATION_ERROR',
+			details: { fields: { waistCm: 'TOO_SMALL' } },
+		})
+		expect(apiErrorResponseSchema.parse(high.body)).toMatchObject({
+			errorCode: 'VALIDATION_ERROR',
+			details: { fields: { waistCm: 'TOO_LARGE' } },
+		})
+		await owner.agent.patch(PROFILE_URL).send({ waistCm: 40 }).expect(200)
+		await owner.agent.patch(PROFILE_URL).send({ waistCm: 200 }).expect(200)
+		expect(await prisma.measurement.count({ where: { userId: owner.userId } })).toBe(1)
+	})
+
+	it('keeps the waist per user', async () => {
+		await start()
+		const owner = await registerUser('owner@kus.app')
+		const stranger = await registerUser('stranger@kus.app')
+		await owner.agent.patch(PROFILE_URL).send({ waistCm: 90 }).expect(200)
+
+		const seen = await stranger.agent.get(PROFILE_URL).expect(200)
+		expect(profileResponse.parse(seen.body).data.waist).toBeNull()
+
+		await stranger.agent.patch(PROFILE_URL).send({ waistCm: 70 }).expect(200)
+		const mine = await owner.agent.get(PROFILE_URL).expect(200)
+		expect(profileResponse.parse(mine.body).data.waist).toEqual({ cm: 90, localDate: today() })
 	})
 
 	it('«Тримати вагу» clears the pace', async () => {
@@ -335,6 +391,7 @@ describe('profile (e2e, real DB)', () => {
 		expect(profileResponse.parse(response.body).data).toMatchObject({
 			email: 'stranger@kus.app',
 			weight: null,
+			waist: null,
 			goals: null,
 		})
 		await request(app.getHttpServer()).get(PROFILE_URL).expect(401)

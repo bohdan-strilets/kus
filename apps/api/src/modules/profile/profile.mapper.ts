@@ -10,10 +10,10 @@ import {
 
 import { formatDbDate, getLocalDate, getLocalDateString } from '../../common/time'
 import { GoalType, type UserProfile } from '../../generated/prisma/client'
-import { WEIGHT_DECIMALS } from './profile.constants'
+import { WAIST_DECIMALS, WEIGHT_DECIMALS } from './profile.constants'
 import { ProfileIncompleteException } from './profile.exceptions'
 import type { ProfileFields } from './profile.repository'
-import type { LatestWeight } from './profile.types'
+import type { LatestWaist, LatestWeight } from './profile.types'
 
 /** The user's "now": the moment, their calendar day and year; the age and the goal day depend on them. */
 export interface Clock {
@@ -33,6 +33,8 @@ export const getClock = (timezone: string): Clock => {
 
 export const roundWeight = (kg: number): number => Number(kg.toFixed(WEIGHT_DECIMALS))
 
+export const roundWaist = (cm: number): number => Number(cm.toFixed(WAIST_DECIMALS))
+
 export const toProfileFields = (body: UpdateProfileRequest, year: number): ProfileFields => {
 	const fields: ProfileFields = {}
 	if (body.sex !== undefined) fields.sex = body.sex
@@ -51,12 +53,14 @@ export const toProfileResponse = ({
 	user,
 	profile,
 	weight,
+	waist,
 	goals,
 	year,
 }: {
 	user: AuthUser
 	profile: UserProfile | null
 	weight: LatestWeight | null
+	waist: LatestWaist | null
 	goals: ProfileGoals | null
 	year: number
 }): ProfileResponse => ({
@@ -73,6 +77,7 @@ export const toProfileResponse = ({
 		paceKgPerWeek: profile?.paceKgPerWeek ?? null,
 	},
 	weight: weight ? { kg: weight.value, localDate: formatDbDate(weight.localDate) } : null,
+	waist: waist ? { cm: waist.value, localDate: formatDbDate(waist.localDate) } : null,
 	goals,
 })
 

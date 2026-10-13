@@ -6,6 +6,12 @@ export interface LatestWeight {
 	localDate: Date
 }
 
+/** «Талія» as the profile reads it: the latest waist measurement and its calendar day. */
+export interface LatestWaist {
+	value: number
+	localDate: Date
+}
+
 /** The profile's weight plan; every field is null until the user sets it. */
 export interface WeightGoal {
 	goalType: GoalType | null

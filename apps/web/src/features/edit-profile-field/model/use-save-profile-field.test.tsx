@@ -24,6 +24,7 @@ const profile = {
 		paceKgPerWeek: null,
 	},
 	weight: { kg: 65, localDate: '2026-10-10' },
+	waist: null,
 	goals: null,
 }
 
@@ -75,6 +76,20 @@ describe('useSaveProfileField', () => {
 			expect(onSaved).toHaveBeenCalledTimes(1)
 		})
 		expect(invalidatedKeys()).toEqual([['profile']])
+	})
+
+	it('saving the waist refreshes the profile and the day (the progress screen)', async () => {
+		const { result, onSaved, invalidatedKeys } = setup('waistCm')
+
+		act(() => {
+			result.current.save(82.4)
+		})
+
+		await waitFor(() => {
+			expect(onSaved).toHaveBeenCalledTimes(1)
+		})
+		expect(invalidatedKeys()).toContainEqual(['profile'])
+		expect(invalidatedKeys()).toContainEqual(['day'])
 	})
 
 	it('a failure shows a toast, does not call onSaved and refreshes nothing', async () => {

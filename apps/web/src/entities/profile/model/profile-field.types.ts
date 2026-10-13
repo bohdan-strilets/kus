@@ -3,6 +3,7 @@ export type ProfileFieldKey =
 	| 'age'
 	| 'heightCm'
 	| 'weightKg'
+	| 'waistCm'
 	| 'activityLevel'
 	| 'goalType'
 	| 'targetWeightKg'

@@ -44,6 +44,16 @@ export const FIELD_DEFINITIONS: Record<ProfileFieldKey, FieldDefinition> = {
 		inputMode: 'decimal',
 		isInteger: false,
 		limits: PROFILE_LIMITS.weightKg,
+		hintKey: 'profile.data.edit.hints.weightKg',
+	},
+	waistCm: {
+		kind: 'number',
+		inputLabelKey: 'profile.data.edit.labels.waistCm',
+		unitKey: 'profile.data.edit.units.cm',
+		inputMode: 'decimal',
+		isInteger: false,
+		limits: PROFILE_LIMITS.waistCm,
+		hintKey: 'profile.data.edit.hints.waistCm',
 	},
 	targetWeightKg: {
 		kind: 'number',

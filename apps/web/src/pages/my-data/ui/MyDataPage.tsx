@@ -17,6 +17,8 @@ import {
 	Text,
 } from '@/shared/ui'
 
+import { MeasureInfoSheet } from './MeasureInfoSheet'
+import { MeasureNote } from './MeasureNote'
 import { MyDataSection } from './MyDataSection'
 
 /** mockups/my-data.html: what Kusik knows about the body and the goal; a tap opens the edit sheet. */
@@ -25,6 +27,7 @@ export const MyDataPage = () => {
 	const navigate = useNavigate()
 	const query = useQuery(profileQueryOptions)
 	const [field, setField] = useState<ProfileFieldKey | null>(null)
+	const [isInfoOpen, setIsInfoOpen] = useState(false)
 
 	const renderContent = () => {
 		if (query.isPending) {
@@ -44,8 +47,8 @@ export const MyDataPage = () => {
 
 		const rows = getProfileRows(profile, t)
 		const sections = [
-			{ title: t('profile.data.sections.body'), rows: rows.body },
-			{ title: t('profile.data.sections.goal'), rows: rows.goal },
+			{ title: t('profile.data.sections.body'), rows: rows.body, hasMeasureNote: true },
+			{ title: t('profile.data.sections.goal'), rows: rows.goal, hasMeasureNote: false },
 		]
 
 		return (
@@ -65,6 +68,13 @@ export const MyDataPage = () => {
 								/>
 							))}
 						</RowGroup>
+						{section.hasMeasureNote && (
+							<MeasureNote
+								onOpenInfo={() => {
+									setIsInfoOpen(true)
+								}}
+							/>
+						)}
 					</MyDataSection>
 				))}
 				<Surface variant="list" shadow="list" className="flex flex-col gap-2.5 p-3.5">
@@ -81,6 +91,7 @@ export const MyDataPage = () => {
 						{t('profile.goals.recalc')}
 					</Button>
 				</Surface>
+				<MeasureInfoSheet isOpen={isInfoOpen} onOpenChange={setIsInfoOpen} />
 				<EditProfileFieldSheet
 					field={field}
 					profile={query.data}

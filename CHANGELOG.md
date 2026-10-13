@@ -6,6 +6,26 @@ All notable changes to Kusik are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.5.2] — 2026-10-13
+
+> **Deploy note:** the release carries a migration that drops `weight_entries`. Take a `pg_dump` first (`docs/deploy.md`); the migration aborts, changing nothing, if a `weight_entries` row has no matching `WEIGHT` measurement for its user and day.
+
+### Changed
+
+- Weight and waist are rounded to one decimal in code, the same way Postgres rounds `Decimal(4,1)`, so the range and jump checks run on the stored value ([1dea373])
+- The deprecated `weight_entries` table is dropped; a guard in the migration raises instead of deleting a row that was not copied to `measurements` ([804831d])
+- The `ui-checker` agent deletes its throwaway user by exact email after the UI run, only after confirming that `DATABASE_URL` points at localhost / Docker, and reports the host only ([dea8e1c], [a2a768a])
+
+### Fixed
+
+- Saving the weight or waist in "Мої дані" keeps the chat card attached to the day's measurement and refreshes the chat feed at once ([69bce19])
+- Cyrillic food names that contain Latin lookalike letters (for example a Latin "a" inside "курячa") are normalized in log entries, clarify options and entry edits, and memory matching covers both old and new spellings; stored entries are not rewritten ([596e30e])
+- Closing the bottom sheet returns focus to the element that opened it, instead of leaving it on the page body; on iOS Safari a tap does not focus a button, so this applies to keyboard, VoiceOver and desktop ([8302cf8])
+
+### Security
+
+- `mysql2` is pinned to 3.23.1 through a pnpm override, the lowest version that fixes GHSA-3f6p-5ww8-9rcr and GHSA-rgwj-5xj2-c3m3; Prisma's CLI pulled in an older one. The remaining `deepmerge-ts` finding (GHSA-ggr8-5vv4-36mx) is an accepted CLI-only risk, see `docs/deploy.md` ([0f3d975])
+
 ## [0.5.1] — 2026-10-13
 
 ### Added
@@ -121,7 +141,16 @@ All notable changes to Kusik are documented here. The format follows
 
 ## 0.2.0 / 0.1.0 — see tags
 
-[Unreleased]: https://github.com/bohdan-strilets/kus/compare/v0.5.1...HEAD
+[Unreleased]: https://github.com/bohdan-strilets/kus/compare/v0.5.2...HEAD
+[1dea373]: https://github.com/bohdan-strilets/kus/commit/1dea37399e17617c523736db7d448435b3d11377
+[69bce19]: https://github.com/bohdan-strilets/kus/commit/69bce1988182258a66dc0c0537cbee1be61d674f
+[596e30e]: https://github.com/bohdan-strilets/kus/commit/596e30ebb9922d37b9573c7d4665547bcaf9ef9f
+[8302cf8]: https://github.com/bohdan-strilets/kus/commit/8302cf87c4e45ee6abffdfce152dff34de2dd890
+[804831d]: https://github.com/bohdan-strilets/kus/commit/804831d9a723267524d8b51402f41d9367d5539a
+[dea8e1c]: https://github.com/bohdan-strilets/kus/commit/dea8e1c909c056ac426c857448fa6d91d8f684f7
+[0f3d975]: https://github.com/bohdan-strilets/kus/commit/0f3d975bd0135135fe2ab0c67301d2d1b3bbb015
+[a2a768a]: https://github.com/bohdan-strilets/kus/commit/a2a768af5028039a5f1e377c7891b1246ef589e4
+[0.5.2]: https://github.com/bohdan-strilets/kus/compare/v0.5.1...v0.5.2
 [5f774cf]: https://github.com/bohdan-strilets/kus/commit/5f774cf062a22eb490272e215a643a3a798fbd92
 [88b5448]: https://github.com/bohdan-strilets/kus/commit/88b54489b697818590e07c349e6e6c40fa490160
 [0.5.1]: https://github.com/bohdan-strilets/kus/compare/v0.5.0...v0.5.1

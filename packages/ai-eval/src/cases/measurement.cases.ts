@@ -19,6 +19,15 @@ const LAST_WEIGHT_TWO_DAYS_AGO: Partial<FoodParseContext> = {
 	},
 }
 
+const LAST_WEIGHT_80_TWO_DAYS_AGO: Partial<FoodParseContext> = {
+	measurements: {
+		today: EVAL_TODAY,
+		weights: [{ value: 80, localDate: TWO_DAYS_AGO }],
+		waist: null,
+		targetWeightKg: null,
+	},
+}
+
 /** 82.4 was just logged today: «ні, 82,6» fixes it. */
 const JUST_WEIGHED: Partial<FoodParseContext> = {
 	measurements: {
@@ -67,17 +76,57 @@ const ASKS_A_QUESTION = ['?']
 /** A weigh-in reply is a warm sentence without numbers: the card shows them. */
 const NO_DIGITS = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
 
+/** A bare number is far from any real weight: Kusik asks what it is and logs nothing. */
+const BARE_FAR_NUMBERS = ['200', '250', '150'] as const
+
+const bareFarNumberCases = (): EvalCase[] =>
+	BARE_FAR_NUMBERS.flatMap((text): EvalCase[] => [
+		{
+			id: `bare-number-${text}-no-history`,
+			text,
+			expect: { decision: 'reply', replyIncludes: ASKS_A_QUESTION, measurements: [] },
+			reference: `A bare ${text} with no weight history is not assumed to be kg: no log, a reply asks what the number is`,
+		},
+		{
+			id: `bare-number-${text}-far-from-last`,
+			text,
+			context: LAST_WEIGHT_80_TWO_DAYS_AGO,
+			expect: { decision: 'reply', replyIncludes: ASKS_A_QUESTION, measurements: [] },
+			reference: `A bare ${text} is far from the last weight (80 two days ago): no log, a reply asks what the number is`,
+		},
+	])
+
 export const MEASUREMENT_CASES: EvalCase[] = [
+	...bareFarNumberCases(),
+	{
+		id: 'bare-number-close-to-last',
+		text: '82',
+		context: LAST_WEIGHT_80_TWO_DAYS_AGO,
+		expect: {
+			decision: 'reply',
+			replyExcludes: NO_DIGITS,
+			measurements: [{ kind: 'WEIGHT', value: 82 }],
+		},
+		reference: 'A bare 82 is 2 kg from the last weight (80): plausibly a weigh-in, logged',
+	},
+	{
+		id: 'bare-number-no-history',
+		text: '82',
+		expect: { decision: 'reply', replyIncludes: ASKS_A_QUESTION, measurements: [] },
+		reference:
+			'A bare 82 with no weight history: Kusik cannot tell it is a weight, asks, logs nothing',
+	},
 	{
 		id: 'weight-bare-number',
 		text: '82,4',
+		context: LAST_WEIGHT_TWO_DAYS_AGO,
 		expect: {
 			decision: 'reply',
 			replyExcludes: NO_DIGITS,
 			measurements: [{ kind: 'WEIGHT', value: 82.4 }],
 		},
 		reference:
-			'A bare number in 30–300 after no question is weight in kg; one reply next to the log',
+			'A bare number close to the last weight (82 two days ago) is weight in kg; one reply next to the log',
 	},
 	{
 		id: 'weight-with-unit',

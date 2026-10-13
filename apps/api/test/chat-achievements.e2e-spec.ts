@@ -354,12 +354,105 @@ describe('measurement cards and achievements in chat messages (e2e, real DB, fak
 			await start()
 			const owner = await registerUser('owner@kus.app')
 			await seedWeight(owner.userId, addDays(await getToday(owner.userId), -10), 90)
-			fake.respond(createCompletion([measurementCall({ value: 86.6 }), replyCall]))
+			fake.respond(createCompletion([measurementCall({ value: 87.1 }), replyCall]))
 
-			const { assistantMessage } = await send(owner, 'вага 86,6')
+			const { assistantMessage } = await send(owner, 'вага 87,1')
+
+			expect(assistantMessage.achievements.map((item) => item.value)).toEqual([2])
+			expect((await findAchievements(owner.userId)).map((row) => row.value)).toEqual([1, 2])
+		})
+
+		it('counts a step of exactly 3.0 kg from the previous weight', async () => {
+			await start()
+			const owner = await registerUser('owner@kus.app')
+			await seedWeight(owner.userId, addDays(await getToday(owner.userId), -10), 90)
+			fake.respond(createCompletion([measurementCall({ value: 87 }), replyCall]))
+
+			const { assistantMessage } = await send(owner, 'вага 87')
 
 			expect(assistantMessage.achievements.map((item) => item.value)).toEqual([3])
-			expect((await findAchievements(owner.userId)).map((row) => row.value)).toEqual([1, 2, 3])
+		})
+
+		it('writes 1 kg for 90 to 88.5', async () => {
+			await start()
+			const owner = await registerUser('owner@kus.app')
+			await seedWeight(owner.userId, addDays(await getToday(owner.userId), -10), 90)
+			fake.respond(createCompletion([measurementCall({ value: 88.5 }), replyCall]))
+
+			const { assistantMessage } = await send(owner, 'вага 88,5')
+
+			expect(assistantMessage.achievements.map((item) => item.value)).toEqual([1])
+			expect(await findAchievements(owner.userId)).toHaveLength(1)
+		})
+
+		it('writes nothing for a step of more than 3 kg from the previous weight', async () => {
+			await start()
+			const owner = await registerUser('owner@kus.app')
+			await seedWeight(owner.userId, addDays(await getToday(owner.userId), -1), 90)
+			fake.respond(
+				createCompletion([measurementCall({ value: 70, confirmedJump: true }), replyCall]),
+			)
+
+			const { assistantMessage } = await send(owner, 'так, вага 70')
+
+			expect(assistantMessage.measurements).toHaveLength(1)
+			expect(assistantMessage.achievements).toEqual([])
+			expect(await findAchievements(owner.userId)).toEqual([])
+		})
+
+		it('never pays out the interval of a skipped jump, only kilograms crossed after it', async () => {
+			await start()
+			const owner = await registerUser('owner@kus.app')
+			const today = await getToday(owner.userId)
+			await seedWeight(owner.userId, addDays(today, -4), 90)
+			fake.respond(
+				createCompletion([
+					measurementCall({
+						value: 70,
+						date: formatDbDate(addDays(today, -2)),
+						confirmedJump: true,
+					}),
+					replyCall,
+				]),
+				createCompletion([
+					measurementCall({ value: 69.5, date: formatDbDate(addDays(today, -1)) }),
+					replyCall,
+				]),
+				createCompletion([measurementCall({ value: 68.9 }), replyCall]),
+				createCompletion([measurementCall({ value: 68.9 }), replyCall]),
+			)
+
+			const big = await send(owner, 'позавчора 70')
+			const same = await send(owner, 'вчора 69,5')
+			const next = await send(owner, 'сьогодні 68,9')
+			const repeat = await send(owner, 'ще раз 68,9')
+
+			expect(big.assistantMessage.achievements).toEqual([])
+			expect(same.assistantMessage.achievements).toEqual([])
+			expect(next.assistantMessage.achievements.map((item) => item.value)).toEqual([21])
+			expect(repeat.assistantMessage.achievements).toEqual([])
+			expect((await findAchievements(owner.userId)).map((row) => row.value)).toEqual([21])
+		})
+
+		it('writes nothing when the weight did not change or went up', async () => {
+			await start()
+			const owner = await registerUser('owner@kus.app')
+			const today = await getToday(owner.userId)
+			await seedWeight(owner.userId, addDays(today, -3), 90)
+			fake.respond(
+				createCompletion([
+					measurementCall({ value: 90, date: formatDbDate(addDays(today, -1)) }),
+					replyCall,
+				]),
+				createCompletion([measurementCall({ value: 91 }), replyCall]),
+			)
+
+			const same = await send(owner, 'вчора 90')
+			const up = await send(owner, 'сьогодні 91')
+
+			expect(same.assistantMessage.achievements).toEqual([])
+			expect(up.assistantMessage.achievements).toEqual([])
+			expect(await findAchievements(owner.userId)).toEqual([])
 		})
 	})
 

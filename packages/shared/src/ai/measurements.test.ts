@@ -119,4 +119,37 @@ describe('getJumpErrors', () => {
 	it('does not apply to waist', () => {
 		expect(jumpOf(waist(120))).toEqual([])
 	})
+
+	describe('a big jump from the last weight of any age', () => {
+		const OLD: MeasurementPoint = { value: 80, localDate: '2026-07-01' }
+
+		it('lets exactly 15.0 kg pass and catches 15.1 kg', () => {
+			expect(jumpOf(weight(95), OLD)).toEqual([])
+			expect(jumpOf(weight(65), OLD)).toEqual([])
+			expect(jumpOf(weight(95.1), OLD)).toHaveLength(1)
+			expect(jumpOf(weight(64.9), OLD)).toHaveLength(1)
+		})
+
+		it('asks what the number is, with the difference and the date', () => {
+			expect(jumpOf(weight(96), OLD)).toEqual([
+				'log_measurement: 96 kg differs by 16.0 kg from 80 on 2026-07-01 — do not log; ask the user what this number is, or to confirm it, with reply',
+			])
+		})
+
+		it('does not flag a smaller change of an old weight', () => {
+			expect(jumpOf(weight(90), OLD)).toEqual([])
+		})
+
+		it('catches it for a recent weight too, with one error only', () => {
+			expect(jumpOf(weight(100), PREVIOUS)).toHaveLength(1)
+		})
+
+		it('is skipped after the user confirmed', () => {
+			expect(jumpOf(weight(96, { confirmedJump: true }), OLD)).toEqual([])
+		})
+
+		it('has nothing to compare with when there is no previous weight', () => {
+			expect(jumpOf(weight(250), null)).toEqual([])
+		})
+	})
 })

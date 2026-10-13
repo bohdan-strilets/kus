@@ -15,7 +15,12 @@ import { ProfileService } from '../profile/profile.service'
 import { FOOD_STREAK_WINDOW_DAYS } from './achievements.constants'
 import { toAchievementResponse } from './achievements.mapper'
 import { AchievementsRepository } from './achievements.repository'
-import { getFoodStreak, getKgThresholds, getWholeKgLost } from './achievements.utils'
+import {
+	getFoodStreak,
+	getKgThresholds,
+	getWholeKgLost,
+	isBigWeightStep,
+} from './achievements.utils'
 
 export interface TurnAchievementsParams {
 	userId: string
@@ -107,12 +112,21 @@ export class AchievementsService {
 			this.measurementsService.findLatest({ userId, kind: MeasurementKind.WEIGHT }, tx),
 		])
 		if (!start || !current) return
+		// a huge step from the previous weight (of any age) is a typo or a wrong number, not progress
+		const previous = await this.measurementsService.findBefore(
+			{ userId, kind: MeasurementKind.WEIGHT, before: current.localDate },
+			tx,
+		)
+		if (!previous) return
+		if (isBigWeightStep({ previousKg: previous.value, currentKg: current.value })) return
+		// only the kilograms this record crossed: a skipped jump is never paid out later
+		const lostBefore = getWholeKgLost({ startKg: start.value, currentKg: previous.value })
 		const lost = getWholeKgLost({ startKg: start.value, currentKg: current.value })
 		await this.award(
 			{
 				userId,
 				type: AchievementType.WEIGHT_KG_LOST,
-				values: getKgThresholds(lost),
+				values: getKgThresholds({ from: lostBefore, to: lost }),
 				now,
 				replyMessageId,
 			},

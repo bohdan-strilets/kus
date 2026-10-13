@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
 
-import { getFoodStreak, getKgThresholds, getWholeKgLost } from './achievements.utils'
+import {
+	getFoodStreak,
+	getKgThresholds,
+	getWholeKgLost,
+	isBigWeightStep,
+} from './achievements.utils'
 
 const TODAY = new Date('2026-10-12T00:00:00Z')
 
@@ -20,10 +25,25 @@ describe('getWholeKgLost', () => {
 	})
 })
 
+describe('isBigWeightStep', () => {
+	it.each([
+		[90, 87, false],
+		[90, 86.9, true],
+		[90, 93, false],
+		[90, 93.1, true],
+		[83.3, 80.3, false],
+		[80, 80, false],
+	])('from %s to %s is big: %s', (previousKg, currentKg, expected) => {
+		expect(isBigWeightStep({ previousKg, currentKg })).toBe(expected)
+	})
+})
+
 describe('getKgThresholds', () => {
 	it('lists every whole kg up to the current one', () => {
-		expect(getKgThresholds(3)).toEqual([1, 2, 3])
-		expect(getKgThresholds(0)).toEqual([])
+		expect(getKgThresholds({ from: 0, to: 3 })).toEqual([1, 2, 3])
+		expect(getKgThresholds({ from: 20, to: 21 })).toEqual([21])
+		expect(getKgThresholds({ from: 20, to: 20 })).toEqual([])
+		expect(getKgThresholds({ from: 5, to: 3 })).toEqual([])
 	})
 })
 

@@ -1,5 +1,5 @@
 import { addDays, formatDbDate } from '../../common/time'
-import { TENTHS_PER_KG } from './achievements.constants'
+import { MAX_ACHIEVEMENT_STEP_KG, TENTHS_PER_KG } from './achievements.constants'
 
 /**
  * Days in a row with food, counting back from `today`. A today without entries is a streak of 0:
@@ -34,6 +34,17 @@ export const getWholeKgLost = ({
 	return Math.max(0, Math.floor(lostTenths / TENTHS_PER_KG))
 }
 
-/** 1…count: every whole-kg threshold up to the current one. */
-export const getKgThresholds = (count: number): number[] =>
-	Array.from({ length: count }, (_, index) => index + 1)
+/** Strictly more than `MAX_ACHIEVEMENT_STEP_KG` between two weights, compared in whole tenths. */
+export const isBigWeightStep = ({
+	previousKg,
+	currentKg,
+}: {
+	previousKg: number
+	currentKg: number
+}): boolean =>
+	Math.abs(Math.round(currentKg * TENTHS_PER_KG) - Math.round(previousKg * TENTHS_PER_KG)) >
+	MAX_ACHIEVEMENT_STEP_KG * TENTHS_PER_KG
+
+/** The whole-kg thresholds crossed between `from` kg lost (excluded) and `to` kg lost (included). */
+export const getKgThresholds = ({ from, to }: { from: number; to: number }): number[] =>
+	Array.from({ length: Math.max(0, to - from) }, (_, index) => from + index + 1)

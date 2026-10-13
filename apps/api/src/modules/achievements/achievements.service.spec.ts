@@ -34,6 +34,7 @@ describe('AchievementsService.recordForTurn', () => {
 	const measurements = {
 		findFirst: vi.fn<MeasurementsService['findFirst']>(),
 		findLatest: vi.fn<MeasurementsService['findLatest']>(),
+		findBefore: vi.fn<MeasurementsService['findBefore']>(),
 	}
 	const profile = { findWeightGoal: vi.fn<ProfileService['findWeightGoal']>() }
 	const service = new AchievementsService(
@@ -67,6 +68,7 @@ describe('AchievementsService.recordForTurn', () => {
 			targetWeightKg: null,
 			paceKgPerWeek: null,
 		})
+		measurements.findBefore.mockResolvedValue(null)
 	})
 
 	describe('food streak', () => {
@@ -147,6 +149,7 @@ describe('AchievementsService.recordForTurn', () => {
 		it('writes the whole kilograms between the first and the latest weight', async () => {
 			measurements.findFirst.mockResolvedValue(weigh(84))
 			measurements.findLatest.mockResolvedValue(weigh(81.9))
+			measurements.findBefore.mockResolvedValue(weigh(84))
 
 			await recordWeight()
 
@@ -183,6 +186,95 @@ describe('AchievementsService.recordForTurn', () => {
 			},
 		)
 
+		describe('a big step from the previous weight', () => {
+			it('writes nothing for a step of more than 3 kg, of any age', async () => {
+				measurements.findFirst.mockResolvedValue(weigh(90))
+				measurements.findLatest.mockResolvedValue(weigh(70))
+				measurements.findBefore.mockResolvedValue({
+					...weigh(90),
+					localDate: new Date('2026-01-01T00:00:00Z'),
+				})
+
+				await recordWeight()
+
+				expect(repository.createMissing).not.toHaveBeenCalled()
+				expect(measurements.findBefore).toHaveBeenCalledWith(
+					{ userId: USER_ID, kind: 'WEIGHT', before: new Date('2026-10-12T00:00:00Z') },
+					tx,
+				)
+			})
+
+			it('writes a kilogram for a step of 1.5 kg', async () => {
+				measurements.findFirst.mockResolvedValue(weigh(90))
+				measurements.findLatest.mockResolvedValue(weigh(88.5))
+				measurements.findBefore.mockResolvedValue(weigh(90))
+
+				await recordWeight()
+
+				expect(repository.createMissing.mock.calls[0]?.[0].values).toEqual([1])
+			})
+
+			it('counts a step of exactly 3.0 kg', async () => {
+				measurements.findFirst.mockResolvedValue(weigh(90))
+				measurements.findLatest.mockResolvedValue(weigh(87))
+				measurements.findBefore.mockResolvedValue(weigh(90))
+
+				await recordWeight()
+
+				expect(repository.createMissing.mock.calls[0]?.[0].values).toEqual([1, 2, 3])
+			})
+
+			it('skips a step of 3.1 kg', async () => {
+				measurements.findFirst.mockResolvedValue(weigh(90))
+				measurements.findLatest.mockResolvedValue(weigh(86.9))
+				measurements.findBefore.mockResolvedValue(weigh(90))
+
+				await recordWeight()
+
+				expect(repository.createMissing).not.toHaveBeenCalled()
+			})
+
+			it('never pays out the interval of a skipped jump: 70 then 69.5 writes nothing', async () => {
+				measurements.findFirst.mockResolvedValue(weigh(90))
+				measurements.findLatest.mockResolvedValue(weigh(69.5))
+				measurements.findBefore.mockResolvedValue(weigh(70))
+
+				await recordWeight()
+
+				expect(repository.createMissing).not.toHaveBeenCalled()
+			})
+
+			it('writes only the threshold crossed after the jump: 69.5 then 68.9 gives 21', async () => {
+				measurements.findFirst.mockResolvedValue(weigh(90))
+				measurements.findLatest.mockResolvedValue(weigh(68.9))
+				measurements.findBefore.mockResolvedValue(weigh(69.5))
+
+				await recordWeight()
+
+				expect(repository.createMissing.mock.calls[0]?.[0].values).toEqual([21])
+			})
+
+			it('writes nothing when the weight did not change or went up', async () => {
+				measurements.findFirst.mockResolvedValue(weigh(90))
+				measurements.findLatest.mockResolvedValue(weigh(88.5))
+				measurements.findBefore.mockResolvedValue(weigh(88.5))
+				await recordWeight()
+				measurements.findLatest.mockResolvedValue(weigh(89.5))
+				await recordWeight()
+
+				expect(repository.createMissing).not.toHaveBeenCalled()
+			})
+
+			it('writes nothing for the first record: there is no previous weight', async () => {
+				measurements.findFirst.mockResolvedValue(weigh(90))
+				measurements.findLatest.mockResolvedValue(weigh(90))
+
+				await recordWeight()
+
+				expect(repository.createMissing).not.toHaveBeenCalled()
+			})
+		})
+
 		it('celebrates for the goal LOSE', async () => {
 			profile.findWeightGoal.mockResolvedValue({
 				goalType: 'LOSE',
@@ -191,6 +283,7 @@ describe('AchievementsService.recordForTurn', () => {
 			})
 			measurements.findFirst.mockResolvedValue(weigh(84))
 			measurements.findLatest.mockResolvedValue(weigh(83))
+			measurements.findBefore.mockResolvedValue(weigh(84))
 
 			await recordWeight()
 

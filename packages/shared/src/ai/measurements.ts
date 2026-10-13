@@ -5,6 +5,8 @@ import type { LogMeasurementInput } from './tools.js'
 /** A weight change bigger than this within the window needs the user's confirmation. */
 export const WEIGHT_JUMP_KG = 3
 export const WEIGHT_JUMP_WINDOW_DAYS = 7
+/** A change bigger than this from the last weight, however long ago, needs confirmation too. */
+export const WEIGHT_BIG_JUMP_KG = 15
 export const MEASUREMENT_BACKDATE_MAX_DAYS = 7
 
 const MS_IN_DAY = 24 * 60 * 60 * 1000
@@ -56,6 +58,8 @@ const getDateErrors = ({ date }: LogMeasurementInput, today: string): string[] =
 /**
  * `previous` is the nearest weight of the user before the measurement's day, found by the caller
  * (a fix of the same day is compared with the day before, never with the value it replaces).
+ * One error at most: a change over `WEIGHT_BIG_JUMP_KG` is caught at any age of `previous`,
+ * a change over `WEIGHT_JUMP_KG` only within `WEIGHT_JUMP_WINDOW_DAYS`.
  */
 export const getJumpErrors = (
 	input: LogMeasurementInput,
@@ -66,12 +70,16 @@ export const getJumpErrors = (
 	if (kind !== 'WEIGHT' || confirmedJump || !previous) return []
 	const day = getMeasurementDay(input, today)
 	if (previous.localDate >= day) return []
-	if (getDayNumber(day) - getDayNumber(previous.localDate) > WEIGHT_JUMP_WINDOW_DAYS) return []
 	const delta = Math.abs(toTenths(value) - toTenths(previous.value))
+	const difference = `${value} kg differs by ${(delta / TENTHS).toFixed(1)} kg from ${previous.value} on ${previous.localDate}`
+	if (delta > WEIGHT_BIG_JUMP_KG * TENTHS) {
+		return [
+			`log_measurement: ${difference} — do not log; ask the user what this number is, or to confirm it, with reply`,
+		]
+	}
+	if (getDayNumber(day) - getDayNumber(previous.localDate) > WEIGHT_JUMP_WINDOW_DAYS) return []
 	if (delta <= WEIGHT_JUMP_KG * TENTHS) return []
-	return [
-		`log_measurement: ${value} kg differs by ${(delta / TENTHS).toFixed(1)} kg from ${previous.value} on ${previous.localDate} — do not log; ask the user to confirm with reply`,
-	]
+	return [`log_measurement: ${difference} — do not log; ask the user to confirm with reply`]
 }
 
 const getDuplicateErrors = (inputs: readonly LogMeasurementInput[]): string[] =>

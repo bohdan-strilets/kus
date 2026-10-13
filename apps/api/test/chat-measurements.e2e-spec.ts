@@ -342,6 +342,47 @@ describe('weight and waist from chat (e2e, real DB, fake model)', () => {
 		expect(await findWeights(owner.userId)).toHaveLength(2)
 	})
 
+	it('sends a change of more than 15 kg from an old weight back to the model', async () => {
+		await start()
+		const owner = await registerUser('owner@kus.app')
+		await seedWeight(owner.userId, addDays(await getToday(owner.userId), -90), 80)
+		fake.respond(
+			createCompletion([measurementCall({ value: 96 }), replyCall]),
+			createCompletion([{ name: 'reply', args: { text: 'Що це за число?' } }]),
+		)
+
+		const response = await send(owner, '96').expect(201)
+
+		const { data } = sendResponseSchema.parse(response.body)
+		expect(data.assistantMessage.content).toBe('Що це за число?')
+		expect(await findWeights(owner.userId)).toHaveLength(1)
+		expect(JSON.stringify(fake.bodies[1])).toContain('differs by 16.0 kg')
+	})
+
+	it('logs the big change once the user confirmed it', async () => {
+		await start()
+		const owner = await registerUser('owner@kus.app')
+		await seedWeight(owner.userId, addDays(await getToday(owner.userId), -90), 80)
+		fake.respond(createCompletion([measurementCall({ value: 96, confirmedJump: true }), replyCall]))
+
+		await send(owner, 'так, вага 96').expect(201)
+
+		expect(fake.bodies).toHaveLength(1)
+		expect(await findWeights(owner.userId)).toHaveLength(2)
+	})
+
+	it('logs a change of 14 kg from an old weight without asking', async () => {
+		await start()
+		const owner = await registerUser('owner@kus.app')
+		await seedWeight(owner.userId, addDays(await getToday(owner.userId), -90), 80)
+		fake.respond(createCompletion([measurementCall({ value: 94 }), replyCall]))
+
+		await send(owner, 'вага 94').expect(201)
+
+		expect(fake.bodies).toHaveLength(1)
+		expect(await findWeights(owner.userId)).toHaveLength(2)
+	})
+
 	it('keeps weights of different users apart', async () => {
 		await start()
 		const owner = await registerUser('owner@kus.app')

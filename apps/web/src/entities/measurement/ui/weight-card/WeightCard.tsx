@@ -13,7 +13,7 @@ import {
 	formatMeasurementNumber,
 } from '../../lib/format-measurement'
 import { getGoalTile } from '../../lib/get-goal-tile'
-import { getPaceSentenceKey } from '../../lib/get-pace-sentence-key'
+import { formatPaceSentence, getPaceSentenceKey } from '../../lib/get-pace-sentence'
 import { StatTile } from '../stat-tile/StatTile'
 
 export interface WeightCardProps {
@@ -49,13 +49,19 @@ export const WeightCard = ({
 	const last = chart[chart.length - 1]
 	const hasHistory = chart.length > 1
 	const goalTile = getGoalTile(card)
-	// the mockup says «Мінус 0,4 за тиждень» for weight; the waist keeps its unit: a bare number would not say what changed
-	const formatPaceAmount = (amount: number): string =>
-		kind === 'WEIGHT' ? formatMeasurementNumber(amount, kind) : formatMeasurement(amount, kind, t)
-	const paceKey = getPaceSentenceKey(card)
+	// the card does not know which way the plan goes: the week is compared with it only when it moved like the whole path
+	const paceKey = getPaceSentenceKey({
+		kind,
+		weekChange: card.weekChange,
+		planPaceKgPerWeek: card.planPaceKgPerWeek,
+		isAlongPlan:
+			card.fromStart !== null &&
+			card.weekChange !== null &&
+			Math.sign(card.fromStart) === Math.sign(card.weekChange),
+	})
 	const pace =
 		paceKey && card.weekChange !== null
-			? t(paceKey, { value: formatPaceAmount(Math.abs(card.weekChange)) })
+			? formatPaceSentence(t, paceKey, card.weekChange, kind)
 			: null
 	const sentence = [pace, note].filter(Boolean).join(' ')
 	const chartLabel =
@@ -140,7 +146,7 @@ export const WeightCard = ({
 
 				<Link
 					to={ROUTES.progress}
-					className="-my-3 inline-flex min-h-tap items-center self-start rounded-tile-sm"
+					className="relative self-start rounded-tile-sm after:absolute after:inset-x-0 after:-inset-y-3.5"
 				>
 					<Text as="span" variant="cardTitle" tone="primary">
 						{t('measurement.openProgress')}

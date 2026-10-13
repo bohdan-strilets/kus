@@ -59,7 +59,7 @@ describe('WeightCard', () => {
 
 		expect(
 			screen.getByText(
-				'Мінус 0,4 за тиждень, трохи швидше за план — без поспіху. Записав вагу на сьогодні.',
+				'Мінус 0,4 кг за тиждень, трохи швидше за план — без поспіху. Записав вагу на сьогодні.',
 			),
 		).toBeTruthy()
 	})
@@ -75,7 +75,7 @@ describe('WeightCard', () => {
 	it('names the chart with its range', () => {
 		renderCard(createCard())
 
-		expect(screen.getByRole('img', { name: 'Вага за 5 тижнів: з 84,0 кг до 82,4 кг' })).toBeTruthy()
+		expect(screen.getByRole('img', { name: 'Вага: з 84,0 кг до 82,4 кг' })).toBeTruthy()
 	})
 
 	it('says «Ціль досягнута» instead of the remaining kilograms', () => {

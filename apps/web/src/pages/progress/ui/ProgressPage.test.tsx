@@ -59,7 +59,7 @@ describe('ProgressPage', () => {
 		expect(screen.getByText('2 195 ккал')).toBeTruthy()
 		expect(screen.getByText('Білок, середнє')).toBeTruthy()
 		expect(screen.getByText('124 г')).toBeTruthy()
-		expect(screen.getByText(/Мінус 0,4 кг на тиждень/)).toBeTruthy()
+		expect(screen.getByText(/Мінус 0,4 кг за тиждень/)).toBeTruthy()
 		expect(screen.getByText('Обговорити в чаті')).toBeTruthy()
 		expect(getMock).toHaveBeenCalledWith('/progress', { params: { range: 30 } })
 		expect(screen.getByRole('button', { name: '30 днів' }).getAttribute('aria-pressed')).toBe(

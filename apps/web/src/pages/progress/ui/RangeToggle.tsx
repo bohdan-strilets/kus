@@ -11,7 +11,7 @@ interface RangeToggleProps {
 
 /**
  * mockups/progress.html «Період»: a segmented control of buttons (aria-pressed), the active one a
- * dark pill. The 34px pill gets a 44px tap area through an invisible ::after.
+ * dark pill. The 34px pill gets a 44px tap area (height and width) through an invisible ::after.
  */
 export const RangeToggle = ({ value, onChange }: RangeToggleProps) => {
 	const { t } = useTranslation()
@@ -34,7 +34,7 @@ export const RangeToggle = ({ value, onChange }: RangeToggleProps) => {
 							onChange(range)
 						}}
 						className={cn(
-							'relative min-h-8.5 cursor-pointer rounded-tile-sm px-3 text-caption after:absolute after:inset-x-0 after:-inset-y-1.25',
+							'relative min-h-8.5 cursor-pointer rounded-tile-sm px-3 text-caption after:absolute after:-inset-y-1.25 after:left-1/2 after:w-full after:min-w-tap after:-translate-x-1/2',
 							isSelected ? 'bg-ink font-bold text-white' : 'font-semibold text-muted-strong',
 						)}
 					>

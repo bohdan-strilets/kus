@@ -12,7 +12,7 @@ import {
 	LoggedBadge,
 	toFoodEntryView,
 } from '@/entities/entry'
-import { useFreshOnMount, useFreshReplyStore } from '@/entities/message'
+import { freshKey, useFreshOnMount, useFreshReplyStore } from '@/entities/message'
 import { useAnswerClarification } from '@/features/answer-clarify'
 import { useEditEntryStore } from '@/features/edit-entry'
 import { formatTime } from '@/shared/lib'
@@ -52,7 +52,7 @@ export const MealCard = ({
 	index,
 }: MealCardProps) => {
 	const { t } = useTranslation()
-	const isFresh = useFreshOnMount(meal.id)
+	const isFresh = useFreshOnMount(freshKey.meal(meal.id))
 	const { answer, pending } = useAnswerClarification()
 	const openEditor = useEditEntryStore((state) => state.open)
 	const [openedIds, setOpenedIds] = useState<ReadonlySet<string>>(() =>
@@ -86,7 +86,7 @@ export const MealCard = ({
 						index={index}
 						hasCrumbs={index === 0}
 						onDone={() => {
-							useFreshReplyStore.getState().release(meal.id)
+							useFreshReplyStore.getState().release(freshKey.meal(meal.id))
 						}}
 					/>
 				) : undefined

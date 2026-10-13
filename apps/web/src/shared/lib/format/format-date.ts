@@ -34,3 +34,7 @@ export const formatShortDate = (date: Date, timeZone?: string): string => {
 		parts.find((part) => part.type === type)?.value ?? ''
 	return `${pick('day')}.${pick('month')}`
 }
+
+/** «5 вер» — a short date under a chart; the abbreviation's trailing dot is dropped. */
+export const formatDayMonthShort = (date: Date): string =>
+	date.toLocaleDateString(LOCALE, { day: 'numeric', month: 'short' }).replace(/\.$/, '')

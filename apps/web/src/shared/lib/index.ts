@@ -9,6 +9,7 @@ export {
 export {
 	formatDayHeading,
 	formatDayMonth,
+	formatDayMonthShort,
 	formatDecimal,
 	formatInteger,
 	formatSignedDecimal,

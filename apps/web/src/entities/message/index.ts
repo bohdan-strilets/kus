@@ -1,6 +1,6 @@
 export type { MessagesPage } from './api/get-messages'
 export { getKusikFace, type KusikReplyKind } from './lib/get-kusik-face'
-export { FRESH_TTL_MS, useFreshReplyStore } from './model/fresh-reply-store'
+export { FRESH_TTL_MS, freshKey, useFreshReplyStore } from './model/fresh-reply-store'
 export { useFreshOnMount } from './model/use-fresh-on-mount'
 export {
 	addTurnToFeed,

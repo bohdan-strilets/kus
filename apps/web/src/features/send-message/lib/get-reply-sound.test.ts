@@ -21,6 +21,8 @@ const message = (overrides: Partial<ChatMessage>): ChatMessage => ({
 
 const MEALS = [{ id: 'meal-1' }] as unknown as ChatMessage['meals']
 const OPEN = [{ status: 'OPEN' }] as unknown as ChatMessage['clarifications']
+const MEASUREMENTS = [{ id: 'w-1' }] as unknown as ChatMessage['measurements']
+const ACHIEVEMENTS = [{ id: 'a-1' }] as unknown as ChatMessage['achievements']
 const ANSWERED = [{ status: 'ANSWERED' }] as unknown as ChatMessage['clarifications']
 
 const turn = (
@@ -64,5 +66,30 @@ describe('getReplySound', () => {
 		expect(getReplySound(turn({ clarifications: OPEN }, { photo: { status: 'FAILED' } }))).toBe(
 			'photoFail',
 		)
+	})
+	it('plays «saved» for a bare weigh-in', () => {
+		expect(getReplySound(turn({ measurements: MEASUREMENTS }))).toBe('saved')
+	})
+
+	it('plays «kusik», not «saved», when a meal comes with the weigh-in', () => {
+		expect(getReplySound(turn({ meals: MEALS, measurements: MEASUREMENTS }))).toBe('kusik')
+	})
+
+	it('plays «achieve» for an achievement, outranking meals and a weigh-in', () => {
+		expect(
+			getReplySound(turn({ achievements: ACHIEVEMENTS, meals: MEALS, measurements: MEASUREMENTS })),
+		).toBe('achieve')
+	})
+
+	it('plays «achieve» over an open question', () => {
+		expect(getReplySound(turn({ achievements: ACHIEVEMENTS, clarifications: OPEN }))).toBe(
+			'achieve',
+		)
+	})
+
+	it('lets a failed photo outrank an achievement', () => {
+		expect(
+			getReplySound(turn({ achievements: ACHIEVEMENTS }, { photo: { status: 'FAILED' } })),
+		).toBe('photoFail')
 	})
 })

@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
 	formatDayHeading,
 	formatDayMonth,
+	formatDayMonthShort,
 	formatShortDate,
 	formatTime,
 	formatWeekdayShort,
@@ -32,6 +33,12 @@ describe('formatWeekdayShort', () => {
 describe('formatDayMonth', () => {
 	it('writes the month in the genitive without a capital', () => {
 		expect(formatDayMonth(new Date(2026, 8, 5))).toBe('5 вересня')
+	})
+})
+
+describe('formatDayMonthShort', () => {
+	it('abbreviates the month and drops its trailing dot', () => {
+		expect(formatDayMonthShort(new Date(2026, 8, 5))).toBe('5 вер')
 	})
 })
 

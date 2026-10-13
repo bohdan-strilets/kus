@@ -322,14 +322,16 @@ describe('deliverMessage sounds and fresh cards', () => {
 		const freshWhenFeedChanged: boolean[] = []
 		client.getQueryCache().subscribe((event) => {
 			if (event.type === 'updated' && event.action.type === 'success') {
-				freshWhenFeedChanged.push(useFreshReplyStore.getState().freshAt[MEAL.id] !== undefined)
+				freshWhenFeedChanged.push(
+					useFreshReplyStore.getState().freshAt[`meal:${MEAL.id}`] !== undefined,
+				)
 			}
 		})
 		vi.mocked(postMessage).mockResolvedValueOnce(turnWith({ meals: [MEAL] }))
 
 		await deliverMessage(client, { clientMessageId: CLIENT_ID, text: 'тарілка супу' })
 
-		expect(Object.keys(useFreshReplyStore.getState().freshAt)).toEqual([MEAL.id])
+		expect(Object.keys(useFreshReplyStore.getState().freshAt)).toEqual([`meal:${MEAL.id}`])
 		expect(playSound).toHaveBeenCalledWith('kusik')
 		expect(freshWhenFeedChanged.length).toBeGreaterThan(0)
 		expect(freshWhenFeedChanged).not.toContain(false)

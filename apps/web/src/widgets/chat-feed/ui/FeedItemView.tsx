@@ -16,6 +16,8 @@ interface FeedItemViewProps {
 	isLatestReply: boolean
 	addressee: Addressee
 	timeZone: string
+	/** `YYYY-MM-DD` in the user's timezone. */
+	today: string
 	onRetry: (params: RetryParams) => void
 	onDismiss: (dismiss: FeedDismiss) => void
 }
@@ -25,6 +27,7 @@ export const FeedItemView = ({
 	isLatestReply,
 	addressee,
 	timeZone,
+	today,
 	onRetry,
 	onDismiss,
 }: FeedItemViewProps) => {
@@ -52,6 +55,7 @@ export const FeedItemView = ({
 				<KusikReply
 					message={item.message}
 					isLatest={isLatestReply}
+					today={today}
 					photoStatus={item.photoStatus}
 				/>
 			)

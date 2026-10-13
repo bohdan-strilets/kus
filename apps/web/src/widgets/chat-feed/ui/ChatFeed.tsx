@@ -127,6 +127,7 @@ export const ChatFeed = ({
 					isLatestReply={item.key === latestReplyKey}
 					addressee={addressee}
 					timeZone={timeZone}
+					today={today}
 					onRetry={retry}
 					onDismiss={dismiss}
 				/>

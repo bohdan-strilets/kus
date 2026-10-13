@@ -39,6 +39,7 @@ import {
 } from './edit-tools.js'
 import { getEditErrors, type ParseRefs } from './entry-edits.js'
 import { getMeasurementErrors, roundMeasurementValue } from './measurements.js'
+import { normalizeFoodName } from './normalize-food-name.js'
 
 /** Hints appended to validation errors so the model can fix them on the retry. */
 const ERROR_HINTS: Record<string, string> = {
@@ -139,6 +140,44 @@ const parseInput = (name: AiToolName, value: unknown): InputParse => {
 	}
 }
 
+/** Fixes Latin look-alikes in the food names the model wrote, before anything compares or saves them. */
+const normalizeCallNames = (call: ValidatedCall): ValidatedCall => {
+	switch (call.name) {
+		case AI_TOOL_NAMES.logFood:
+			return {
+				...call,
+				data: {
+					...call.data,
+					items: call.data.items.map((item) => ({ ...item, name: normalizeFoodName(item.name) })),
+				},
+			}
+		case AI_TOOL_NAMES.clarify:
+			return {
+				...call,
+				data: {
+					...call.data,
+					options: call.data.options.map((option) => ({
+						...option,
+						name: option.name === null ? null : normalizeFoodName(option.name),
+					})),
+				},
+			}
+		case AI_TOOL_NAMES.correctEntry:
+			return {
+				...call,
+				data: {
+					...call.data,
+					changes: call.data.changes.map((change) => ({
+						...change,
+						name: change.name === null ? null : normalizeFoodName(change.name),
+					})),
+				},
+			}
+		default:
+			return call
+	}
+}
+
 const formatZodError = (error: z.ZodError): string =>
 	error.issues
 		.map((issue) => {
@@ -175,7 +214,7 @@ const validateCall = (raw: RawToolCall): ValidatedRawCall => {
 	if (!result.ok) return reject(`${raw.name}: ${formatZodError(result.error)}`)
 	return {
 		parsed: { name: raw.name, input, status: 'SUCCEEDED', error: null },
-		valid: result.call,
+		valid: normalizeCallNames(result.call),
 	}
 }
 

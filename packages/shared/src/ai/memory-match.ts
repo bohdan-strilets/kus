@@ -1,6 +1,8 @@
 // Cheap fuzzy match of saved foods (MyFood) against a chat message, tolerant to Ukrainian endings
 // ("гречка" ↔ "гречки"). Shared by the backend and the eval; runs in memory (docs/database.md).
 
+import { normalizeFoodName } from './normalize-food-name.js'
+
 const MIN_WORD_LENGTH = 3
 const MIN_PREFIX_LENGTH = 3
 /** Characters an inflected ending may change: "яйце" → "яйця", "гречка" → "гречкою". */
@@ -10,8 +12,10 @@ const ENDING_LENGTH = 2
 export const normalizeName = (name: string): string =>
 	name.trim().toLowerCase().replace(/\s+/g, ' ')
 
+// Both sides (saved name and message text) go through normalizeFoodName, so a Latin look-alike on
+// either side doesn't break the match. Only for comparing: stored values stay as they are.
 const toWords = (text: string): string[] =>
-	normalizeName(text)
+	normalizeName(normalizeFoodName(text))
 		.split(/[^\p{L}\p{N}]+/u)
 		.filter((word) => word.length > 0)
 

@@ -23,7 +23,7 @@ design/
 │  ├─ motion.md            ← рух: тривалості, криві, що де рухається, 3 рівні успіху
 │  ├─ sounds.md            ← звуки й вібрація: коли грає, коли мовчить
 │  └─ food-categories.md   ← 45 категорій страв: список, zod/Prisma, текст для промпту AI
-├─ mockups/                ← 58 HTML-макетів, відкриваються в браузері без сервера
+├─ mockups/                ← 62 HTML-макетів, відкриваються в браузері без сервера
 ├─ screenshots/            ← PNG тих самих макетів (зручно давати Claude Code для порівняння)
 ├─ interactive/
 │  ├─ motion.html          ← живе демо анімацій (є «уповільнити ×3»)
@@ -33,7 +33,7 @@ design/
 │  ├─ hamster/             ← Hamster (12 настроїв), HamsterHead (8 виразів для чату, 1:1 з макетів)
 │  ├─ motion/              ← токени й варіанти Motion, countUp, fillArc, частинки успіху, useBlink
 │  ├─ sound/               ← playSound: 10 звуків Web Audio, без файлів
-│  ├─ icon/                ← Icon: 51 іконка інтерфейсу (svg/ → icon.generated.tsx), ProgressRingIcon
+│  ├─ icon/                ← Icon: 52 іконки інтерфейсу (svg/ → icon.generated.tsx), ProgressRingIcon
 │  ├─ food/                ← FoodIcon: 45 іконок страв (svg/ → food-icons.generated.tsx), getMealCategory
 │  ├─ i18n/uk.json         ← рядки, які потрібні цим компонентам
 │  └─ lib/cx.ts            ← тимчасовий cx(); при перенесенні заміни на cn()

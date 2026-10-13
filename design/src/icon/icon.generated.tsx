@@ -49,6 +49,7 @@ export const ICON_NAMES = [
   'share',
   'sparkle',
   'stop',
+  'tape',
   'today',
   'trash',
   'trend-down',
@@ -328,6 +329,14 @@ export const ICON_PATHS: Record<IconName, ReactNode> = {
   'stop': (
     <>
       <rect x="7" y="7" width="10" height="10" rx="2.5" fill="currentColor" stroke="none" />
+    </>
+  ),
+  'tape': (
+    <>
+      <circle cx="8.5" cy="10" r="5.5" />
+      <circle cx="8.5" cy="10" r="1.6" />
+      <path d="M8.5 15.5H21V12h-6.6" />
+      <path d="M16.5 15.5v-1.6M19 15.5v-1.6" />
     </>
   ),
   'today': (

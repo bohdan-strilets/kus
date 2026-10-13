@@ -97,7 +97,8 @@ export const burst = (host: HTMLElement, origin: Element, config: BurstConfig): 
     const dy = Math.sin(angle) * distance;
     const rotation = type === 'line' ? (angle * 180) / Math.PI : randomBetween(-120, 120);
     const base = `translate(${x}px,${y}px) translate(-50%,-50%) `;
-    const duration = (config.durationMs * randomBetween(0.8, 1.2)) / 1000;
+    // Розкид лише вниз: жодна частинка не довша за durationMs (рівень 3 ≤ celebrateMax 1000 мс).
+    const duration = (config.durationMs * randomBetween(0.8, 1)) / 1000;
 
     const keyframes = config.gravity
       ? {

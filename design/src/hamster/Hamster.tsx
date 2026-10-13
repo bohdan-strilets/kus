@@ -1,7 +1,7 @@
 import { useId, useRef } from 'react';
 import { cx, toSvgId } from '../lib/cx';
 import { useBlink } from '../motion/use-blink';
-import { Body, Cookie, CookieDefs, PawDown, PawWave } from './hamster-parts';
+import { Body, Cookie, CookieDefs, MoodBadge, PawDown, PawWave } from './hamster-parts';
 import { HAMSTER_MOODS } from './hamster.moods';
 import type { HamsterProps } from './hamster.types';
 import './hamster.css';
@@ -9,9 +9,10 @@ import './hamster.css';
 /**
  * Хом'як Kusik — повне тіло з пряником у лапках.
  *   <Hamster mood="happy" size={140} label={t(HAMSTER_LABEL_KEYS.happy)} />
+ *   <Hamster mood="proud" badge={7} />  // число на медальці; без badge — зірка
  * Без label — декоративний (коли поруч є текст, що все пояснює).
  */
-export const Hamster = ({ mood = 'wave', size = 120, label, blink = true, className }: HamsterProps) => {
+export const Hamster = ({ mood = 'wave', size = 120, label, badge, blink = true, className }: HamsterProps) => {
   const reactId = useId();
   const gradientId = toSvgId('kg', reactId);
   const maskId = toSvgId('kb', reactId);
@@ -35,6 +36,7 @@ export const Hamster = ({ mood = 'wave', size = 120, label, blink = true, classN
     >
       <CookieDefs gradientId={gradientId} maskId={maskId} />
       {parts.back}
+      {parts.badge && <MoodBadge text={badge === undefined ? undefined : String(badge)} />}
       <Body />
       {parts.over}
       <Cookie gradientId={gradientId} maskId={maskId} />

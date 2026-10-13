@@ -25,6 +25,7 @@
   --color-success-soft: #E3F3EA;
   --color-success-ink: #0F5E40;
   --color-over: #C25A1C;             /* перебір у даних — не помилка */
+  --color-accent-on-dark: #FFD3A8;   /* посилання й іконки на bg-dark-card */
   --color-danger: #B42330;           /* помилки, видалення */
   --color-danger-soft: #FCE9EA;
   --color-scrim: rgb(42 33 24 / 0.4);
@@ -92,6 +93,9 @@
   --bg-soft-card: linear-gradient(120deg, #FDEBDB, #FBF3E6);
   --bg-dark-card: linear-gradient(120deg, #2A2118, #3D2D20);
   --bg-avatar: linear-gradient(140deg, #FFE1C4, #F6C79B);
+
+  /* Розмиття шару сяйва (рівень 2). Tailwind v4: клас blur-glow */
+  --blur-glow: 14px;
 }
 
 @media (prefers-reduced-motion: reduce) {

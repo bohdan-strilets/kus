@@ -91,3 +91,19 @@ export const Smile = () => (
     <rect x="60.2" y="73.6" width="2.8" height="3.8" rx="0.8" fill={C.white} stroke={C.toothLine} strokeWidth="0.6" />
   </>
 );
+
+const BADGE_STAR = 'M102 19.5 l2.4 5.6 6 .6 -4.5 4 1.3 6 -5.2 -3.1 -5.2 3.1 1.3 -6 -4.5 -4 6 -.6z';
+
+/** Медалька настрою `proud`: число (серія днів, кілограми) або зірка, якщо числа немає. */
+export const MoodBadge = ({ text }: { text?: string }) => (
+  <>
+    <circle cx="102" cy="28" r="12" fill={C.accentLight} />
+    {text ? (
+      <text x="102" y={text.length > 2 ? 32 : 33.5} textAnchor="middle" fontFamily="Manrope, sans-serif" fontWeight={800} fontSize={text.length > 2 ? 11 : 15} fill={C.white}>
+        {text}
+      </text>
+    ) : (
+      <path d={BADGE_STAR} fill={C.white} />
+    )}
+  </>
+);

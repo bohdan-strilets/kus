@@ -12,21 +12,14 @@ type MoodParts = {
   face: ReactNode;
   /** Поверх усього: зелена галочка. */
   front?: ReactNode;
+  /** Кружок-медалька праворуч угорі: число з пропа `badge` або зірка. */
+  badge?: true;
 };
 
 const Sparkles = () => (
   <>
     <path d="M12 16 l2 5 5 2 -5 2 -2 5 -2 -5 -5 -2 5 -2z" fill={C.accent} />
     <path d="M104 18 l1.4 3.4 3.4 1.4 -3.4 1.4 -1.4 3.4 -1.4 -3.4 -3.4 -1.4 3.4 -1.4z" fill={C.accentLight} />
-  </>
-);
-
-const Badge = ({ text }: { text: string }) => (
-  <>
-    <circle cx="102" cy="28" r="12" fill={C.accentLight} />
-    <text x="102" y="33.5" textAnchor="middle" fontFamily="Manrope, sans-serif" fontWeight={800} fontSize="15" fill={C.white}>
-      {text}
-    </text>
   </>
 );
 
@@ -147,7 +140,7 @@ export const HAMSTER_MOODS: Record<HamsterMood, MoodParts> = {
     ),
   },
   proud: {
-    back: <Badge text="7" />,
+    badge: true,
     face: (
       <>
         <path d="M42 57 Q47 52 52 57" {...faceLine()} />

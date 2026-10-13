@@ -21,6 +21,8 @@ export type HamsterProps = {
   label?: string;
   /** Кліпати очима раз на 4–6 с. Вимикається при reduced motion. */
   blink?: boolean;
+  /** Число на медальці настрою `proud` (серія днів, кілограми; до 3 символів). Без нього — зірка. Інші настрої ігнорують. */
+  badge?: number | string;
   className?: string;
 };
 

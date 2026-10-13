@@ -1,6 +1,6 @@
 import * as Dialog from '@radix-ui/react-dialog'
 import { AnimatePresence, motion, type PanInfo, useDragControls } from 'motion/react'
-import type { ReactNode } from 'react'
+import { type ReactNode, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import {
@@ -67,6 +67,24 @@ export const BaseBottomSheet = ({
 	// dragging starts only from the grabber and header, so the body can scroll and select text
 	const dragControls = useDragControls()
 
+	// the sheet has no Dialog.Trigger, so Radix has nowhere to return focus: remember who had it on open
+	const returnFocusRef = useRef<HTMLElement | null>(null)
+
+	const handleOpenAutoFocus = (event: Event): void => {
+		const active = document.activeElement
+		returnFocusRef.current = active instanceof HTMLElement ? active : null
+		if (initialFocus === 'first-field') focusFirstField(event)
+		else focusDialogContainer(event)
+	}
+
+	const handleCloseAutoFocus = (event: Event): void => {
+		const target = returnFocusRef.current
+		returnFocusRef.current = null
+		if (!target || !target.isConnected || target === document.body) return
+		event.preventDefault()
+		target.focus()
+	}
+
 	const handleDragEnd = (_event: PointerEvent, info: PanInfo): void => {
 		const isFarEnough = info.offset.y > CLOSE_DRAG_OFFSET_PX
 		const isFastEnough = info.velocity.y > CLOSE_DRAG_VELOCITY
@@ -90,9 +108,8 @@ export const BaseBottomSheet = ({
 							<Dialog.Content
 								forceMount
 								asChild
-								onOpenAutoFocus={
-									initialFocus === 'first-field' ? focusFirstField : focusDialogContainer
-								}
+								onOpenAutoFocus={handleOpenAutoFocus}
+								onCloseAutoFocus={handleCloseAutoFocus}
 								// without a description Radix wants the attribute explicitly empty
 								{...(description ? {} : { 'aria-describedby': undefined })}
 							>

@@ -4,15 +4,16 @@ import { useTranslation } from 'react-i18next'
 import { expandVariants, TRANSITION } from '@/shared/lib'
 import { Chip } from '@/shared/ui'
 
-import { useStartWeightDraft } from '../../model/use-start-weight-draft'
+import { useStartMeasurementDraft } from '../../model/use-start-measurement-draft'
 
 /**
- * The row above the composer (mockups/chat-weight.html); only «Додати вагу» exists so far. It
+ * The row above the composer (mockups/chat-weight.html); «Додати вагу» and «Додати талію». It
  * folds by height and fades, so the feed does not jump when it comes or goes.
  */
 export const QuickChips = ({ isShown }: { isShown: boolean }) => {
 	const { t } = useTranslation()
-	const startWeightDraft = useStartWeightDraft()
+	const startWeightDraft = useStartMeasurementDraft('weight')
+	const startWaistDraft = useStartMeasurementDraft('waist')
 	const shouldReduceMotion = useReducedMotion()
 
 	return (
@@ -33,6 +34,7 @@ export const QuickChips = ({ isShown }: { isShown: boolean }) => {
 						className="flex gap-2 pt-1 pb-3"
 					>
 						<Chip onClick={startWeightDraft}>{t('chat.quickChips.addWeight')}</Chip>
+						<Chip onClick={startWaistDraft}>{t('chat.quickChips.addWaist')}</Chip>
 					</div>
 				</motion.div>
 			)}

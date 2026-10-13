@@ -23,6 +23,32 @@ describe('QuickChips', () => {
 		expect(useComposerDraftStore.getState().isFocusRequested).toBe(true)
 	})
 
+	it('renders both chips', () => {
+		renderWithProviders(<QuickChips isShown />)
+
+		expect(screen.getByRole('button', { name: 'Додати вагу' })).toBeTruthy()
+		expect(screen.getByRole('button', { name: 'Додати талію' })).toBeTruthy()
+	})
+
+	it('puts «талія » into the draft and asks for focus', () => {
+		renderWithProviders(<QuickChips isShown />)
+
+		fireEvent.click(screen.getByRole('button', { name: 'Додати талію' }))
+
+		expect(useComposerDraftStore.getState().text).toBe('талія ')
+		expect(useComposerDraftStore.getState().isFocusRequested).toBe(true)
+	})
+
+	it('keeps the text the user already has when the waist chip is tapped', () => {
+		useComposerDraftStore.setState({ text: 'гречка 200 г' })
+		renderWithProviders(<QuickChips isShown />)
+
+		fireEvent.click(screen.getByRole('button', { name: 'Додати талію' }))
+
+		expect(useComposerDraftStore.getState().text).toBe('гречка 200 г')
+		expect(useComposerDraftStore.getState().isFocusRequested).toBe(true)
+	})
+
 	it('keeps the text the user already has, but still asks for focus', () => {
 		useComposerDraftStore.setState({ text: 'гречка 200 г' })
 		renderWithProviders(<QuickChips isShown />)

@@ -10,6 +10,8 @@ export default defineConfig({
 		globalSetup: ['test/db-global-setup.ts'],
 		// DB-backed e2e files share kus_test and TRUNCATE it before each test, so files run one by one
 		fileParallelism: false,
+		// real-DB e2e with argon2 and row-by-row seeding exceeds the default 5 s when dev servers load the machine
+		testTimeout: 30_000,
 		env: {
 			NODE_ENV: 'test',
 			// same server as local dev (docker-compose.yml) and the CI service; separate *_test database

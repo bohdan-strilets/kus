@@ -150,6 +150,27 @@ describe('profile (e2e, real DB)', () => {
 		expect(profileResponse.parse(again.body).data.profile.heightCm).toBe(182)
 	})
 
+	it('rounds the half of a tenth away from zero for weight and waist, once, on write', async () => {
+		await start()
+		const owner = await registerUser('owner@kus.app')
+
+		const weight = await owner.agent.patch(PROFILE_URL).send({ weightKg: 70.05 }).expect(200)
+		expect(profileResponse.parse(weight.body).data.weight).toEqual({ kg: 70.1, localDate: today() })
+		const waist = await owner.agent.patch(PROFILE_URL).send({ waistCm: 82.45 }).expect(200)
+		expect(profileResponse.parse(waist.body).data.waist).toEqual({ cm: 82.5, localDate: today() })
+
+		const down = await owner.agent.patch(PROFILE_URL).send({ waistCm: 82.44 }).expect(200)
+		expect(profileResponse.parse(down.body).data.waist?.cm).toBe(82.4)
+		const edge = await owner.agent.patch(PROFILE_URL).send({ waistCm: 40 }).expect(200)
+		expect(profileResponse.parse(edge.body).data.waist?.cm).toBe(40)
+
+		const rows = await prisma.measurement.findMany({
+			where: { userId: owner.userId },
+		})
+		const byKind = Object.fromEntries(rows.map((row) => [row.kind, row.value.toNumber()]))
+		expect(byKind).toEqual({ WAIST: 40, WEIGHT: 70.1 })
+	})
+
 	it('saves the waist as today’s PROFILE measurement with one decimal, once a day', async () => {
 		await start()
 		const owner = await registerUser('owner@kus.app')

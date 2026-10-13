@@ -119,3 +119,50 @@ describe('parseToolCalls with log_measurement', () => {
 		expect(result.ok).toBe(false)
 	})
 })
+
+describe('parseToolCalls rounds log_measurement to one decimal before the checks', () => {
+	const valueOf = (input: Record<string, unknown>): number | undefined => {
+		const result = parseToolCalls([measure(input), reply], refs)
+		if (!result.ok || result.decision.kind !== 'reply') return undefined
+		return result.decision.measurements[0]?.value
+	}
+	const isAccepted = (input: Record<string, unknown>): boolean =>
+		parseToolCalls([measure(input), reply], refs).ok
+
+	it('carries the rounded value, not the raw one', () => {
+		expect(valueOf({ value: 82.449 })).toBe(82.4)
+		expect(valueOf({ value: 70.05 })).toBe(70.1)
+		expect(valueOf({ kind: 'WAIST', value: 82.45 })).toBe(82.5)
+	})
+
+	it('rounds the value that rides along with log_food too', () => {
+		const result = parseToolCalls([logFood, measure({ value: 82.449 })], refs)
+		expect(result).toMatchObject({
+			ok: true,
+			decision: { kind: 'log', measurements: [{ value: 82.4 }] },
+		})
+	})
+
+	it('checks the lower weight limit on the rounded value', () => {
+		expect(isAccepted({ value: 29.96 })).toBe(true)
+		expect(valueOf({ value: 29.96 })).toBe(30)
+		expect(isAccepted({ value: 29.94 })).toBe(false)
+	})
+
+	it('checks the upper weight limit on the rounded value', () => {
+		expect(isAccepted({ value: 300.04 })).toBe(true)
+		expect(valueOf({ value: 300.04 })).toBe(300)
+		const result = parseToolCalls([measure({ value: 300.05 }), reply], refs)
+		expect(result.ok).toBe(false)
+		if (result.ok) return
+		expect(result.errors[0]).toContain('outside 30–300 kg')
+	})
+
+	it('checks the waist limits (40–200 cm) on the rounded value', () => {
+		const waist = (value: number) => ({ kind: 'WAIST', value })
+		expect(isAccepted(waist(39.96))).toBe(true)
+		expect(isAccepted(waist(39.94))).toBe(false)
+		expect(isAccepted(waist(200.04))).toBe(true)
+		expect(isAccepted(waist(200.05))).toBe(false)
+	})
+})

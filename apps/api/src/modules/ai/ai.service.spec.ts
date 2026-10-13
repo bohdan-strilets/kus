@@ -195,6 +195,58 @@ describe('AiService.parseFood', () => {
 		expect(logged).not.toContain('Гречка')
 	})
 
+	describe('weight jump check after rounding', () => {
+		const LAST_WEIGHT_KG = 80
+		const weightParams: ParseFoodParams = {
+			...params,
+			findPreviousWeight: () => Promise.resolve({ value: LAST_WEIGHT_KG, localDate: '2026-10-05' }),
+		}
+		const weightCalls = (value: number, confirmedJump = false) => [
+			{
+				name: 'log_measurement',
+				args: { kind: 'WEIGHT', value, date: null, confirmedJump },
+			},
+			{ name: 'reply', args: { text: 'Записав' } },
+		]
+
+		it('accepts exactly 3.0 kg: 83.04 is rounded to 83.0 and the rule is "more than 3 kg"', async () => {
+			fake.respond(createCompletion(weightCalls(83.04)))
+
+			const decision = await service.parseFood(weightParams)
+
+			expect(fake.bodies).toHaveLength(1)
+			expect(decision).toMatchObject({ kind: 'reply', measurements: [{ value: 83 }] })
+		})
+
+		it('rejects 83.05, which rounds to 83.1 (3.1 kg), and asks the model again', async () => {
+			fake.respond(createCompletion(weightCalls(83.05)), createCompletion(weightCalls(83.05, true)))
+
+			const decision = await service.parseFood(weightParams)
+
+			expect(fake.bodies).toHaveLength(2)
+			const retryBody = JSON.stringify(fake.bodies[1])
+			expect(retryBody).toContain('83.1 kg differs by 3.1 kg')
+			expect(decision).toMatchObject({ measurements: [{ value: 83.1, confirmedJump: true }] })
+		})
+
+		it('does not check a jump the user already confirmed', async () => {
+			fake.respond(createCompletion(weightCalls(90.04, true)))
+
+			await expect(service.parseFood(weightParams)).resolves.toMatchObject({
+				measurements: [{ value: 90 }],
+			})
+			expect(fake.bodies).toHaveLength(1)
+		})
+
+		it('has no jump to check without a previous weight', async () => {
+			fake.respond(createCompletion(weightCalls(120.04)))
+
+			await expect(service.parseFood(params)).resolves.toMatchObject({
+				measurements: [{ value: 120 }],
+			})
+		})
+	})
+
 	describe('with a photo', () => {
 		const visionService = new AiService(
 			fake.client,

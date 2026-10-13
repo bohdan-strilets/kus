@@ -5,12 +5,12 @@ import {
 	getBirthYearFromAge,
 	type ProfileGoals,
 	type ProfileResponse,
+	roundMeasurementValue,
 	type UpdateProfileRequest,
 } from '@kus/shared'
 
 import { formatDbDate, getLocalDate, getLocalDateString } from '../../common/time'
 import { GoalType, type UserProfile } from '../../generated/prisma/client'
-import { WAIST_DECIMALS, WEIGHT_DECIMALS } from './profile.constants'
 import { ProfileIncompleteException } from './profile.exceptions'
 import type { ProfileFields } from './profile.repository'
 import type { LatestWaist, LatestWeight } from './profile.types'
@@ -31,10 +31,6 @@ export const getClock = (timezone: string): Clock => {
 	}
 }
 
-export const roundWeight = (kg: number): number => Number(kg.toFixed(WEIGHT_DECIMALS))
-
-export const roundWaist = (cm: number): number => Number(cm.toFixed(WAIST_DECIMALS))
-
 export const toProfileFields = (body: UpdateProfileRequest, year: number): ProfileFields => {
 	const fields: ProfileFields = {}
 	if (body.sex !== undefined) fields.sex = body.sex
@@ -42,7 +38,8 @@ export const toProfileFields = (body: UpdateProfileRequest, year: number): Profi
 	if (body.heightCm !== undefined) fields.heightCm = body.heightCm
 	if (body.activityLevel !== undefined) fields.activityLevel = body.activityLevel
 	if (body.targetWeightKg !== undefined) {
-		fields.targetWeightKg = body.targetWeightKg === null ? null : roundWeight(body.targetWeightKg)
+		fields.targetWeightKg =
+			body.targetWeightKg === null ? null : roundMeasurementValue(body.targetWeightKg)
 	}
 	if (body.goalType !== undefined) fields.goalType = body.goalType
 	if (body.paceKgPerWeek !== undefined) fields.paceKgPerWeek = body.paceKgPerWeek

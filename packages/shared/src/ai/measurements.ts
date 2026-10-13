@@ -96,3 +96,16 @@ export const getMeasurementErrors = (
 	...getDuplicateErrors(inputs),
 	...inputs.flatMap((input) => [...getRangeErrors(input), ...getDateErrors(input, refs.today)]),
 ]
+
+/**
+ * Rounds to one decimal, half away from zero, like Postgres `numeric` does on write — so the checks
+ * and the stored value see the same number. Works on the shortest decimal form of the value
+ * (`70.05` → `"70.05e1"` → 700.5), because `toFixed` and `value * 10` both misjudge 70.05 in binary.
+ */
+export const roundMeasurementValue = (value: number): number => {
+	const absolute = Math.abs(value)
+	const shifted = Number(`${absolute}e1`)
+	// exponent notation (1e-7, 1e21) or NaN/Infinity: no decimal shift possible, keep plain arithmetic
+	if (Number.isNaN(shifted)) return Math.sign(value) * (Math.round(absolute * TENTHS) / TENTHS)
+	return Math.sign(value) * Number(`${Math.round(shifted)}e-1`)
+}

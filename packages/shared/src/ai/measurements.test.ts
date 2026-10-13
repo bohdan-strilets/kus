@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
 	getJumpErrors,
 	getMeasurementErrors,
+	roundMeasurementValue,
 	type MeasurementPoint,
 	type MeasurementRefs,
 } from './measurements.js'
@@ -150,6 +151,46 @@ describe('getJumpErrors', () => {
 
 		it('has nothing to compare with when there is no previous weight', () => {
 			expect(jumpOf(weight(250), null)).toEqual([])
+		})
+	})
+})
+
+describe('roundMeasurementValue', () => {
+	it.each([
+		[70.05, 70.1],
+		[82.45, 82.5],
+		[82.44, 82.4],
+		[82.449, 82.4],
+		[29.96, 30],
+		[300.04, 300],
+		[300.05, 300.1],
+		[-70.05, -70.1],
+		[0, 0],
+		[65.25, 65.3],
+		[99.95, 100],
+		[82, 82],
+	])('rounds %s to %s', (value, expected) => {
+		expect(roundMeasurementValue(value)).toBe(expected)
+	})
+
+	describe('values with an exponent or not finite', () => {
+		it('rounds 1e-7 and 1.5e-7 down to zero', () => {
+			expect(Object.is(roundMeasurementValue(1e-7), 0)).toBe(true)
+			expect(Object.is(roundMeasurementValue(1.5e-7), 0)).toBe(true)
+		})
+
+		it('rounds -1e-7 to a zero of either sign', () => {
+			expect(roundMeasurementValue(-1e-7)).toBeCloseTo(0, 10)
+		})
+
+		it('keeps 1e21 as it is', () => {
+			expect(roundMeasurementValue(1e21)).toBe(1e21)
+		})
+
+		it('passes NaN and the infinities through', () => {
+			expect(roundMeasurementValue(Number.NaN)).toBeNaN()
+			expect(roundMeasurementValue(Infinity)).toBe(Infinity)
+			expect(roundMeasurementValue(-Infinity)).toBe(-Infinity)
 		})
 	})
 })

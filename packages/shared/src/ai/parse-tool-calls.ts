@@ -38,7 +38,7 @@ import {
 	restoreEntryInputSchema,
 } from './edit-tools.js'
 import { getEditErrors, type ParseRefs } from './entry-edits.js'
-import { getMeasurementErrors } from './measurements.js'
+import { getMeasurementErrors, roundMeasurementValue } from './measurements.js'
 
 /** Hints appended to validation errors so the model can fix them on the retry. */
 const ERROR_HINTS: Record<string, string> = {
@@ -251,7 +251,9 @@ const decide = (
 	)
 	const replies = valid.flatMap((call) => (call.name === AI_TOOL_NAMES.reply ? [call.data] : []))
 	const measurements = valid.flatMap((call) =>
-		call.name === AI_TOOL_NAMES.logMeasurement ? [call.data] : [],
+		call.name === AI_TOOL_NAMES.logMeasurement
+			? [{ ...call.data, value: roundMeasurementValue(call.data.value) }]
+			: [],
 	)
 	const edits = collectEdits(valid)
 	const isEditing = hasEdits(edits)

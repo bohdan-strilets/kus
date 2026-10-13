@@ -8,6 +8,7 @@ import {
 	type ManualGoals,
 	type ProfileGoals,
 	type ProfileResponse,
+	roundMeasurementValue,
 	type SaveGoalsRequest,
 	type UpdateProfileRequest,
 } from '@kus/shared'
@@ -23,14 +24,7 @@ import { GoalsService } from '../goals/goals.service'
 import { MeasurementsService } from '../measurements/measurements.service'
 import { UsersService } from '../users/users.service'
 import { GoalsInconsistentException } from './profile.exceptions'
-import {
-	getClock,
-	roundWaist,
-	roundWeight,
-	toCalculationInput,
-	toProfileFields,
-	toProfileResponse,
-} from './profile.mapper'
+import { getClock, toCalculationInput, toProfileFields, toProfileResponse } from './profile.mapper'
 import { ProfileRepository } from './profile.repository'
 import type { LatestWaist, LatestWeight, WeightGoal } from './profile.types'
 
@@ -110,7 +104,7 @@ export class ProfileService {
 					{
 						userId,
 						kind: MeasurementKind.WEIGHT,
-						value: roundWeight(body.weightKg),
+						value: roundMeasurementValue(body.weightKg),
 						localDate: today,
 						measuredAt: now,
 						source: MeasurementSource.PROFILE,
@@ -123,7 +117,7 @@ export class ProfileService {
 					{
 						userId,
 						kind: MeasurementKind.WAIST,
-						value: roundWaist(body.waistCm),
+						value: roundMeasurementValue(body.waistCm),
 						localDate: today,
 						measuredAt: now,
 						source: MeasurementSource.PROFILE,

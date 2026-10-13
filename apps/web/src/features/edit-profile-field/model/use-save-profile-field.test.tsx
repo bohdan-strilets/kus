@@ -3,6 +3,7 @@ import { QueryClient } from '@tanstack/react-query'
 import { act, cleanup, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+import { MESSAGES_QUERY_KEY } from '@/entities/message'
 import type { ProfileFieldKey } from '@/entities/profile'
 import { httpClient } from '@/shared/api'
 import { apiErrorBody, createFakeAdapter, renderHookWithProviders } from '@/shared/testing'
@@ -90,6 +91,36 @@ describe('useSaveProfileField', () => {
 		})
 		expect(invalidatedKeys()).toContainEqual(['profile'])
 		expect(invalidatedKeys()).toContainEqual(['day'])
+	})
+
+	it.each(['weightKg', 'waistCm'] as const)(
+		'saving %s also refreshes the messages (the chat card shows the new number)',
+		async (field) => {
+			const { result, onSaved, invalidatedKeys } = setup(field)
+
+			act(() => {
+				result.current.save(65)
+			})
+
+			await waitFor(() => {
+				expect(onSaved).toHaveBeenCalledTimes(1)
+			})
+			expect(invalidatedKeys()).toContainEqual(MESSAGES_QUERY_KEY)
+			expect(invalidatedKeys()).toContainEqual(['day'])
+		},
+	)
+
+	it('saving the age does not refresh the messages', async () => {
+		const { result, onSaved, invalidatedKeys } = setup('age')
+
+		act(() => {
+			result.current.save(30)
+		})
+
+		await waitFor(() => {
+			expect(onSaved).toHaveBeenCalledTimes(1)
+		})
+		expect(invalidatedKeys()).not.toContainEqual(MESSAGES_QUERY_KEY)
 	})
 
 	it('a failure shows a toast, does not call onSaved and refreshes nothing', async () => {

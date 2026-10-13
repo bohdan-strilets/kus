@@ -15,6 +15,8 @@ import { afterAll, afterEach, describe, expect, it, vi } from 'vitest'
 
 import { addDays, getLocalDateString } from '../src/common/time'
 import { createFakeAiClient } from '../src/modules/ai/ai.test-utils'
+import { MeasurementKind, MeasurementSource } from '../src/generated/prisma/client'
+import { MeasurementsService } from '../src/modules/measurements/measurements.service'
 import type { PrismaService } from '../src/prisma'
 import { createDbTestApp } from './create-db-test-app'
 
@@ -190,6 +192,86 @@ describe('profile (e2e, real DB)', () => {
 		expect(body.weight).toBeNull()
 		expect(body.goals).toBeNull()
 		expect(await prisma.userGoal.count({ where: { userId: owner.userId } })).toBe(0)
+	})
+
+	describe('same-day value that a chat message already carries', () => {
+		const KINDS = [
+			{ kind: MeasurementKind.WEIGHT, field: 'weightKg', chat: 84, next: 82.4 },
+			{ kind: MeasurementKind.WAIST, field: 'waistCm', chat: 90, next: 88.2 },
+		] as const
+
+		const recordFromChat = async (
+			userId: string,
+			kind: MeasurementKind,
+			value: number,
+			messageId: string,
+		) => {
+			const localDate = new Date(`${today()}T00:00:00.000Z`)
+			return app.get(MeasurementsService).record({
+				userId,
+				kind,
+				value,
+				localDate,
+				measuredAt: new Date(),
+				source: MeasurementSource.CHAT,
+				messageId,
+			})
+		}
+
+		const createMessage = (userId: string) =>
+			prisma.message.create({
+				data: { userId, role: 'USER', content: 'вимір', status: 'COMPLETED' },
+			})
+
+		it.each(KINDS)(
+			'a profile $field edit keeps the chat message of the day and takes the new value',
+			async ({ kind, field, chat, next }) => {
+				await start()
+				const owner = await registerUser('owner@kus.app')
+				const message = await createMessage(owner.userId)
+				await recordFromChat(owner.userId, kind, chat, message.id)
+
+				await owner.agent
+					.patch(PROFILE_URL)
+					.send({ [field]: next })
+					.expect(200)
+
+				const rows = await prisma.measurement.findMany({ where: { userId: owner.userId } })
+				expect(rows).toHaveLength(1)
+				expect(rows[0]).toMatchObject({ messageId: message.id, source: 'PROFILE', kind })
+				expect(rows[0]?.value.toNumber()).toBe(next)
+				const found = await app
+					.get(MeasurementsService)
+					.findByMessageIds({ userId: owner.userId, messageIds: [message.id] })
+				expect(found.map((row) => [row.kind, row.value])).toEqual([[kind, next]])
+			},
+		)
+
+		it('a later chat message of the same day takes the value over', async () => {
+			await start()
+			const owner = await registerUser('owner@kus.app')
+			const first = await createMessage(owner.userId)
+			const second = await createMessage(owner.userId)
+			await recordFromChat(owner.userId, MeasurementKind.WEIGHT, 84, first.id)
+
+			await recordFromChat(owner.userId, MeasurementKind.WEIGHT, 83, second.id)
+
+			const rows = await prisma.measurement.findMany({ where: { userId: owner.userId } })
+			expect(rows).toHaveLength(1)
+			expect(rows[0]).toMatchObject({ messageId: second.id, source: 'CHAT' })
+			expect(rows[0]?.value.toNumber()).toBe(83)
+		})
+
+		it('a profile edit without a chat predecessor is stored with no message', async () => {
+			await start()
+			const owner = await registerUser('owner@kus.app')
+
+			await owner.agent.patch(PROFILE_URL).send({ weightKg: 80, waistCm: 90 }).expect(200)
+
+			const rows = await prisma.measurement.findMany({ where: { userId: owner.userId } })
+			expect(rows).toHaveLength(2)
+			for (const row of rows) expect(row).toMatchObject({ messageId: null, source: 'PROFILE' })
+		})
 	})
 
 	it('rejects a waist outside 40–200 cm', async () => {

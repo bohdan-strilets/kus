@@ -22,7 +22,10 @@ export interface UpsertMeasurementData {
 export class MeasurementsRepository {
 	constructor(private readonly prisma: PrismaService) {}
 
-	/** One value per kind per local day: a second one that day replaces it. */
+	/**
+	 * One value per kind per local day: a second one that day replaces it. A write without a
+	 * message (the profile) keeps the message that already carries the day's value, so its chat card stays.
+	 */
 	upsert(
 		{ userId, kind, value, localDate, measuredAt, source, messageId }: UpsertMeasurementData,
 		tx?: Prisma.TransactionClient,
@@ -30,7 +33,7 @@ export class MeasurementsRepository {
 		return (tx ?? this.prisma).measurement.upsert({
 			where: { userId_kind_localDate: { userId, kind, localDate } },
 			create: { userId, kind, value, localDate, measuredAt, source, messageId },
-			update: { value, measuredAt, source, messageId },
+			update: { value, measuredAt, source, ...(messageId === null ? {} : { messageId }) },
 		})
 	}
 

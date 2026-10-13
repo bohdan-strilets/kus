@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 
 import { DAY_QUERY_KEY } from '@/entities/day'
+import { MESSAGES_QUERY_KEY } from '@/entities/message'
 import { PROFILE_QUERY_KEY, type ProfileFieldKey } from '@/entities/profile'
 import { getApiError } from '@/shared/api'
 import { useToast } from '@/shared/ui'
@@ -32,8 +33,11 @@ export const useSaveProfileField = ({
 			queryClient.setQueryData(PROFILE_QUERY_KEY, profile)
 			void queryClient.invalidateQueries({ queryKey: PROFILE_QUERY_KEY })
 			// the weight shows in the day, the waist on «Прогрес» (cached under the day key)
-			if (field === 'weightKg' || field === 'waistCm')
+			if (field === 'weightKg' || field === 'waistCm') {
 				void queryClient.invalidateQueries({ queryKey: DAY_QUERY_KEY })
+				// the chat card of a same-day value shows the new number
+				void queryClient.invalidateQueries({ queryKey: MESSAGES_QUERY_KEY })
+			}
 			onSaved()
 		},
 		onError: (error) => {

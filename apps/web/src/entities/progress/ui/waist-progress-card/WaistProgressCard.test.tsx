@@ -68,7 +68,7 @@ describe('WaistProgressCard', () => {
 
 		expect(
 			screen.getByText(
-				/^За цей період замірів немає\. Напиши в чаті «талія 94» або тапни «Додати талію»/,
+				/^За цей період замірів немає\. Напиши в чаті «талія 94» або натисни «Додати талію»/,
 			),
 		).toBeTruthy()
 		expect(screen.getByText('94')).toBeTruthy()

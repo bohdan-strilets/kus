@@ -77,7 +77,6 @@ describe('AchievementCard', () => {
 		expect(call?.[3]?.format?.(3)).toBe('Мінус 3 кг від старту')
 		expect(getCountedText(container)).toBe('Мінус 2 кг від старту')
 		expect(screen.getByTestId('pop').getAttribute('data-initial')).toBe('hidden')
-		// «proud» has a hardcoded «7» on it: the card shows any number, so the plain happy one
 		expect(container.querySelector('[data-mood]')?.getAttribute('data-mood')).toBe('happy')
 		expect(burst).toHaveBeenCalledTimes(1)
 		expect(vi.mocked(burst).mock.calls[0]?.[2]).toBe(CELEBRATE.achieve)

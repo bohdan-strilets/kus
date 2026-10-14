@@ -16,7 +16,7 @@ export interface ComposerPhotoState {
 
 export interface ComposerProps {
 	value: string
-	/** Defaults to «Напиши, що з'їв, або спитай…»; onboarding passes its own example. */
+	/** Defaults to «Напиши, що їси, або спитай…»; onboarding passes its own example. */
 	placeholder?: string
 	onValueChange: (value: string) => void
 	onSubmit: () => void

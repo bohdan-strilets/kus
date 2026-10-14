@@ -81,6 +81,78 @@
   --ease-out: cubic-bezier(.2, .8, .2, 1);
   --ease-spring: cubic-bezier(.34, 1.56, .64, 1);
   --ease-in: cubic-bezier(.4, 0, 1, 1);
+
+  /* ── Перенесено з коду (apps/web tokens.css, v0.5.3) — щоб архів їх більше не затирав. Пояснення — docs/design-tokens.md у репо. ── */
+  /* Кольори */
+  --color-muted-soft: #a8998a;
+  --color-app-top: #fcebd8;
+  --color-line-strong: #dccbb9;
+  --color-handle: #e2d6c9;
+  --color-toggle-off: #ddcfc0;
+  --color-over-ink: #ab4f19;
+  --color-over-soft: #f2a877;
+  --color-notice: #f2894f;
+  --color-scrim-strong: rgb(42 33 24 / 0.45);
+  --color-decor-peach: #f7c59a;
+  --color-decor-mint: #d9efe2;
+  --color-crumb: #e58a45;
+  /* Типографіка */
+  --text-title: 20px;
+  --text-title--line-height: 1.25;
+  --text-title--letter-spacing: -0.02em;
+  --text-title--font-weight: 800;
+  --text-input: 16px;
+  --text-input--line-height: 1.5;
+  --text-caption--font-weight: 600;
+  --text-small--font-weight: 600;
+  --text-wordmark: 22px;
+  --text-wordmark--line-height: 1;
+  --text-wordmark--letter-spacing: -0.04em;
+  --text-wordmark--font-weight: 800;
+  --text-field-number: 32px;
+  --text-field-number--line-height: 1.1;
+  --text-field-number--letter-spacing: -0.02em;
+  --text-field-number--font-weight: 800;
+  --text-field-number-sm: 22px;
+  --text-field-number-sm--line-height: 1.1;
+  --text-field-number-sm--font-weight: 800;
+  --text-achievement: 34px;
+  --text-achievement--line-height: 1.05;
+  --text-achievement--letter-spacing: -0.03em;
+  --text-achievement--font-weight: 800;
+  --text-name: 18px;
+  --text-name--line-height: 1.2;
+  --text-name--font-weight: 800;
+  /* Радіуси */
+  --radius-field: 16px;
+  --radius-checkbox: 6px;
+  --radius-badge: 10px;
+  --radius-tile-sm: 14px;
+  --radius-bubble-ai: 22px;
+  --radius-panel: 26px;
+  --radius-nav: 30px;
+  /* Тіні */
+  --shadow-float: 0 10px 28px rgb(80 50 20 / 0.12);
+  --shadow-dialog: 0 20px 50px rgb(0 0 0 / 0.2);
+  --shadow-field: 0 6px 16px rgb(80 50 20 / 0.06);
+  --shadow-list: 0 8px 22px rgb(80 50 20 / 0.08);
+  --shadow-achievement: 0 12px 30px rgb(185 82 26 / 0.18);
+  /* Брейкпойнти */
+  --breakpoint-tablet: 48rem;
+  --breakpoint-desktop: 64rem;
+  /* Відступи й розміри */
+  --spacing-gutter: 16px;
+  --spacing-tap: 44px;
+  --spacing-button: 48px;
+  --spacing-safe-top: env(safe-area-inset-top);
+  --spacing-safe-bottom: env(safe-area-inset-bottom);
+  /* Ширина колонки */
+  --container-app: 480px;
+  /* Перехід за замовчуванням */
+  --default-transition-duration: 200ms;
+  --default-transition-timing-function: var(--ease-out);
+  /* Розмиття шару сяйва (рівень 2). Клас blur-glow */
+  --blur-glow: 14px;
 }
 
 /* Тривалості — не namespace Tailwind, тому як звичайні змінні: duration-(--duration-base) */
@@ -93,9 +165,9 @@
   --bg-soft-card: linear-gradient(120deg, #FDEBDB, #FBF3E6);
   --bg-dark-card: linear-gradient(120deg, #2A2118, #3D2D20);
   --bg-avatar: linear-gradient(140deg, #FFE1C4, #F6C79B);
+  --bg-plan-card: linear-gradient(140deg, #fce6d2, #fcebdd);
+  --bg-achievement-card: linear-gradient(140deg, #fce6d2, #fdf3e7);
 
-  /* Розмиття шару сяйва (рівень 2). Tailwind v4: клас blur-glow */
-  --blur-glow: 14px;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -107,3 +179,5 @@
 @utility bg-soft-card { background: var(--bg-soft-card); }
 @utility bg-dark-card { background: var(--bg-dark-card); }
 @utility bg-avatar { background: var(--bg-avatar); }
+@utility bg-plan-card { background: var(--bg-plan-card); }
+@utility bg-achievement-card { background: var(--bg-achievement-card); }

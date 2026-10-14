@@ -29,6 +29,15 @@ describe('MeasureInfoSheet', () => {
 		expect(screen.getByText('Як міряти талію')).toBeTruthy()
 	})
 
+	it('shows an icon for each section', () => {
+		const { baseElement } = renderWithProviders(<Harness startOpen />)
+
+		const names = Array.from(baseElement.querySelectorAll('section [data-icon]')).map((el) =>
+			el.getAttribute('data-icon'),
+		)
+		expect(names).toEqual(['info', 'scale', 'tape'])
+	})
+
 	it('closes with «Зрозуміло»', async () => {
 		renderWithProviders(<Harness startOpen />)
 

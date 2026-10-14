@@ -91,6 +91,11 @@ export const WeightProgressCard = ({ weight, range, today }: WeightProgressCardP
 					<Sparkline
 						values={points.map((point) => point.value)}
 						reference={target ?? undefined}
+						marks={{
+							first: formatMeasurementNumber(first.value, 'WEIGHT'),
+							last: formatMeasurementNumber(last.value, 'WEIGHT'),
+							endDot: 'lg',
+						}}
 						label={chartLabel}
 						className="h-28"
 					/>

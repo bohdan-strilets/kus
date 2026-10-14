@@ -9,12 +9,28 @@ export interface SparklineProps {
 	label: string
 	/** The goal: a dashed line, when it is close enough to the data to share the chart. */
 	reference?: number
+	/** Value captions (already formatted) and the end dot: the Progress charts. */
+	marks?: SparklineMarks
 	className?: string
+}
+
+export interface SparklineMarks {
+	/** Over the first point, top left; skipped for a single point (it is the last one). */
+	first?: string
+	/** Left of the end dot, bold. */
+	last?: string
+	/** The white-ringed dot on the latest point: large (r6) or small (r5). */
+	endDot?: 'lg' | 'sm'
 }
 
 const LINE_WIDTH = 2.5
 const REFERENCE_WIDTH = 1.5
 const REFERENCE_DASH = '4 4'
+
+const END_DOT_CLASS = {
+	lg: 'size-3',
+	sm: 'size-2.5',
+} as const
 
 const toPercent = (part: number, whole: number): string => `${(part / whole) * 100}%`
 
@@ -23,10 +39,12 @@ const toPercent = (part: number, whole: number): string => `${(part / whole) * 1
  * over a 10 % success fill. It stretches to the width of its box; the stroke does not. A lone
  * point is an HTML dot over the SVG: inside the stretched SVG it would be squashed into an oval.
  */
-export const Sparkline = ({ values, label, reference, className }: SparklineProps) => {
+export const Sparkline = ({ values, label, reference, marks, className }: SparklineProps) => {
 	if (values.length === 0) return null
 	const { line, area, points, referenceY } = getSparklinePaths(values, reference)
 	const [single] = points
+	const lastPoint = points[points.length - 1]
+	const firstPoint = points.length > 1 ? single : undefined
 
 	return (
 		<div className={cn('relative h-16 w-full', className)}>
@@ -62,7 +80,7 @@ export const Sparkline = ({ values, label, reference, className }: SparklineProp
 					/>
 				)}
 			</svg>
-			{!line && single && (
+			{!line && single && !marks?.endDot && (
 				<span
 					aria-hidden="true"
 					data-sparkline-dot=""
@@ -72,6 +90,41 @@ export const Sparkline = ({ values, label, reference, className }: SparklineProp
 						top: toPercent(single.y, SPARKLINE_HEIGHT),
 					}}
 				/>
+			)}
+			{marks?.endDot && lastPoint && (
+				<span
+					aria-hidden="true"
+					data-sparkline-end-dot=""
+					className={cn(
+						'absolute -translate-x-1/2 -translate-y-1/2 rounded-full bg-success ring-2 ring-white',
+						END_DOT_CLASS[marks.endDot],
+					)}
+					style={{
+						left: toPercent(lastPoint.x, SPARKLINE_WIDTH),
+						top: toPercent(lastPoint.y, SPARKLINE_HEIGHT),
+					}}
+				/>
+			)}
+			{marks?.first && firstPoint && (
+				<span
+					data-sparkline-first=""
+					className="absolute top-0 text-small text-muted tabular-nums"
+					style={{ left: toPercent(firstPoint.x, SPARKLINE_WIDTH) }}
+				>
+					{marks.first}
+				</span>
+			)}
+			{marks?.last && lastPoint && (
+				<span
+					data-sparkline-last=""
+					className="absolute -translate-x-full -translate-y-full pr-3 pb-1 text-small font-bold text-ink tabular-nums"
+					style={{
+						left: toPercent(lastPoint.x, SPARKLINE_WIDTH),
+						top: toPercent(lastPoint.y, SPARKLINE_HEIGHT),
+					}}
+				>
+					{marks.last}
+				</span>
 			)}
 		</div>
 	)

@@ -63,3 +63,22 @@ describe('WeightProgressCard chart labels', () => {
 		expect(screen.getByText('сьогодні')).toBeTruthy()
 	})
 })
+
+describe('WeightProgressCard chart marks', () => {
+	it('captions the first and the latest weight and rings the end dot', () => {
+		const { container } = render(
+			<WeightProgressCard
+				weight={createWeight([
+					{ localDate: '2026-09-01', value: 84 },
+					{ localDate: TODAY, value: 82.4 },
+				])}
+				range={7}
+				today={TODAY}
+			/>,
+		)
+
+		expect(container.querySelector('[data-sparkline-first]')?.textContent).toBe('84,0')
+		expect(container.querySelector('[data-sparkline-last]')?.textContent).toBe('82,4')
+		expect(container.querySelector('[data-sparkline-end-dot]')).toBeTruthy()
+	})
+})

@@ -52,7 +52,7 @@ describe('ProgressPage', () => {
 
 		renderPage()
 
-		expect(await screen.findByText('82,4')).toBeTruthy()
+		expect(await screen.findAllByText('82,4')).not.toHaveLength(0)
 		expect(screen.getByText('−1,6 кг')).toBeTruthy()
 		expect(screen.getByText('ціль 78 кг · до цілі 4,4 кг')).toBeTruthy()
 		expect(screen.getByText('Середнє')).toBeTruthy()
@@ -92,7 +92,7 @@ describe('ProgressPage', () => {
 
 		renderPage()
 
-		expect(await screen.findByText('82,4')).toBeTruthy()
+		expect(await screen.findAllByText('82,4')).not.toHaveLength(0)
 		expect(screen.getByText('За цей період зважувань немає')).toBeTruthy()
 		expect(screen.queryByRole('img', { name: /Вага/ })).toBeNull()
 		expect(screen.queryByText('−1,6 кг')).toBeNull()
@@ -130,7 +130,7 @@ describe('ProgressPage', () => {
 	it('shows the waist only when there is one', async () => {
 		showsProgress(makeProgress())
 		const { unmount } = renderPage()
-		await screen.findByText('82,4')
+		await screen.findAllByText('82,4')
 		expect(screen.queryByText('Талія')).toBeNull()
 		unmount()
 
@@ -180,7 +180,7 @@ describe('ProgressPage', () => {
 		)
 
 		renderPage()
-		await screen.findByText('82,4')
+		await screen.findAllByText('82,4')
 
 		expect(screen.queryByText('Обговорити в чаті')).toBeNull()
 	})
@@ -218,6 +218,6 @@ describe('ProgressPage', () => {
 		showsProgress(makeProgress())
 		fireEvent.click(screen.getByRole('button', { name: 'Повторити' }))
 
-		expect(await screen.findByText('82,4')).toBeTruthy()
+		expect(await screen.findAllByText('82,4')).not.toHaveLength(0)
 	})
 })

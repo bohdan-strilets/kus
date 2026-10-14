@@ -38,6 +38,47 @@ describe('Sparkline', () => {
 		expect(container.firstChild).toBeNull()
 	})
 
+	it('captions the first and the latest value and rings the end dot', () => {
+		const { container } = render(
+			<Sparkline
+				values={[84, 83, 82.4]}
+				label="x"
+				marks={{ first: '84,0', last: '82,4', endDot: 'lg' }}
+			/>,
+		)
+
+		expect(screen.getByText('84,0')).toBeTruthy()
+		expect(screen.getByText('82,4').className).toContain('font-bold')
+		const dot = container.querySelector('[data-sparkline-end-dot]') as HTMLElement
+		expect(dot.className).toContain('size-3')
+		expect(dot.className).toContain('ring-white')
+		expect(dot.style.left).toContain('96.29')
+	})
+
+	it('uses a smaller end dot for sm', () => {
+		const { container } = render(<Sparkline values={[96, 94]} label="x" marks={{ endDot: 'sm' }} />)
+
+		expect(container.querySelector('[data-sparkline-end-dot]')?.className).toContain('size-2.5')
+	})
+
+	it('for one point shows one dot and only the latest caption', () => {
+		const { container } = render(
+			<Sparkline values={[82.4]} label="x" marks={{ first: '82,4', last: '82,4', endDot: 'lg' }} />,
+		)
+
+		expect(container.querySelector('[data-sparkline-dot]')).toBeNull()
+		expect(container.querySelectorAll('[data-sparkline-end-dot]')).toHaveLength(1)
+		expect(screen.getAllByText('82,4')).toHaveLength(1)
+	})
+
+	it('without marks draws no captions and no end dot', () => {
+		const { container } = render(<Sparkline values={[84, 83, 82.4]} label="x" />)
+
+		expect(container.querySelector('[data-sparkline-end-dot]')).toBeNull()
+		expect(container.querySelector('[data-sparkline-first]')).toBeNull()
+		expect(container.querySelector('[data-sparkline-last]')).toBeNull()
+	})
+
 	it('draws a dashed goal line only when a reference is given and close', () => {
 		const { container, rerender } = render(<Sparkline values={[84, 83, 82]} label="x" />)
 		expect(container.querySelector('line')).toBeNull()

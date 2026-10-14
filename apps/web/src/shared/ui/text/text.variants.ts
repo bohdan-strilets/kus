@@ -15,6 +15,8 @@ export const textVariants = cva('', {
 			gauge: 'text-gauge tabular-nums',
 			/** 17/800 — «з'їдено» / «ціль» next to the large ring */
 			stat: 'text-stat tabular-nums',
+			/** 34/800 — the number on the achievement card */
+			achievement: 'text-achievement tabular-nums',
 		},
 		tone: {
 			ink: 'text-ink',

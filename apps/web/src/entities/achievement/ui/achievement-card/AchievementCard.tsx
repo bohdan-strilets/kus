@@ -6,10 +6,15 @@ import { useTranslation } from 'react-i18next'
 import { achievementPopVariants, burst, CELEBRATE, isReducedMotion, useCountUp } from '@/shared/lib'
 import { Hamster, Surface, Text } from '@/shared/ui'
 
+import { getAchievementPhrase } from '../../lib/get-achievement-phrase'
 import {
+	ACHIEVEMENT_CAPTION_KEY,
 	ACHIEVEMENT_COUNT_UP_MS,
+	ACHIEVEMENT_EYEBROW_KEY,
 	ACHIEVEMENT_HAMSTER_SIZE,
+	ACHIEVEMENT_NUMBER_KEY,
 	ACHIEVEMENT_TEXT_KEY,
+	ACHIEVEMENT_UNIT_KEY,
 } from './achievement-card.constants'
 
 export interface AchievementCardProps {
@@ -46,10 +51,16 @@ export const AchievementCard = ({
 			t(ACHIEVEMENT_TEXT_KEY[type], { count: value, value: Math.round(shown) }),
 		[t, type, value],
 	)
+	const formatNumber = useCallback(
+		(shown: number): string => t(ACHIEVEMENT_NUMBER_KEY[type], { value: Math.round(shown) }),
+		[t, type],
+	)
+	const captionKey = ACHIEVEMENT_CAPTION_KEY[type]
+	const phrase = getAchievementPhrase(achievement, t)
 	const startValue = isFresh ? value - 1 : value
 	const valueRef = useCountUp<HTMLSpanElement>(value, {
 		initial: startValue,
-		format: formatText,
+		format: formatNumber,
 		durationMs: ACHIEVEMENT_COUNT_UP_MS,
 	})
 
@@ -74,20 +85,38 @@ export const AchievementCard = ({
 			onAnimationComplete={handlePopped}
 		>
 			<div ref={hostRef} className="relative">
-				<Surface role="status" radius="card" className="flex items-center gap-3 p-3.5">
-					<div ref={originRef} className="shrink-0">
-						<Hamster mood="happy" size={ACHIEVEMENT_HAMSTER_SIZE} isBlinking={false} />
+				<Surface
+					role="status"
+					variant="achievement"
+					shadow="achievement"
+					className="flex flex-col gap-2.5 rounded-bl-tail p-4 ring-2 ring-decor-peach"
+				>
+					<div className="flex items-center gap-3">
+						<div ref={originRef} className="shrink-0">
+							<Hamster mood="happy" size={ACHIEVEMENT_HAMSTER_SIZE} isBlinking={false} />
+						</div>
+						<div className="flex min-w-0 flex-col gap-0.5">
+							<Text as="span" variant="eyebrow" weight="extrabold" tone="primaryDeep">
+								{t(ACHIEVEMENT_EYEBROW_KEY[type])}
+							</Text>
+							{/* the counting text is hidden from screen readers: they get the final sentence once */}
+							<Text as="span" variant="achievement" aria-hidden="true">
+								<span ref={valueRef}>{formatNumber(startValue)}</span>
+								<Text as="span" variant="stat" weight="bold" tone="mutedStrong" className="ml-1">
+									{t(ACHIEVEMENT_UNIT_KEY[type], { count: value })}
+								</Text>
+							</Text>
+							<span className="sr-only">{formatText(value)}</span>
+							{captionKey && (
+								<Text as="span" variant="caption" weight="regular" tone="mutedStrong">
+									{t(captionKey)}
+								</Text>
+							)}
+						</div>
 					</div>
-					<div className="flex min-w-0 flex-col gap-0.5">
-						<Text as="span" variant="eyebrow" tone="muted">
-							{t('achievement.title')}
-						</Text>
-						{/* the counting text is hidden from screen readers: they get the final sentence once */}
-						<Text as="span" variant="stat" aria-hidden="true">
-							<span ref={valueRef}>{formatText(startValue)}</span>
-						</Text>
-						<span className="sr-only">{formatText(value)}</span>
-					</div>
+					<Text variant="cardTitle" weight="regular" className="leading-snug">
+						{phrase}
+					</Text>
 				</Surface>
 			</div>
 		</motion.div>

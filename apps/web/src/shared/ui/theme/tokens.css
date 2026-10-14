@@ -161,6 +161,11 @@
 	--text-field-number-sm: 22px;
 	--text-field-number-sm--line-height: 1.1;
 	--text-field-number-sm--font-weight: 800;
+	/* added: the number on the level 3 achievement card, 34/800 (chat-achievement) */
+	--text-achievement: 34px;
+	--text-achievement--line-height: 1.05;
+	--text-achievement--letter-spacing: -0.03em;
+	--text-achievement--font-weight: 800;
 	/* added: the user's name on the profile card, 18/800 */
 	--text-name: 18px;
 	--text-name--line-height: 1.2;
@@ -204,6 +209,8 @@
 	--shadow-field: 0 6px 16px rgb(80 50 20 / 0.06);
 	/* added: list cards in profile, my-data, settings */
 	--shadow-list: 0 8px 22px rgb(80 50 20 / 0.08);
+	/* added: achievement card, a warm glow under the peach ring (chat-achievement) */
+	--shadow-achievement: 0 12px 30px rgb(185 82 26 / 0.18);
 
 	/* added: static blur of the goal-celebration glow layer (design/interactive/motion.html, drop-shadow 14px);
 	   only its opacity and scale are animated */
@@ -247,6 +254,8 @@
 	--bg-avatar: linear-gradient(140deg, #ffe1c4, #f6c79b);
 	/* the plan card in goals-recalc */
 	--bg-plan-card: linear-gradient(140deg, #fce6d2, #fcebdd);
+	/* the achievement card in chat-achievement */
+	--bg-achievement-card: linear-gradient(140deg, #fce6d2, #fdf3e7);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -277,4 +286,8 @@
 
 @utility bg-plan-card {
 	background-image: var(--bg-plan-card);
+}
+
+@utility bg-achievement-card {
+	background-image: var(--bg-achievement-card);
 }

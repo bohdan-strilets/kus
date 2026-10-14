@@ -15,6 +15,8 @@ export const surfaceVariants = cva('', {
 			/** list cards in profile, my-data, settings (white 88%) */
 			list: 'bg-surface/88',
 			soft: 'bg-soft-card',
+			/** level 3 achievement in the chat (peach gradient) */
+			achievement: 'bg-achievement-card',
 			field: 'bg-field',
 			selected: 'bg-primary-selected',
 		},
@@ -36,6 +38,7 @@ export const surfaceVariants = cva('', {
 			float: 'shadow-float',
 			field: 'shadow-field',
 			list: 'shadow-list',
+			achievement: 'shadow-achievement',
 		},
 	},
 	defaultVariants: { variant: 'solid', radius: 'card', shadow: 'card' },

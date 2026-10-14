@@ -73,9 +73,9 @@ describe('AchievementCard', () => {
 		const call = vi.mocked(countUp).mock.calls[0]
 		expect(call?.[1]).toBe(2)
 		expect(call?.[2]).toBe(3)
-		expect(call?.[3]?.format?.(2)).toBe('Мінус 2 кг від старту')
-		expect(call?.[3]?.format?.(3)).toBe('Мінус 3 кг від старту')
-		expect(getCountedText(container)).toBe('Мінус 2 кг від старту')
+		expect(call?.[3]?.format?.(2)).toBe('−2')
+		expect(call?.[3]?.format?.(3)).toBe('−3')
+		expect(getCountedText(container)).toBe('−2')
 		expect(screen.getByTestId('pop').getAttribute('data-initial')).toBe('hidden')
 		expect(container.querySelector('[data-mood]')?.getAttribute('data-mood')).toBe('happy')
 		expect(burst).toHaveBeenCalledTimes(1)
@@ -89,7 +89,7 @@ describe('AchievementCard', () => {
 		const call = vi.mocked(countUp).mock.calls[0]
 		expect(call?.[1]).toBe(6)
 		expect(call?.[2]).toBe(7)
-		expect(getCountedText(container)).toBe('6 днів поспіль із записами')
+		expect(getCountedText(container)).toBe('6')
 		expect(screen.getByRole('status').textContent).toContain('7 днів поспіль із записами')
 	})
 
@@ -99,7 +99,7 @@ describe('AchievementCard', () => {
 		const hidden = container.querySelector('[aria-hidden="true"] > span')
 		expect(hidden?.parentElement?.getAttribute('aria-hidden')).toBe('true')
 		expect(container.querySelector('.sr-only')?.textContent).toBe('3 дні поспіль із записами')
-		expect(screen.getByRole('status').textContent).toContain('Досягнення')
+		expect(screen.getByRole('status').textContent).toContain('Серія')
 	})
 
 	it('reduced motion: no pop, no confetti, the final number at once', () => {
@@ -109,7 +109,7 @@ describe('AchievementCard', () => {
 			<AchievementCard achievement={create('WEIGHT_KG_LOST', 3)} isFresh onEntered={onEntered} />,
 		)
 
-		expect(getCountedText(container)).toBe('Мінус 3 кг від старту')
+		expect(getCountedText(container)).toBe('−3')
 		expect(screen.getByTestId('pop').getAttribute('data-initial')).toBe('false')
 		expect(burst).not.toHaveBeenCalled()
 		expect(onEntered).toHaveBeenCalled()
@@ -124,10 +124,40 @@ describe('AchievementCard', () => {
 		const call = vi.mocked(countUp).mock.calls[0]
 		expect(call?.[1]).toBe(14)
 		expect(call?.[2]).toBe(14)
-		expect(getCountedText(container)).toBe('14 днів поспіль із записами')
+		expect(getCountedText(container)).toBe('14')
 		expect(screen.getByTestId('pop').getAttribute('data-initial')).toBe('false')
 		expect(burst).not.toHaveBeenCalled()
 		expect(onEntered).not.toHaveBeenCalled()
+	})
+})
+
+describe('AchievementCard content', () => {
+	it('kilograms: eyebrow, unit and phrase, no caption (the weight pair needs the backend)', () => {
+		render(<AchievementCard achievement={create('WEIGHT_KG_LOST', 2)} />)
+
+		const status = screen.getByRole('status')
+		expect(status.textContent).toContain('Досягнення')
+		expect(status.textContent).toContain('кг від старту')
+		expect(status.textContent).toContain('Ще одна ціла цифра позаду. Далі — у своєму темпі.')
+		expect(status.textContent).not.toContain('щодня є записи їжі')
+	})
+
+	it('streak: eyebrow «Серія», unit with the plural, caption and the next mark', () => {
+		render(<AchievementCard achievement={create('FOOD_STREAK', 7)} />)
+
+		const status = screen.getByRole('status')
+		expect(status.textContent).toContain('Серія')
+		expect(status.textContent).toContain('днів поспіль')
+		expect(status.textContent).toContain('щодня є записи їжі')
+		expect(status.textContent).toContain('Тиждень без пропусків. Наступна позначка — 14 днів.')
+	})
+
+	it('the hamster is happy and 84 px', () => {
+		const { container } = render(<AchievementCard achievement={create('FOOD_STREAK', 3)} />)
+
+		const hamster = container.querySelector('[data-mood]')
+		expect(hamster?.getAttribute('data-mood')).toBe('happy')
+		expect(hamster?.getAttribute('width')).toBe('84')
 	})
 })
 

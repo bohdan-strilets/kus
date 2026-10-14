@@ -94,7 +94,16 @@ export const AchievementCard = ({
 				>
 					<div className="flex items-center gap-3">
 						<div ref={originRef} className="shrink-0">
-							<Hamster mood="happy" size={ACHIEVEMENT_HAMSTER_SIZE} isBlinking={false} />
+							{type === 'FOOD_STREAK' ? (
+								<Hamster
+									mood="proud"
+									badge={value}
+									size={ACHIEVEMENT_HAMSTER_SIZE}
+									isBlinking={false}
+								/>
+							) : (
+								<Hamster mood="happy" size={ACHIEVEMENT_HAMSTER_SIZE} isBlinking={false} />
+							)}
 						</div>
 						<div className="flex min-w-0 flex-col gap-0.5">
 							<Text as="span" variant="eyebrow" weight="extrabold" tone="primaryDeep">

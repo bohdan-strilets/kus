@@ -165,12 +165,24 @@ describe('AchievementCard content', () => {
 		)
 	})
 
-	it('the hamster is happy and 84 px', () => {
-		const { container } = render(<AchievementCard achievement={create('FOOD_STREAK', 3)} />)
+	it('streak: the hamster is proud, 84 px, with the days on the medal', () => {
+		const { container } = render(<AchievementCard achievement={create('FOOD_STREAK', 7)} />)
+
+		const hamster = container.querySelector('[data-mood]')
+		expect(hamster?.getAttribute('data-mood')).toBe('proud')
+		expect(hamster?.getAttribute('width')).toBe('84')
+		expect(hamster?.querySelector('text')?.textContent).toBe('7')
+	})
+
+	it('kilograms: the hamster is happy, 84 px, without a badge', () => {
+		const { container } = render(<AchievementCard achievement={create('WEIGHT_KG_LOST', 3)} />)
 
 		const hamster = container.querySelector('[data-mood]')
 		expect(hamster?.getAttribute('data-mood')).toBe('happy')
 		expect(hamster?.getAttribute('width')).toBe('84')
+		// the happy hamster has its own lettering on the shirt; the kilograms must not land on a medal
+		const texts = Array.from(hamster?.querySelectorAll('text') ?? []).map((el) => el.textContent)
+		expect(texts).not.toContain('3')
 	})
 })
 

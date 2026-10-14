@@ -149,7 +149,7 @@ describe('ProgressPage', () => {
 		renderPage()
 
 		expect(await screen.findByText('Талія')).toBeTruthy()
-		expect(screen.getByText('94 см')).toBeTruthy()
+		expect(screen.getByText('94')).toBeTruthy()
 		expect(screen.getByText('−3 см')).toBeTruthy()
 	})
 
@@ -163,7 +163,7 @@ describe('ProgressPage', () => {
 		renderPage()
 
 		expect(await screen.findByText('За цей період замірів немає')).toBeTruthy()
-		expect(screen.getByText('94 см')).toBeTruthy()
+		expect(screen.getByText('94')).toBeTruthy()
 	})
 
 	it('hides the insight card when there is nothing to say', async () => {

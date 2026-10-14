@@ -3,7 +3,7 @@ import type { ProgressResponse } from '@kus/shared'
 import {
 	InsightCard,
 	type ProgressRange,
-	WaistProgressRow,
+	WaistProgressCard,
 	WeekCaloriesCard,
 	WeightProgressCard,
 } from '@/entities/progress'
@@ -22,7 +22,7 @@ export const ProgressContent = ({ progress, range }: ProgressContentProps) => {
 	return (
 		<>
 			{weight ? <WeightProgressCard weight={weight} range={range} today={to} /> : <WeightCta />}
-			{waist && <WaistProgressRow waist={waist} />}
+			{waist && <WaistProgressCard waist={waist} range={range} today={to} />}
 			{week.avgKcal !== null && <WeekCaloriesCard week={week} today={to} />}
 			<InsightCard insight={insight} />
 		</>

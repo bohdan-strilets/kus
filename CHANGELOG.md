@@ -6,6 +6,34 @@ All notable changes to Kusik are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.5.3] — 2026-10-14
+
+Design sync with `design/` v0.5.2. Web only: no API, shared-package or migration changes, so no database backup is needed.
+
+### Added
+
+- `--color-accent-on-dark` token and a `accentOnDark` tone for `Text`, used by the "Обговорити в чаті" link with a 16 px chevron ([7ccee90], [134f21e])
+- `tape` icon (52 interface icons) and icons in the "Навіщо й як міряти" sheet sections ([25e3c3a], [6c083d9])
+- `Hamster` `badge` prop: the `proud` mood shows the number of days, or a star without it ([14ca806])
+- Weight chart on "Прогрес" labels the first value and ends in a dot with the latest value; no grid ([513936a])
+- Waist card on "Прогрес" with its own chart, change badge and dates; it is always shown, with a hint on how to log a waist when there is nothing in the range or no waist at all ([bcf55e5], [cb42758], [b5f98e9])
+- Achievement card per `chat-achievement`: eyebrow, 34/800 number with a unit, caption, a phrase and the next streak milestone; the pop, confetti and count-up are unchanged ([3947221])
+- Photo in the composer per `chat-photo-preview`: 64 px thumbnail with a remove button, a hint when ready, a scrim and a loader while preparing, and an error tile with a title and a short what-to-do hint per reason ([1825d9c], [b6934e2])
+
+### Changed
+
+- Weekly calories: success bars, the part above the goal in solid `over` clipped at the goal line, today outlined with a dashed stroke and its value, an "понад ціль" legend and a summary naming the days above the goal ([7fc47ba])
+- Composer placeholder and the empty "Сьогодні" text no longer address the user in a gendered past tense; the unused `pages.chat.placeholder` is gone ([137b229])
+- Streak phrases read as one family ("… із записами"); the single waist tile spans the whole card ([90b4403])
+- Measurement deltas always show one decimal ("−2,0 см"); the quick chips keep hiding while a photo is attached ([b5f98e9], [b6934e2])
+
+### Fixed
+
+- The chat feed keeps the distance to the bottom when the day card above it folds or unfolds, so the messages being read no longer jump by the height change ([a3308b2])
+- Confetti particles no longer outlast the level duration: the spread is 0.8–1.0 instead of 0.8–1.2 ([4ca87d5])
+- `tailwind-merge` no longer drops `text-achievement`, `text-field-number`, `text-field-number-sm` and `text-name` next to a text colour; the achievement number now renders at 34/800 ([b5f98e9])
+- Fresh achievement card shows its final number at once with reduced motion, and only a fresh card is a `status` live region ([b5f98e9])
+
 ## [0.5.2] — 2026-10-13
 
 > **Deploy note:** the release carries a migration that drops `weight_entries`. Take a `pg_dump` first (`docs/deploy.md`); the migration aborts, changing nothing, if a `weight_entries` row has no matching `WEIGHT` measurement for its user and day.
@@ -141,7 +169,25 @@ All notable changes to Kusik are documented here. The format follows
 
 ## 0.2.0 / 0.1.0 — see tags
 
-[Unreleased]: https://github.com/bohdan-strilets/kus/compare/v0.5.2...HEAD
+[Unreleased]: https://github.com/bohdan-strilets/kus/compare/v0.5.3...HEAD
+[0.5.3]: https://github.com/bohdan-strilets/kus/compare/v0.5.2...v0.5.3
+[7ccee90]: https://github.com/bohdan-strilets/kus/commit/7ccee906f136f7308280770d18ba120957e514f2
+[4ca87d5]: https://github.com/bohdan-strilets/kus/commit/4ca87d59519ff534ad45456abbdf3ed61ad35ba9
+[25e3c3a]: https://github.com/bohdan-strilets/kus/commit/25e3c3a6a4bd9fe4a51063f88dc49f5ca9925d8e
+[14ca806]: https://github.com/bohdan-strilets/kus/commit/14ca80609a25df0df3d3adca0f1f1ca3fe19cb34
+[a3308b2]: https://github.com/bohdan-strilets/kus/commit/a3308b26c1f5688605468dbf8e099da208cec71c
+[513936a]: https://github.com/bohdan-strilets/kus/commit/513936a1ed0e6665e8beca61427b2fde543890c7
+[bcf55e5]: https://github.com/bohdan-strilets/kus/commit/bcf55e55189d42b3a67615e7db7537973a816490
+[cb42758]: https://github.com/bohdan-strilets/kus/commit/cb4275851ff03722c215c466823eb8e2679ce53c
+[7fc47ba]: https://github.com/bohdan-strilets/kus/commit/7fc47ba1b21675dfefcb8e90a0b9ad067e7610b3
+[134f21e]: https://github.com/bohdan-strilets/kus/commit/134f21ef66ed1b13b40157845d1b159ebdb84a42
+[137b229]: https://github.com/bohdan-strilets/kus/commit/137b229bcaa9e4bc009c36c25468d223181add53
+[1825d9c]: https://github.com/bohdan-strilets/kus/commit/1825d9c5eec63967860da41f177bfb0d6a394086
+[b6934e2]: https://github.com/bohdan-strilets/kus/commit/b6934e2d1eb06bf4fd328e36e2fcd05e3f988641
+[6c083d9]: https://github.com/bohdan-strilets/kus/commit/6c083d991a5cadd5ca0b837358423007cbdab816
+[3947221]: https://github.com/bohdan-strilets/kus/commit/3947221e3dcf6ea3f468080cb19eb810158565e5
+[90b4403]: https://github.com/bohdan-strilets/kus/commit/90b4403f16c13f0fe9aaef4852bfa93d3a93005f
+[b5f98e9]: https://github.com/bohdan-strilets/kus/commit/b5f98e9d7f031bb3bb09a2d34765f0e7a0367bd8
 [1dea373]: https://github.com/bohdan-strilets/kus/commit/1dea37399e17617c523736db7d448435b3d11377
 [69bce19]: https://github.com/bohdan-strilets/kus/commit/69bce1988182258a66dc0c0537cbee1be61d674f
 [596e30e]: https://github.com/bohdan-strilets/kus/commit/596e30ebb9922d37b9573c7d4665547bcaf9ef9f

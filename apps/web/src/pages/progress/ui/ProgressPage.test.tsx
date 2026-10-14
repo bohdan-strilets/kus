@@ -60,7 +60,9 @@ describe('ProgressPage', () => {
 		expect(screen.getByText('Білок, середнє')).toBeTruthy()
 		expect(screen.getByText('124 г')).toBeTruthy()
 		expect(screen.getByText(/Мінус 0,4 кг за тиждень/)).toBeTruthy()
-		expect(screen.getByText('Обговорити в чаті')).toBeTruthy()
+		const discuss = screen.getByText('Обговорити в чаті')
+		expect(discuss.className).toContain('text-accent-on-dark')
+		expect(discuss.querySelector('svg')).not.toBeNull()
 		expect(getMock).toHaveBeenCalledWith('/progress', { params: { range: 30 } })
 		expect(screen.getByRole('button', { name: '30 днів' }).getAttribute('aria-pressed')).toBe(
 			'true',

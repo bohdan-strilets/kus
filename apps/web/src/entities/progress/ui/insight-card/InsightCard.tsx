@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 
 import { ROUTES } from '@/shared/config'
-import { HamsterHead, Text } from '@/shared/ui'
+import { HamsterHead, Icon, ICON_SIZE, Text } from '@/shared/ui'
 
 import { buildInsight } from '../../lib/build-insight'
 
@@ -32,8 +32,14 @@ export const InsightCard = ({ insight }: InsightCardProps) => {
 				<Text as="span" variant="cardTitle" weight="regular" tone="onDark" className="leading-snug">
 					{sentences.join(' ')}
 				</Text>
-				<Text as="span" variant="caption" weight="bold" className="text-primary-soft">
+				<Text
+					as="span"
+					variant="cardTitle"
+					tone="accentOnDark"
+					className="inline-flex items-center gap-0.5"
+				>
 					{t('progress.discuss')}
+					<Icon name="chevron-right" size={ICON_SIZE.small} />
 				</Text>
 			</span>
 		</Link>

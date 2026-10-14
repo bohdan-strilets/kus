@@ -1,11 +1,13 @@
 import type { ProgressWeekDay } from '@kus/shared'
+import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { cn, formatInteger, formatWeekdayShort, toCalendarDate } from '@/shared/lib'
+import { formatInteger, formatWeekdayShort, toCalendarDate } from '@/shared/lib'
 import { Text } from '@/shared/ui'
 
 import {
 	getWeekBars,
+	type WeekBar,
 	getWeekChartSummary,
 	WEEK_CHART_HEIGHT,
 	WEEK_CHART_WIDTH,
@@ -14,7 +16,7 @@ import {
 export interface WeekBarsChartProps {
 	days: readonly ProgressWeekDay[]
 	goalKcal: number | null
-	/** `YYYY-MM-DD`: its bar is the unfinished day, paler. */
+	/** `YYYY-MM-DD`: its bar is the unfinished day, outlined and empty. */
 	today: string
 }
 
@@ -22,21 +24,52 @@ const PERCENT = 100
 const GOAL_DASH = '4 4'
 const GOAL_LINE_WIDTH = 1.5
 const BASELINE_WIDTH = 1
+const TODAY_DASH = '3 3'
+const TODAY_OUTLINE_WIDTH = 1.5
 
 /**
- * Seven bars in plain SVG on the tokens (docs Charts: primary, rounded 4 at the top, today paler,
- * a dashed goal line). An over day is the `over` family, and the goal line shows where the goal
- * is, so colour is not the only carrier. Weekday labels are HTML: they stay 12px and readable.
+ * Seven bars in plain SVG on the tokens (mockups/progress.html: success bars, a dashed goal line,
+ * the part of an over day above the goal solid `over`, today an outlined empty bar with its value
+ * above). The goal line shows where the goal is, so colour is not the only carrier. Labels are
+ * HTML: they stay 12px and readable.
  */
+interface BarLabelProps {
+	bar: WeekBar
+	tone: 'ink' | 'muted' | 'overInk'
+	weight: 'bold' | 'regular'
+}
+
+/** The value above a bar. The position is dynamic, so it is the one inline style. */
+const BarLabel = ({ bar, tone, weight }: BarLabelProps) => (
+	<Text
+		as="span"
+		variant="small"
+		weight={weight}
+		tone={tone}
+		isTabular
+		className="absolute mb-0.5 -translate-x-1/2"
+		style={{
+			left: `${bar.centerRatio * PERCENT}%`,
+			bottom: `${bar.heightRatio * PERCENT}%`,
+		}}
+	>
+		{formatInteger(bar.kcal)}
+	</Text>
+)
+
 export const WeekBarsChart = ({ days, goalKcal, today }: WeekBarsChartProps) => {
 	const { t } = useTranslation()
+	const capId = useId()
 	const { bars, goalY, maxIndex } = getWeekBars({ days, goalKcal, today })
 	const maxBar = maxIndex === null ? undefined : bars[maxIndex]
+	const todayBar = bars.find((bar) => bar.isToday && bar.hasBar)
+	const isMaxOver = goalKcal !== null && (maxBar?.kcal ?? 0) > goalKcal
 	const summary = getWeekChartSummary({ days, today })
 		.map((part) => {
 			if (part.key === 'progress.week.chart.range') {
 				return t(part.key, { min: formatInteger(part.min), max: formatInteger(part.max) })
 			}
+			if (part.key === 'progress.week.chart.overDays') return t(part.key, { count: part.count })
 			return t(part.key, { value: formatInteger(part.value) })
 		})
 		.join(', ')
@@ -65,17 +98,35 @@ export const WeekBarsChart = ({ days, goalKcal, today }: WeekBarsChartProps) => 
 							className="stroke-muted-soft"
 						/>
 					)}
+					{goalY !== null && (
+						<clipPath id={capId}>
+							<rect x={0} y={0} width={WEEK_CHART_WIDTH} height={goalY} />
+						</clipPath>
+					)}
 					{bars.map((bar) =>
 						bar.path ? (
-							<path
-								key={bar.localDate}
-								d={bar.path}
-								data-today={bar.isToday || undefined}
-								className={cn(
-									bar.status === 'over' ? 'fill-over-soft' : 'fill-primary',
-									bar.isToday && 'opacity-35',
+							<g key={bar.localDate}>
+								{bar.isToday ? (
+									<path
+										d={bar.path}
+										data-today="true"
+										strokeWidth={TODAY_OUTLINE_WIDTH}
+										strokeDasharray={TODAY_DASH}
+										vectorEffect="non-scaling-stroke"
+										className="fill-track stroke-muted-soft"
+									/>
+								) : (
+									<path d={bar.path} className="fill-success" />
 								)}
-							/>
+								{bar.hasOverCap && (
+									<path
+										d={bar.path}
+										data-over-cap="true"
+										clipPath={`url(#${capId})`}
+										className="fill-over"
+									/>
+								)}
+							</g>
 						) : null,
 					)}
 					<line
@@ -88,20 +139,9 @@ export const WeekBarsChart = ({ days, goalKcal, today }: WeekBarsChartProps) => 
 						className="stroke-handle"
 					/>
 				</svg>
-				{maxBar && (
-					<Text
-						as="span"
-						variant="small"
-						weight="bold"
-						isTabular
-						className="absolute mb-0.5 -translate-x-1/2"
-						style={{
-							left: `${maxBar.centerRatio * PERCENT}%`,
-							bottom: `${maxBar.heightRatio * PERCENT}%`,
-						}}
-					>
-						{formatInteger(maxBar.kcal)}
-					</Text>
+				{maxBar && <BarLabel bar={maxBar} tone={isMaxOver ? 'overInk' : 'ink'} weight="bold" />}
+				{todayBar && todayBar !== maxBar && (
+					<BarLabel bar={todayBar} tone="muted" weight="regular" />
 				)}
 			</div>
 			<div className="grid grid-cols-7">

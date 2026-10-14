@@ -61,7 +61,7 @@
 	--color-over: #c25a1c;
 	/* added: text for over-goal numbers — `over` is 4.40:1 on white, this is ≥ 4.5:1 on surface and bg-app */
 	--color-over-ink: #ab4f19;
-	/* added: over-goal bars in the weekly summary (docs Charts) */
+	/* added: soft over-goal tint (decor backdrop, token catalog); the weekly chart draws over bars in `over` */
 	--color-over-soft: #f2a877;
 	/* links and icons on bg-dark-card */
 	--color-accent-on-dark: #ffd3a8;

@@ -24,6 +24,15 @@ describe('getWeekBars', () => {
 		expect(goalY ?? 0).toBeGreaterThan(95 - (bars[4]?.heightRatio ?? 0) * 96)
 	})
 
+	it('caps only finished over days with a bar', () => {
+		const { bars } = getWeekBars({ days, goalKcal: 2200, today: TODAY })
+
+		expect(bars.filter((bar) => bar.hasOverCap).map((bar) => bar.localDate)).toEqual([
+			'2026-10-07',
+			'2026-10-10',
+		])
+	})
+
 	it('has no goal line without a goal', () => {
 		expect(getWeekBars({ days, goalKcal: null, today: TODAY }).goalY).toBeNull()
 	})
@@ -57,6 +66,7 @@ describe('getWeekChartSummary', () => {
 	it('says the range of the finished days and today so far', () => {
 		expect(getWeekChartSummary({ days, today: TODAY })).toEqual([
 			{ key: 'progress.week.chart.range', min: 2000, max: 2420 },
+			{ key: 'progress.week.chart.overDays', count: 2 },
 			{ key: 'progress.week.chart.todaySoFar', value: 1370 },
 		])
 	})

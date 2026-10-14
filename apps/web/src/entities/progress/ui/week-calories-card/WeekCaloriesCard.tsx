@@ -13,7 +13,7 @@ export interface WeekCaloriesCardProps {
 	today: string
 }
 
-/** mockups/progress.html «Калорії за тиждень»: seven bars, the goal line and both averages. Always 7 days. */
+/** mockups/progress.html «Калорії за тиждень»: seven bars, the goal line, its legend and both averages. Always 7 days. */
 export const WeekCaloriesCard = ({ week, today }: WeekCaloriesCardProps) => {
 	const { t } = useTranslation()
 	const { days, goalKcal, avgKcal, avgProteinG } = week
@@ -25,16 +25,28 @@ export const WeekCaloriesCard = ({ week, today }: WeekCaloriesCardProps) => {
 					{t('progress.week.title')}
 				</Text>
 				{goalKcal !== null && (
-					<Text
-						as="span"
-						variant="small"
-						weight="regular"
-						tone="muted"
-						className="flex items-center gap-1.5"
-					>
-						<span aria-hidden="true" className="w-4 border-t-2 border-dashed border-muted-soft" />
-						{t('progress.week.goal', { value: formatInteger(goalKcal) })}
-					</Text>
+					<div className="flex items-center gap-2.5">
+						<Text
+							as="span"
+							variant="small"
+							weight="regular"
+							tone="muted"
+							className="flex items-center gap-1.5"
+						>
+							<span aria-hidden="true" className="w-4 border-t-2 border-dashed border-muted-soft" />
+							{t('progress.week.goal', { value: formatInteger(goalKcal) })}
+						</Text>
+						<Text
+							as="span"
+							variant="small"
+							weight="regular"
+							tone="muted"
+							className="flex items-center gap-1"
+						>
+							<span aria-hidden="true" className="size-2 bg-over" />
+							{t('progress.week.legendOver')}
+						</Text>
+					</div>
 				)}
 			</div>
 			<WeekBarsChart days={days} goalKcal={goalKcal} today={today} />

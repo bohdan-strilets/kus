@@ -597,6 +597,7 @@
 		"week": {
 			"title": "Калорії за тиждень",
 			"goal": "ціль {{value}}",
+			"legendOver": "понад ціль",
 			"avgKcal": "Середнє",
 			"kcalValue": "{{value}} ккал",
 			"avgProtein": "Білок, середнє",
@@ -604,6 +605,9 @@
 			"chart": {
 				"range": "Калорії по днях: від {{min}} до {{max}}",
 				"single": "Калорії по днях: {{value}}",
+				"overDays_one": "понад ціль {{count}} день",
+				"overDays_few": "понад ціль {{count}} дні",
+				"overDays_many": "понад ціль {{count}} днів",
 				"todaySoFar": "сьогодні поки {{value}}",
 				"todayOnly": "Калорії сьогодні поки {{value}}",
 				"empty": "Калорії по днях: записів ще немає"

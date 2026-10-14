@@ -13,22 +13,51 @@ const TODAY = '2026-10-12'
 afterEach(cleanup)
 
 describe('WeekBarsChart', () => {
-	it('draws a bar per day with food and makes only today paler', () => {
+	it('draws a success bar per day with food and today as a dashed empty outline', () => {
 		const { container } = render(<WeekBarsChart days={days} goalKcal={2200} today={TODAY} />)
 
-		const bars = container.querySelectorAll('path')
+		const classOf = (element: Element): string => element.getAttribute('class') ?? ''
+		const bars = [...container.querySelectorAll('g > path:first-child')]
 		expect(bars).toHaveLength(7)
-		const pale = [...bars].filter((bar) => bar.classList.contains('opacity-35'))
-		expect(pale).toHaveLength(1)
-		expect(pale[0]?.getAttribute('data-today')).toBe('true')
+		expect(bars.filter((bar) => classOf(bar).includes('fill-success'))).toHaveLength(6)
+		const today = container.querySelector('path[data-today]')
+		expect(classOf(today as Element)).toContain('fill-track')
+		expect(today?.getAttribute('stroke-dasharray')).toBe('3 3')
+		expect(today?.getAttribute('vector-effect')).toBe('non-scaling-stroke')
+		expect(container.querySelector('path[class*="opacity"]')).toBeNull()
 	})
 
-	it('colours an over day with the over family and the rest with primary', () => {
+	it('redraws the part of an over day above the goal solid, clipped at the goal line', () => {
 		const { container } = render(<WeekBarsChart days={days} goalKcal={2200} today={TODAY} />)
 
-		const classes = [...container.querySelectorAll('path')].map((bar) => bar.getAttribute('class'))
-		expect(classes.filter((value) => value?.includes('fill-over-soft'))).toHaveLength(2)
-		expect(classes.filter((value) => value?.includes('fill-primary'))).toHaveLength(5)
+		const caps = [...container.querySelectorAll('path[data-over-cap]')]
+		expect(caps).toHaveLength(2)
+		const clip = container.querySelector('clipPath')
+		expect(clip?.id).toBeTruthy()
+		for (const cap of caps) {
+			expect(cap.getAttribute('class')).toBe('fill-over')
+			expect(cap.getAttribute('clip-path')).toBe(`url(#${clip?.id})`)
+			expect(cap.getAttribute('d')).toBe(cap.previousElementSibling?.getAttribute('d'))
+		}
+		expect(Number(clip?.querySelector('rect')?.getAttribute('height'))).toBeGreaterThan(0)
+		expect(container.innerHTML).not.toContain('over-soft')
+	})
+
+	it('does not cap today even when it is over', () => {
+		const overToday = days.map((day) =>
+			day.localDate === TODAY ? { ...day, kcal: 2500, status: 'over' as const } : day,
+		)
+		const { container } = render(<WeekBarsChart days={overToday} goalKcal={2200} today={TODAY} />)
+
+		expect(container.querySelectorAll('path[data-over-cap]')).toHaveLength(2)
+	})
+
+	it('labels the tallest day in over-ink when it passes the goal, today in muted', () => {
+		render(<WeekBarsChart days={days} goalKcal={2200} today={TODAY} />)
+		const plain = (text: string): string => text.replace(/s/g, ' ')
+
+		expect(screen.getByText((text) => plain(text) === '2 420').className).toContain('text-over-ink')
+		expect(screen.getByText((text) => plain(text) === '1 370').className).toContain('text-muted')
 	})
 
 	it('draws the dashed goal line only with a goal', () => {
@@ -49,7 +78,9 @@ describe('WeekBarsChart', () => {
 
 		expect(
 			screen.getByRole('img', {
-				name: (name) => plain(name) === 'Калорії по днях: від 2 000 до 2 420, сьогодні поки 1 370',
+				name: (name) =>
+					plain(name) ===
+					'Калорії по днях: від 2 000 до 2 420, понад ціль 2 дні, сьогодні поки 1 370',
 			}),
 		).toBeTruthy()
 		expect(screen.getByText((text) => plain(text) === '2 420')).toBeTruthy()

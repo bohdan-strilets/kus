@@ -13,6 +13,8 @@ export interface WeekBar {
 	kcal: number
 	status: ProgressWeekDay['status']
 	isToday: boolean
+	/** A finished day over the goal: the part above the goal line is drawn again in `over`. Today never is. */
+	hasOverCap: boolean
 	/** Nothing eaten that day: no bar. */
 	hasBar: boolean
 	/** Rounded-top bar in viewBox units; null without a bar. */
@@ -63,6 +65,7 @@ export const getWeekBars = ({
 			status: day.status,
 			isToday: day.localDate === today,
 			hasBar,
+			hasOverCap: hasBar && day.status === 'over' && day.localDate !== today,
 			path: hasBar ? getBarPath(x, height) : null,
 			centerRatio: (x + BAR_WIDTH / 2) / WEEK_CHART_WIDTH,
 			heightRatio: height / WEEK_CHART_HEIGHT,
@@ -79,6 +82,7 @@ export const getWeekBars = ({
 export type WeekChartSummaryPart =
 	| { key: 'progress.week.chart.range'; min: number; max: number }
 	| { key: 'progress.week.chart.single'; value: number }
+	| { key: 'progress.week.chart.overDays'; count: number }
 	| { key: 'progress.week.chart.todaySoFar'; value: number }
 	| { key: 'progress.week.chart.todayOnly'; value: number }
 
@@ -107,6 +111,8 @@ export const getWeekChartSummary = ({
 			? { key: 'progress.week.chart.single', value: min }
 			: { key: 'progress.week.chart.range', min, max },
 	)
+	const overDays = days.filter((day) => day.localDate !== today && day.status === 'over').length
+	if (overDays > 0) parts.push({ key: 'progress.week.chart.overDays', count: overDays })
 	if (todayKcal > 0) parts.push({ key: 'progress.week.chart.todaySoFar', value: todayKcal })
 	return parts
 }

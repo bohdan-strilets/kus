@@ -110,7 +110,17 @@ export const useFeedScroll = ({
 			isAtBottom.current = getDistanceFromBottom(element) <= BOTTOM_SLACK_PX
 			if (!isSettling) updateCompact()
 		}
-		const keepBottom = (): void => {
+		let lastClientHeight = element.clientHeight
+		const keepBottom = (entries: readonly ResizeObserverEntry[]): void => {
+			const isContainerResized = entries.some((entry) => entry.target === element)
+			if (isContainerResized) {
+				const clientHeight = element.clientHeight
+				const delta = clientHeight - lastClientHeight
+				lastClientHeight = clientHeight
+				// the header changes height when it collapses: the composer below stays put, so a user
+				// scrolled up keeps the same distance to the bottom instead of drifting
+				if (!isAtBottom.current) element.scrollTop -= delta
+			}
 			if (isAtBottom.current) element.scrollTop = element.scrollHeight
 			if (snapshot.current) snapshot.current.scrollHeight = element.scrollHeight
 		}

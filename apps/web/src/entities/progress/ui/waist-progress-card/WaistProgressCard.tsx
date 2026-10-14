@@ -47,7 +47,7 @@ export const WaistProgressCard = ({ waist, range, today }: WaistProgressCardProp
 					<Text as="span" variant="caption" tone="muted">
 						{t('progress.waist.label')}
 					</Text>
-					<Text as="span" variant="bigNumber">
+					<Text as="span" weight="extrabold" isTabular className="text-screen-title">
 						{formatMeasurementNumber(current.value, 'WAIST')}{' '}
 						<Text as="span" variant="body" weight="semibold" tone="muted">
 							{t('progress.waist.unit')}
@@ -82,7 +82,7 @@ export const WaistProgressCard = ({ waist, range, today }: WaistProgressCardProp
 				</div>
 			) : (
 				<Text variant="caption" weight="regular" tone="muted">
-					{t('progress.noMeasurements')}
+					{t('progress.waist.empty')}
 				</Text>
 			)}
 		</Surface>

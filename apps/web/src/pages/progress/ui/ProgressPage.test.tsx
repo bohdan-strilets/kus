@@ -162,7 +162,7 @@ describe('ProgressPage', () => {
 
 		renderPage()
 
-		expect(await screen.findByText('За цей період замірів немає')).toBeTruthy()
+		expect(await screen.findByText(/^За цей період замірів немає./)).toBeTruthy()
 		expect(screen.getByText('94')).toBeTruthy()
 	})
 

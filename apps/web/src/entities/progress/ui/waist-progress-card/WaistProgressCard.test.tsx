@@ -66,7 +66,11 @@ describe('WaistProgressCard', () => {
 			<WaistProgressCard waist={createWaist([])} range={7} today={TODAY} />,
 		)
 
-		expect(screen.getByText('За цей період замірів немає')).toBeTruthy()
+		expect(
+			screen.getByText(
+				/^За цей період замірів немає\. Напиши в чаті «талія 94» або тапни «Додати талію»/,
+			),
+		).toBeTruthy()
 		expect(screen.getByText('94')).toBeTruthy()
 		expect(screen.queryByRole('img')).toBeNull()
 		expect(container.querySelector('[data-sparkline-end-dot]')).toBeNull()

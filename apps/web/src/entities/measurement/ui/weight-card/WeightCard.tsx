@@ -120,7 +120,12 @@ export const WeightCard = ({
 				)}
 
 				{(card.fromStart !== null || goalTile) && (
-					<div className="grid grid-cols-2 gap-2">
+					<div
+						className={cn(
+							'grid gap-2',
+							card.fromStart !== null && goalTile ? 'grid-cols-2' : 'grid-cols-1',
+						)}
+					>
 						{card.fromStart !== null && (
 							<StatTile
 								tone="success"

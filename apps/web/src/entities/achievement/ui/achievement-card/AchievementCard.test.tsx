@@ -149,7 +149,9 @@ describe('AchievementCard content', () => {
 		expect(status.textContent).toContain('Серія')
 		expect(status.textContent).toContain('днів поспіль')
 		expect(status.textContent).toContain('щодня є записи їжі')
-		expect(status.textContent).toContain('Тиждень без пропусків. Наступна позначка — 14 днів.')
+		expect(status.textContent).toContain(
+			'Тиждень поспіль із записами. Наступна позначка — 14 днів.',
+		)
 	})
 
 	it('the hamster is happy and 84 px', () => {

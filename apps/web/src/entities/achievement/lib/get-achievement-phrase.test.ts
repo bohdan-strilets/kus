@@ -22,11 +22,13 @@ describe('getAchievementPhrase', () => {
 	})
 
 	it('a week: the mockup line with the next mark', () => {
-		expect(phrase('FOOD_STREAK', 7)).toBe('Тиждень без пропусків. Наступна позначка — 14 днів.')
+		expect(phrase('FOOD_STREAK', 7)).toBe(
+			'Тиждень поспіль із записами. Наступна позначка — 14 днів.',
+		)
 	})
 
 	it('the last mark has no next one', () => {
-		expect(phrase('FOOD_STREAK', 100)).toBe('Сто днів без пропусків.')
+		expect(phrase('FOOD_STREAK', 100)).toBe('Сто днів із записами.')
 	})
 
 	it('a value off the marks still names the next mark', () => {

@@ -50,6 +50,7 @@ describe('WeightCard', () => {
 		expect(screen.getByText('−1,6 кг')).toBeTruthy()
 		expect(screen.getByText('До цілі')).toBeTruthy()
 		expect(screen.getByText('4,4 кг')).toBeTruthy()
+		expect(screen.getByText('Від старту').closest('.grid')?.className).toContain('grid-cols-2')
 		expect(screen.getByText('5 вер · 84,0')).toBeTruthy()
 		expect(screen.getByText('сьогодні')).toBeTruthy()
 	})
@@ -111,6 +112,7 @@ describe('WeightCard', () => {
 
 		expect(screen.getByText('Талію записано')).toBeTruthy()
 		expect(screen.getByText('94 см')).toBeTruthy()
+		expect(screen.getByText('Від старту').closest('.grid')?.className).toContain('grid-cols-1')
 		expect(screen.getByText('−2 см')).toBeTruthy()
 		expect(screen.getByText('Мінус 1 см за тиждень.')).toBeTruthy()
 		expect(screen.queryByText('До цілі')).toBeNull()

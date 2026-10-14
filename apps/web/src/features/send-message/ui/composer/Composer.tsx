@@ -42,9 +42,12 @@ export const Composer = ({
 	const textareaRef = useRef<HTMLTextAreaElement>(null)
 	const fileInputRef = useRef<HTMLInputElement>(null)
 	const { isMultiline, measure } = useIsMultiline(textareaRef, value, !voice)
-	// whitespace alone is nothing to send; a photo still being prepared isn't there yet
+	// whitespace alone is nothing to send; a photo still being prepared isn't there yet. A failed
+	// photo adds nothing but doesn't block the words: the caller sends the text alone and drops it
 	const hasContent = value.trim().length > 0 || photo?.status === 'ready'
 	const canSend = hasContent && photo?.status !== 'processing'
+	// while a photo is there the right slot is «надіслати», never the mic (chat-photo-preview)
+	const hasPhoto = isPhotoEnabled && !!photo && photo.status !== 'idle'
 	const isCoarsePointer = useMediaQuery(COARSE_POINTER_QUERY)
 
 	// a DOM side effect, not derived state: the field exists only after the render
@@ -95,9 +98,7 @@ export const Composer = ({
 				isMultiline ? 'rounded-card pt-3 pr-1.5 pb-1.5 pl-4' : 'rounded-panel p-1.5',
 			)}
 		>
-			{isPhotoEnabled && photo && (
-				<ComposerPhotoPreview photo={photo} onPickAgain={openPhotoPicker} />
-			)}
+			{isPhotoEnabled && photo && <ComposerPhotoPreview photo={photo} />}
 			{isPhotoEnabled && (
 				<>
 					{/* no capture: iOS offers camera or library itself */}
@@ -119,7 +120,11 @@ export const Composer = ({
 				ref={textareaRef}
 				name="message"
 				aria-label={t('composer.label')}
-				placeholder={placeholder ?? t('composer.placeholder')}
+				placeholder={
+					hasPhoto
+						? t('composer.photoCaptionPlaceholder')
+						: (placeholder ?? t('composer.placeholder'))
+				}
 				value={value}
 				maxLength={maxLength}
 				onKeyDown={handleKeyDown}
@@ -152,7 +157,7 @@ export const Composer = ({
 				<ComposerAction
 					canSend={canSend}
 					onVoiceStart={isVoiceEnabled ? onVoiceStart : undefined}
-					isVoiceEnabled={isVoiceEnabled}
+					isVoiceEnabled={isVoiceEnabled && !hasPhoto}
 				/>
 			)}
 		</form>

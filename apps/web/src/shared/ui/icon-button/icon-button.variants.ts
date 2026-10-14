@@ -15,10 +15,14 @@ export const iconButtonVariants = cva(
 				frosted: 'bg-surface/85 text-ink shadow-chip',
 				dangerSoft: 'bg-danger-soft text-danger',
 				ghost: 'bg-transparent text-ink',
+				/** «прибрати» on the corner of a thumbnail: ink with a white ring (chat-photo-preview) */
+				ink: 'border-2 border-surface bg-ink text-white',
 			},
 			size: {
 				md: 'size-11',
 				sm: 'size-10.5 after:absolute after:-inset-0.5',
+				/** 26 on screen, a ≥ 44px tap area through ::after */
+				xs: 'size-6.5 after:absolute after:-inset-2.5',
 			},
 		},
 		defaultVariants: { variant: 'secondary', size: 'md' },

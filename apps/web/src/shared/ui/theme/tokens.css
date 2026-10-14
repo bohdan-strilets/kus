@@ -63,6 +63,8 @@
 	--color-over-ink: #ab4f19;
 	/* added: over-goal bars in the weekly summary (docs Charts) */
 	--color-over-soft: #f2a877;
+	/* links and icons on bg-dark-card */
+	--color-accent-on-dark: #ffd3a8;
 	/* added: «new» dot badge on a nav tab (every tab mockup) */
 	--color-notice: #f2894f;
 	/* errors, deletion */

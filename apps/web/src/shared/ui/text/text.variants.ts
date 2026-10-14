@@ -31,6 +31,8 @@ export const textVariants = cva('', {
 			over: 'text-over',
 			danger: 'text-danger',
 			onDark: 'text-white',
+			/** links and icons on bg-dark-card */
+			accentOnDark: 'text-accent-on-dark',
 		},
 		weight: {
 			default: '',

@@ -49,6 +49,7 @@ export const COLOR_GROUPS: readonly (readonly ColorSwatch[])[] = [
 		{ name: 'over-ink', className: 'bg-over-ink', isAdded: true },
 		{ name: 'over-soft', className: 'bg-over-soft', isAdded: true },
 		{ name: 'scrim', className: 'bg-scrim' },
+		{ name: 'accent-on-dark', className: 'bg-accent-on-dark' },
 	],
 	[
 		{ name: 'protein-bg', className: 'bg-protein-bg' },

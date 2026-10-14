@@ -7,6 +7,9 @@ import { EASE } from './transition'
 
 const randomBetween = (min: number, max: number): number => min + Math.random() * (max - min)
 
+// Upper bound 1: a particle must never outlast the level duration (motion.md: level 3 ≤ 1000 ms)
+const DURATION_JITTER: readonly [number, number] = [0.8, 1]
+
 const getAngle = (config: BurstConfig, index: number): number => {
 	if (config.spread) return randomBetween(config.spread[0], config.spread[1])
 	return (index / config.count) * Math.PI * 2 + Math.random() * 0.4
@@ -35,7 +38,7 @@ export const burst = (host: HTMLElement, origin: Element, config: BurstConfig): 
 		const dy = Math.sin(angle) * distance
 		const rotation = type === 'line' ? (angle * 180) / Math.PI : randomBetween(-120, 120)
 		const base = `translate(${x}px,${y}px) translate(-50%,-50%) `
-		const duration = (config.durationMs * randomBetween(0.8, 1.2)) / 1000
+		const duration = (config.durationMs * randomBetween(...DURATION_JITTER)) / 1000
 
 		const keyframes = config.gravity
 			? {

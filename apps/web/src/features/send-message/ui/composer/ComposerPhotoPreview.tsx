@@ -9,6 +9,13 @@ const SPINNER_SIZE = 26
 const ALERT_ICON_SIZE = 24
 const REMOVE_ICON_SIZE = 12
 
+/** What to do next, per reason the photo failed; the title above already says it didn't open. */
+const ERROR_HINT_KEY = {
+	'chat.photoUnsupported': 'composer.photoErrorHint.unsupported',
+	'chat.photoTooLarge': 'composer.photoErrorHint.tooLarge',
+} as const
+const FALLBACK_ERROR_HINT_KEY = 'composer.photoErrorHint.fallback'
+
 interface ComposerPhotoPreviewProps {
 	photo: ComposerPhotoState
 }
@@ -78,7 +85,7 @@ export const ComposerPhotoPreview = ({ photo }: ComposerPhotoPreviewProps) => {
 						{t('composer.photoErrorTitle')}
 					</Text>
 					<Text as="span" variant="small" tone="mutedStrong" weight="regular">
-						{photo.errorKey ? t(photo.errorKey) : ''}
+						{t(photo.errorKey ? ERROR_HINT_KEY[photo.errorKey] : FALLBACK_ERROR_HINT_KEY)}
 					</Text>
 				</span>
 			)}

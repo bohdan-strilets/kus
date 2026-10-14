@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, cleanup, fireEvent, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { renderWithProviders, stubMatchMedia } from '@/shared/testing'
@@ -63,7 +63,13 @@ const Harness = ({ onSend }: { onSend: (params: { text: string; photo: unknown }
 	}
 	return (
 		<>
-			<QuickChips isShown={shouldShowQuickChips({ isEnabled: true, draftText: text })} />
+			<QuickChips
+				isShown={shouldShowQuickChips({
+					isEnabled: true,
+					draftText: text,
+					photoStatus: photoDraft.status,
+				})}
+			/>
 			<Composer
 				value={text}
 				onValueChange={setText}
@@ -119,7 +125,7 @@ describe('photo preview states', () => {
 
 		const alert = screen.getByRole('alert')
 		expect(alert.textContent).toContain('Не вдалося відкрити фото')
-		expect(alert.textContent).toContain('Фото завелике — спробуй інше або напиши текстом.')
+		expect(alert.textContent).toContain('Вибери фото меншого розміру.')
 		expect(screen.queryByRole('button', { name: /Повторити/ })).toBeNull()
 	})
 
@@ -170,26 +176,50 @@ describe('(1) the text draft survives a photo coming and going', () => {
 	})
 })
 
-describe('(2) the quick chips with and without a photo', () => {
-	it.each(['without a photo', 'with a ready photo', 'with a failed photo'])(
-		'put the draft into the field %s and leave the photo alone',
-		(scenario) => {
-			renderHarness()
-			if (scenario === 'with a ready photo') setReady()
-			if (scenario === 'with a failed photo') {
-				setPhoto({ status: 'error', photo: null, errorKey: 'chat.photoUnsupported' })
-			}
-			const statusBefore = usePhotoDraftStore.getState().status
+describe('(2) the quick chips hide while a photo is there', () => {
+	const queryChip = () => screen.queryByRole('button', { name: 'Додати талію' })
 
-			fireEvent.click(screen.getByRole('button', { name: 'Додати талію' }))
+	it('without a photo a chip puts its draft into the field', () => {
+		renderHarness()
 
-			expect(useComposerDraftStore.getState().text).toBe('талія ')
-			expect(usePhotoDraftStore.getState().status).toBe(statusBefore)
-		},
-	)
+		fireEvent.click(screen.getByRole('button', { name: 'Додати талію' }))
+
+		expect(useComposerDraftStore.getState().text).toBe('талія ')
+	})
+
+	it.each(['ready', 'processing', 'error'] as const)('no chips with a %s photo', async (status) => {
+		renderHarness()
+		setPhoto({
+			status,
+			photo: status === 'ready' ? PHOTO : null,
+			errorKey: status === 'error' ? 'chat.photoUnsupported' : null,
+		})
+
+		await waitFor(() => {
+			expect(queryChip()).toBeNull()
+		})
+	})
+
+	it('come back after the photo is removed, and the draft is not lost', async () => {
+		renderHarness()
+		setReady()
+		await waitFor(() => {
+			expect(queryChip()).toBeNull()
+		})
+
+		fireEvent.click(screen.getByRole('button', { name: 'Прибрати фото' }))
+
+		await waitFor(() => {
+			expect(queryChip()).toBeTruthy()
+		})
+		fireEvent.click(screen.getByRole('button', { name: 'Додати талію' }))
+		expect(useComposerDraftStore.getState().text).toBe('талія ')
+	})
 
 	it('hide once there are words, as before', () => {
-		expect(shouldShowQuickChips({ isEnabled: true, draftText: 'курка' })).toBe(false)
+		expect(shouldShowQuickChips({ isEnabled: true, draftText: 'курка', photoStatus: 'idle' })).toBe(
+			false,
+		)
 	})
 })
 

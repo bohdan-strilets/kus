@@ -46,6 +46,7 @@ const ChatScreen = ({ addressee, timeZone }: { addressee: Addressee; timeZone: s
 	const hasQuickChips = shouldShowQuickChips({
 		isEnabled: features.quickChips,
 		draftText: text,
+		photoStatus: photoDraft.status,
 	})
 
 	return (

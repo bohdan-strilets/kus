@@ -47,8 +47,8 @@ describe('formatMeasurementDelta', () => {
 		expect(formatMeasurementDelta(0.3, 'WEIGHT', i18n.t)).toBe('+0,3 кг')
 	})
 
-	it('signs a whole waist change without a decimal', () => {
-		expect(formatMeasurementDelta(-3, 'WAIST', i18n.t)).toBe('−3 см')
+	it('signs a waist change with a decimal too, even when it is whole', () => {
+		expect(formatMeasurementDelta(-3, 'WAIST', i18n.t)).toBe('−3,0 см')
 		expect(formatMeasurementDelta(-1.5, 'WAIST', i18n.t)).toBe('−1,5 см')
 	})
 })

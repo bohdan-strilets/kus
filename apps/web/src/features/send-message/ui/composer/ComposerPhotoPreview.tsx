@@ -33,7 +33,7 @@ export const ComposerPhotoPreview = ({ photo }: ComposerPhotoPreviewProps) => {
 	const isError = photo.status === 'error'
 
 	return (
-		<div className="order-first flex basis-full items-center gap-3 pt-1">
+		<div className="order-first flex basis-full items-center gap-3 pt-2 pl-1">
 			<div className="relative size-16 shrink-0">
 				<div
 					className={cn(

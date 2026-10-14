@@ -15,9 +15,9 @@ export interface SparklineProps {
 }
 
 export interface SparklineMarks {
-	/** Over the first point, top left; skipped for a single point (it is the last one). */
+	/** Above the first point, left-aligned with it; skipped for a single point (it is the last one). */
 	first?: string
-	/** Left of the end dot, bold. */
+	/** Above the end dot, ending at it, bold. */
 	last?: string
 	/** The white-ringed dot on the latest point: large (r6) or small (r5). */
 	endDot?: 'lg' | 'sm'
@@ -108,8 +108,11 @@ export const Sparkline = ({ values, label, reference, marks, className }: Sparkl
 			{marks?.first && firstPoint && (
 				<span
 					data-sparkline-first=""
-					className="absolute top-0 text-small text-muted tabular-nums"
-					style={{ left: toPercent(firstPoint.x, SPARKLINE_WIDTH) }}
+					className="absolute -translate-y-full pb-1.5 text-small leading-none text-muted tabular-nums"
+					style={{
+						left: toPercent(firstPoint.x, SPARKLINE_WIDTH),
+						top: toPercent(firstPoint.y, SPARKLINE_HEIGHT),
+					}}
 				>
 					{marks.first}
 				</span>
@@ -117,7 +120,7 @@ export const Sparkline = ({ values, label, reference, marks, className }: Sparkl
 			{marks?.last && lastPoint && (
 				<span
 					data-sparkline-last=""
-					className="absolute -translate-x-full -translate-y-full pr-3 pb-1 text-small font-bold text-ink tabular-nums"
+					className="absolute -translate-x-full -translate-y-full pr-1 pb-3 text-small leading-none font-bold text-ink tabular-nums"
 					style={{
 						left: toPercent(lastPoint.x, SPARKLINE_WIDTH),
 						top: toPercent(lastPoint.y, SPARKLINE_HEIGHT),

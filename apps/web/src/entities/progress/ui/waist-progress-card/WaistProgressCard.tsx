@@ -12,7 +12,8 @@ import { Sparkline, Surface, Text } from '@/shared/ui'
 import type { ProgressRange } from '../../model/progress.types'
 
 export interface WaistProgressCardProps {
-	waist: ProgressWaist
+	/** null: there was no measurement ever; the card stays and says how to start. */
+	waist: ProgressWaist | null
 	range: ProgressRange
 	/** `YYYY-MM-DD`, the last day of the range: the last chart label says «сьогодні» on it. */
 	today: string
@@ -20,25 +21,31 @@ export interface WaistProgressCardProps {
 
 /**
  * mockups/progress.html «Талія»: the latest waist, the change over the chosen period and a compact
- * chart. With no measurement in the period the chart and the change give way to one honest line.
+ * chart. Always shown: with no measurement in the period (or none ever) the chart and the change
+ * give way to one honest line with a hint.
  */
 export const WaistProgressCard = ({ waist, range, today }: WaistProgressCardProps) => {
 	const { t } = useTranslation()
-	const { current, changeInRange, points } = waist
+	const current = waist?.current
+	const changeInRange = waist?.changeInRange ?? null
+	const points = waist?.points ?? []
 	const first = points[0]
 	const last = points[points.length - 1]
 	const hasHistory = points.length > 1
 	const isLastToday = last?.localDate === today
-	const chartLabel =
-		hasHistory && first && last
-			? t('progress.waist.chartLabel', {
-					days: range,
-					from: formatMeasurement(first.value, 'WAIST', t),
-					to: formatMeasurement(last.value, 'WAIST', t),
-				})
-			: t('measurement.chart.single.WAIST', {
-					value: formatMeasurement(last?.value ?? current.value, 'WAIST', t),
-				})
+	// only read when there is a chart, i.e. at least one point
+	const getChartLabel = (): string => {
+		if (hasHistory && first && last) {
+			return t('progress.waist.chartLabel', {
+				days: range,
+				from: formatMeasurement(first.value, 'WAIST', t),
+				to: formatMeasurement(last.value, 'WAIST', t),
+			})
+		}
+		return t('measurement.chart.single.WAIST', {
+			value: formatMeasurement(last?.value ?? 0, 'WAIST', t),
+		})
+	}
 
 	return (
 		<Surface variant="list" radius="panel" className="flex flex-col gap-2.5 p-4">
@@ -48,10 +55,15 @@ export const WaistProgressCard = ({ waist, range, today }: WaistProgressCardProp
 						{t('progress.waist.label')}
 					</Text>
 					<Text as="span" weight="extrabold" isTabular className="text-screen-title">
-						{formatMeasurementNumber(current.value, 'WAIST')}{' '}
-						<Text as="span" variant="body" weight="semibold" tone="muted">
-							{t('progress.waist.unit')}
-						</Text>
+						{current ? formatMeasurementNumber(current.value, 'WAIST') : t('progress.waist.none')}
+						{current && (
+							<>
+								{' '}
+								<Text as="span" variant="body" weight="semibold" tone="muted">
+									{t('progress.waist.unit')}
+								</Text>
+							</>
+						)}
 					</Text>
 				</div>
 				{hasHistory && changeInRange !== null && (
@@ -65,11 +77,11 @@ export const WaistProgressCard = ({ waist, range, today }: WaistProgressCardProp
 				<div className="flex flex-col gap-1">
 					<Sparkline
 						values={points.map((point) => point.value)}
-						label={chartLabel}
+						label={getChartLabel()}
 						marks={{ first: formatMeasurementNumber(first.value, 'WAIST'), endDot: 'sm' }}
 						className="h-17.5"
 					/>
-					<div className="flex justify-between text-small text-muted tabular-nums">
+					<div className="flex justify-between px-3 text-small text-muted tabular-nums">
 						<span>{formatDayMonthShort(toCalendarDate(first.localDate))}</span>
 						{(hasHistory || isLastToday) && (
 							<span className="ml-auto">
@@ -82,7 +94,7 @@ export const WaistProgressCard = ({ waist, range, today }: WaistProgressCardProp
 				</div>
 			) : (
 				<Text variant="caption" weight="regular" tone="muted">
-					{t('progress.waist.empty')}
+					{t(current ? 'progress.waist.empty' : 'progress.waist.never')}
 				</Text>
 			)}
 		</Surface>

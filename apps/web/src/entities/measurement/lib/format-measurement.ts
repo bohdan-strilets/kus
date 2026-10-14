@@ -1,12 +1,7 @@
 import type { MeasurementKind } from '@kus/shared'
 import type { TFunction } from 'i18next'
 
-import {
-	formatDecimal,
-	formatInteger,
-	formatSignedDecimal,
-	formatSignedInteger,
-} from '@/shared/lib'
+import { formatDecimal, formatInteger, formatSignedDecimal } from '@/shared/lib'
 
 const UNIT_KEY = { WEIGHT: 'measurement.kg', WAIST: 'measurement.cm' } as const
 
@@ -21,15 +16,12 @@ export const formatMeasurementNumber = (value: number, kind: MeasurementKind): s
 export const formatMeasurement = (value: number, kind: MeasurementKind, t: TFunction): string =>
 	t(UNIT_KEY[kind], { value: formatMeasurementNumber(value, kind) })
 
-/** «−1,6 кг», «+0,3 кг», «−3 см» — a change with the typographic minus. */
+/** «−1,6 кг», «+0,3 кг», «−2,0 см» — a change with the typographic minus, always a tenth. */
 export const formatMeasurementDelta = (
 	value: number,
 	kind: MeasurementKind,
 	t: TFunction,
-): string =>
-	t(UNIT_KEY[kind], {
-		value: isWholeWaist(value, kind) ? formatSignedInteger(value) : formatSignedDecimal(value, 1),
-	})
+): string => t(UNIT_KEY[kind], { value: formatSignedDecimal(value, 1) })
 
 /** «78 кг», «78,5 кг» — a goal weight, with a decimal only when it has one. */
 export const formatTargetWeight = (value: number, t: TFunction): string =>

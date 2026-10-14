@@ -57,7 +57,8 @@ export const AchievementCard = ({
 	)
 	const captionKey = ACHIEVEMENT_CAPTION_KEY[type]
 	const phrase = getAchievementPhrase(achievement, t)
-	const startValue = isFresh ? value - 1 : value
+	// without the pop (history, reduced motion) the first frame is already the final number
+	const startValue = isPopping ? value - 1 : value
 	const valueRef = useCountUp<HTMLSpanElement>(value, {
 		initial: startValue,
 		format: formatNumber,
@@ -86,7 +87,7 @@ export const AchievementCard = ({
 		>
 			<div ref={hostRef} className="relative">
 				<Surface
-					role="status"
+					role={isFresh ? 'status' : undefined}
 					variant="achievement"
 					shadow="achievement"
 					className="flex flex-col gap-2.5 rounded-bl-tail p-4 ring-2 ring-decor-peach"

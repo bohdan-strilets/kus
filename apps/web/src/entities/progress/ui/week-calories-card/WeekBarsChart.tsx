@@ -27,19 +27,13 @@ const BASELINE_WIDTH = 1
 const TODAY_DASH = '3 3'
 const TODAY_OUTLINE_WIDTH = 1.5
 
-/**
- * Seven bars in plain SVG on the tokens (mockups/progress.html: success bars, a dashed goal line,
- * the part of an over day above the goal solid `over`, today an outlined empty bar with its value
- * above). The goal line shows where the goal is, so colour is not the only carrier. Labels are
- * HTML: they stay 12px and readable.
- */
 interface BarLabelProps {
 	bar: WeekBar
 	tone: 'ink' | 'muted' | 'overInk'
 	weight: 'bold' | 'regular'
 }
 
-/** The value above a bar. The position is dynamic, so it is the one inline style. */
+/** The value above a bar; the chart's aria-label already reads it. The position is dynamic, so it is the one inline style. */
 const BarLabel = ({ bar, tone, weight }: BarLabelProps) => (
 	<Text
 		as="span"
@@ -47,6 +41,7 @@ const BarLabel = ({ bar, tone, weight }: BarLabelProps) => (
 		weight={weight}
 		tone={tone}
 		isTabular
+		aria-hidden="true"
 		className="absolute mb-0.5 -translate-x-1/2"
 		style={{
 			left: `${bar.centerRatio * PERCENT}%`,
@@ -57,6 +52,12 @@ const BarLabel = ({ bar, tone, weight }: BarLabelProps) => (
 	</Text>
 )
 
+/**
+ * Seven bars in plain SVG on the tokens (mockups/progress.html: success bars, a dashed goal line,
+ * the part of an over day above the goal solid `over`, today an outlined empty bar with its value
+ * above). The goal line shows where the goal is, so colour is not the only carrier. Labels are
+ * HTML: they stay 12px and readable.
+ */
 export const WeekBarsChart = ({ days, goalKcal, today }: WeekBarsChartProps) => {
 	const { t } = useTranslation()
 	const capId = useId()

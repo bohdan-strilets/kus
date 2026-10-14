@@ -6,8 +6,8 @@ import type { FeedItem } from './feed.types'
 const BOTTOM_SLACK_PX = 24
 /**
  * The header collapses once the user scrolls this far up from the newest message, and opens again
- * near the end. The gap must exceed what the swap itself adds (full 185 → compact 70 px at 390 px
- * width), or opening the header would push the distance back over the threshold and collapse it.
+ * near the end. The swap no longer shifts the distance: `scrollTop -= delta` below compensates the
+ * header's height change, so the gap only has to leave air for the settle re-check.
  */
 const COMPACT_FROM_PX = 200
 const EXPAND_UNDER_PX = BOTTOM_SLACK_PX

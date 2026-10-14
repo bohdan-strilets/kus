@@ -37,7 +37,7 @@ describe('WaistProgressCard', () => {
 		)
 
 		expect(screen.getByText('Талія')).toBeTruthy()
-		expect(screen.getByText('−2 см')).toBeTruthy()
+		expect(screen.getByText('−2,0 см')).toBeTruthy()
 		expect(screen.getByRole('img', { name: 'Талія за 30 днів: від 96 см до 94 см' })).toBeTruthy()
 		expect(container.querySelector('[data-sparkline-first]')?.textContent).toBe('96')
 		expect(container.querySelector('[data-sparkline-last]')).toBeNull()
@@ -72,6 +72,21 @@ describe('WaistProgressCard', () => {
 			),
 		).toBeTruthy()
 		expect(screen.getByText('94')).toBeTruthy()
+		expect(screen.queryByRole('img')).toBeNull()
+		expect(container.querySelector('[data-sparkline-end-dot]')).toBeNull()
+	})
+
+	it('never measured: the card stays with a dash and a hint how to start', () => {
+		const { container } = render(<WaistProgressCard waist={null} range={30} today={TODAY} />)
+
+		expect(screen.getByText('Талія')).toBeTruthy()
+		expect(screen.getByText('—')).toBeTruthy()
+		expect(
+			screen.getByText(
+				/^Замірів талії ще немає. Напиши в чаті «талія 94» або натисни «Додати талію»/,
+			),
+		).toBeTruthy()
+		expect(screen.queryByText('см')).toBeNull()
 		expect(screen.queryByRole('img')).toBeNull()
 		expect(container.querySelector('[data-sparkline-end-dot]')).toBeNull()
 	})

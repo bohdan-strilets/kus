@@ -55,6 +55,23 @@ describe('Sparkline', () => {
 		expect(dot.style.left).toContain('96.29')
 	})
 
+	it('places the captions above their points, not on the line', () => {
+		const { container } = render(
+			<Sparkline values={[84, 83, 82.4]} label="x" marks={{ first: '84,0', last: '82,4' }} />,
+		)
+
+		const first = container.querySelector('[data-sparkline-first]') as HTMLElement
+		const last = container.querySelector('[data-sparkline-last]') as HTMLElement
+		// anchored to the point and lifted above it by their own bottom padding
+		expect(first.className).toContain('-translate-y-full')
+		expect(first.className).toContain('pb-1.5')
+		expect(first.style.left).toContain('3.7')
+		expect(first.style.top).toContain('17.5')
+		expect(last.className).toContain('-translate-y-full')
+		expect(last.className).toContain('pb-3')
+		expect(last.style.top).toContain('82.5')
+	})
+
 	it('uses a smaller end dot for sm', () => {
 		const { container } = render(<Sparkline values={[96, 94]} label="x" marks={{ endDot: 'sm' }} />)
 

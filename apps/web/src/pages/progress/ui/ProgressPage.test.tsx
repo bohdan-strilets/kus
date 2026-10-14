@@ -129,11 +129,12 @@ describe('ProgressPage', () => {
 		})
 	})
 
-	it('shows the waist only when there is one', async () => {
+	it('keeps the waist card with a hint when there was never a measurement', async () => {
 		showsProgress(makeProgress())
 		const { unmount } = renderPage()
 		await screen.findAllByText('82,4')
-		expect(screen.queryByText('Талія')).toBeNull()
+		expect(screen.getByText('Талія')).toBeTruthy()
+		expect(screen.getByText(/^Замірів талії ще немає./)).toBeTruthy()
 		unmount()
 
 		showsProgress(
@@ -152,7 +153,7 @@ describe('ProgressPage', () => {
 
 		expect(await screen.findByText('Талія')).toBeTruthy()
 		expect(screen.getByText('94')).toBeTruthy()
-		expect(screen.getByText('−3 см')).toBeTruthy()
+		expect(screen.getByText('−3,0 см')).toBeTruthy()
 	})
 
 	it('says there are no measurements in the period for a waist without points', async () => {

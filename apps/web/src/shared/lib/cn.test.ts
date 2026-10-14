@@ -29,4 +29,11 @@ describe('cn', () => {
 	it('keeps a gradient background next to a background colour', () => {
 		expect(cn('bg-app', 'bg-surface')).toBe('bg-app bg-surface')
 	})
+
+	it('keeps newer token font sizes next to a text colour', () => {
+		expect(cn('text-ink', 'text-achievement')).toBe('text-ink text-achievement')
+		expect(cn('text-field-number', 'text-ink')).toBe('text-field-number text-ink')
+		expect(cn('text-ink', 'text-field-number-sm')).toBe('text-ink text-field-number-sm')
+		expect(cn('text-name', 'text-ink')).toBe('text-name text-ink')
+	})
 })

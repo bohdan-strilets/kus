@@ -109,10 +109,21 @@ describe('AchievementCard', () => {
 			<AchievementCard achievement={create('WEIGHT_KG_LOST', 3)} isFresh onEntered={onEntered} />,
 		)
 
+		// the very first frame already shows the final number: no flash of n−1
+		expect(vi.mocked(countUp).mock.calls[0]?.[1]).toBe(3)
 		expect(getCountedText(container)).toBe('−3')
 		expect(screen.getByTestId('pop').getAttribute('data-initial')).toBe('false')
 		expect(burst).not.toHaveBeenCalled()
 		expect(onEntered).toHaveBeenCalled()
+	})
+
+	it('announces only the fresh card as a status, not the history', () => {
+		const { rerender } = render(<AchievementCard achievement={create('FOOD_STREAK', 7)} isFresh />)
+		expect(screen.getAllByRole('status')).toHaveLength(1)
+
+		rerender(<AchievementCard achievement={create('FOOD_STREAK', 7)} />)
+		expect(screen.queryByRole('status')).toBeNull()
+		expect(document.querySelector('.sr-only')?.textContent).toBe('7 днів поспіль із записами')
 	})
 
 	it('not fresh (history, reload): static card, the final number, no effects', () => {
@@ -135,7 +146,7 @@ describe('AchievementCard content', () => {
 	it('kilograms: eyebrow, unit and phrase, no caption (the weight pair needs the backend)', () => {
 		render(<AchievementCard achievement={create('WEIGHT_KG_LOST', 2)} />)
 
-		const status = screen.getByRole('status')
+		const status = screen.getByTestId('pop')
 		expect(status.textContent).toContain('Досягнення')
 		expect(status.textContent).toContain('кг від старту')
 		expect(status.textContent).toContain('Ще одна ціла цифра позаду. Далі — у своєму темпі.')
@@ -145,7 +156,7 @@ describe('AchievementCard content', () => {
 	it('streak: eyebrow «Серія», unit with the plural, caption and the next mark', () => {
 		render(<AchievementCard achievement={create('FOOD_STREAK', 7)} />)
 
-		const status = screen.getByRole('status')
+		const status = screen.getByTestId('pop')
 		expect(status.textContent).toContain('Серія')
 		expect(status.textContent).toContain('днів поспіль')
 		expect(status.textContent).toContain('щодня є записи їжі')

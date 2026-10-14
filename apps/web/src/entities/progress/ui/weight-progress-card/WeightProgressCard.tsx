@@ -99,7 +99,7 @@ export const WeightProgressCard = ({ weight, range, today }: WeightProgressCardP
 						label={chartLabel}
 						className="h-28"
 					/>
-					<div className="flex justify-between text-small text-muted tabular-nums">
+					<div className="flex justify-between px-3 text-small text-muted tabular-nums">
 						<span>{formatDayMonthShort(toCalendarDate(first.localDate))}</span>
 						{(hasHistory || isLastToday) && <span className="ml-auto">{lastLabel}</span>}
 					</div>

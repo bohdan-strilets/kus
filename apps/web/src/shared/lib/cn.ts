@@ -20,6 +20,10 @@ const twMerge = extendTailwindMerge({
 				'caption',
 				'small',
 				'wordmark',
+				'field-number',
+				'field-number-sm',
+				'achievement',
+				'name',
 			],
 			radius: [
 				'screen',

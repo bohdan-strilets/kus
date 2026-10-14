@@ -112,3 +112,30 @@ export const Smile = () => (
 		/>
 	</>
 )
+
+const BADGE_STAR = 'M102 19.5 l2.4 5.6 6 .6 -4.5 4 1.3 6 -5.2 -3.1 -5.2 3.1 1.3 -6 -4.5 -4 6 -.6z'
+const BADGE_LONG_TEXT_LENGTH = 2
+
+/** Medal of the `proud` mood: a number (streak days, kilograms) or a star when there is none. */
+export const MoodBadge = ({ text }: { text?: string }) => {
+	const isLong = text !== undefined && text.length > BADGE_LONG_TEXT_LENGTH
+	return (
+		<>
+			<circle cx="102" cy="28" r="12" fill={C.accentLight} />
+			{text ? (
+				<text
+					x="102"
+					y={isLong ? 32 : 33.5}
+					textAnchor="middle"
+					fontSize={isLong ? 11 : 15}
+					className="font-sans font-extrabold"
+					fill={C.white}
+				>
+					{text}
+				</text>
+			) : (
+				<path d={BADGE_STAR} fill={C.white} />
+			)}
+		</>
+	)
+}

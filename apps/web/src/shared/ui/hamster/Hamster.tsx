@@ -4,7 +4,7 @@ import { useRef } from 'react'
 
 import { cn, useBlink, useSvgId } from '@/shared/lib'
 
-import { Body, Cookie, CookieDefs, PawLeft, PawWave } from './hamster-parts'
+import { Body, Cookie, CookieDefs, MoodBadge, PawLeft, PawWave } from './hamster-parts'
 import { HAMSTER_MOODS } from './hamster.moods'
 import type { HamsterProps } from './hamster.types'
 import { useHopOnMoodChange } from './use-hop-on-mood-change'
@@ -12,6 +12,7 @@ import { useHopOnMoodChange } from './use-hop-on-mood-change'
 /**
  * Kusik's mascot, full body with the cookie in its paws:
  *   <Hamster mood="happy" size={140} label={t(HAMSTER_LABEL_KEYS.happy)} />
+ *   <Hamster mood="proud" badge={7} />  // number on the medal; without `badge` — a star
  * Without `label` it is decorative (when text next to it explains everything).
  * Artwork 1:1 with design/mockups/brand-hamster.html — no new moods without a mockup.
  *
@@ -22,6 +23,7 @@ export const Hamster = ({
 	mood = 'wave',
 	size = 120,
 	label,
+	badge,
 	isBlinking = true,
 	className,
 }: HamsterProps) => {
@@ -47,6 +49,7 @@ export const Hamster = ({
 		>
 			<CookieDefs gradientId={gradientId} maskId={maskId} />
 			{parts.back}
+			{parts.badge && <MoodBadge text={badge === undefined ? undefined : String(badge)} />}
 			<Body />
 			{parts.over}
 			<Cookie gradientId={gradientId} maskId={maskId} />

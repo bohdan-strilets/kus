@@ -39,6 +39,8 @@ export interface HamsterProps {
 	label?: string
 	/** Blink every 4–6 s. Off under reduced motion. */
 	isBlinking?: boolean
+	/** Number on the medal of the `proud` mood (streak days, kilograms; up to 3 characters). Without it — a star. Other moods ignore it. */
+	badge?: number | string
 	className?: string
 }
 
@@ -58,4 +60,6 @@ export interface MoodParts {
 	face: ReactNode
 	/** Decor on top (green check). */
 	front?: ReactNode
+	/** Medal at the top right: the number from the `badge` prop, or a star. */
+	badge?: true
 }

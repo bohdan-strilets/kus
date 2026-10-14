@@ -172,21 +172,7 @@ export const HAMSTER_MOODS: Record<HamsterMood, MoodParts> = {
 		),
 	},
 	proud: {
-		back: (
-			<>
-				<circle cx="102" cy="28" r="12" fill={C.accentLight} />
-				<text
-					x="102"
-					y="33.5"
-					textAnchor="middle"
-					fontSize="15"
-					className="font-sans font-extrabold"
-					fill={C.white}
-				>
-					7
-				</text>
-			</>
-		),
+		badge: true,
 		face: (
 			<>
 				<path d="M42 57 Q47 52 52 57" {...getLineProps()} />

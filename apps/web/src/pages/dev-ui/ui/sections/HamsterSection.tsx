@@ -24,6 +24,8 @@ const HEAD_MOODS: readonly HamsterHeadMood[] = [
 	'hungry',
 ]
 const HEAD_SIZE = 34
+// the medal of «proud»: one digit and three characters (smaller font); the star is the plain proud above
+const PROUD_BADGES: readonly (number | string)[] = [7, '105']
 
 export const HamsterSection = () => {
 	const { t } = useTranslation()
@@ -39,6 +41,20 @@ export const HamsterSection = () => {
 						>
 							<Hamster mood={mood} size={BODY_SIZE} label={t(HAMSTER_LABEL_KEYS[mood])} />
 							<figcaption className="text-small text-muted">{mood}</figcaption>
+						</figure>
+					))}
+					{PROUD_BADGES.map((badge) => (
+						<figure
+							key={badge}
+							className="flex flex-col items-center gap-1 rounded-tile bg-surface p-2 shadow-chip"
+						>
+							<Hamster
+								mood="proud"
+								size={BODY_SIZE}
+								badge={badge}
+								label={t(HAMSTER_LABEL_KEYS.proud)}
+							/>
+							<figcaption className="text-small text-muted">proud · {badge}</figcaption>
 						</figure>
 					))}
 				</div>

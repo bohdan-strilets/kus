@@ -88,6 +88,13 @@ enum AttachmentStatus {
   @@map("attachment_status")
 }
 
+// What a stored file is for; the bytes live in object storage (apps/api storage module)
+enum StoredFileKind {
+  MESSAGE_PHOTO
+
+  @@map("stored_file_kind")
+}
+
 enum AiRunPurpose {
   PARSE_FOOD
   CHAT_REPLY
@@ -288,6 +295,7 @@ model User {
   facts              UserFact[]
   dailyUsage         DailyUsage[]
   exerciseEntries    ExerciseEntry[]
+  storedFiles        StoredFile[]
 
   // the daily purge job scans by purgeAt
   @@index([purgeAt])
@@ -468,22 +476,48 @@ model Message {
 }
 
 model MessageAttachment {
-  id         String           @id @default(uuid(7)) @db.Uuid
-  messageId  String           @map("message_id") @db.Uuid
-  mimeType   String           @map("mime_type")
-  width      Int
-  height     Int
-  sizeBytes  Int              @map("size_bytes")
-  status     AttachmentStatus
-  // originals are not stored in v0.1
-  storageKey String?          @map("storage_key")
-  createdAt  DateTime         @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt  DateTime         @updatedAt @map("updated_at") @db.Timestamptz
+  id        String           @id @default(uuid(7)) @db.Uuid
+  messageId String           @map("message_id") @db.Uuid
+  mimeType  String           @map("mime_type")
+  width     Int
+  height    Int
+  sizeBytes Int              @map("size_bytes")
+  status    AttachmentStatus
+  // the stored copy of the photo; null for photos sent before storage existed or whose file was deleted
+  fileId    String?          @unique @map("file_id") @db.Uuid
+  // order of the photos inside one message
+  position  Int              @default(0)
+  createdAt DateTime         @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime         @updatedAt @map("updated_at") @db.Timestamptz
 
-  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  message Message     @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  file    StoredFile? @relation(fields: [fileId], references: [id], onDelete: SetNull)
 
   @@index([messageId])
   @@map("message_attachments")
+}
+
+// A file in object storage (bytes are not in the database): the original and its thumbnail.
+// Deleting the row does not delete the objects — the storage service removes them first
+model StoredFile {
+  id             String         @id @default(uuid(7)) @db.Uuid
+  userId         String         @map("user_id") @db.Uuid
+  kind           StoredFileKind
+  storageKey     String         @unique @map("storage_key")
+  thumbKey       String         @map("thumb_key")
+  mimeType       String         @map("mime_type")
+  width          Int
+  height         Int
+  sizeBytes      Int            @map("size_bytes")
+  thumbSizeBytes Int            @map("thumb_size_bytes")
+  createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz
+
+  user       User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  attachment MessageAttachment?
+
+  @@index([userId, createdAt])
+  @@index([kind, createdAt])
+  @@map("stored_files")
 }
 
 model AiRun {

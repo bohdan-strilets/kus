@@ -27,6 +27,7 @@ erDiagram
     User ||--o{ Measurement : "measures"
     User ||--o{ Achievement : "earns"
     User ||--o{ Message : "chat"
+    User ||--o{ StoredFile : "owns"
     User ||--o{ AiRun : "pays for"
     User ||--o{ Clarification : "is asked"
     User ||--o{ Meal : "eats"
@@ -40,6 +41,7 @@ erDiagram
 
     Message ||--o{ Message : "replyTo"
     Message ||--o{ MessageAttachment : "photos"
+    StoredFile |o--o| MessageAttachment : "file"
     Message |o--o{ AiRun : "triggers"
     Message |o--o{ Measurement : "source"
     Message |o--o{ Achievement : "announces"
@@ -87,7 +89,8 @@ erDiagram
 ### Чат і AI
 
 - **Message** — один безперервний чат на користувача (моделі Conversation немає). `clientMessageId` генерує клієнт; `unique(userId, clientMessageId)` робить надсилання ідемпотентним (дубль-клік не створює два повідомлення). У повідомлень асистента `clientMessageId` немає — NULL в унікальному індексі не конфліктують. `replyToId` пов'язує відповідь асистента з повідомленням користувача. `content` порожній для повідомлення лише з фото.
-- **MessageAttachment** — метадані фото: тип, розміри, розмір у байтах і `status` (`PENDING` → `PROCESSED`, або `FAILED`, коли модель відповіла `photo_unusable`). Байтів немає ніде: `storageKey` nullable і в v0.1 завжди null, оригінали не зберігаємо. Повтор `FAILED`-повідомлення переписує рядок новим фото.
+- **MessageAttachment** — метадані фото: тип, розміри, розмір у байтах і `status` (`PENDING` → `PROCESSED`, або `FAILED`, коли модель відповіла `photo_unusable`). `fileId` (nullable, unique, `SetNull`) — посилання на **StoredFile** з копією фото; для старого потоку base64 і для вкладень, чий файл видалено, — null. `position` — порядок фото в межах повідомлення. Колонку `storageKey` прибрано. Повтор `FAILED`-повідомлення переписує рядок новим фото.
+- **StoredFile** — файл в об'єктному сховищі (`kind`: `MESSAGE_PHOTO`): `storageKey` (unique) і `thumbKey` — ключі оригіналу й мініатюри, `mimeType`, розміри, `sizeBytes`, `thumbSizeBytes`. Байтів у БД немає. Належить користувачу (`userId`, `Cascade`). Видалення рядка не видаляє об'єкти зі сховища — спершу їх прибирає storage-сервіс.
 - **AiRun** — кожен виклик моделі: `purpose`, модель, токени, вартість, тривалість, статус, `errorCode`. `messageId` опційний (не кожен виклик прив'язаний до повідомлення) і з `SetNull`, щоб облік вартості не губився. Текст повідомлень тут не зберігається.
 - **AiToolCall** — виклики інструментів у межах run: назва, вхід і результат (Json) для налагодження промпту. `name` — рядок, не enum: невідомі інструменти, які «вигадала» модель, теж мають логуватися. `REJECTED` — вхід не пройшов zod. `input`/`result` містять розібрану їжу (назви продуктів, грами) — це дані про харчування (RODO). **Правило: зберігаються 30 днів** — потрібні лише для налагодження промпту; старші видаляє щоденний job `AiCleanupService` (`@nestjs/schedule`, 03:00, індекс `ai_tool_calls(created_at)`). Видалення акаунта стирає їх одразу, каскадом.
 - **Clarification** — питання від AI (`messageId` — повідомлення асистента, `answerMessageId` — відповідь користувача), варіанти, `impactKcal`, статус. Кожен варіант зберігає повні значення пов'язаних записів (`kcal`, `protein`, `fat`, `carbs`, `fiber`, `grams` — лише якщо відповідь міняє вагу, `name` — нова назва для питання про одну позицію); тап по варіанту (`POST /clarifications/:id/answer`) розподіляє їх між записами пропорційно поточним ккал, пише `Correction` (лише змінені поля) і ставить `ANSWERED` з `answerOptionIndex` і `answer` = підпис варіанта. Відповідь словами в чаті (`resolve_clarification`) — той самий шлях: `answer` = слова користувача, `answerMessageId` = його повідомлення, `answerOptionIndex` лише якщо названо варіант. Через **ClarificationEntry** пов'язане з записами, яких стосується (m2m: одне питання може стосуватися кількох записів, а запис — кількох питань).
@@ -119,7 +122,8 @@ erDiagram
 | measurements          | `(user_id, kind, local_date)` UNIQUE; `message_id`                                                          | вага / талія за період; джерело вимірювання       |
 | achievements          | `(user_id, type, value)` UNIQUE; `message_id`                                                               | віхи досягнень; анонс в чаті                      |
 | messages              | `(user_id, created_at)`; `(user_id, client_message_id)` UNIQUE; `reply_to_id`                               | останні N повідомлень, ідемпотентність            |
-| message_attachments   | `message_id`                                                                                                | фото повідомлення                                 |
+| message_attachments   | `message_id`; `file_id` UNIQUE                                                                              | фото повідомлення                                 |
+| stored_files          | `storage_key` UNIQUE; `(user_id, created_at)`; `(kind, created_at)`                                         | файли користувача; чистка за видом і віком        |
 | ai_runs               | `(user_id, created_at)`; `message_id`                                                                       | вартість за період                                |
 | ai_tool_calls         | `ai_run_id`; `created_at`                                                                                   | налагодження; чищення старших 30 днів             |
 | clarifications        | `(user_id, status)`; `message_id`; `answer_message_id`                                                      | відкриті уточнення                                |

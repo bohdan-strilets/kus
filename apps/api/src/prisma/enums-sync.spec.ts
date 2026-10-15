@@ -20,6 +20,7 @@ import {
 	messageStatusSchema,
 	myFoodSourceSchema,
 	sexSchema,
+	storedFileKindSchema,
 	toolCallStatusSchema,
 	verificationTokenTypeSchema,
 } from '@kus/shared'
@@ -52,6 +53,7 @@ const ENUM_PAIRS: [string, Record<string, string>, readonly string[]][] = [
 	['MeasurementKind', PrismaEnums.MeasurementKind, measurementKindSchema.options],
 	['MeasurementSource', PrismaEnums.MeasurementSource, measurementSourceSchema.options],
 	['AchievementType', PrismaEnums.AchievementType, achievementTypeSchema.options],
+	['StoredFileKind', PrismaEnums.StoredFileKind, storedFileKindSchema.options],
 ]
 
 describe('shared zod enums ↔ Prisma enums', () => {

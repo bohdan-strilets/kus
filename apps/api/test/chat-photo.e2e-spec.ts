@@ -113,7 +113,8 @@ describe('chat messages with a photo (e2e, real DB, fake model)', () => {
 			width: 640,
 			height: 480,
 			status: 'PROCESSED',
-			storageKey: null,
+			fileId: null,
+			position: 0,
 		})
 		const usage = await prisma.dailyUsage.findFirstOrThrow({ where: { userId: owner.userId } })
 		expect(usage).toMatchObject({ messageCount: 1, photoCount: 1 })

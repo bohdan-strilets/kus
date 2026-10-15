@@ -35,6 +35,9 @@ export type MessageStatus = z.infer<typeof messageStatusSchema>
 export const attachmentStatusSchema = z.enum(['PENDING', 'PROCESSED', 'FAILED'])
 export type AttachmentStatus = z.infer<typeof attachmentStatusSchema>
 
+export const storedFileKindSchema = z.enum(['MESSAGE_PHOTO'])
+export type StoredFileKind = z.infer<typeof storedFileKindSchema>
+
 export const aiRunPurposeSchema = z.enum(['PARSE_FOOD', 'CHAT_REPLY', 'SUGGEST_MEAL', 'SUMMARY'])
 export type AiRunPurpose = z.infer<typeof aiRunPurposeSchema>
 

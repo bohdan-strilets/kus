@@ -13,6 +13,7 @@ import {
 	messageStatusSchema,
 } from './enums.js'
 import { measurementCardSchema } from './measurements.js'
+import { PHOTOS_PER_MESSAGE_LIMIT } from './photo-limits.js'
 
 export const MESSAGE_TEXT_MAX_LENGTH = 2000
 export const MESSAGES_PAGE_DEFAULT_LIMIT = 30
@@ -38,9 +39,13 @@ export const sendMessagePhotoSchema = z.object({
 
 export type SendMessagePhoto = z.infer<typeof sendMessagePhotoSchema>
 
+export const PHOTO_AND_PHOTO_IDS_EXCLUSIVE = 'PHOTO_AND_PHOTO_IDS_EXCLUSIVE'
+
 /**
- * Body of POST /messages: words, a photo, or both. `clientMessageId` makes a resend (double tap,
- * "Спробувати ще") idempotent. A blank text counts as no text.
+ * Body of POST /messages: words, photos, or both. `clientMessageId` makes a resend (double tap,
+ * "Спробувати ще") idempotent. A blank text counts as no text. Photos come either inline (`photo`,
+ * the old single-photo way) or as ids of earlier POST /photos uploads (`photoIds`) — not both.
+ * The env PHOTOS_PER_MESSAGE_MAX may lower the `photoIds` ceiling; the API checks that itself.
  */
 export const sendMessageRequestSchema = z
 	.object({
@@ -52,9 +57,16 @@ export const sendMessageRequestSchema = z
 			.optional()
 			.transform((text) => (text === '' ? undefined : text)),
 		photo: sendMessagePhotoSchema.optional(),
+		photoIds: z.array(z.uuid()).min(1).max(PHOTOS_PER_MESSAGE_LIMIT).optional(),
 	})
-	.refine((request) => request.text !== undefined || request.photo !== undefined, {
-		message: TEXT_OR_PHOTO_REQUIRED,
+	.refine(
+		(request) =>
+			request.text !== undefined || request.photo !== undefined || request.photoIds !== undefined,
+		{ message: TEXT_OR_PHOTO_REQUIRED },
+	)
+	.refine((request) => request.photo === undefined || request.photoIds === undefined, {
+		message: PHOTO_AND_PHOTO_IDS_EXCLUSIVE,
+		path: ['photoIds'],
 	})
 
 export type SendMessageRequest = z.infer<typeof sendMessageRequestSchema>
@@ -139,6 +151,16 @@ export const clarificationResponseSchema = z.object({
 
 export type ClarificationResponse = z.infer<typeof clarificationResponseSchema>
 
+export const chatMessagePhotoSchema = z.object({
+	fileId: z.uuid().nullable(),
+	width: z.int().positive(),
+	height: z.int().positive(),
+	status: attachmentStatusSchema,
+	position: z.int().nonnegative(),
+})
+
+export type ChatMessagePhoto = z.infer<typeof chatMessagePhotoSchema>
+
 export const chatMessageSchema = z.object({
 	id: z.uuid(),
 	role: messageRoleSchema,
@@ -154,6 +176,11 @@ export const chatMessageSchema = z.object({
 	createdAt: z.iso.datetime(),
 	/** User messages only: the photo is not stored, only how it went (FAILED = not food or unreadable). */
 	photo: z.object({ status: attachmentStatusSchema }).nullable(),
+	/**
+	 * User messages only: the stored photos in grid order. `fileId` is null once the file is gone.
+	 * Optional while the API still returns only `photo`, so it compiles and old payloads still parse.
+	 */
+	photos: z.array(chatMessagePhotoSchema).optional(),
 	/** Assistant replies only: what this turn logged, one card per meal (a whole day → several). */
 	meals: z.array(loggedMealSchema),
 	clarifications: z.array(clarificationResponseSchema),

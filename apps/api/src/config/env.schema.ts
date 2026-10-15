@@ -1,3 +1,4 @@
+import { PHOTOS_PER_MESSAGE_LIMIT } from '@kus/shared'
 import { z } from 'zod'
 
 const DEFAULT_PORT = 3000
@@ -13,8 +14,6 @@ const DEFAULT_AI_DAILY_MESSAGE_LIMIT = 100
 const DEFAULT_AI_DAILY_PHOTO_LIMIT = 30
 // a shared secret between Vercel and the API: as long as a JWT key, for the same reason
 const PROXY_SECRET_MIN_LENGTH = 32
-const DEFAULT_PHOTOS_PER_MESSAGE_MAX = 6
-const MAX_PHOTOS_PER_MESSAGE = 10
 // uploads (including ones later left unattached) are cheap but not free: twice the AI limit
 const DEFAULT_PHOTO_DAILY_UPLOAD_LIMIT = 60
 const DEFAULT_PHOTO_ORPHAN_TTL_HOURS = 24
@@ -84,12 +83,13 @@ export const envSchema = z
 		S3_ACCESS_KEY_ID: z.string().trim().min(1).optional(),
 		S3_SECRET_ACCESS_KEY: z.string().trim().min(1).optional(),
 		S3_BUCKET: z.string().trim().min(1).optional(),
+		// can only lower the shared hard ceiling, which the request schema and the UI texts use
 		PHOTOS_PER_MESSAGE_MAX: z.coerce
 			.number()
 			.int()
 			.min(1)
-			.max(MAX_PHOTOS_PER_MESSAGE)
-			.default(DEFAULT_PHOTOS_PER_MESSAGE_MAX),
+			.max(PHOTOS_PER_MESSAGE_LIMIT)
+			.default(PHOTOS_PER_MESSAGE_LIMIT),
 		// uploaded photos per user per local day
 		PHOTO_DAILY_UPLOAD_LIMIT: z.coerce
 			.number()

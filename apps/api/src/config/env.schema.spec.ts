@@ -156,12 +156,12 @@ describe('envSchema storage', () => {
 		)
 	})
 
-	it('limits PHOTOS_PER_MESSAGE_MAX to 1..10', () => {
+	it('limits PHOTOS_PER_MESSAGE_MAX to 1..6', () => {
 		expect(envSchema.safeParse({ ...baseEnv, PHOTOS_PER_MESSAGE_MAX: '0' }).success).toBe(false)
-		expect(envSchema.safeParse({ ...baseEnv, PHOTOS_PER_MESSAGE_MAX: '11' }).success).toBe(false)
+		expect(envSchema.safeParse({ ...baseEnv, PHOTOS_PER_MESSAGE_MAX: '7' }).success).toBe(false)
 		expect(
-			envSchema.parse({ ...baseEnv, PHOTOS_PER_MESSAGE_MAX: '10' }).PHOTOS_PER_MESSAGE_MAX,
-		).toBe(10)
+			envSchema.parse({ ...baseEnv, PHOTOS_PER_MESSAGE_MAX: '6' }).PHOTOS_PER_MESSAGE_MAX,
+		).toBe(6)
 		expect(
 			envSchema.parse({ ...baseEnv, PHOTOS_PER_MESSAGE_MAX: '1' }).PHOTOS_PER_MESSAGE_MAX,
 		).toBe(1)

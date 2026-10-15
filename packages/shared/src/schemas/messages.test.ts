@@ -3,10 +3,12 @@ import { describe, expect, it } from 'vitest'
 import {
 	chatMessageSchema,
 	PHOTO_MAX_BASE64_LENGTH,
+	PHOTO_AND_PHOTO_IDS_EXCLUSIVE,
 	PHOTO_MAX_BYTES,
 	sendMessageRequestSchema,
 	TEXT_OR_PHOTO_REQUIRED,
 } from './messages.js'
+import { PHOTOS_PER_MESSAGE_LIMIT } from './photo-limits.js'
 
 const clientMessageId = '0198f0d2-6b1c-7c3e-9a4b-1a2b3c4d5e6f'
 const photo = { mimeType: 'image/jpeg', data: 'AAAA' }
@@ -58,6 +60,79 @@ describe('sendMessageRequestSchema', () => {
 
 	it('lets the base64 limit hold a photo of the byte limit', () => {
 		expect(PHOTO_MAX_BASE64_LENGTH).toBeGreaterThanOrEqual(Math.ceil((PHOTO_MAX_BYTES * 4) / 3))
+	})
+})
+
+describe('sendMessageRequestSchema photoIds', () => {
+	const ids = Array.from({ length: PHOTOS_PER_MESSAGE_LIMIT }, (_, index) =>
+		clientMessageId.replace(/.$/, String(index)),
+	)
+
+	it('accepts photoIds without a text', () => {
+		const parsed = sendMessageRequestSchema.parse({ clientMessageId, photoIds: ids })
+		expect(parsed.photoIds).toEqual(ids)
+		expect(parsed.text).toBeUndefined()
+	})
+
+	it('rejects more than the limit, an empty list and non-uuid ids', () => {
+		const rejected = [[...ids, clientMessageId], [], ['not-a-uuid']]
+		for (const photoIds of rejected) {
+			expect(sendMessageRequestSchema.safeParse({ clientMessageId, photoIds }).success).toBe(false)
+		}
+	})
+
+	it('rejects photo and photoIds together', () => {
+		const result = sendMessageRequestSchema.safeParse({ clientMessageId, photo, photoIds: ids })
+		expect(result.success).toBe(false)
+		if (result.success) return
+		expect(result.error.issues.map((issue) => issue.message)).toEqual([
+			PHOTO_AND_PHOTO_IDS_EXCLUSIVE,
+		])
+	})
+
+	it('still asks for a text or photos when photoIds is absent', () => {
+		expect(sendMessageRequestSchema.safeParse({ clientMessageId }).success).toBe(false)
+	})
+})
+
+describe('chatMessageSchema photos', () => {
+	const base = {
+		id: clientMessageId,
+		role: 'USER',
+		content: null,
+		status: 'COMPLETED',
+		clientMessageId,
+		replyToId: null,
+		createdAt: '2026-10-11T10:00:00.000Z',
+		photo: null,
+		meals: [],
+		clarifications: [],
+		measurements: [],
+		achievements: [],
+	}
+	const item = {
+		fileId: clientMessageId,
+		width: 1568,
+		height: 1176,
+		status: 'PROCESSED',
+		position: 0,
+	}
+
+	it('is optional, so a payload without it still parses', () => {
+		expect(chatMessageSchema.parse(base).photos).toBeUndefined()
+	})
+
+	it('takes items with a file id or null', () => {
+		const photos = [item, { ...item, fileId: null, position: 1 }]
+		expect(chatMessageSchema.parse({ ...base, photos }).photos).toEqual(photos)
+	})
+
+	it('rejects a bad file id, status or position', () => {
+		for (const bad of [{ fileId: 'x' }, { status: 'LOST' }, { position: -1 }]) {
+			expect(chatMessageSchema.safeParse({ ...base, photos: [{ ...item, ...bad }] }).success).toBe(
+				false,
+			)
+		}
 	})
 })
 

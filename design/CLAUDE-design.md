@@ -17,7 +17,7 @@
 | Токени з поясненнями «коли вживати» | `tokens/tokens.json` | лишається в `design/` |
 | Лого, лоадер | `src/brand/` | `apps/web/src/shared/ui/brand/` |
 | Хом'як | `src/hamster/` | `apps/web/src/shared/ui/hamster/` |
-| Іконки інтерфейсу (52) | `src/icon/` (SVG у `svg/`) | `apps/web/src/shared/ui/icon/` |
+| Іконки інтерфейсу (53) | `src/icon/` (SVG у `svg/`) | `apps/web/src/shared/ui/icon/` |
 | Іконки страв (45 категорій) | `src/food/` (SVG у `svg/`) | `apps/web/src/shared/ui/food-icon/`; список категорій — у `packages/shared` (див. `docs/food-categories.md`) |
 | Генератор іконок | `scripts/build-icons.mjs` | `apps/web/scripts/`, у `package.json` → `"icons": "node scripts/build-icons.mjs"`; поправ шляхи в `PACKS` |
 | Рух (Motion) | `src/motion/` | `apps/web/src/shared/lib/motion/` |
@@ -41,7 +41,7 @@
 4. **Розміри:** текст мінімум 12px, зона дотику ≥ 44×44, основна кнопка 48px, бічний відступ 16px. Input — 16px (iOS не зумить).
 5. **Числа:** `toLocaleString('uk-UA')` («1 370»), десяткова кома («82,4 кг»), справжній мінус «−1,6», `tabular-nums` у великих числах.
 6. **Іконки — лише власний пак, сторонніх бібліотек немає.**
-   - Інтерфейс: `<Icon name="camera" size={18} />` з `shared/ui/icon` — 52 іконки, сітка 24, лінія ~1.75px, колір `currentColor`
+   - Інтерфейс: `<Icon name="camera" size={18} />` з `shared/ui/icon` — 53 іконки, сітка 24, лінія ~1.75px, колір `currentColor`
      (`text-muted`, `text-primary`). Розміри: 18 — кнопки й поля, 22 — нижня навігація.
    - Активна вкладка — варіант `-filled` (`chat-filled`, `progress-filled`, `recipes-filled`); «Сьогодні» — `<ProgressRingIcon progress={eaten / goal} isActive />`.
      Усі стани навігації — `mockups/brand-nav-states.html`.

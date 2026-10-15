@@ -64,6 +64,12 @@ export const ErrorCodes = {
 	// storage
 	/** The object storage failed or is unreachable (photos); the request can be retried. */
 	STORAGE_UNAVAILABLE: 'STORAGE_UNAVAILABLE',
+
+	// photos
+	/** No photo with this id for this user (another user's is "not found" too). */
+	PHOTO_NOT_FOUND: 'PHOTO_NOT_FOUND',
+	/** The photo is attached to a message and can't be deleted on its own. */
+	PHOTO_IN_USE: 'PHOTO_IN_USE',
 } as const
 
 export type ErrorCode = (typeof ErrorCodes)[keyof typeof ErrorCodes]

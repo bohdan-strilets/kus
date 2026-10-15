@@ -2,7 +2,7 @@ import { sendMessageRequestSchema } from '@kus/shared'
 import { createZodDto } from 'nestjs-zod'
 import { z } from 'zod'
 
-import { type PhotoPayload, readPhoto } from '../photo'
+import { type PhotoPayload, readPhoto } from '../../../common/photo'
 
 interface SendMessageBody {
 	clientMessageId: string

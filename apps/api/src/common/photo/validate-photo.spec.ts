@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { createJpeg } from '../../../../test/fixtures/jpeg'
+import { createJpeg } from '../../../test/fixtures/jpeg'
 import { readPhoto } from './read-photo'
 import { validatePhoto } from './validate-photo'
 

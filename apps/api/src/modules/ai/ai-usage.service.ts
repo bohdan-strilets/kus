@@ -49,4 +49,20 @@ export class AiUsageService {
 		if (isPhotoLimit) throw new DailyPhotoLimitReachedException(this.dailyPhotoLimit)
 		throw new DailyLimitReachedException(this.dailyMessageLimit)
 	}
+
+	/** Read only, nothing is counted: lets an upload fail early when the photo couldn't be sent anyway. */
+	async isPhotoLimitReached({
+		userId,
+		localDate,
+	}: Omit<ReserveUsageParams, 'hasPhoto'>): Promise<boolean> {
+		return this.aiRepository.isPhotoLimitUsedUp({
+			userId,
+			localDate,
+			photoLimit: this.dailyPhotoLimit,
+		})
+	}
+
+	getDailyPhotoLimit(): number {
+		return this.dailyPhotoLimit
+	}
 }

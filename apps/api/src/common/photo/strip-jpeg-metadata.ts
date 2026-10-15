@@ -21,6 +21,32 @@ const isMetadata = (marker: number): boolean =>
 	(marker >= APP1 && marker <= APP15) || marker === COM
 
 /**
+ * Offset of the first real marker in scan data: FF00 (stuffed byte), RSTn and FF fill bytes
+ * belong to the data. `null` = the data runs to the end of the file without a marker.
+ */
+const findScanEnd = (bytes: Buffer, start: number): number | null => {
+	let offset = start
+	while (offset < bytes.length) {
+		if (bytes[offset] !== MARKER_PREFIX) {
+			offset += 1
+			continue
+		}
+		const next = bytes[offset + 1]
+		if (next === undefined) return null
+		if (next === 0x00 || (next >= RST_FIRST && next <= RST_LAST)) {
+			offset += MARKER_BYTES
+			continue
+		}
+		if (next === MARKER_PREFIX) {
+			offset += 1
+			continue
+		}
+		return offset
+	}
+	return null
+}
+
+/**
  * Cuts APP1…APP15 and COM out of a JPEG (EXIF with GPS, XMP, ICC, comments) before the bytes go
  * anywhere. The client already re-encodes the photo; this is the server's own guarantee.
  * PNG and WebP are returned as is. `null` = the JPEG structure is broken.
@@ -40,9 +66,9 @@ export const stripJpegMetadata = (bytes: Buffer, mimeType: AiImageMimeType): Buf
 			offset += 1
 			continue
 		}
-		if (marker === SOS || marker === EOI) {
-			// the entropy-coded data after SOS holds no metadata: take the rest as is
-			kept.push(bytes.subarray(offset))
+		if (marker === EOI) {
+			// whatever follows EOI (an appended EXIF, hidden data) is not part of the image
+			kept.push(bytes.subarray(offset, offset + MARKER_BYTES))
 			return Buffer.concat(kept)
 		}
 		if (hasNoLength(marker)) {
@@ -56,6 +82,13 @@ export const stripJpegMetadata = (bytes: Buffer, mimeType: AiImageMimeType): Buf
 		if (end > bytes.length) return null
 		if (!isMetadata(marker)) kept.push(bytes.subarray(offset, end))
 		offset = end
+		if (marker !== SOS) continue
+
+		// the entropy-coded data holds no metadata: keep it up to the next real marker
+		const scanEnd = findScanEnd(bytes, offset)
+		if (scanEnd === null) return null
+		kept.push(bytes.subarray(offset, scanEnd))
+		offset = scanEnd
 	}
 	return null
 }

@@ -15,7 +15,7 @@ import { ChatTurnService, type TurnParams, type TurnResult } from './chat-turn.s
 import { STALE_PENDING_MS } from './chat.constants'
 import { ClientMessageIdReusedException, MessageInProgressException } from './chat.exceptions'
 import { ChatRepository, type MessageWithAttachments } from './chat.repository'
-import type { PhotoPayload } from './photo'
+import type { PhotoPayload } from '../../common/photo'
 
 const UNIQUE_VIOLATION = 'P2002'
 

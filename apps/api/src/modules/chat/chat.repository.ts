@@ -8,7 +8,7 @@ import {
 } from '../../generated/prisma/client'
 import { PrismaService } from '../../prisma'
 import type { MessageCursor } from './message-cursor'
-import type { PhotoPayload } from './photo'
+import type { PhotoPayload } from '../../common/photo'
 
 /** The chat shows only how the photo went, so only the status is read. */
 const WITH_ATTACHMENTS = { attachments: { select: { status: true } } } as const

@@ -1,7 +1,7 @@
 import { type ArgumentsHost, Logger } from '@nestjs/common'
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { PhotoPayload } from '../../modules/chat/photo'
+import { PhotoPayload } from '../photo'
 import { AllExceptionsFilter } from './all-exceptions.filter'
 
 const IMAGE_BASE64 = Buffer.alloc(3000, 0x5a).toString('base64')

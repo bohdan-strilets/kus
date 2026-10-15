@@ -24,6 +24,16 @@ export const uploadPhotoRequestSchema = z.object({
 
 export type UploadPhotoRequest = z.infer<typeof uploadPhotoRequestSchema>
 
+export const PHOTO_VARIANTS = ['thumb', 'full'] as const
+
+/** Path of GET and DELETE /photos/:id. */
+export const photoParamsSchema = z.object({ id: z.uuid() })
+
+/** Query of GET /photos/:id: which copy to return, the full photo by default. */
+export const photoQuerySchema = z.object({ variant: z.enum(PHOTO_VARIANTS).default('full') })
+
+export type PhotoVariant = (typeof PHOTO_VARIANTS)[number]
+
 /** `data` of POST /photos. */
 export const uploadPhotoResponseSchema = z.object({
 	id: z.uuid(),

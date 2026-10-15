@@ -25,12 +25,13 @@ export class DailyLimitReachedException extends AppException {
 	}
 }
 
+/** `resetsAt` (ISO, the start of the user's next local day) is set where the client needs it, e.g. POST /photos. */
 export class DailyPhotoLimitReachedException extends AppException {
-	constructor(limit: number) {
+	constructor(limit: number, resetsAt?: Date) {
 		super({
 			status: HttpStatus.TOO_MANY_REQUESTS,
 			errorCode: ErrorCodes.DAILY_PHOTO_LIMIT_REACHED,
-			details: { limit },
+			details: resetsAt ? { limit, resetsAt: resetsAt.toISOString() } : { limit },
 		})
 	}
 }

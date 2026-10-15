@@ -44,20 +44,34 @@ const readSize = (bytes: Buffer): { width: number; height: number } | null => {
 	}
 }
 
-const isSideInRange = (side: number): boolean =>
-	side >= PHOTO_MIN_SIDE_PX && side <= PHOTO_MAX_SIDE_PX
+export interface PhotoLimits {
+	maxBytes: number
+	minSidePx: number
+	maxSidePx: number
+}
+
+/** The limits of a photo that goes to the model (POST /messages); an upload passes its own. */
+export const DEFAULT_PHOTO_LIMITS: PhotoLimits = {
+	maxBytes: PHOTO_MAX_BYTES,
+	minSidePx: PHOTO_MIN_SIDE_PX,
+	maxSidePx: PHOTO_MAX_SIDE_PX,
+}
 
 /** Size, real type (the first bytes must match the declared one) and dimensions of a photo. */
 export const validatePhoto = ({
 	bytes,
 	mimeType,
+	limits = DEFAULT_PHOTO_LIMITS,
 }: {
 	bytes: Buffer
 	mimeType: AiImageMimeType
+	limits?: PhotoLimits
 }): PhotoCheck => {
-	if (bytes.length > PHOTO_MAX_BYTES) return fail(PHOTO_FIELD_CODES.tooLarge)
+	if (bytes.length > limits.maxBytes) return fail(PHOTO_FIELD_CODES.tooLarge)
 	if (detectMimeType(bytes) !== mimeType) return fail(PHOTO_FIELD_CODES.unsupported)
 	const size = readSize(bytes)
+	const isSideInRange = (side: number): boolean =>
+		side >= limits.minSidePx && side <= limits.maxSidePx
 	if (!size || !isSideInRange(size.width) || !isSideInRange(size.height)) {
 		return fail(PHOTO_FIELD_CODES.invalid)
 	}

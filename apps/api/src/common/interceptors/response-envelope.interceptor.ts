@@ -1,4 +1,10 @@
-import { CallHandler, ExecutionContext, Injectable, NestInterceptor } from '@nestjs/common'
+import {
+	CallHandler,
+	ExecutionContext,
+	Injectable,
+	NestInterceptor,
+	StreamableFile,
+} from '@nestjs/common'
 import type { CursorMeta, PaginationMeta } from '@kus/shared'
 import { map, Observable } from 'rxjs'
 
@@ -13,9 +19,11 @@ export interface PaginatedEnvelope<T> {
 	meta: PaginationMeta | CursorMeta
 }
 
-type Envelope<T> = DataEnvelope<T> | PaginatedEnvelope<unknown>
+type Envelope<T> = DataEnvelope<T> | PaginatedEnvelope<unknown> | StreamableFile
 
 const toEnvelope = <T>(result: T): Envelope<T> => {
+	// binary answers (GET /photos/:id) go out as is
+	if (result instanceof StreamableFile) return result
 	if (result instanceof PaginatedResult || result instanceof CursorPaginatedResult) {
 		return { data: result.items, meta: result.meta }
 	}

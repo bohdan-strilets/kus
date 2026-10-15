@@ -60,6 +60,10 @@ export const ErrorCodes = {
 	ENTRY_CHANGED: 'ENTRY_CHANGED',
 	/** The edit sheet: no active entry with this id for this user (another user's is "not found" too). */
 	ENTRY_NOT_FOUND: 'ENTRY_NOT_FOUND',
+
+	// storage
+	/** The object storage failed or is unreachable (photos); the request can be retried. */
+	STORAGE_UNAVAILABLE: 'STORAGE_UNAVAILABLE',
 } as const
 
 export type ErrorCode = (typeof ErrorCodes)[keyof typeof ErrorCodes]

@@ -55,8 +55,16 @@ describe('envSchema API_PROXY_SECRET', () => {
 	it('is required in production, so the API never runs open behind Railway', () => {
 		expect(envSchema.safeParse({ ...baseEnv, NODE_ENV: 'production' }).success).toBe(false)
 		expect(
-			envSchema.safeParse({ ...baseEnv, NODE_ENV: 'production', API_PROXY_SECRET: 'p'.repeat(32) })
-				.success,
+			envSchema.safeParse({
+				...baseEnv,
+				NODE_ENV: 'production',
+				API_PROXY_SECRET: 'p'.repeat(32),
+				STORAGE_PROVIDER: 'r2',
+				R2_ACCOUNT_ID: 'account',
+				R2_ACCESS_KEY_ID: 'access',
+				R2_SECRET_ACCESS_KEY: 'secret',
+				R2_BUCKET: 'bucket',
+			}).success,
 		).toBe(true)
 	})
 
@@ -92,5 +100,68 @@ describe('envSchema AI', () => {
 		expect(envSchema.parse({ ...baseEnv, AI_DAILY_PHOTO_LIMIT: '5' }).AI_DAILY_PHOTO_LIMIT).toBe(5)
 		expect(envSchema.safeParse({ ...baseEnv, AI_DAILY_PHOTO_LIMIT: '0' }).success).toBe(false)
 		expect(envSchema.safeParse({ ...baseEnv, AI_DAILY_PHOTO_LIMIT: '1.5' }).success).toBe(false)
+	})
+})
+
+describe('envSchema storage', () => {
+	const r2Env = {
+		STORAGE_PROVIDER: 'r2',
+		R2_ACCOUNT_ID: 'account',
+		R2_ACCESS_KEY_ID: 'access',
+		R2_SECRET_ACCESS_KEY: 'secret',
+		R2_BUCKET: 'bucket',
+	}
+	const productionEnv = { ...baseEnv, NODE_ENV: 'production', API_PROXY_SECRET: 'p'.repeat(32) }
+
+	it('defaults the provider to memory and applies photo defaults', () => {
+		const env = envSchema.parse(baseEnv)
+
+		expect(env.STORAGE_PROVIDER).toBe('memory')
+		expect(env.STORAGE_KEY_PREFIX).toBe('dev')
+		expect(env.PHOTOS_PER_MESSAGE_MAX).toBe(6)
+		expect(env.PHOTO_DAILY_UPLOAD_LIMIT).toBe(60)
+		expect(env.PHOTO_ORPHAN_TTL_HOURS).toBe(24)
+	})
+
+	it('requires r2 in production', () => {
+		expect(envSchema.safeParse(productionEnv).success).toBe(false)
+		expect(envSchema.safeParse({ ...productionEnv, STORAGE_PROVIDER: 'memory' }).success).toBe(
+			false,
+		)
+		expect(envSchema.safeParse({ ...productionEnv, ...r2Env }).success).toBe(true)
+	})
+
+	it.each(['R2_ACCOUNT_ID', 'R2_ACCESS_KEY_ID', 'R2_SECRET_ACCESS_KEY', 'R2_BUCKET'])(
+		'rejects r2 without %s',
+		(name) => {
+			const { [name]: _omitted, ...rest } = r2Env as Record<string, string>
+
+			expect(envSchema.safeParse({ ...baseEnv, ...rest }).success).toBe(false)
+			expect(envSchema.safeParse({ ...baseEnv, ...rest, [name]: '  ' }).success).toBe(false)
+		},
+	)
+
+	it('does not require R2 variables for the memory provider', () => {
+		expect(envSchema.safeParse({ ...baseEnv, STORAGE_PROVIDER: 'memory' }).success).toBe(true)
+	})
+
+	it('rejects an unknown provider', () => {
+		expect(envSchema.safeParse({ ...baseEnv, STORAGE_PROVIDER: 's3' }).success).toBe(false)
+	})
+
+	it('limits PHOTOS_PER_MESSAGE_MAX to 1..10', () => {
+		expect(envSchema.safeParse({ ...baseEnv, PHOTOS_PER_MESSAGE_MAX: '0' }).success).toBe(false)
+		expect(envSchema.safeParse({ ...baseEnv, PHOTOS_PER_MESSAGE_MAX: '11' }).success).toBe(false)
+		expect(
+			envSchema.parse({ ...baseEnv, PHOTOS_PER_MESSAGE_MAX: '10' }).PHOTOS_PER_MESSAGE_MAX,
+		).toBe(10)
+		expect(
+			envSchema.parse({ ...baseEnv, PHOTOS_PER_MESSAGE_MAX: '1' }).PHOTOS_PER_MESSAGE_MAX,
+		).toBe(1)
+	})
+
+	it('rejects a zero upload limit and orphan TTL', () => {
+		expect(envSchema.safeParse({ ...baseEnv, PHOTO_DAILY_UPLOAD_LIMIT: '0' }).success).toBe(false)
+		expect(envSchema.safeParse({ ...baseEnv, PHOTO_ORPHAN_TTL_HOURS: '0' }).success).toBe(false)
 	})
 })

@@ -9,7 +9,7 @@ export interface StoredObject {
 	contentType: string
 }
 
-/** What a storage backend (R2, memory) must do. Errors surface as exceptions; a missing object is `null`. */
+/** What a storage backend (S3-compatible, memory) must do. Errors surface as exceptions; a missing object is `null`. */
 export interface StorageAdapter {
 	putObject: (input: PutObjectInput) => Promise<void>
 	getObject: (key: string) => Promise<StoredObject | null>

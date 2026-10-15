@@ -19,11 +19,12 @@ const MAX_PHOTOS_PER_MESSAGE = 10
 const DEFAULT_PHOTO_DAILY_UPLOAD_LIMIT = 60
 const DEFAULT_PHOTO_ORPHAN_TTL_HOURS = 24
 const DEFAULT_STORAGE_KEY_PREFIX = 'dev'
-const R2_REQUIRED_VARS = [
-	'R2_ACCOUNT_ID',
-	'R2_ACCESS_KEY_ID',
-	'R2_SECRET_ACCESS_KEY',
-	'R2_BUCKET',
+const S3_REQUIRED_VARS = [
+	'S3_ENDPOINT',
+	'S3_REGION',
+	'S3_ACCESS_KEY_ID',
+	'S3_SECRET_ACCESS_KEY',
+	'S3_BUCKET',
 ] as const
 
 /** Empty or unset → undefined; the transform below then falls back to AI_MODEL. */
@@ -72,14 +73,17 @@ export const envSchema = z
 		// photos per user per local day; a photo message counts in both limits
 		AI_DAILY_PHOTO_LIMIT: z.coerce.number().int().positive().default(DEFAULT_AI_DAILY_PHOTO_LIMIT),
 		// photos live in object storage; 'memory' is for dev and tests (unset → 'memory' outside
-		// production). R2 endpoint for the EU jurisdiction: https://<R2_ACCOUNT_ID>.eu.r2.cloudflarestorage.com
-		STORAGE_PROVIDER: z.enum(['r2', 'memory']).optional(),
+		// production). 's3' is any S3-compatible provider (Cloudflare R2, Backblaze B2, ...)
+		STORAGE_PROVIDER: z.enum(['s3', 'memory']).optional(),
 		// separates environments inside one bucket: <prefix>/users/<userId>/...
 		STORAGE_KEY_PREFIX: z.string().trim().min(1).default(DEFAULT_STORAGE_KEY_PREFIX),
-		R2_ACCOUNT_ID: z.string().trim().min(1).optional(),
-		R2_ACCESS_KEY_ID: z.string().trim().min(1).optional(),
-		R2_SECRET_ACCESS_KEY: z.string().trim().min(1).optional(),
-		R2_BUCKET: z.string().trim().min(1).optional(),
+		// full URL without the bucket, e.g. https://<account>.eu.r2.cloudflarestorage.com
+		S3_ENDPOINT: z.url({ protocol: /^https$/ }).optional(),
+		// R2 uses 'auto'; B2 uses e.g. 'eu-central-003'
+		S3_REGION: z.string().trim().min(1).optional(),
+		S3_ACCESS_KEY_ID: z.string().trim().min(1).optional(),
+		S3_SECRET_ACCESS_KEY: z.string().trim().min(1).optional(),
+		S3_BUCKET: z.string().trim().min(1).optional(),
 		PHOTOS_PER_MESSAGE_MAX: z.coerce
 			.number()
 			.int()
@@ -112,20 +116,20 @@ export const envSchema = z
 		message: 'Required in production',
 	})
 	.superRefine((env, context) => {
-		if (env.NODE_ENV === 'production' && env.STORAGE_PROVIDER !== 'r2') {
+		if (env.NODE_ENV === 'production' && env.STORAGE_PROVIDER !== 's3') {
 			context.addIssue({
 				code: 'custom',
 				path: ['STORAGE_PROVIDER'],
-				message: 'Must be r2 in production',
+				message: 'Must be s3 in production',
 			})
 		}
-		if (env.STORAGE_PROVIDER !== 'r2') return
-		for (const name of R2_REQUIRED_VARS) {
+		if (env.STORAGE_PROVIDER !== 's3') return
+		for (const name of S3_REQUIRED_VARS) {
 			if (env[name] !== undefined) continue
 			context.addIssue({
 				code: 'custom',
 				path: [name],
-				message: 'Required when STORAGE_PROVIDER=r2',
+				message: 'Required when STORAGE_PROVIDER=s3',
 			})
 		}
 	})

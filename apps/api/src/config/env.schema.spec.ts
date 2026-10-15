@@ -2,6 +2,15 @@ import { describe, expect, it } from 'vitest'
 
 import { envSchema } from './env.schema'
 
+const s3Env = {
+	STORAGE_PROVIDER: 's3',
+	S3_ENDPOINT: 'https://s3.example.com',
+	S3_REGION: 'auto',
+	S3_ACCESS_KEY_ID: 'access',
+	S3_SECRET_ACCESS_KEY: 'secret',
+	S3_BUCKET: 'bucket',
+}
+
 const baseEnv = {
 	DATABASE_URL: 'postgresql://kus:kus@localhost:5434/kus',
 	CORS_ORIGIN: 'http://localhost:5173',
@@ -59,11 +68,7 @@ describe('envSchema API_PROXY_SECRET', () => {
 				...baseEnv,
 				NODE_ENV: 'production',
 				API_PROXY_SECRET: 'p'.repeat(32),
-				STORAGE_PROVIDER: 'r2',
-				R2_ACCOUNT_ID: 'account',
-				R2_ACCESS_KEY_ID: 'access',
-				R2_SECRET_ACCESS_KEY: 'secret',
-				R2_BUCKET: 'bucket',
+				...s3Env,
 			}).success,
 		).toBe(true)
 	})
@@ -104,13 +109,6 @@ describe('envSchema AI', () => {
 })
 
 describe('envSchema storage', () => {
-	const r2Env = {
-		STORAGE_PROVIDER: 'r2',
-		R2_ACCOUNT_ID: 'account',
-		R2_ACCESS_KEY_ID: 'access',
-		R2_SECRET_ACCESS_KEY: 'secret',
-		R2_BUCKET: 'bucket',
-	}
 	const productionEnv = { ...baseEnv, NODE_ENV: 'production', API_PROXY_SECRET: 'p'.repeat(32) }
 
 	it('defaults the provider to memory and applies photo defaults', () => {
@@ -123,30 +121,39 @@ describe('envSchema storage', () => {
 		expect(env.PHOTO_ORPHAN_TTL_HOURS).toBe(24)
 	})
 
-	it('requires r2 in production', () => {
+	it('requires s3 in production', () => {
 		expect(envSchema.safeParse(productionEnv).success).toBe(false)
 		expect(envSchema.safeParse({ ...productionEnv, STORAGE_PROVIDER: 'memory' }).success).toBe(
 			false,
 		)
-		expect(envSchema.safeParse({ ...productionEnv, ...r2Env }).success).toBe(true)
+		expect(envSchema.safeParse({ ...productionEnv, ...s3Env }).success).toBe(true)
 	})
 
-	it.each(['R2_ACCOUNT_ID', 'R2_ACCESS_KEY_ID', 'R2_SECRET_ACCESS_KEY', 'R2_BUCKET'])(
-		'rejects r2 without %s',
+	it.each(['S3_ENDPOINT', 'S3_REGION', 'S3_ACCESS_KEY_ID', 'S3_SECRET_ACCESS_KEY', 'S3_BUCKET'])(
+		'rejects s3 without %s',
 		(name) => {
-			const { [name]: _omitted, ...rest } = r2Env as Record<string, string>
+			const { [name]: _omitted, ...rest } = s3Env as Record<string, string>
 
 			expect(envSchema.safeParse({ ...baseEnv, ...rest }).success).toBe(false)
 			expect(envSchema.safeParse({ ...baseEnv, ...rest, [name]: '  ' }).success).toBe(false)
 		},
 	)
 
-	it('does not require R2 variables for the memory provider', () => {
+	it('does not require S3 variables for the memory provider', () => {
 		expect(envSchema.safeParse({ ...baseEnv, STORAGE_PROVIDER: 'memory' }).success).toBe(true)
 	})
 
 	it('rejects an unknown provider', () => {
-		expect(envSchema.safeParse({ ...baseEnv, STORAGE_PROVIDER: 's3' }).success).toBe(false)
+		expect(envSchema.safeParse({ ...baseEnv, STORAGE_PROVIDER: 'r2' }).success).toBe(false)
+	})
+
+	it('requires S3_ENDPOINT to be an https URL', () => {
+		expect(
+			envSchema.safeParse({ ...baseEnv, ...s3Env, S3_ENDPOINT: 'http://s3.example.com' }).success,
+		).toBe(false)
+		expect(envSchema.safeParse({ ...baseEnv, ...s3Env, S3_ENDPOINT: 'not a url' }).success).toBe(
+			false,
+		)
 	})
 
 	it('limits PHOTOS_PER_MESSAGE_MAX to 1..10', () => {

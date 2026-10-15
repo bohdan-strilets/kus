@@ -11,5 +11,12 @@
 		"outDir": "dist",
 		"sourceMap": true
 	},
-	"include": ["src", "test", "prisma", "prisma.config.ts", "vitest.config.mts"]
+	"include": [
+		"src",
+		"test",
+		"prisma",
+		"prisma.config.ts",
+		"vitest.config.mts",
+		"vitest.smoke.config.mts"
+	]
 }

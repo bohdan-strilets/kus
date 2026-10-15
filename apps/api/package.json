@@ -8,6 +8,7 @@
 		"start": "node dist/main.js",
 		"typecheck": "tsc -p tsconfig.json --noEmit",
 		"test": "vitest run",
+		"test:smoke:storage": "vitest run --config vitest.smoke.config.mts",
 		"prisma": "prisma",
 		"prisma:generate": "prisma generate",
 		"prisma:migrate": "prisma migrate dev",

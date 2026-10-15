@@ -53,3 +53,14 @@ export class InvalidCursorException extends AppException {
 		})
 	}
 }
+
+/** More stored photos than the message may carry (the env limit or what the AI can read). */
+export class TooManyPhotosException extends AppException {
+	constructor() {
+		super({
+			status: HttpStatus.UNPROCESSABLE_ENTITY,
+			errorCode: ErrorCodes.VALIDATION_ERROR,
+			details: { fields: { photoIds: 'TOO_MANY' } },
+		})
+	}
+}

@@ -6,6 +6,7 @@ import { EntriesModule } from '../entries/entries.module'
 import { GoalsModule } from '../goals/goals.module'
 import { MeasurementsModule } from '../measurements/measurements.module'
 import { MemoryModule } from '../memory/memory.module'
+import { PhotosModule } from '../photos/photos.module'
 import { ProfileModule } from '../profile/profile.module'
 import { UsersModule } from '../users/users.module'
 import { ChatContextService } from './chat-context.service'
@@ -13,6 +14,7 @@ import { ChatEditsService } from './chat-edits.service'
 import { ChatFeedService } from './chat-feed.service'
 import { ChatGreetingsService } from './chat-greetings.service'
 import { ChatMeasurementCardsService } from './chat-measurement-cards.service'
+import { ChatPhotosService } from './chat-photos.service'
 import { ChatResponseService } from './chat-response.service'
 import { ChatTurnService } from './chat-turn.service'
 import { ChatController } from './chat.controller'
@@ -30,6 +32,7 @@ import { ClarificationsService } from './clarifications.service'
 		GoalsModule,
 		MeasurementsModule,
 		MemoryModule,
+		PhotosModule,
 		ProfileModule,
 		UsersModule,
 	],
@@ -41,6 +44,7 @@ import { ClarificationsService } from './clarifications.service'
 		ChatContextService,
 		ChatEditsService,
 		ChatMeasurementCardsService,
+		ChatPhotosService,
 		ChatRepository,
 		ChatResponseService,
 		ChatTurnService,

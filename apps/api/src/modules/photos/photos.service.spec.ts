@@ -1,20 +1,24 @@
+import { inspect } from 'node:util'
+
 import { HttpStatus, Logger } from '@nestjs/common'
 import type { ConfigService } from '@nestjs/config'
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi, type Mocked } from 'vitest'
 
 import { AppException, type ErrorCode, ErrorCodes } from '../../common/exceptions'
 import { PhotoPayload } from '../../common/photo'
+import type { PrismaService } from '../../prisma'
 import type { Env } from '../../config'
 import type { AiUsageService } from '../ai/ai-usage.service'
 import { MemoryStorageAdapter } from '../storage/memory.adapter'
 import { StorageService } from '../storage/storage.service'
 import type { UsersService } from '../users/users.service'
-import type { OwnedStoredFile, PhotosRepository } from './photos.repository'
+import type { MessageStoredFile, OwnedStoredFile, PhotosRepository } from './photos.repository'
 import { PhotosService } from './photos.service'
 
 const USER_ID = '0192a000-0000-7000-8000-000000000001'
 const OTHER_USER_ID = '0192a000-0000-7000-8000-000000000002'
 const FILE_ID = '0192a000-0000-7000-8000-0000000000aa'
+const TX = { isTransaction: true }
 const KEY_PREFIX = 'test'
 const UPLOAD_LIMIT = 5
 const AI_PHOTO_LIMIT = 3
@@ -66,8 +70,19 @@ describe('PhotosService', () => {
 	]
 	let adapter: MemoryStorageAdapter
 	let repository: Mocked<
-		Pick<PhotosRepository, 'create' | 'countCreatedSince' | 'findOwned' | 'deleteUnattached'>
+		Pick<
+			PhotosRepository,
+			| 'create'
+			| 'countCreatedSince'
+			| 'findOwned'
+			| 'findManyOwned'
+			| 'deleteUnattached'
+			| 'lockOwned'
+		>
 	>
+	/** Rows of the fake DB: a transaction keeps its changes only if the callback resolves. */
+	let rows: Set<string>
+	let transactionOptions: unknown[]
 	let aiUsage: Mocked<Pick<AiUsageService, 'isPhotoLimitReached' | 'getDailyPhotoLimit'>>
 	let users: { getMe: ReturnType<typeof vi.fn> }
 	let service: PhotosService
@@ -88,7 +103,11 @@ describe('PhotosService', () => {
 			countCreatedSince: vi.fn().mockResolvedValue(0),
 			findOwned: vi.fn().mockResolvedValue(null),
 			deleteUnattached: vi.fn().mockResolvedValue(true),
+			findManyOwned: vi.fn().mockResolvedValue([]),
+			lockOwned: vi.fn().mockResolvedValue(true),
 		}
+		rows = new Set([FILE_ID])
+		transactionOptions = []
 		aiUsage = {
 			isPhotoLimitReached: vi.fn().mockResolvedValue(false),
 			getDailyPhotoLimit: vi.fn().mockReturnValue(AI_PHOTO_LIMIT),
@@ -99,7 +118,21 @@ describe('PhotosService', () => {
 			PHOTO_DAILY_UPLOAD_LIMIT: UPLOAD_LIMIT,
 		}
 		const config = { get: (key: string) => values[key] } as unknown as ConfigService<Env, true>
+		const prisma = {
+			$transaction: async (run: (tx: unknown) => Promise<unknown>, options?: unknown) => {
+				transactionOptions.push(options)
+				const before = new Set(rows)
+				try {
+					return await run(TX)
+				} catch (error) {
+					// a failed callback rolls the transaction back
+					rows = before
+					throw error
+				}
+			},
+		}
 		service = new PhotosService(
+			prisma as unknown as PrismaService,
 			repository as unknown as PhotosRepository,
 			new StorageService(adapter),
 			aiUsage as unknown as AiUsageService,
@@ -334,32 +367,191 @@ describe('PhotosService', () => {
 		})
 	})
 
+	describe('getOwnedForMessage', () => {
+		const FILE_A = '0192a000-0000-7000-8000-0000000000a1'
+		const FILE_B = '0192a000-0000-7000-8000-0000000000b2'
+		const FILE_C = '0192a000-0000-7000-8000-0000000000c3'
+
+		const messageFile = (id: string): MessageStoredFile => ({
+			id,
+			storageKey: `${USER_KEY_PREFIX}${id}`,
+			width: 1200,
+			height: 900,
+			sizeBytes: FULL_BYTES.length,
+			mimeType: 'image/jpeg',
+		})
+
+		const catchAppError = async (promise: Promise<unknown>): Promise<AppException> => {
+			const error: unknown = await promise.then(
+				() => null,
+				(caught: unknown) => caught,
+			)
+			expect(error).toBeInstanceOf(AppException)
+			return error as AppException
+		}
+
+		it('returns the files in the order of the ids, not the order the database answered in', async () => {
+			repository.findManyOwned.mockResolvedValue([
+				messageFile(FILE_C),
+				messageFile(FILE_A),
+				messageFile(FILE_B),
+			])
+
+			const files = await service.getOwnedForMessage(USER_ID, [FILE_B, FILE_C, FILE_A])
+
+			expect(files.map((file) => file.id)).toEqual([FILE_B, FILE_C, FILE_A])
+		})
+
+		it('asks only for the files of this user', async () => {
+			repository.findManyOwned.mockResolvedValue([messageFile(FILE_A)])
+
+			await service.getOwnedForMessage(USER_ID, [FILE_A])
+
+			expect(repository.findManyOwned).toHaveBeenCalledWith({ ids: [FILE_A], userId: USER_ID })
+		})
+
+		it('answers a missing id with PHOTO_NOT_FOUND even when the other ids exist', async () => {
+			repository.findManyOwned.mockResolvedValue([messageFile(FILE_A)])
+
+			await expectAppError(service.getOwnedForMessage(USER_ID, [FILE_A, FILE_B]), {
+				status: HttpStatus.NOT_FOUND,
+				errorCode: ErrorCodes.PHOTO_NOT_FOUND,
+			})
+		})
+
+		it("answers another user's file exactly like an id that does not exist", async () => {
+			// the repository filters by owner: for OTHER_USER_ID the file of USER_ID is simply not there
+			repository.findManyOwned.mockResolvedValue([])
+
+			const foreign = await catchAppError(service.getOwnedForMessage(OTHER_USER_ID, [FILE_A]))
+			const absent = await catchAppError(service.getOwnedForMessage(USER_ID, [FILE_B]))
+
+			expect(foreign.getStatus()).toBe(HttpStatus.NOT_FOUND)
+			expect(foreign.getStatus()).toBe(absent.getStatus())
+			expect(foreign.errorCode).toBe(absent.errorCode)
+			expect(foreign.details).toEqual(absent.details)
+			expect(repository.findManyOwned).toHaveBeenCalledWith({
+				ids: [FILE_A],
+				userId: OTHER_USER_ID,
+			})
+		})
+	})
+
+	describe('readFullBytes', () => {
+		const file: MessageStoredFile = {
+			id: FILE_ID,
+			storageKey: `${USER_KEY_PREFIX}${FILE_ID}`,
+			width: 1200,
+			height: 900,
+			sizeBytes: FULL_BYTES.length,
+			mimeType: 'image/jpeg',
+		}
+
+		it('reads the full object and describes it with the stored size', async () => {
+			await adapter.putObject({ key: file.storageKey, body: FULL_BYTES, contentType: 'image/jpeg' })
+
+			const payload = await service.readFullBytes(file)
+
+			expect(payload).toBeInstanceOf(PhotoPayload)
+			expect(payload.bytes.equals(FULL_BYTES)).toBe(true)
+			expect(payload).toMatchObject({ mimeType: 'image/jpeg', width: 1200, height: 900 })
+		})
+
+		it('is PHOTO_NOT_FOUND when the object is gone', async () => {
+			await expectAppError(service.readFullBytes(file), {
+				status: HttpStatus.NOT_FOUND,
+				errorCode: ErrorCodes.PHOTO_NOT_FOUND,
+			})
+		})
+
+		it('is STORAGE_UNAVAILABLE when the storage fails, without the failure text', async () => {
+			vi.spyOn(adapter, 'getObject').mockRejectedValue(new Error('bucket kus-secret down'))
+
+			const error: unknown = await service.readFullBytes(file).then(
+				() => null,
+				(caught: unknown) => caught,
+			)
+
+			expect(error).toBeInstanceOf(AppException)
+			expect((error as AppException).getStatus()).toBe(HttpStatus.SERVICE_UNAVAILABLE)
+			expect((error as AppException).errorCode).toBe(ErrorCodes.STORAGE_UNAVAILABLE)
+			expect(JSON.stringify((error as AppException).getResponse())).not.toContain('kus-secret')
+		})
+
+		it('hides the bytes from toString, JSON and inspect', async () => {
+			const secret = Buffer.from('PIXELS-THAT-MUST-NOT-LEAK')
+			await adapter.putObject({ key: file.storageKey, body: secret, contentType: 'image/jpeg' })
+
+			const payload = await service.readFullBytes(file)
+
+			for (const printed of [
+				String(payload),
+				JSON.stringify({ payload }),
+				inspect(payload),
+				inspect({ nested: { payload } }, { depth: 6 }),
+			]) {
+				expect(printed).toContain('[image')
+				expect(printed).not.toContain('PIXELS')
+				expect(printed).not.toContain(secret.toString('base64'))
+			}
+		})
+	})
+
 	describe('remove', () => {
-		it('deletes both objects, then the row', async () => {
-			const file = ownedFile()
-			repository.findOwned.mockResolvedValue(file)
+		const file = ownedFile()
+		const putBoth = async (): Promise<void> => {
 			await adapter.putObject({ key: file.storageKey, body: FULL_BYTES, contentType: 'image/jpeg' })
 			await adapter.putObject({ key: file.thumbKey, body: THUMB_BYTES, contentType: 'image/jpeg' })
+		}
+
+		/** The repository on the fake rows: deleting changes them, the transaction decides if it stays. */
+		const wireRows = (): void => {
+			repository.findOwned.mockResolvedValue(file)
+			repository.lockOwned.mockImplementation(() => Promise.resolve(rows.has(FILE_ID)))
+			repository.deleteUnattached.mockImplementation(() => Promise.resolve(rows.delete(FILE_ID)))
+		}
+
+		it('locks the row, deletes it, then both objects, all inside one transaction', async () => {
+			wireRows()
+			await putBoth()
 			const order: string[] = []
+			repository.lockOwned.mockImplementation(() => {
+				order.push('lock')
+				return Promise.resolve(true)
+			})
+			repository.deleteUnattached.mockImplementation(() => {
+				order.push('row')
+				return Promise.resolve(rows.delete(FILE_ID))
+			})
 			const originalDelete = adapter.deleteObject
 			vi.spyOn(adapter, 'deleteObject').mockImplementation((key) => {
 				order.push(`object:${key}`)
 				return originalDelete(key)
 			})
-			repository.deleteUnattached.mockImplementation(() => {
-				order.push('row')
-				return Promise.resolve(true)
-			})
 
 			await service.remove(USER_ID, FILE_ID)
 
-			expect(order).toEqual([`object:${file.storageKey}`, `object:${file.thumbKey}`, 'row'])
+			expect(order).toEqual(['lock', 'row', `object:${file.storageKey}`, `object:${file.thumbKey}`])
+			expect(transactionOptions).toHaveLength(1)
+			expect(repository.lockOwned).toHaveBeenCalledWith({ id: FILE_ID, userId: USER_ID }, TX)
+			expect(repository.deleteUnattached).toHaveBeenCalledWith({ id: FILE_ID, userId: USER_ID }, TX)
+			expect(rows.has(FILE_ID)).toBe(false)
 			expect(await countStored([file.storageKey, file.thumbKey])).toBe(0)
-			expect(repository.deleteUnattached).toHaveBeenCalledWith({ id: FILE_ID, userId: USER_ID })
 		})
 
-		it('refuses a photo a message uses and touches nothing', async () => {
-			repository.findOwned.mockResolvedValue(ownedFile({ attachment: { id: 'att' } }))
+		it('gives the transaction a timeout above the 5 s default, for two object deletes', async () => {
+			wireRows()
+
+			await service.remove(USER_ID, FILE_ID)
+
+			const [options] = transactionOptions as [{ timeout: number }]
+			expect(options.timeout).toBeGreaterThan(5000)
+		})
+
+		it('answers PHOTO_IN_USE and touches no object when a message has taken the file', async () => {
+			wireRows()
+			await putBoth()
+			repository.deleteUnattached.mockResolvedValue(false)
 			const del = vi.spyOn(adapter, 'deleteObject')
 
 			await expectAppError(service.remove(USER_ID, FILE_ID), {
@@ -368,10 +560,26 @@ describe('PhotosService', () => {
 			})
 
 			expect(del).not.toHaveBeenCalled()
-			expect(repository.deleteUnattached).not.toHaveBeenCalled()
+			expect(await countStored([file.storageKey, file.thumbKey])).toBe(2)
+			expect(rows.has(FILE_ID)).toBe(true)
 		})
 
-		it('is not found for another user and deletes nothing', async () => {
+		it('answers PHOTO_NOT_FOUND when the lock finds no row (a parallel delete finished first)', async () => {
+			wireRows()
+			await putBoth()
+			repository.lockOwned.mockResolvedValue(false)
+			const del = vi.spyOn(adapter, 'deleteObject')
+
+			await expectAppError(service.remove(USER_ID, FILE_ID), {
+				status: HttpStatus.NOT_FOUND,
+				errorCode: ErrorCodes.PHOTO_NOT_FOUND,
+			})
+
+			expect(repository.deleteUnattached).not.toHaveBeenCalled()
+			expect(del).not.toHaveBeenCalled()
+		})
+
+		it('is not found for another user: no transaction, no lock, no object deleted', async () => {
 			const del = vi.spyOn(adapter, 'deleteObject')
 
 			await expectAppError(service.remove(OTHER_USER_ID, FILE_ID), {
@@ -380,12 +588,15 @@ describe('PhotosService', () => {
 			})
 
 			expect(repository.findOwned).toHaveBeenCalledWith({ id: FILE_ID, userId: OTHER_USER_ID })
-			expect(del).not.toHaveBeenCalled()
+			expect(transactionOptions).toHaveLength(0)
+			expect(repository.lockOwned).not.toHaveBeenCalled()
 			expect(repository.deleteUnattached).not.toHaveBeenCalled()
+			expect(del).not.toHaveBeenCalled()
 		})
 
-		it('keeps the row for a retry when the storage fails', async () => {
-			repository.findOwned.mockResolvedValue(ownedFile())
+		it('rolls the row back and answers 503 when the first object delete fails', async () => {
+			wireRows()
+			await putBoth()
 			vi.spyOn(adapter, 'deleteObject').mockRejectedValue(new Error('storage down'))
 
 			await expectAppError(service.remove(USER_ID, FILE_ID), {
@@ -393,24 +604,35 @@ describe('PhotosService', () => {
 				errorCode: ErrorCodes.STORAGE_UNAVAILABLE,
 			})
 
-			expect(repository.deleteUnattached).not.toHaveBeenCalled()
+			expect(rows.has(FILE_ID)).toBe(true)
 		})
 
-		it('treats a parallel delete that already finished as done, not as an error', async () => {
-			repository.findOwned.mockResolvedValueOnce(ownedFile()).mockResolvedValueOnce(null)
-			repository.deleteUnattached.mockResolvedValue(false)
-
-			await expect(service.remove(USER_ID, FILE_ID)).resolves.toBeUndefined()
-		})
-
-		it('answers PHOTO_IN_USE when a message took the file between the check and the delete', async () => {
-			repository.findOwned.mockResolvedValue(ownedFile())
-			repository.deleteUnattached.mockResolvedValue(false)
+		it('rolls the row back and answers 503 when only the thumbnail delete fails, and a retry finishes', async () => {
+			wireRows()
+			await putBoth()
+			const originalDelete = adapter.deleteObject
+			const del = vi.spyOn(adapter, 'deleteObject')
+			del.mockImplementationOnce(originalDelete)
+			del.mockRejectedValueOnce(new Error('storage down'))
 
 			await expectAppError(service.remove(USER_ID, FILE_ID), {
-				status: HttpStatus.CONFLICT,
-				errorCode: ErrorCodes.PHOTO_IN_USE,
+				status: HttpStatus.SERVICE_UNAVAILABLE,
+				errorCode: ErrorCodes.STORAGE_UNAVAILABLE,
 			})
+
+			expect(rows.has(FILE_ID)).toBe(true)
+			await expect(service.remove(USER_ID, FILE_ID)).resolves.toBeUndefined()
+			expect(rows.has(FILE_ID)).toBe(false)
+			expect(await countStored([file.storageKey, file.thumbKey])).toBe(0)
+		})
+
+		it('deletes the objects under the keys of the owned file', async () => {
+			wireRows()
+			const del = vi.spyOn(adapter, 'deleteObject')
+
+			await service.remove(USER_ID, FILE_ID)
+
+			expect(del.mock.calls.map(([key]) => key)).toEqual([file.storageKey, file.thumbKey])
 		})
 	})
 })

@@ -14,18 +14,23 @@ import { ChatResponseService } from './chat-response.service'
 import { ChatTurnService, type TurnParams, type TurnResult } from './chat-turn.service'
 import { STALE_PENDING_MS } from './chat.constants'
 import { ClientMessageIdReusedException, MessageInProgressException } from './chat.exceptions'
+import { ChatPhotosService, type StoredPhotos } from './chat-photos.service'
 import { ChatRepository, type MessageWithAttachments } from './chat.repository'
+import { PhotoInUseException, PhotoNotFoundException } from '../photos/photos.exceptions'
 import type { PhotoPayload } from '../../common/photo'
 
 const UNIQUE_VIOLATION = 'P2002'
+const FOREIGN_KEY_VIOLATION = 'P2003'
 
-const isUniqueViolation = (error: unknown): boolean =>
-	error instanceof Prisma.PrismaClientKnownRequestError && error.code === UNIQUE_VIOLATION
+const hasPrismaCode = (error: unknown, code: string): boolean =>
+	error instanceof Prisma.PrismaClientKnownRequestError && error.code === code
 
 export interface SendMessageParams {
 	clientMessageId: string
 	text?: string
 	photo?: PhotoPayload
+	/** Earlier POST /photos uploads; excludes `photo`. */
+	photoIds?: string[]
 }
 
 /** One chat turn: user message → AI → entries / questions / answer, idempotent by clientMessageId. */
@@ -36,6 +41,7 @@ export class ChatService {
 	constructor(
 		private readonly chatRepository: ChatRepository,
 		private readonly chatContext: ChatContextService,
+		private readonly chatPhotos: ChatPhotosService,
 		private readonly chatTurn: ChatTurnService,
 		private readonly chatResponse: ChatResponseService,
 		private readonly aiService: AiService,
@@ -45,24 +51,30 @@ export class ChatService {
 		private readonly measurementsService: MeasurementsService,
 	) {}
 
-	async sendMessage(
-		userId: string,
-		{ clientMessageId, text, photo }: SendMessageParams,
-	): Promise<SendMessageResponse> {
+	async sendMessage(userId: string, params: SendMessageParams): Promise<SendMessageResponse> {
+		const { clientMessageId, text, photoIds } = params
+		if (photoIds) this.chatPhotos.assertCount(photoIds)
 		const { timezone } = await this.usersService.getMe(userId)
-		const message = await this.acquireMessage({ userId, clientMessageId, text, photo })
+		const existing = await this.chatRepository.findByClientMessageId({ userId, clientMessageId })
+		if (existing) this.assertSameRequest(existing, params)
 		const now = new Date()
 		const localDate = getLocalDate(now, timezone)
 
-		if (message.status === MessageStatus.COMPLETED) {
+		if (existing?.status === MessageStatus.COMPLETED) {
 			return this.chatResponse.build({
 				userId,
-				userMessageId: message.id,
+				userMessageId: existing.id,
 				timezone,
 				localDate: null,
 				edited: NO_EDITED_MESSAGES,
 			})
 		}
+		// before the message exists: an unreadable photo must leave nothing to resend around
+		const stored = photoIds ? await this.chatPhotos.load(userId, photoIds) : undefined
+		const photo = stored?.payload ?? params.photo
+		const message = existing
+			? await this.claimForRetry(userId, existing, photo)
+			: await this.createMessage({ userId, params, stored })
 		const edited = await this.processTurn({
 			userId,
 			timezone,
@@ -82,45 +94,69 @@ export class ChatService {
 		})
 	}
 
-	/**
-	 * New message → PENDING row. A resend returns the stored one if it's done, takes a FAILED or
-	 * lost one for another try, and refuses while the first request is still running.
-	 */
-	private async acquireMessage(
-		params: { userId: string } & SendMessageParams,
-	): Promise<MessageWithAttachments> {
-		const existing = await this.chatRepository.findByClientMessageId(params)
-		if (!existing) {
-			return this.chatRepository
-				.createUserMessage({
-					userId: params.userId,
-					clientMessageId: params.clientMessageId,
-					content: params.text ?? null,
-					photo: params.photo,
-				})
-				.catch((error: unknown) => {
-					// a parallel request with the same clientMessageId created it after our check
-					if (isUniqueViolation(error)) throw new MessageInProgressException()
-					throw error
-				})
-		}
-		const hadPhoto = existing.attachments.length > 0
-		if (existing.content !== (params.text ?? null) || hadPhoto !== (params.photo !== undefined)) {
-			throw new ClientMessageIdReusedException()
-		}
-		if (existing.status === MessageStatus.COMPLETED) return existing
+	/** A resend must repeat the message: same words and the same photos, else the id is reused. */
+	private assertSameRequest(existing: MessageWithAttachments, params: SendMessageParams): void {
+		if (existing.content !== (params.text ?? null)) throw new ClientMessageIdReusedException()
+		const fileIds = existing.attachments.map(({ fileId }) => fileId)
+		const isSamePhotos = params.photoIds
+			? fileIds.length === params.photoIds.length &&
+				fileIds.every((fileId, index) => fileId === params.photoIds?.[index])
+			: // an inline photo leaves a file-less attachment
+				fileIds.length === (params.photo ? 1 : 0) && fileIds.every((fileId) => fileId === null)
+		if (!isSamePhotos) throw new ClientMessageIdReusedException()
+	}
 
+	/**
+	 * New message → PENDING row, with its photos bound in the same write. The unique index on
+	 * file_id decides a race for a photo, so there is no "is it free?" read.
+	 */
+	private async createMessage({
+		userId,
+		params: { clientMessageId, text, photo, photoIds },
+		stored,
+	}: {
+		userId: string
+		params: SendMessageParams
+		stored: StoredPhotos | undefined
+	}): Promise<MessageWithAttachments> {
+		try {
+			return await this.chatRepository.createUserMessage({
+				userId,
+				clientMessageId,
+				content: text ?? null,
+				photo,
+				storedPhotos: stored?.files,
+			})
+		} catch (error) {
+			// the photo was deleted after we read it
+			if (photoIds && hasPrismaCode(error, FOREIGN_KEY_VIOLATION))
+				throw new PhotoNotFoundException()
+			if (!hasPrismaCode(error, UNIQUE_VIOLATION)) throw error
+			// P2002 is either our clientMessageId (a parallel twin) or a photo of another message
+			const twin = await this.chatRepository.findByClientMessageId({ userId, clientMessageId })
+			if (photoIds && !twin) throw new PhotoInUseException()
+			throw new MessageInProgressException()
+		}
+	}
+
+	/** A resend takes a FAILED or lost message for another try, and refuses while the first runs. */
+	private async claimForRetry(
+		userId: string,
+		existing: MessageWithAttachments,
+		photo: PhotoPayload | undefined,
+	): Promise<MessageWithAttachments> {
 		const isClaimed = await this.chatRepository.claimForRetry({
 			id: existing.id,
-			userId: params.userId,
+			userId,
 			staleBefore: new Date(Date.now() - STALE_PENDING_MS),
 		})
 		if (!isClaimed) throw new MessageInProgressException()
-		if (params.photo) {
+		if (photo) {
 			await this.chatRepository.resetAttachment({
-				userId: params.userId,
+				userId,
 				messageId: existing.id,
-				photo: params.photo,
+				// stored photos keep their description; only an inline one is rewritten
+				photo: existing.attachments.some(({ fileId }) => fileId !== null) ? undefined : photo,
 			})
 		}
 		return { ...existing, status: MessageStatus.PENDING }

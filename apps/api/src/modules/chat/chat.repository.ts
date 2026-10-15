@@ -10,16 +10,43 @@ import { PrismaService } from '../../prisma'
 import type { MessageCursor } from './message-cursor'
 import type { PhotoPayload } from '../../common/photo'
 
-/** The chat shows only how the photo went, so only the status is read. */
-const WITH_ATTACHMENTS = { attachments: { select: { status: true } } } as const
+/** What the chat shows of a photo, in grid order; the bytes are in object storage, not here. */
+const WITH_ATTACHMENTS = {
+	attachments: {
+		select: { status: true, fileId: true, width: true, height: true, position: true },
+		orderBy: { position: 'asc' },
+	},
+} as const
 
 export type MessageWithAttachments = Prisma.MessageGetPayload<{ include: typeof WITH_ATTACHMENTS }>
+
+/** The stored copy a message binds: the attachment repeats its type and size. */
+export interface StoredPhotoRef {
+	id: string
+	mimeType: string
+	width: number
+	height: number
+	sizeBytes: number
+}
 
 const toAttachmentData = (photo: PhotoPayload) => ({
 	mimeType: photo.mimeType,
 	width: photo.width,
 	height: photo.height,
 	sizeBytes: photo.sizeBytes,
+	status: AttachmentStatus.PENDING,
+})
+
+const toStoredAttachmentData = (
+	{ id, mimeType, width, height, sizeBytes }: StoredPhotoRef,
+	position: number,
+) => ({
+	fileId: id,
+	position,
+	mimeType,
+	width,
+	height,
+	sizeBytes,
 	status: AttachmentStatus.PENDING,
 })
 
@@ -41,28 +68,42 @@ export class ChatRepository {
 		})
 	}
 
-	/** The photo's bytes are not stored (v0.1): only type, size and status go to the attachment. */
+	/**
+	 * An inline photo's bytes are not stored: only type, size and status go to the attachment. Stored
+	 * photos are bound by `fileId` in the same write (a nested create is one transaction), so the
+	 * unique index on file_id decides who gets a file: P2002 = taken, P2003 = the file is gone.
+	 */
 	createUserMessage({
 		photo,
+		storedPhotos,
 		...data
 	}: {
 		userId: string
 		clientMessageId: string
 		content: string | null
 		photo?: PhotoPayload
+		storedPhotos?: StoredPhotoRef[]
 	}): Promise<MessageWithAttachments> {
+		const attachments = storedPhotos
+			? storedPhotos.map(toStoredAttachmentData)
+			: photo
+				? [toAttachmentData(photo)]
+				: []
 		return this.prisma.message.create({
 			data: {
 				...data,
 				role: MessageRole.USER,
 				status: MessageStatus.PENDING,
-				...(photo ? { attachments: { create: toAttachmentData(photo) } } : {}),
+				...(attachments.length > 0 ? { attachments: { create: attachments } } : {}),
 			},
 			include: WITH_ATTACHMENTS,
 		})
 	}
 
-	/** A retry carries the photo again (it is not stored): the attachment starts over. */
+	/**
+	 * A retry starts the attachments over. An inline photo travels again (it is not stored), so its
+	 * description is rewritten; a stored one keeps its file and only goes back to PENDING.
+	 */
 	async resetAttachment({
 		userId,
 		messageId,
@@ -70,11 +111,11 @@ export class ChatRepository {
 	}: {
 		userId: string
 		messageId: string
-		photo: PhotoPayload
+		photo?: PhotoPayload
 	}): Promise<void> {
 		await this.prisma.messageAttachment.updateMany({
 			where: { messageId, message: { userId } },
-			data: toAttachmentData(photo),
+			data: photo ? toAttachmentData(photo) : { status: AttachmentStatus.PENDING },
 		})
 	}
 

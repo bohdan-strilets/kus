@@ -64,6 +64,13 @@ const toChatMessage = (
 		replyToId: message.replyToId,
 		createdAt: message.createdAt.toISOString(),
 		photo: attachment ? { status: attachment.status } : null,
+		photos: message.attachments.map(({ fileId, width, height, status, position }) => ({
+			fileId,
+			width,
+			height,
+			status,
+			position,
+		})),
 		meals: isAssistant && message.replyToId ? (meals.get(message.replyToId) ?? []) : [],
 		clarifications: isAssistant
 			? clarifications

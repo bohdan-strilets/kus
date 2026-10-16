@@ -45,9 +45,10 @@
 - JWT (access + refresh) в httpOnly cookie, argon2, helmet
 - AI через **OpenRouter** офіційним SDK `openai` (`baseURL: https://openrouter.ai/api/v1`), модель з env `AI_MODEL`
 - `image-size` — перевірка фото (без sharp: фото перекодовує клієнт), `@nestjs/throttler` — ліміти
+- S3-сумісне сховище фото (Cloudflare R2, EU) — власний адаптер на `aws4fetch` у `modules/storage`, `STORAGE_PROVIDER=s3` у production
 
 ### Деплой
-- api і PostgreSQL — Railway; web — Vercel; помилки — Sentry
+- api і PostgreSQL — Railway; web — Vercel; сховище фото — Cloudflare R2 (EU); помилки — Sentry
 
 Перед використанням API бібліотеки звіряйся з актуальною документацією (Context7 MCP), не з пам'яті.
 
@@ -165,10 +166,10 @@ apps/api/src/
 
 ### Дані
 - Prisma 7 з адаптером `PrismaPg`, PostgreSQL на Railway
-- Схема спроєктована одразу на весь домен, реалізація — по roadmap. Моделі: User, AuthCredentials, Session, VerificationToken, UserProfile, UserGoal, Measurement, Achievement, Message, MessageAttachment, AiRun, AiToolCall, Clarification, ClarificationEntry, Meal, FoodEntry, MyFood, Recipe, RecipeIngredient, Correction, UserFact, DailyUsage, ExerciseEntry. Опис і діаграма — `docs/database.md`
+- Схема спроєктована одразу на весь домен, реалізація — по roadmap. Моделі: User, AuthCredentials, Session, VerificationToken, UserProfile, UserGoal, Measurement, Achievement, Message, MessageAttachment, AiRun, AiToolCall, Clarification, ClarificationEntry, Meal, FoodEntry, MyFood, Recipe, RecipeIngredient, Correction, UserFact, DailyUsage, ExerciseEntry, StoredFile. Опис і діаграма — `docs/database.md`
 - Enum'и схеми дзеркаляться zod-enum'ами в `packages/shared/src/schemas/enums.ts` — змінюєш одне, змінюй і друге
 - Перед додаванням поля чи моделі — перевір актуальну `schema.prisma`, не опис у документах
-- Soft delete (`deletedAt`) для записів користувача (Meal, FoodEntry, MyFood, Recipe, UserFact, ExerciseEntry) — завжди фільтр `deletedAt: null`; це дає «скасувати» в чаті
+- Soft delete (`deletedAt`) для записів користувача (Meal, FoodEntry, MyFood, Recipe, UserFact, ExerciseEntry) — завжди фільтр `deletedAt: null`; це дає «скасувати» в чаті. `StoredFile` у цьому списку немає: soft delete для нього не діє, файл видаляється фізично
 - Кожна вибірка даних користувача фільтрується за `userId` з токена — ніколи не довіряти лише `:id` з запиту (IDOR)
 - Явно обробляти `null` там, де Prisma може його повернути
 
@@ -205,7 +206,7 @@ apps/api/src/
 - Кожен запис має `source` (`label` | `memory` | `reference` | `estimate`), `confidence` і `assumption`
 - Уточнення — не більше 2 за раз і лише коли відповідь змінює ккал позицій на ≥ 80 ккал і ≥ 15 % (пороги в `packages/shared/src/ai/clarifications.ts`, бекенд відкидає решту). У повідомленні з кількома прийомами (цілий день) — максимум одне уточнення і лише з impact ≥ 150 ккал; решта — оцінка з короткою `assumption`. Навіть коли питає, AI записує найкращу оцінку
 - Тип прийому — на позицію (`log_food.items[].mealType`), інакше загальний `mealType`, інакше за локальною годиною; бекенд групує позиції в Meal за типом, відповідь API — `meals[]`
-- Фото: одне на повідомлення, JSON + base64 у `POST /messages`. Клієнт перекодовує будь-який формат (HEIC теж) через canvas у JPEG ≤ 1568 px, ≤ 1 МБ — без EXIF; бекенд приймає JPEG/PNG/WebP ≤ 1,4 МБ, перевіряє magic bytes і розміри, зрізає метадані JPEG (APPn/COM до SOS; PNG/WebP — як є). Фото не зберігається ніде (ні БД, ні диск, ні логи): лише `MessageAttachment` з типом, розмірами й статусом. Денний ліміт фото — `AI_DAILY_PHOTO_LIMIT`
+- Фото: двокроковий потік — `POST /photos` (повне + мініатюра, base64 JPEG), потім `POST /messages` з `photoIds` (до `PHOTOS_PER_MESSAGE_MAX` ≤ 6; AI поки читає одне). Клієнт перекодовує будь-який формат (HEIC теж) через canvas у JPEG: повне ≤ 1568 px / ~1 МБ, мініатюра 768 px ≤ 150 КБ — без EXIF; `photoId` лежить в outbox, повтор не вантажить вдруге. Бекенд приймає лише JPEG: magic bytes, `image-size`, зрізає метадані (APPn/COM) і хвіст після EOI. Фото зберігається в приватному S3-сумісному сховищі (Cloudflare R2 EU) під `<prefix>/users/<userId>/photos/<id>[-thumb]`; в БД — `StoredFile` і `MessageAttachment` (без байтів). Віддає лише API (`GET /photos/:id?variant`), чуже = 404, SW не кешує. Фото ніколи не потрапляє в логи. Ліміти: `PHOTO_DAILY_UPLOAD_LIMIT` (завантаження), `AI_DAILY_PHOTO_LIMIT` (відправка моделі). Сироти (24 год) і файли видаленого акаунта чистять крони. Деталі — `docs/architecture.md`
 - Контекст моделі: промпт + релевантна пам'ять + підсумок дня + кілька останніх повідомлень. Ніколи вся історія
 - Логувати токени й вартість кожного запиту; денний ліміт повідомлень на користувача
 - Після зміни промпту чи моделі — `pnpm --filter ai-eval eval` і рядок у `PROMPT_CHANGELOG.md`
@@ -372,7 +373,7 @@ pnpm --filter web icons               # зібрати іконки з SVG (UI +
 
 ### Вхідні дані
 - Усі DTO валідуються до сервісу; клієнтська валідація — лише UX
-- Фото: тип і розмір перевіряються на бекенді (макс. ~10 МБ, лише зображення)
+- Фото: на бекенді перевіряються тип (лише JPEG, magic bytes), розміри (`image-size`) і розмір (повне ≤ 1,4 МБ, мініатюра ≤ 150 КБ); метадані й хвіст після EOI зрізаються; доступ до файлу — лише за `userId` з токена
 - Лише Prisma query builder; raw SQL — тільки параметризований
 - Текст від користувача й AI на фронті виводиться лише як текст, без `dangerouslySetInnerHTML`
 
@@ -382,7 +383,7 @@ pnpm --filter web icons               # зібрати іконки з SVG (UI +
 - `pnpm audit` — регулярно
 
 ### Приватність
-- Дані про харчування й вагу — чутливі (RODO): у запит до AI — лише потрібний мінімум; у v1 — експорт і видалення всіх даних
+- Дані про харчування, вагу й фото — чутливі (RODO): у запит до AI — лише потрібний мінімум; фото зберігаються в приватному сховищі, віддаються лише власнику, не логуються; у v1 — експорт (разом з фото), видалення всіх даних і строк зберігання фото (поки його немає)
 
 ---
 

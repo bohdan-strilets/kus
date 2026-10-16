@@ -21,6 +21,8 @@ Prisma-enum `FoodCategory` і поле `category @default(plate)` у FoodEntry, 
 
 Реалізовано інакше, ніж планувалось; як працює — `docs/architecture.md`, «Фото».
 
+Примітка: з Фото v2 (0.6.0) фото вантажиться окремо (`POST /photos`), `POST /messages` приймає `photoIds`; base64 у `/messages` — лише старий потік для кешованих клієнтів до B2.6; деталі — `architecture.md`.
+
 - Той самий `POST /messages`, але **JSON + base64** (`photo: { mimeType, data }`), не multipart: один DTO, одна zod-валідація, той самий e2e-харнес. Тіло ≤ 2 МБ (власний парсер лише для цього маршруту), фото ≤ 1,4 МБ.
 - **Без sharp.** Клієнт перекодовує все (включно з HEIC, який Safari декодує сам) через canvas у JPEG ≤ 1568 px, ≤ 1 МБ — EXIF зникає на телефоні. Сервер лише перевіряє (magic bytes, `image-size`, 64…2576 px) і зрізає APPn/COM із JPEG. Chrome/Firefox на десктопі HEIC не декодують — зрозуміла помилка; бібліотеку не додаємо, поки не впремось.
 - `AI_MODEL_VISION`, `DailyUsage.photoCount` + `AI_DAILY_PHOTO_LIMIT` (30) — як планувалось. Додано `FoodEntry.fromPhoto` і інструмент `photo_unusable`.

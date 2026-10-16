@@ -63,6 +63,17 @@ Add → GitHub Repo → цей репозиторій, гілка `main`.
 | `AI_TIMEOUT_MS`                     | не задавати (45 000; максимум 95 000)                                          |
 | `AI_DAILY_MESSAGE_LIMIT`            | не задавати (100)                                                              |
 | `AI_MODEL_VISION` / `AI_MODEL_CHAT` | не задавати (= `AI_MODEL`)                                                     |
+| `STORAGE_PROVIDER`                  | `s3` — у production без цього сервер не стартує                                |
+| `S3_ENDPOINT`                       | `https://<ACCOUNT_ID>.eu.r2.cloudflarestorage.com` (без назви бакета)          |
+| `S3_REGION`                         | `auto`                                                                         |
+| `S3_ACCESS_KEY_ID`                  | 🔒 ключ R2-токена                                                              |
+| `S3_SECRET_ACCESS_KEY`              | 🔒 секрет R2-токена                                                            |
+| `S3_BUCKET`                         | назва prod-бакета                                                              |
+| `STORAGE_KEY_PREFIX`                | `prod` — префікс ключів файлів                                                 |
+| `PHOTOS_PER_MESSAGE_MAX`            | `1` (6 — лише коли з'явиться B2); не більше 6                                  |
+| `PHOTO_DAILY_UPLOAD_LIMIT`          | `60` — завантажень фото на користувача за день                                 |
+| `AI_DAILY_PHOTO_LIMIT`              | `30` — фото, надісланих моделі, на користувача за день                         |
+| `PHOTO_ORPHAN_TTL_HOURS`            | `24` — через скільки годин крон видаляє фото без повідомлення                  |
 | `COOKIE_DOMAIN`                     | **не задавати** — cookie host-only на домені Vercel                            |
 | `PORT`                              | не задавати — Railway підставляє сам                                           |
 
@@ -108,6 +119,25 @@ New Project → цей репозиторій.
 3. Перед push — логічний дамп (команда в «Бекапи й відновлення»): ручні volume-бекапи на Hobby/trial недоступні, тож `pg_dump` через Docker із `DATABASE_PUBLIC_URL` у теку поза репо.
 4. Push → збірка → pre-deploy `prisma migrate deploy` → healthcheck → нова версія.
 5. Перевірити, що міграції застосовані (нижче).
+
+### Реліз із сховищем фото (0.6.0)
+
+Міграція `20261015120000_add_stored_files` додає `stored_files` і видаляє колонку `message_attachments.storage_key`. Файли тепер живуть у S3-сумісному сховищі, не в базі.
+
+1. **Бакет Cloudflare R2.** Створити бакет з юрисдикцією **EU**; окремі бакети для prod і dev. API-токен — права **Object Read & Write** лише на цей бакет. Endpoint для EU-юрисдикції має вигляд `https://<ACCOUNT_ID>.eu.r2.cloudflarestorage.com`, `S3_REGION=auto`, `S3_BUCKET` — назва бакета.
+2. **Бекап перед міграцією.** Логічний дамп прод-бази через Docker — точно за кроками з «Бекапи й відновлення» (проксі → `pg_dump` → закрити проксі). Перевірити цілісність: файл помітно більший за кілька кілобайт і `docker run --rm -v "$HOMEkus-backups:/backup" postgres:18 pg_restore --list /backup/kus-<дата>.dump` друкує список об'єктів без помилок.
+3. **Запобіжник.** Виконати на проді (Railway → Postgres → Data → Query):
+   ```sql
+   SELECT count(*) FROM message_attachments WHERE storage_key IS NOT NULL;
+   ```
+   Має бути `0`. Міграція починається з `RAISE EXCEPTION`, якщо такі рядки є, а далі видаляє колонку; якщо запобіжник спрацював — див. «Якщо міграція впала на запобіжнику».
+4. **Змінні Railway** — з таблиці «Змінні сервісу `api`» вище (`STORAGE_PROVIDER`, `S3_*`, `STORAGE_KEY_PREFIX`, `PHOTOS_PER_MESSAGE_MAX`, `PHOTO_DAILY_UPLOAD_LIMIT`, `AI_DAILY_PHOTO_LIMIT`, `PHOTO_ORPHAN_TTL_HOURS`). Секрети не пишемо ні в репо, ні в чат.
+5. **Деплой API** (push у `main` після `security-audit`): pre-deploy застосовує міграцію, healthcheck → нова версія.
+6. **Smoke сховища.** Проти **dev**-бакета, не prod: `S3_*` у `apps/api/.env`, потім `pnpm --filter api test:smoke:storage`.
+7. **Реальне завантаження** фото ≈ 2 МБ через домен Vercel (rewrite) після деплою API, до оголошення релізу.
+8. **iPhone PWA** — кроки з чекліста деплою A.
+
+**Відкат.** Файли в бакеті лишаються, а колонку `storage_key` міграція видалила, тому код попередньої версії працювати не буде. Відкат — лише відновленням з дампа кроку 2 (див. «Відновлення → з логічного дампу»).
 
 ### Як перевірити, що міграції застосовані
 

@@ -47,7 +47,7 @@ export const PhotoTileError = ({ height, className, onRetry }: PhotoTileErrorPro
 			<button
 				type="button"
 				onClick={onRetry}
-				className="-mt-1 inline-flex min-h-tap cursor-pointer items-center gap-1.5 px-3.5 text-caption font-bold text-primary"
+				className="-mt-1 inline-flex min-h-tap cursor-pointer items-center gap-1.5 px-3.5 text-caption font-bold text-primary-deep"
 			>
 				<Icon name="retry" size={ICON_SIZE.control} />
 				{t('chat.photoTile.retry')}

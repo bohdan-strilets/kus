@@ -9,12 +9,17 @@ const SPINNER_SIZE = 26
 const ALERT_ICON_SIZE = 24
 const REMOVE_ICON_SIZE = 12
 
-/** What to do next, per reason the photo failed; the title above already says it didn't open. */
-const ERROR_HINT_KEY = {
-	'chat.photoUnsupported': 'composer.photoErrorHint.unsupported',
-	'chat.photoTooLarge': 'composer.photoErrorHint.tooLarge',
-} as const
-const FALLBACK_ERROR_HINT_KEY = 'composer.photoErrorHint.fallback'
+const FALLBACK_ERROR_KEY = 'chat.photoInvalid'
+
+/**
+ * The one chat.* text of the reason is two sentences: what happened (danger), what to do (muted).
+ * No regex lookbehind: it is a SyntaxError for the whole bundle in Safari before 16.4.
+ */
+const splitErrorText = (text: string): [string, string] => {
+	const boundary = text.indexOf('. ')
+	if (boundary === -1) return [text, '']
+	return [text.slice(0, boundary + 1), text.slice(boundary + 2)]
+}
 
 interface ComposerPhotoPreviewProps {
 	photo: ComposerPhotoState
@@ -31,6 +36,7 @@ export const ComposerPhotoPreview = ({ photo }: ComposerPhotoPreviewProps) => {
 	if (photo.status === 'idle') return null
 
 	const isError = photo.status === 'error'
+	const [errorTitle, errorHint] = splitErrorText(t(photo.errorKey ?? FALLBACK_ERROR_KEY))
 
 	return (
 		<div className="order-first flex basis-full items-center gap-3 pt-2 pl-1">
@@ -82,10 +88,10 @@ export const ComposerPhotoPreview = ({ photo }: ComposerPhotoPreviewProps) => {
 			{isError && (
 				<span role="alert" className="flex flex-col gap-0.5">
 					<Text as="span" variant="small" tone="danger" weight="bold">
-						{t('composer.photoErrorTitle')}
+						{errorTitle}
 					</Text>
-					<Text as="span" variant="small" tone="mutedStrong" weight="regular">
-						{t(photo.errorKey ? ERROR_HINT_KEY[photo.errorKey] : FALLBACK_ERROR_HINT_KEY)}
+					<Text as="span" variant="small" tone="muted" weight="regular">
+						{errorHint}
 					</Text>
 				</span>
 			)}

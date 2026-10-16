@@ -129,8 +129,8 @@ describe('photo preview states', () => {
 		setPhoto({ status: 'error', photo: null, errorKey: 'chat.photoTooLarge' })
 
 		const alert = screen.getByRole('alert')
-		expect(alert.textContent).toContain('Це фото не вдалося обробити.')
-		expect(alert.textContent).toContain('Вибери фото меншого розміру.')
+		expect(alert.textContent).toContain('Фото завелике.')
+		expect(alert.textContent).toContain('Спробуй інше фото або напиши текстом.')
 		expect(screen.queryByRole('button', { name: /Повторити/ })).toBeNull()
 	})
 
@@ -378,7 +378,7 @@ describe('(6) a file the browser can not decode', () => {
 			errorKey: 'chat.photoUnsupported',
 		})
 		const alert = screen.getByRole('alert')
-		expect(alert.textContent).toContain('Це фото не вдалося обробити.')
+		expect(alert.textContent).toContain('Не вдалося відкрити це фото.')
 		expect(screen.queryByRole('status')).toBeNull()
 		expect(screen.queryByLabelText('Завантаження')).toBeNull()
 	})

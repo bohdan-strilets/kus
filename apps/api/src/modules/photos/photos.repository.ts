@@ -37,6 +37,11 @@ const MESSAGE_FILE_SELECT = {
 
 export type MessageStoredFile = Prisma.StoredFileGetPayload<{ select: typeof MESSAGE_FILE_SELECT }>
 
+export interface OrphanFileRef {
+	id: string
+	userId: string
+}
+
 const PHOTO_MIME_TYPE = 'image/jpeg'
 
 @Injectable()
@@ -93,6 +98,24 @@ export class PhotosRepository {
 			Prisma.sql`SELECT id FROM stored_files WHERE id = ${id}::uuid AND user_id = ${userId}::uuid FOR UPDATE`,
 		)
 		return rows.length === 1
+	}
+
+	/** Uploads no message ever used, oldest id first; keyset by id so a page never repeats. */
+	findOrphans(
+		{ olderThan, limit, afterId }: { olderThan: Date; limit: number; afterId?: string },
+		tx?: Prisma.TransactionClient,
+	): Promise<OrphanFileRef[]> {
+		return (tx ?? this.prisma).storedFile.findMany({
+			where: {
+				kind: StoredFileKind.MESSAGE_PHOTO,
+				createdAt: { lt: olderThan },
+				attachment: { is: null },
+				...(afterId ? { id: { gt: afterId } } : {}),
+			},
+			select: { id: true, userId: true },
+			orderBy: { id: 'asc' },
+			take: limit,
+		})
 	}
 
 	/** `false` = nothing was deleted: the row is gone already or a message has taken the file since. */

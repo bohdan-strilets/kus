@@ -13,7 +13,7 @@ import { MemoryStorageAdapter } from '../storage/memory.adapter'
 import { StorageService } from '../storage/storage.service'
 import type { UsersService } from '../users/users.service'
 import type { MessageStoredFile, OwnedStoredFile, PhotosRepository } from './photos.repository'
-import { PhotosService } from './photos.service'
+import { PhotosService, REMOVE_ATTACHED, REMOVE_DONE, REMOVE_NOT_FOUND } from './photos.service'
 
 const USER_ID = '0192a000-0000-7000-8000-000000000001'
 const OTHER_USER_ID = '0192a000-0000-7000-8000-000000000002'
@@ -633,6 +633,146 @@ describe('PhotosService', () => {
 			await service.remove(USER_ID, FILE_ID)
 
 			expect(del.mock.calls.map(([key]) => key)).toEqual([file.storageKey, file.thumbKey])
+		})
+	})
+
+	describe('removeUnattached', () => {
+		const file = ownedFile()
+		const putBoth = async (): Promise<void> => {
+			await adapter.putObject({ key: file.storageKey, body: FULL_BYTES, contentType: 'image/jpeg' })
+			await adapter.putObject({ key: file.thumbKey, body: THUMB_BYTES, contentType: 'image/jpeg' })
+		}
+		const wireRows = (): void => {
+			repository.findOwned.mockResolvedValue(file)
+			repository.lockOwned.mockImplementation(() => Promise.resolve(rows.has(FILE_ID)))
+			repository.deleteUnattached.mockImplementation(() => Promise.resolve(rows.delete(FILE_ID)))
+		}
+
+		it('returns removed, deletes row and both objects, in the order lock, row, full, thumb', async () => {
+			wireRows()
+			await putBoth()
+			const order: string[] = []
+			repository.lockOwned.mockImplementation(() => {
+				order.push('lock')
+				return Promise.resolve(true)
+			})
+			repository.deleteUnattached.mockImplementation(() => {
+				order.push('row')
+				return Promise.resolve(rows.delete(FILE_ID))
+			})
+			const originalDelete = adapter.deleteObject
+			vi.spyOn(adapter, 'deleteObject').mockImplementation((key) => {
+				order.push(`object:${key}`)
+				return originalDelete(key)
+			})
+
+			const result = await service.removeUnattached(USER_ID, FILE_ID)
+
+			expect(result).toBe(REMOVE_DONE)
+			expect(order).toEqual(['lock', 'row', `object:${file.storageKey}`, `object:${file.thumbKey}`])
+			expect(rows.has(FILE_ID)).toBe(false)
+			expect(await countStored([file.storageKey, file.thumbKey])).toBe(0)
+		})
+
+		it('returns attached without throwing, and touches no object, when a message holds the file', async () => {
+			wireRows()
+			await putBoth()
+			// the owned row is locked, but the guarded delete finds a binding
+			repository.deleteUnattached.mockResolvedValue(false)
+			const del = vi.spyOn(adapter, 'deleteObject')
+
+			const result = await service.removeUnattached(USER_ID, FILE_ID)
+
+			expect(result).toBe(REMOVE_ATTACHED)
+			expect(del).not.toHaveBeenCalled()
+			expect(rows.has(FILE_ID)).toBe(true)
+			expect(await countStored([file.storageKey, file.thumbKey])).toBe(2)
+		})
+
+		it('returns notFound for another user or a missing file: no transaction, no object touched', async () => {
+			const del = vi.spyOn(adapter, 'deleteObject')
+
+			const result = await service.removeUnattached(OTHER_USER_ID, FILE_ID)
+
+			expect(result).toBe(REMOVE_NOT_FOUND)
+			expect(repository.findOwned).toHaveBeenCalledWith({ id: FILE_ID, userId: OTHER_USER_ID })
+			expect(transactionOptions).toHaveLength(0)
+			expect(repository.lockOwned).not.toHaveBeenCalled()
+			expect(repository.deleteUnattached).not.toHaveBeenCalled()
+			expect(del).not.toHaveBeenCalled()
+		})
+
+		it('returns notFound when the lock finds no row (a parallel delete finished first)', async () => {
+			wireRows()
+			await putBoth()
+			repository.lockOwned.mockResolvedValue(false)
+			const del = vi.spyOn(adapter, 'deleteObject')
+
+			const result = await service.removeUnattached(USER_ID, FILE_ID)
+
+			expect(result).toBe(REMOVE_NOT_FOUND)
+			expect(repository.deleteUnattached).not.toHaveBeenCalled()
+			expect(del).not.toHaveBeenCalled()
+		})
+
+		it('throws the storage failure and rolls the row back; a retry returns removed', async () => {
+			wireRows()
+			await putBoth()
+			const original = adapter.deleteObject
+			const del = vi.spyOn(adapter, 'deleteObject')
+			del.mockImplementationOnce(original)
+			del.mockRejectedValueOnce(new Error('storage down'))
+
+			await expect(service.removeUnattached(USER_ID, FILE_ID)).rejects.toBeInstanceOf(AppException)
+			expect(rows.has(FILE_ID)).toBe(true)
+
+			await expect(service.removeUnattached(USER_ID, FILE_ID)).resolves.toBe(REMOVE_DONE)
+			expect(rows.has(FILE_ID)).toBe(false)
+		})
+
+		it('rolls the row back when the first object delete fails', async () => {
+			wireRows()
+			await putBoth()
+			vi.spyOn(adapter, 'deleteObject').mockRejectedValue(new Error('storage down'))
+
+			await expect(service.removeUnattached(USER_ID, FILE_ID)).rejects.toBeInstanceOf(AppException)
+
+			expect(rows.has(FILE_ID)).toBe(true)
+			expect(await countStored([file.storageKey, file.thumbKey])).toBe(2)
+		})
+
+		it('logs the deletion with ids only, and only when something was deleted', async () => {
+			wireRows()
+			// a fresh spy: afterEach's restoreAllMocks detaches the shared ones
+			const log = vi.spyOn(Logger.prototype, 'log').mockImplementation(() => undefined)
+
+			await service.removeUnattached(USER_ID, FILE_ID)
+			expect(log.mock.calls.map(([message]) => String(message))).toEqual([
+				`Photo deleted user=${USER_ID} file=${FILE_ID}`,
+			])
+
+			log.mockClear()
+			repository.deleteUnattached.mockResolvedValue(false)
+			await service.removeUnattached(USER_ID, FILE_ID)
+			expect(log).not.toHaveBeenCalled()
+		})
+
+		it('remove() is a thin wrapper: removed resolves, the two other outcomes become 404 and 409', async () => {
+			wireRows()
+			await expect(service.remove(USER_ID, FILE_ID)).resolves.toBeUndefined()
+
+			repository.lockOwned.mockResolvedValue(false)
+			await expectAppError(service.remove(USER_ID, FILE_ID), {
+				status: HttpStatus.NOT_FOUND,
+				errorCode: ErrorCodes.PHOTO_NOT_FOUND,
+			})
+
+			repository.lockOwned.mockResolvedValue(true)
+			repository.deleteUnattached.mockResolvedValue(false)
+			await expectAppError(service.remove(USER_ID, FILE_ID), {
+				status: HttpStatus.CONFLICT,
+				errorCode: ErrorCodes.PHOTO_IN_USE,
+			})
 		})
 	})
 })

@@ -21,6 +21,13 @@ const START_OF_DAY_HOUR = 0
 // two object deletes inside the transaction: far above the 5 s default, below a hanging request
 const REMOVE_TRANSACTION_TIMEOUT_MS = 15_000
 
+export const REMOVE_DONE = 'removed'
+export const REMOVE_ATTACHED = 'attached'
+export const REMOVE_NOT_FOUND = 'notFound'
+
+export type RemoveUnattachedResult =
+	typeof REMOVE_DONE | typeof REMOVE_ATTACHED | typeof REMOVE_NOT_FOUND
+
 export interface PhotoFile {
 	body: Buffer
 	contentType: string
@@ -119,31 +126,39 @@ export class PhotosService {
 		return new PhotoPayload(UPLOAD_PHOTO_MIME_TYPE, stored.body, width, height)
 	}
 
-	/**
-	 * Only a photo no message uses. One transaction: the row is locked (a message binding it waits
-	 * or fails on the foreign key, so an attached photo never loses its bytes), deleted, and then
-	 * its objects. A storage failure rolls the row back, so a retry works.
-	 */
+	/** Only a photo no message uses: 404 = not found or not theirs, 409 = a message uses it. */
 	async remove(userId: string, id: string): Promise<void> {
-		const file = await this.photosRepository.findOwned({ id, userId })
-		if (!file) throw new PhotoNotFoundException()
+		const result = await this.removeUnattached(userId, id)
+		if (result === REMOVE_NOT_FOUND) throw new PhotoNotFoundException()
+		if (result === REMOVE_ATTACHED) throw new PhotoInUseException()
+	}
 
-		await this.prisma.$transaction(
-			async (tx) => {
+	/**
+	 * One transaction: the row is locked (a message binding it waits or fails on the foreign key,
+	 * so an attached photo never loses its bytes), deleted, and then its objects. A storage failure
+	 * rolls the row back, so a retry works. Outcomes are returned, not thrown: the cleanup cron
+	 * treats a lost race as normal. Storage and database failures still throw.
+	 */
+	async removeUnattached(userId: string, id: string): Promise<RemoveUnattachedResult> {
+		const file = await this.photosRepository.findOwned({ id, userId })
+		if (!file) return REMOVE_NOT_FOUND
+
+		const result = await this.prisma.$transaction(
+			async (tx): Promise<RemoveUnattachedResult> => {
 				// a parallel delete finished first: its commit makes the row vanish for us
-				if (!(await this.photosRepository.lockOwned({ id, userId }, tx))) {
-					throw new PhotoNotFoundException()
-				}
+				if (!(await this.photosRepository.lockOwned({ id, userId }, tx))) return REMOVE_NOT_FOUND
 				// the row is ours and locked, so a miss means a message uses it
 				if (!(await this.photosRepository.deleteUnattached({ id, userId }, tx))) {
-					throw new PhotoInUseException()
+					return REMOVE_ATTACHED
 				}
 				await this.storage.deleteObject(file.storageKey)
 				await this.storage.deleteObject(file.thumbKey)
+				return REMOVE_DONE
 			},
 			{ timeout: REMOVE_TRANSACTION_TIMEOUT_MS },
 		)
-		this.logger.log(`Photo deleted user=${userId} file=${id}`)
+		if (result === REMOVE_DONE) this.logger.log(`Photo deleted user=${userId} file=${id}`)
+		return result
 	}
 
 	/** Two limits, one answer: the daily uploads and the photos the AI would still take. */

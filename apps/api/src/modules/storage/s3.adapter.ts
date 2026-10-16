@@ -1,11 +1,15 @@
 import { AwsClient } from 'aws4fetch'
 
 import { parseListObjectsPage, type ListObjectsPage } from './s3-xml'
+import {
+	STORAGE_DELETE_TIMEOUT_MS,
+	STORAGE_LIST_TIMEOUT_MS,
+	STORAGE_RETRIES,
+	STORAGE_TRANSFER_TIMEOUT_MS,
+} from './storage.constants'
 import type { PutObjectInput, StorageAdapter, StoredObject } from './storage.types'
 
 const S3_SERVICE = 's3'
-const REQUEST_TIMEOUT_MS = 20_000
-const RETRIES = 2
 const DELETE_CONCURRENCY = 10
 const DEFAULT_CONTENT_TYPE = 'application/octet-stream'
 
@@ -31,7 +35,7 @@ export class S3StorageAdapter implements StorageAdapter {
 			secretAccessKey,
 			region,
 			service: S3_SERVICE,
-			retries: RETRIES,
+			retries: STORAGE_RETRIES,
 		})
 		this.baseUrl = `${endpoint.replace(/\/+$/, '')}/${encodeURIComponent(bucket)}`
 	}
@@ -56,7 +60,11 @@ export class S3StorageAdapter implements StorageAdapter {
 	}
 
 	deleteObject = async (key: string): Promise<void> => {
-		const response = await this.send(this.objectUrl(key), { method: 'DELETE' })
+		const response = await this.send(
+			this.objectUrl(key),
+			{ method: 'DELETE' },
+			STORAGE_DELETE_TIMEOUT_MS,
+		)
 		if (response.status === 404) return
 		this.assertOk(response, 'delete')
 	}
@@ -76,7 +84,11 @@ export class S3StorageAdapter implements StorageAdapter {
 	private listPage = async (prefix: string, token: string | null): Promise<ListObjectsPage> => {
 		const query = new URLSearchParams({ 'list-type': '2', prefix })
 		if (token !== null) query.set('continuation-token', token)
-		const response = await this.send(`${this.baseUrl}?${query.toString()}`, { method: 'GET' })
+		const response = await this.send(
+			`${this.baseUrl}?${query.toString()}`,
+			{ method: 'GET' },
+			STORAGE_LIST_TIMEOUT_MS,
+		)
 		this.assertOk(response, 'list')
 		return parseListObjectsPage(await response.text())
 	}
@@ -85,8 +97,12 @@ export class S3StorageAdapter implements StorageAdapter {
 	private objectUrl = (key: string): string =>
 		`${this.baseUrl}/${key.split('/').map(encodeURIComponent).join('/')}`
 
-	private send = (url: string, init: RequestInit): Promise<Response> =>
-		this.client.fetch(url, { ...init, signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) })
+	private send = (
+		url: string,
+		init: RequestInit,
+		timeoutMs: number = STORAGE_TRANSFER_TIMEOUT_MS,
+	): Promise<Response> =>
+		this.client.fetch(url, { ...init, signal: AbortSignal.timeout(timeoutMs) })
 
 	private assertOk = (response: Response, operation: string): void => {
 		if (response.ok) return

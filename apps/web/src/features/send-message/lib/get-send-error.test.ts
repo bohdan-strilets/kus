@@ -106,10 +106,17 @@ describe('getSendError', () => {
 		})
 	})
 
-	it('treats a missing photo (404) as unknown with a retry; the delivery handles it before', () => {
+	it('says the photo was not found, with no retry; the delivery handles the first 404 before', () => {
 		expect(getSendError(http(404, 'PHOTO_NOT_FOUND'))).toEqual({
-			messageKey: 'errors.api.UNKNOWN',
-			canRetry: true,
+			messageKey: 'errors.api.PHOTO_NOT_FOUND',
+			canRetry: false,
+		})
+	})
+
+	it('says the photo is already in a message, with no retry', () => {
+		expect(getSendError(http(409, 'PHOTO_IN_USE'))).toEqual({
+			messageKey: 'errors.api.PHOTO_IN_USE',
+			canRetry: false,
 		})
 	})
 

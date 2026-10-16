@@ -93,7 +93,7 @@ describe('PhotoTile', () => {
 	it('names the tile «loading» until the picture loads and hides the image from the reader', () => {
 		const { container } = renderWithProviders(<PhotoTile {...baseProps} fileId={FILE_ID} />)
 
-		expect(screen.getByRole('img', { name: LOADING })).toBeTruthy()
+		expect(screen.getByRole('status', { name: LOADING })).toBeTruthy()
 		expect(screen.queryByRole('img', { name: ALT })).toBeNull()
 		expect(getImage(container).getAttribute('alt')).toBe('')
 	})
@@ -104,14 +104,14 @@ describe('PhotoTile', () => {
 		fireEvent.load(getImage(container))
 
 		expect(screen.getByRole('img', { name: ALT })).toBeTruthy()
-		expect(screen.queryByRole('img', { name: LOADING })).toBeNull()
+		expect(screen.queryByRole('status', { name: LOADING })).toBeNull()
 	})
 
 	it('names a local preview by its alt at once', () => {
 		renderWithProviders(<PhotoTile {...baseProps} fileId={null} previewUrl={BLOB_URL} />)
 
 		expect(screen.getByRole('img', { name: ALT })).toBeTruthy()
-		expect(screen.queryByRole('img', { name: LOADING })).toBeNull()
+		expect(screen.queryByRole('status', { name: LOADING })).toBeNull()
 	})
 
 	it('names the tile «loading» again after a retry', async () => {
@@ -121,7 +121,7 @@ describe('PhotoTile', () => {
 
 		await user.click(screen.getByRole('button', { name: RETRY }))
 
-		expect(screen.getByRole('img', { name: LOADING })).toBeTruthy()
+		expect(screen.getByRole('status', { name: LOADING })).toBeTruthy()
 		fireEvent.load(await findImage(container))
 		expect(screen.getByRole('img', { name: ALT })).toBeTruthy()
 	})
@@ -129,7 +129,7 @@ describe('PhotoTile', () => {
 	it('sets the height from the proportions before the picture loads', () => {
 		renderWithProviders(<PhotoTile fileId={FILE_ID} width={900} height={1600} alt={ALT} />)
 
-		expect(screen.getByRole('img', { name: LOADING }).style.height).toBe('330px')
+		expect(screen.getByRole('status', { name: LOADING }).style.height).toBe('330px')
 	})
 
 	it('drops the skeleton and shows the picture after it loads', async () => {
@@ -252,7 +252,7 @@ describe('PhotoTile', () => {
 			await user.click(screen.getByRole('button', { name: RETRY }))
 
 			expect(touchSessionMock).toHaveBeenCalledTimes(1)
-			expect(screen.getByRole('img', { name: LOADING })).toBeTruthy()
+			expect(screen.getByRole('status', { name: LOADING })).toBeTruthy()
 			expect(hasSkeleton(container)).toBe(true)
 			expect(container.querySelector('img')).toBeNull()
 			expect(screen.queryByRole('button', { name: RETRY })).toBeNull()

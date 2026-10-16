@@ -72,7 +72,8 @@ export const PhotoTile = ({
 
 	return (
 		<div
-			role="img"
+			// loading is a status, not an image: the screen reader announces it, the name comes with the photo
+			role={isShown ? 'img' : 'status'}
 			aria-label={isShown ? alt : t('chat.photoTile.loading')}
 			style={{ height: tileHeight }}
 			className={cn(photoTileVariants(), className)}

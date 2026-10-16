@@ -46,7 +46,7 @@ interface OutboxState {
 	items: Record<string, OutboxItem>
 	/**
 	 * Server messages the user dropped from the feed with «Прибрати»: a photo message that FAILED
-	 * on the server can't be resent (the picture was never stored), so it is hidden here instead.
+	 * on the server and has no stored file (the old inline flow) can't be resent, so it is hidden here instead.
 	 */
 	hiddenIds: string[]
 	/** The signed-in user (null after logout); a different one drops the drafts of the previous. */

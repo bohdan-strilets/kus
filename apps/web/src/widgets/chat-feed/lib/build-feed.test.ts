@@ -312,6 +312,23 @@ describe('buildFeed with photos', () => {
 		})
 	})
 
+	it.each(['errors.api.PHOTO_NOT_FOUND', 'errors.api.PHOTO_IN_USE'] as const)(
+		'a final photo error %s leaves «Прибрати» as the only way out',
+		(messageKey) => {
+			const dead = outboxItem({
+				text: 'обід',
+				photoId: '0199b3a4-0000-7000-8000-0000000000c1',
+				status: 'failed',
+				error: { messageKey, canRetry: false },
+			})
+			const feed = buildFeed(params([], { [dead.clientMessageId]: dead }))
+
+			expect(feed.find((item) => item.kind === 'failure')).toMatchObject({
+				dismiss: { target: 'outbox', id: dead.clientMessageId },
+			})
+		},
+	)
+
 	it('has no photo and no photo id in the retry of a plain text message', () => {
 		const text = outboxItem({
 			text: 'борщ',
@@ -462,6 +479,40 @@ describe('buildFeed with photos', () => {
 		const photo = getPhoto(buildFeed(params([pending], { [item.clientMessageId]: item })))
 
 		expect(photo).toMatchObject({ kind: 'stored', fileId: FILE_ID })
+	})
+
+	it('retries a FAILED server message with a stored photo by its file id, with the stored-failure text', () => {
+		const failed = message({
+			createdAt: '2026-10-07T16:10:00Z',
+			status: 'FAILED',
+			clientMessageId: 'client-photo',
+			content: 'обід',
+			photo: { status: 'PENDING' },
+			photos: [storedPhoto()],
+		})
+		const feed = buildFeed(params([failed]))
+
+		expect(feed.find((item) => item.kind === 'failure')).toMatchObject({
+			error: { messageKey: 'errors.api.AI_UNAVAILABLE', canRetry: true },
+			retry: { clientMessageId: 'client-photo', text: 'обід', photoId: FILE_ID },
+			dismiss: null,
+		})
+	})
+
+	it('keeps «фото не надіслано» without a retry for a FAILED photo whose file is null', () => {
+		const failed = message({
+			createdAt: '2026-10-07T16:10:00Z',
+			status: 'FAILED',
+			photo: { status: 'PENDING' },
+			photos: [storedPhoto({ fileId: null })],
+		})
+		const feed = buildFeed(params([failed]))
+
+		expect(feed.find((item) => item.kind === 'failure')).toMatchObject({
+			error: { messageKey: 'chat.photoLost' },
+			retry: null,
+			dismiss: { target: 'server', id: failed.id },
+		})
 	})
 
 	it('draws a placeholder for the photo of a server message and passes its status to the reply', () => {

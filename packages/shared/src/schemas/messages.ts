@@ -174,7 +174,7 @@ export const chatMessageSchema = z.object({
 	 */
 	replyToId: z.uuid().nullable(),
 	createdAt: z.iso.datetime(),
-	/** User messages only: the photo is not stored, only how it went (FAILED = not food or unreadable). */
+	/** User messages only: how the photo went (FAILED = not food or unreadable); the file itself is in `photos`. */
 	photo: z.object({ status: attachmentStatusSchema }).nullable(),
 	/**
 	 * User messages only: the stored photos in grid order. `fileId` is null once the file is gone.

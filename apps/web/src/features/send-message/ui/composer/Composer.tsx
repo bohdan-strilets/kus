@@ -115,9 +115,9 @@ export const Composer = ({
 				<Text
 					id={photoNoticeId}
 					role="status"
-					variant="small"
-					tone="muted"
-					weight="regular"
+					variant="caption"
+					tone="danger"
+					weight="bold"
 					className="order-first basis-full pt-1 pl-2"
 				>
 					{t('errors.api.DAILY_PHOTO_LIMIT_REACHED')}

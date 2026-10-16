@@ -7,6 +7,8 @@ export type SendErrorKey =
 	| 'errors.api.DAILY_LIMIT_REACHED'
 	| 'errors.api.DAILY_PHOTO_LIMIT_REACHED'
 	| 'errors.api.STORAGE_UNAVAILABLE'
+	| 'errors.api.PHOTO_NOT_FOUND'
+	| 'errors.api.PHOTO_IN_USE'
 	| 'chat.photoNeedsNetwork'
 	| 'chat.photoLost'
 	| 'chat.photoTooLarge'
@@ -29,6 +31,10 @@ const FINAL_ERRORS: Partial<Record<string, SendErrorKey>> = {
 	MESSAGE_TOO_LONG: 'errors.api.MESSAGE_TOO_LONG',
 	DAILY_LIMIT_REACHED: 'errors.api.DAILY_LIMIT_REACHED',
 	DAILY_PHOTO_LIMIT_REACHED: 'errors.api.DAILY_PHOTO_LIMIT_REACHED',
+	// the photo is already in another message: the same ids would fail the same way
+	PHOTO_IN_USE: 'errors.api.PHOTO_IN_USE',
+	// reaches here only when deliverMessage's quiet re-upload could not run or failed too
+	PHOTO_NOT_FOUND: 'errors.api.PHOTO_NOT_FOUND',
 }
 
 /** The API's reason a photo was refused (details.fields.photo) → what Kusik says; resending won't help. */

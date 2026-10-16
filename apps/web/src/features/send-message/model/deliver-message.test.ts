@@ -581,7 +581,7 @@ describe('deliverMessage with a photo', () => {
 			expect(useFreshReplyStore.getState().freshAt).toEqual({})
 		})
 
-		it('gives up with a plain failure when the reupload is not found either: no endless loop', async () => {
+		it('gives up with the not-found text when the reupload is not found either: no endless loop', async () => {
 			vi.mocked(uploadPhoto).mockResolvedValueOnce(uploaded(NEW_PHOTO_ID))
 			vi.mocked(postMessage).mockRejectedValue(notFound())
 
@@ -597,7 +597,7 @@ describe('deliverMessage with a photo', () => {
 			expect(postMessage).toHaveBeenCalledTimes(2)
 			expect(useOutboxStore.getState().items[CLIENT_ID]).toMatchObject({
 				status: 'failed',
-				error: { messageKey: 'errors.api.UNKNOWN', canRetry: true },
+				error: { messageKey: 'errors.api.PHOTO_NOT_FOUND', canRetry: false },
 			})
 			expect(useOutboxStore.getState().items[CLIENT_ID]?.photoLost).toBeUndefined()
 		})

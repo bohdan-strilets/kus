@@ -46,7 +46,7 @@ describe('UserMessage', () => {
 			/>,
 		)
 
-		expect(screen.getByRole('img', { name: LOADING })).toBeTruthy()
+		expect(screen.getByRole('status', { name: LOADING })).toBeTruthy()
 		expect(container.querySelector('img')?.getAttribute('src')).toBe(
 			`/api/v1/photos/${FILE_ID}?variant=thumb`,
 		)
@@ -67,7 +67,7 @@ describe('UserMessage', () => {
 			/>,
 		)
 
-		const tile = screen.getByRole('img', { name: LOADING })
+		const tile = screen.getByRole('status', { name: LOADING })
 		const words = screen.getByText('150 г')
 
 		expect(tile.compareDocumentPosition(words) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()

@@ -21,6 +21,12 @@ import type {
 /** A gap this long between messages shows the time again. */
 const TIME_GAP_MS = 60 * 60 * 1000
 
+/** Final photo failures: no retry can help, so «Прибрати» is the only way out of the bubble. */
+const DEAD_END_PHOTO_ERROR_KEYS: ReadonlySet<string> = new Set([
+	'errors.api.PHOTO_NOT_FOUND',
+	'errors.api.PHOTO_IN_USE',
+])
+
 export interface BuildFeedParams {
 	/** Every loaded page, newest first — as the API sends them. */
 	pages: readonly (readonly ChatMessage[])[]
@@ -51,12 +57,18 @@ interface UserEntry {
 
 type Entry = { kind: 'user'; user: UserEntry } | { kind: 'kusik'; message: ChatMessage }
 
+/** The file of a message with exactly one stored photo; null when it is gone or was never stored. */
+const getStoredPhotoId = (message: ChatMessage): string | null => {
+	const photos = message.photos ?? []
+	return photos.length === 1 ? (photos[0]?.fileId ?? null) : null
+}
+
 const getServerUserState = (
 	message: ChatMessage,
 	now: Date,
 ): { state: UserItemState; error: SendError | null } => {
-	// the picture was never stored: a resend can not bring it back
-	const failure = message.photo ? PHOTO_LOST_FAILURE : STORED_FAILURE
+	// a photo with no file on the server (the old inline flow): a resend can not bring it back
+	const failure = message.photo && !getStoredPhotoId(message) ? PHOTO_LOST_FAILURE : STORED_FAILURE
 	if (message.status === 'FAILED') return { state: 'failed', error: failure }
 	if (message.status !== 'PENDING' && message.status !== 'STREAMING') {
 		return { state: 'sent', error: null }
@@ -89,7 +101,11 @@ const fromOutbox = (item: OutboxItem, params: BuildFeedParams): UserEntry => ({
 				photo: item.photo,
 				photoId: item.photoId,
 			},
-	dismiss: item.photoLost ? { target: 'outbox', id: item.clientMessageId } : null,
+	// a final photo failure is a dead end otherwise: «Прибрати» is the only way out
+	dismiss:
+		item.photoLost || DEAD_END_PHOTO_ERROR_KEYS.has(item.error?.messageKey ?? '')
+			? { target: 'outbox', id: item.clientMessageId }
+			: null,
 	photo: getOutboxPhoto(item),
 	uploadProgress:
 		item.status === 'sending' ? params.uploadProgress?.[item.clientMessageId] : undefined,
@@ -114,11 +130,16 @@ const toEntry = (message: ChatMessage, params: BuildFeedParams): Entry => {
 	if (message.role === 'ASSISTANT') return { kind: 'kusik', message }
 	const text = message.content ?? ''
 	const serverPhoto = getServerPhoto(message, params)
-	// a photo message can not be resent from the feed: the picture is not on the server
+	const photoId = getStoredPhotoId(message)
+	// a stored photo is resent by its id, without an upload; a photo without a file can not be resent
 	const retry =
-		message.clientMessageId === null || message.photo
+		message.clientMessageId === null || (message.photo && !photoId)
 			? null
-			: { clientMessageId: message.clientMessageId, text }
+			: {
+					clientMessageId: message.clientMessageId,
+					text,
+					...(photoId ? { photoId } : {}),
+				}
 	// the client's own state of a resend wins over the copy the server had before it
 	const outboxItem =
 		message.clientMessageId === null ? undefined : params.outbox[message.clientMessageId]
@@ -129,7 +150,9 @@ const toEntry = (message: ChatMessage, params: BuildFeedParams): Entry => {
 				...fromOutbox(outboxItem, params),
 				key: message.id,
 				createdAt: message.createdAt,
-				photo: getOutboxPhoto(outboxItem) ?? serverPhoto,
+				photo: outboxItem.photo
+					? getOutboxPhoto(outboxItem)
+					: (serverPhoto ?? getOutboxPhoto(outboxItem)),
 			},
 		}
 	}
@@ -143,8 +166,11 @@ const toEntry = (message: ChatMessage, params: BuildFeedParams): Entry => {
 			state,
 			error,
 			retry,
-			// a photo that failed on the server stays a dead end otherwise: «Прибрати» hides it
-			dismiss: message.photo && state === 'failed' ? { target: 'server', id: message.id } : null,
+			// a photo without a file stays a dead end otherwise: «Прибрати» hides it
+			dismiss:
+				message.photo && !photoId && state === 'failed'
+					? { target: 'server', id: message.id }
+					: null,
 			photo: serverPhoto,
 			uploadProgress: undefined,
 		},

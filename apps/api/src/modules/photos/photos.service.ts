@@ -9,6 +9,7 @@ import type { Env } from '../../config'
 import { PrismaService } from '../../prisma'
 import { AiUsageService } from '../ai/ai-usage.service'
 import { DailyPhotoLimitReachedException } from '../ai/ai.exceptions'
+import { PHOTO_REMOVE_TRANSACTION_TIMEOUT_MS } from '../storage/storage.constants'
 import { buildStorageKey } from '../storage/storage-key'
 import { StorageService } from '../storage/storage.service'
 import { UsersService } from '../users/users.service'
@@ -18,8 +19,6 @@ import { type MessageStoredFile, PhotosRepository } from './photos.repository'
 
 const PHOTO_CONTENT_TYPE = 'image/jpeg'
 const START_OF_DAY_HOUR = 0
-// two object deletes inside the transaction: far above the 5 s default, below a hanging request
-const REMOVE_TRANSACTION_TIMEOUT_MS = 15_000
 
 export const REMOVE_DONE = 'removed'
 export const REMOVE_ATTACHED = 'attached'
@@ -155,7 +154,7 @@ export class PhotosService {
 				await this.storage.deleteObject(file.thumbKey)
 				return REMOVE_DONE
 			},
-			{ timeout: REMOVE_TRANSACTION_TIMEOUT_MS },
+			{ timeout: PHOTO_REMOVE_TRANSACTION_TIMEOUT_MS },
 		)
 		if (result === REMOVE_DONE) this.logger.log(`Photo deleted user=${userId} file=${id}`)
 		return result

@@ -36,11 +36,31 @@ export class AccountRepository {
 		return count === 1
 	}
 
-	/** Hard delete; every table of the user cascades (schema.prisma, onDelete: Cascade). */
-	async deleteExpired(now: Date, tx?: Prisma.TransactionClient): Promise<number> {
-		const { count } = await (tx ?? this.prisma).user.deleteMany({
-			where: { purgeAt: { lte: now } },
+	/** One page of users past their grace, ordered by id; `afterId` is the keyset cursor. */
+	async findExpiredUserIds(
+		{ now, limit, afterId }: { now: Date; limit: number; afterId?: string },
+		tx?: Prisma.TransactionClient,
+	): Promise<string[]> {
+		const users = await (tx ?? this.prisma).user.findMany({
+			where: { purgeAt: { lte: now }, ...(afterId ? { id: { gt: afterId } } : {}) },
+			select: { id: true },
+			orderBy: { id: 'asc' },
+			take: limit,
 		})
-		return count
+		return users.map((user) => user.id)
+	}
+
+	/**
+	 * Hard delete of one user; every table cascades (schema.prisma, onDelete: Cascade).
+	 * The purgeAt filter keeps a user who restored the account meanwhile.
+	 */
+	async deleteExpiredUser(
+		{ userId, now }: { userId: string; now: Date },
+		tx?: Prisma.TransactionClient,
+	): Promise<boolean> {
+		const { count } = await (tx ?? this.prisma).user.deleteMany({
+			where: { id: userId, purgeAt: { lte: now } },
+		})
+		return count === 1
 	}
 }

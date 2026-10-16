@@ -9,6 +9,8 @@ export interface RetryParams {
 	clientMessageId: string
 	text: string
 	photo?: OutboxPhoto
+	/** Already uploaded: the resend only sends the message. */
+	photoId?: string
 }
 
 /** The picture in a user bubble: this device still has it, or only the fact that it was there. */

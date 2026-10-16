@@ -12,7 +12,9 @@ export {
 	useOutboxStore,
 } from './model/outbox-store'
 export { type PhotoDraftPhoto, usePhotoDraftStore } from './model/photo-draft-store'
+export { usePhotoLimitStore } from './model/photo-limit-store'
 export { usePhotoSessionStore } from './model/photo-session-store'
+export { useIsPhotoBlocked } from './model/use-is-photo-blocked'
 export { type SendMessageActions, useSendMessage } from './model/use-send-message'
 export type {
 	ComposerPhotoState,

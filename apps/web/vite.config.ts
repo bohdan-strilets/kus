@@ -51,7 +51,9 @@ export default defineConfig({
 			},
 			workbox: {
 				globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
-				// API calls go same-origin through the rewrite: never answer them with the SPA shell
+				// API calls go same-origin through the rewrite: never answer them with the SPA shell.
+				// No runtimeCaching on purpose: /api/v1/photos* (private user photos) must never enter a
+				// service-worker cache; add a route for /api only as NetworkOnly
 				navigateFallbackDenylist: [/^\/api\//],
 			},
 		}),

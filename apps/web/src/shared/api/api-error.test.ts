@@ -1,7 +1,7 @@
 import { AxiosError, AxiosHeaders } from 'axios'
 import { describe, expect, it } from 'vitest'
 
-import { getApiError } from './api-error'
+import { getApiError, HTTP_STATUS } from './api-error'
 
 const responseError = (status: number, data: unknown) =>
 	new AxiosError('failed', AxiosError.ERR_BAD_RESPONSE, undefined, undefined, {
@@ -26,6 +26,18 @@ describe('getApiError', () => {
 			errorCode: 'ACCOUNT_LOCKED',
 			details: { lockedUntil: '2026-10-07T12:00:00.000Z' },
 		})
+	})
+
+	it('keeps the code of a 404, so a missing photo is told from any other 404', () => {
+		const error = responseError(404, { statusCode: 404, errorCode: 'PHOTO_NOT_FOUND', details: {} })
+
+		expect(getApiError(error)).toEqual({
+			kind: 'http',
+			status: HTTP_STATUS.notFound,
+			errorCode: 'PHOTO_NOT_FOUND',
+			details: {},
+		})
+		expect(HTTP_STATUS.notFound).toBe(404)
 	})
 
 	it('treats no response as a network failure', () => {

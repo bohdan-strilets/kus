@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest'
 
-import { COMPRESSION_ATTEMPTS, getTargetSize, PHOTO_MAX_SIDE_PX } from './compress-image.helpers'
+import { PHOTO_TARGET_SIDE_PX, PHOTO_THUMB_MAX_BYTES, PHOTO_THUMB_SIDE_PX } from '@kus/shared'
+
+import {
+	COMPRESSION_ATTEMPTS,
+	getTargetSize,
+	THUMB_COMPRESSION_ATTEMPTS,
+	THUMB_TARGET_BYTES,
+} from './compress-image.helpers'
 import { EXIF_GPS_JPEG_BASE64 } from './fixtures/exif-gps.fixture'
 import { hasJpegExif } from './fixtures/jpeg-exif'
 
@@ -11,8 +18,8 @@ const SCAN = [0xff, 0xda, 0x00, 0x02, 0x00]
 
 describe('getTargetSize', () => {
 	it('keeps the proportions while fitting the long side', () => {
-		expect(getTargetSize(4032, 3024)).toEqual({ width: PHOTO_MAX_SIDE_PX, height: 1176 })
-		expect(getTargetSize(3024, 4032)).toEqual({ width: 1176, height: PHOTO_MAX_SIDE_PX })
+		expect(getTargetSize(4032, 3024)).toEqual({ width: PHOTO_TARGET_SIDE_PX, height: 1176 })
+		expect(getTargetSize(3024, 4032)).toEqual({ width: 1176, height: PHOTO_TARGET_SIDE_PX })
 		expect(getTargetSize(4000, 2000, 1280)).toEqual({ width: 1280, height: 640 })
 	})
 
@@ -25,6 +32,27 @@ describe('COMPRESSION_ATTEMPTS', () => {
 	it('goes from the best picture to the lightest', () => {
 		expect(COMPRESSION_ATTEMPTS.map((attempt) => attempt.quality)).toEqual([0.8, 0.7, 0.6, 0.7])
 		expect(COMPRESSION_ATTEMPTS.at(-1)?.maxSide).toBe(1280)
+	})
+})
+
+describe('THUMB_COMPRESSION_ATTEMPTS', () => {
+	it('keeps the thumbnail on its own side and byte ceiling, lightest last', () => {
+		expect(THUMB_TARGET_BYTES).toBe(PHOTO_THUMB_MAX_BYTES)
+		expect(THUMB_TARGET_BYTES).toBe(150_000)
+		expect(THUMB_COMPRESSION_ATTEMPTS.map((attempt) => attempt.quality)).toEqual([
+			0.8, 0.7, 0.6, 0.6,
+		])
+		expect(THUMB_COMPRESSION_ATTEMPTS.slice(0, 3).map((attempt) => attempt.maxSide)).toEqual([
+			PHOTO_THUMB_SIDE_PX,
+			PHOTO_THUMB_SIDE_PX,
+			PHOTO_THUMB_SIDE_PX,
+		])
+		expect(THUMB_COMPRESSION_ATTEMPTS.at(-1)?.maxSide).toBe(576)
+	})
+
+	it('never asks for a thumbnail longer than 768 px', () => {
+		expect(getTargetSize(4032, 3024, PHOTO_THUMB_SIDE_PX)).toEqual({ width: 768, height: 576 })
+		expect(getTargetSize(3024, 4032, PHOTO_THUMB_SIDE_PX)).toEqual({ width: 576, height: 768 })
 	})
 })
 

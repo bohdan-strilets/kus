@@ -8,7 +8,13 @@ vi.mock('../lib/compress-image', () => ({ compressImage: vi.fn() }))
 
 const OWNER_ID = '0199b3a4-0000-7000-8000-00000000000a'
 const file = new File(['x'], 'plate.jpg', { type: 'image/jpeg' })
-const compressed = { blob: new Blob(['jpeg']), base64: 'AAAA', width: 800, height: 600 }
+const compressed = {
+	blob: new Blob(['jpeg']),
+	base64: 'AAAA',
+	thumbBase64: 'TTTT',
+	width: 800,
+	height: 600,
+}
 
 describe('photo draft store', () => {
 	let urlCounter = 0
@@ -47,7 +53,36 @@ describe('photo draft store', () => {
 		expect(usePhotoDraftStore.getState()).toMatchObject({
 			status: 'ready',
 			errorKey: null,
-			photo: { base64: 'AAAA', width: 800, height: 600, previewUrl: 'blob:http://localhost/1' },
+			photo: {
+				base64: 'AAAA',
+				thumbBase64: 'TTTT',
+				width: 800,
+				height: 600,
+				previewUrl: 'blob:http://localhost/1',
+			},
+		})
+	})
+
+	it('keeps the thumbnail with the photo, so the send can upload both', async () => {
+		vi.mocked(compressImage).mockResolvedValueOnce(compressed)
+
+		await usePhotoDraftStore.getState().pick(file)
+
+		expect(usePhotoDraftStore.getState().photo).toMatchObject({
+			base64: 'AAAA',
+			thumbBase64: 'TTTT',
+		})
+	})
+
+	it('ends a file the browser can not decode as an error, never as an endless «processing»', async () => {
+		vi.mocked(compressImage).mockRejectedValueOnce(new PhotoError('unsupported'))
+
+		await usePhotoDraftStore.getState().pick(file)
+
+		expect(usePhotoDraftStore.getState()).toMatchObject({
+			status: 'error',
+			photo: null,
+			errorKey: 'chat.photoUnsupported',
 		})
 	})
 

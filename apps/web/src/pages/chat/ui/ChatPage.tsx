@@ -9,6 +9,7 @@ import {
 	QuickChips,
 	shouldShowQuickChips,
 	useComposerDraftStore,
+	useIsPhotoBlocked,
 	usePhotoDraftStore,
 	useSendMessage,
 } from '@/features/send-message'
@@ -41,6 +42,7 @@ const ChatScreen = ({ addressee, timeZone }: { addressee: Addressee; timeZone: s
 	const isFocusRequested = useComposerDraftStore((state) => state.isFocusRequested)
 	const resolveFocus = useComposerDraftStore((state) => state.resolveFocus)
 	const photoDraft = usePhotoDraftStore()
+	const isPhotoBlocked = useIsPhotoBlocked()
 	const { send } = useSendMessage()
 	const features: Record<keyof typeof FEATURES, boolean> = FEATURES
 	const hasQuickChips = shouldShowQuickChips({
@@ -84,6 +86,7 @@ const ChatScreen = ({ addressee, timeZone }: { addressee: Addressee; timeZone: s
 						onRemove: photoDraft.clear,
 					}}
 					isPhotoEnabled={FEATURES.photo}
+					isPhotoBlocked={isPhotoBlocked}
 					isVoiceEnabled={FEATURES.voice}
 					maxLength={MESSAGE_TEXT_MAX_LENGTH}
 					shouldFocus={isFocusRequested}

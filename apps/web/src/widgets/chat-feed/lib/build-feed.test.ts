@@ -179,6 +179,7 @@ describe('buildFeed with photos', () => {
 	const outboxPhoto = {
 		previewUrl: 'blob:http://localhost/preview',
 		base64: 'AAAA',
+		thumbBase64: 'TTTT',
 		mimeType: 'image/jpeg',
 		width: 800,
 		height: 600,
@@ -242,6 +243,73 @@ describe('buildFeed with photos', () => {
 		expect(failures[1]).toMatchObject({ retry: null, dismiss: { target: 'outbox', id: 'local-2' } })
 		expect(feed.filter((item) => item.kind === 'user')[1]).toMatchObject({
 			photo: { kind: 'placeholder' },
+		})
+	})
+
+	it('draws a placeholder and offers a retry with the id for a photo restored after a reload', () => {
+		const PHOTO_ID = '0199b3a4-0000-7000-8000-0000000000c1'
+		const restored = outboxItem({
+			photoId: PHOTO_ID,
+			status: 'failed',
+			error: { messageKey: 'errors.api.UNKNOWN', canRetry: true },
+		})
+		const feed = buildFeed(params([], { [restored.clientMessageId]: restored }))
+
+		expect(userItem(feed)).toMatchObject({ photo: { kind: 'placeholder' } })
+		expect(feed.find((item) => item.kind === 'failure')).toMatchObject({
+			retry: { clientMessageId: 'local-1', text: '', photo: undefined, photoId: PHOTO_ID },
+			dismiss: null,
+		})
+	})
+
+	it('passes both the picture and its id to the retry while the session still has the picture', () => {
+		const PHOTO_ID = '0199b3a4-0000-7000-8000-0000000000c1'
+		const item = outboxItem({
+			photo: outboxPhoto,
+			photoId: PHOTO_ID,
+			status: 'failed',
+			error: { messageKey: 'chat.networkError', canRetry: true },
+		})
+		const feed = buildFeed(params([], { [item.clientMessageId]: item }))
+
+		expect(userItem(feed)).toMatchObject({
+			photo: { kind: 'preview', url: outboxPhoto.previewUrl },
+		})
+		expect(feed.find((entry) => entry.kind === 'failure')).toMatchObject({
+			retry: { clientMessageId: 'local-1', photo: outboxPhoto, photoId: PHOTO_ID },
+		})
+	})
+
+	it('offers only «Прибрати» for a photo the server dropped, even if the words are still there', () => {
+		const lost = outboxItem({
+			text: 'обід',
+			photoLost: true,
+			status: 'failed',
+			error: { messageKey: 'chat.photoLost', canRetry: false },
+		})
+		const feed = buildFeed(params([], { [lost.clientMessageId]: lost }))
+
+		expect(userItem(feed)).toMatchObject({ text: 'обід', photo: { kind: 'placeholder' } })
+		expect(feed.find((item) => item.kind === 'failure')).toMatchObject({
+			retry: null,
+			dismiss: { target: 'outbox', id: 'local-1' },
+		})
+	})
+
+	it('has no photo and no photo id in the retry of a plain text message', () => {
+		const text = outboxItem({
+			text: 'борщ',
+			status: 'failed',
+			error: { messageKey: 'chat.networkError', canRetry: true },
+		})
+		const feed = buildFeed(params([], { [text.clientMessageId]: text }))
+
+		const user = userItem(feed)
+		expect(user?.kind === 'user' ? user.photo : 'not a user bubble').toBeUndefined()
+		const failure = feed.find((item) => item.kind === 'failure')
+		expect(failure?.kind === 'failure' ? failure.retry : 'not a failure').toEqual({
+			clientMessageId: 'local-1',
+			text: 'борщ',
 		})
 	})
 

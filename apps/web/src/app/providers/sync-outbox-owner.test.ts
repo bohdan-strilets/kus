@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useFreshReplyStore } from '@/entities/message'
 import { SESSION_QUERY_KEY } from '@/entities/session'
 import { hasCelebratedGoal, markGoalCelebrated, useGoalCelebrationStore } from '@/entities/stats'
-import { useComposerDraftStore, useOutboxStore } from '@/features/send-message'
+import { useComposerDraftStore, useOutboxStore, usePhotoLimitStore } from '@/features/send-message'
 
 import { syncOutboxOwner } from './sync-outbox-owner'
 
@@ -51,6 +51,7 @@ describe('syncOutboxOwner', () => {
 		vi.stubGlobal('localStorage', createMemoryStorage())
 		useOutboxStore.setState({ ownerId: null, items: {} })
 		useComposerDraftStore.setState({ ownerId: null, text: '' })
+		usePhotoLimitStore.setState({ ownerId: null, blockedUntil: null })
 		useFreshReplyStore.setState({ ownerId: null, freshAt: {} })
 		useGoalCelebrationStore.setState({
 			ownerId: null,
@@ -154,6 +155,25 @@ describe('syncOutboxOwner', () => {
 		useComposerDraftStore.getState().setText('банан')
 		queryClient.setQueryData(SESSION_QUERY_KEY, null)
 		expect(useComposerDraftStore.getState()).toMatchObject({ ownerId: null, text: '' })
+		stop()
+	})
+
+	it('keeps the photo limit for the same user and drops it for another one or after logout', () => {
+		const queryClient = new QueryClient()
+		const stop = syncOutboxOwner(queryClient)
+		const blockedUntil = Date.now() + 3_600_000
+		queryClient.setQueryData(SESSION_QUERY_KEY, USER_A)
+		usePhotoLimitStore.setState({ blockedUntil })
+
+		queryClient.setQueryData(SESSION_QUERY_KEY, { ...USER_A })
+		expect(usePhotoLimitStore.getState().blockedUntil).toBe(blockedUntil)
+
+		queryClient.setQueryData(SESSION_QUERY_KEY, USER_B)
+		expect(usePhotoLimitStore.getState()).toMatchObject({ ownerId: USER_B.id, blockedUntil: null })
+
+		usePhotoLimitStore.setState({ blockedUntil })
+		queryClient.setQueryData(SESSION_QUERY_KEY, null)
+		expect(usePhotoLimitStore.getState()).toMatchObject({ ownerId: null, blockedUntil: null })
 		stop()
 	})
 

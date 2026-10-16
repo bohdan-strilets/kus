@@ -10,12 +10,25 @@ export interface SendMessageActions {
 	/** A new message: a fresh clientMessageId. */
 	send: (params: { text: string; photo?: PhotoDraftPhoto | null }) => void
 	/** «Спробувати ще»: the same id, text and photo as the failed try. */
-	retry: (params: { clientMessageId: string; text: string; photo?: OutboxPhoto }) => void
+	retry: (params: {
+		clientMessageId: string
+		text: string
+		photo?: OutboxPhoto
+		/** Already uploaded: the resend only sends the message. */
+		photoId?: string
+	}) => void
 }
 
-const toOutboxPhoto = ({ blob, base64, width, height }: PhotoDraftPhoto): OutboxPhoto => ({
+const toOutboxPhoto = ({
+	blob,
+	base64,
+	thumbBase64,
+	width,
+	height,
+}: PhotoDraftPhoto): OutboxPhoto => ({
 	previewUrl: createSessionObjectUrl(blob),
 	base64,
+	thumbBase64,
 	mimeType: 'image/jpeg',
 	width,
 	height,

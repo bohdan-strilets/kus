@@ -27,6 +27,8 @@ export interface ComposerProps {
 	onVoiceStart?: () => void
 	/** Off: no camera button (FEATURES.photo). */
 	isPhotoEnabled?: boolean
+	/** The daily photo limit is on: the camera is inactive and the field says why. */
+	isPhotoBlocked?: boolean
 	/** Off: the right slot is always «Надіслати», inactive while the field is empty (FEATURES.voice). */
 	isVoiceEnabled?: boolean
 	/** The picked photo: a thumbnail above the field, or why it can't be used. */

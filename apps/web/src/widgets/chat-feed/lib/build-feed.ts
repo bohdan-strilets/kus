@@ -68,7 +68,8 @@ const getServerUserState = (
 
 const getOutboxPhoto = (item: OutboxItem): FeedPhoto | undefined => {
 	if (item.photo) return { kind: 'preview', url: item.photo.previewUrl }
-	return item.photoLost ? { kind: 'placeholder' } : undefined
+	// restored after a reload: the picture is gone from the phone, but it was uploaded
+	return item.photoLost || item.photoId ? { kind: 'placeholder' } : undefined
 }
 
 const fromOutbox = (item: OutboxItem, params: BuildFeedParams): UserEntry => ({
@@ -79,7 +80,12 @@ const fromOutbox = (item: OutboxItem, params: BuildFeedParams): UserEntry => ({
 	error: item.error,
 	retry: item.photoLost
 		? null
-		: { clientMessageId: item.clientMessageId, text: item.text, photo: item.photo },
+		: {
+				clientMessageId: item.clientMessageId,
+				text: item.text,
+				photo: item.photo,
+				photoId: item.photoId,
+			},
 	dismiss: item.photoLost ? { target: 'outbox', id: item.clientMessageId } : null,
 	photo: getOutboxPhoto(item),
 	uploadProgress:

@@ -1,4 +1,11 @@
-import { type ChangeEvent, type KeyboardEvent, type SubmitEvent, useEffect, useRef } from 'react'
+import {
+	type ChangeEvent,
+	type KeyboardEvent,
+	type SubmitEvent,
+	useEffect,
+	useId,
+	useRef,
+} from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { COARSE_POINTER_QUERY, cn, useMediaQuery } from '@/shared/lib'
@@ -11,8 +18,12 @@ import { ComposerPhotoPreview } from './ComposerPhotoPreview'
 import type { ComposerProps } from './composer.types'
 import { VoiceRecorder } from './VoiceRecorder'
 
-/** No HEIC on purpose: without it iOS converts a library HEIC to JPEG before handing it over. */
-const PHOTO_INPUT_ACCEPT = 'image/jpeg,image/png,image/webp'
+/**
+ * Any image: a narrower list hides files in some pickers. iOS hands over a library HEIC already
+ * converted to JPEG; where the browser can't decode a file (HEIC outside Safari) compressImage
+ * refuses it and the field says so. HEIC is not converted here on purpose.
+ */
+const PHOTO_INPUT_ACCEPT = 'image/*'
 
 /**
  * docs InputBar (the design spec wins over mockups/chat.html, which drew mic and send side by
@@ -32,6 +43,7 @@ export const Composer = ({
 	onVoiceStart,
 	voice,
 	isPhotoEnabled = true,
+	isPhotoBlocked = false,
 	isVoiceEnabled = true,
 	photo,
 	maxLength,
@@ -49,6 +61,7 @@ export const Composer = ({
 	// while a photo is there the right slot is «надіслати», never the mic (chat-photo-preview)
 	const hasPhoto = isPhotoEnabled && !!photo && photo.status !== 'idle'
 	const isCoarsePointer = useMediaQuery(COARSE_POINTER_QUERY)
+	const photoNoticeId = useId()
 
 	// a DOM side effect, not derived state: the field exists only after the render
 	useEffect(() => {
@@ -98,6 +111,18 @@ export const Composer = ({
 				isMultiline ? 'rounded-card pt-3 pr-1.5 pb-1.5 pl-4' : 'rounded-panel p-1.5',
 			)}
 		>
+			{isPhotoEnabled && isPhotoBlocked && (
+				<Text
+					id={photoNoticeId}
+					role="status"
+					variant="small"
+					tone="muted"
+					weight="regular"
+					className="order-first basis-full pt-1 pl-2"
+				>
+					{t('errors.api.DAILY_PHOTO_LIMIT_REACHED')}
+				</Text>
+			)}
 			{isPhotoEnabled && photo && <ComposerPhotoPreview photo={photo} />}
 			{isPhotoEnabled && (
 				<>
@@ -111,7 +136,13 @@ export const Composer = ({
 						className="hidden"
 						onChange={handlePhotoChange}
 					/>
-					<IconButton size="sm" label={t('composer.addPhoto')} onClick={openPhotoPicker}>
+					<IconButton
+						size="sm"
+						label={t('composer.addPhoto')}
+						onClick={openPhotoPicker}
+						disabled={isPhotoBlocked}
+						aria-describedby={isPhotoBlocked ? photoNoticeId : undefined}
+					>
 						<Icon name="camera" size={ICON_SIZE.control} />
 					</IconButton>
 				</>

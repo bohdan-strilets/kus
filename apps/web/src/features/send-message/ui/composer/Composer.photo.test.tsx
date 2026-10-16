@@ -1,9 +1,11 @@
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
+import { useState } from 'react'
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { renderWithProviders, stubMatchMedia } from '@/shared/testing'
 
+import { compressImage } from '../../lib/compress-image'
 import { shouldShowQuickChips } from '../../lib/should-show-quick-chips'
 import { useComposerDraftStore } from '../../model/composer-draft-store'
 import { type PhotoDraftPhoto, usePhotoDraftStore } from '../../model/photo-draft-store'
@@ -14,10 +16,13 @@ import type { ComposerPhotoState } from './composer.types'
 const PHOTO: PhotoDraftPhoto = {
 	blob: new Blob(['jpeg']),
 	base64: 'AAAA',
+	thumbBase64: 'TTTT',
 	width: 800,
 	height: 600,
 	previewUrl: 'blob:http://localhost/plate',
 }
+
+vi.mock('../../lib/compress-image', () => ({ compressImage: vi.fn() }))
 
 beforeAll(() => {
 	stubMatchMedia()
@@ -124,7 +129,7 @@ describe('photo preview states', () => {
 		setPhoto({ status: 'error', photo: null, errorKey: 'chat.photoTooLarge' })
 
 		const alert = screen.getByRole('alert')
-		expect(alert.textContent).toContain('Не вдалося відкрити фото')
+		expect(alert.textContent).toContain('Це фото не вдалося обробити.')
 		expect(alert.textContent).toContain('Вибери фото меншого розміру.')
 		expect(screen.queryByRole('button', { name: /Повторити/ })).toBeNull()
 	})
@@ -307,5 +312,207 @@ describe('(4) sending with each photo state', () => {
 		expect(usePhotoDraftStore.getState().status).toBe('idle')
 		expect(usePhotoDraftStore.getState().errorKey).toBeNull()
 		expect(screen.queryByRole('alert')).toBeNull()
+	})
+})
+
+describe('(5) the file picker', () => {
+	const getFileInput = (): HTMLInputElement => {
+		const input = document.querySelector<HTMLInputElement>('input[type="file"]')
+		if (!input) throw new Error('no file input')
+		return input
+	}
+
+	it('accepts any image: a narrower list hides files in some pickers', () => {
+		renderHarness()
+
+		expect(getFileInput().accept).toBe('image/*')
+		expect(getFileInput().hasAttribute('capture')).toBe(false)
+	})
+
+	it('hands the chosen file to the caller and resets the input for the same file again', () => {
+		const onPhotoPick = vi.fn()
+		renderWithProviders(
+			<Composer
+				value=""
+				onValueChange={() => undefined}
+				onSubmit={() => undefined}
+				onPhotoPick={onPhotoPick}
+			/>,
+		)
+		const file = new File(['x'], 'plate.heic', { type: 'image/heic' })
+
+		fireEvent.change(getFileInput(), { target: { files: [file] } })
+
+		expect(onPhotoPick).toHaveBeenCalledWith(file)
+		expect(getFileInput().value).toBe('')
+	})
+
+	it('does nothing when the picker is closed without a file', () => {
+		const onPhotoPick = vi.fn()
+		renderWithProviders(
+			<Composer
+				value=""
+				onValueChange={() => undefined}
+				onSubmit={() => undefined}
+				onPhotoPick={onPhotoPick}
+			/>,
+		)
+
+		fireEvent.change(getFileInput(), { target: { files: [] } })
+
+		expect(onPhotoPick).not.toHaveBeenCalled()
+	})
+})
+
+describe('(6) a file the browser can not decode', () => {
+	it('shows the error with its hint, and no spinner, once the pick has failed', async () => {
+		vi.mocked(compressImage).mockRejectedValueOnce(new Error('EncodingError'))
+		renderHarness()
+
+		await act(async () => {
+			await usePhotoDraftStore.getState().pick(new File(['x'], 'plate.heic'))
+		})
+
+		expect(usePhotoDraftStore.getState()).toMatchObject({
+			status: 'error',
+			errorKey: 'chat.photoUnsupported',
+		})
+		const alert = screen.getByRole('alert')
+		expect(alert.textContent).toContain('Це фото не вдалося обробити.')
+		expect(screen.queryByRole('status')).toBeNull()
+		expect(screen.queryByLabelText('Завантаження')).toBeNull()
+	})
+
+	it('shows the spinner only while the photo is really processing', async () => {
+		let finish: (value: Awaited<ReturnType<typeof compressImage>>) => void = () => undefined
+		vi.mocked(compressImage).mockReturnValueOnce(
+			new Promise((resolve) => {
+				finish = resolve
+			}),
+		)
+		renderHarness()
+
+		let picking: Promise<void> = Promise.resolve()
+		act(() => {
+			picking = usePhotoDraftStore.getState().pick(new File(['x'], 'plate.jpg'))
+		})
+		expect(screen.getByRole('status').textContent).toBe('Готую фото…')
+
+		await act(async () => {
+			finish({
+				blob: new Blob(['jpeg']),
+				base64: 'AAAA',
+				thumbBase64: 'TTTT',
+				width: 800,
+				height: 600,
+			})
+			await picking
+		})
+
+		expect(screen.queryByRole('status')).toBeNull()
+		expect(usePhotoDraftStore.getState().status).toBe('ready')
+	})
+})
+
+describe('(7) the daily photo limit', () => {
+	const LIMIT_TEXT = 'Ліміт фото на сьогодні вичерпано — напиши текстом.'
+	const getCamera = () => screen.getByRole<HTMLButtonElement>('button', { name: 'Додати фото їжі' })
+
+	const renderBlocked = (isPhotoBlocked: boolean) => {
+		const onSubmit = vi.fn()
+		const onPhotoPick = vi.fn()
+		renderWithProviders(
+			<Composer
+				value="тарілка супу"
+				onValueChange={() => undefined}
+				onSubmit={onSubmit}
+				onPhotoPick={onPhotoPick}
+				isPhotoBlocked={isPhotoBlocked}
+			/>,
+		)
+		return { onSubmit, onPhotoPick }
+	}
+
+	it('switches the camera off and says why in a status line the camera points to', () => {
+		renderBlocked(true)
+
+		const camera = getCamera()
+		expect(camera.disabled).toBe(true)
+		const notice = screen.getByRole('status')
+		expect(notice.textContent).toBe(LIMIT_TEXT)
+		expect(camera.getAttribute('aria-describedby')).toBe(notice.id)
+		expect(notice.id).not.toBe('')
+	})
+
+	it('does not open the picker from a disabled camera', () => {
+		renderBlocked(true)
+		const click = vi.spyOn(HTMLInputElement.prototype, 'click')
+
+		fireEvent.click(getCamera())
+
+		expect(click).not.toHaveBeenCalled()
+		click.mockRestore()
+	})
+
+	it('keeps text sending alive while the camera is off', () => {
+		const { onSubmit } = renderBlocked(true)
+
+		fireEvent.click(getSend())
+
+		expect(onSubmit).toHaveBeenCalledTimes(1)
+	})
+
+	it('has a working camera and no notice when nothing is blocked', () => {
+		renderBlocked(false)
+
+		expect(getCamera().disabled).toBe(false)
+		expect(getCamera().hasAttribute('aria-describedby')).toBe(false)
+		expect(screen.queryByRole('status')).toBeNull()
+	})
+
+	it('shows no limit notice when the camera is switched off for good (no photo feature)', () => {
+		renderWithProviders(
+			<Composer
+				value=""
+				onValueChange={() => undefined}
+				onSubmit={() => undefined}
+				isPhotoEnabled={false}
+				isPhotoBlocked
+			/>,
+		)
+
+		expect(screen.queryByRole('status')).toBeNull()
+		expect(screen.queryByRole('button', { name: 'Додати фото їжі' })).toBeNull()
+	})
+
+	it('removes the notice when the limit ends', () => {
+		const LimitEnds = () => {
+			const [isBlocked, setBlocked] = useState(true)
+			return (
+				<>
+					<button
+						type="button"
+						onClick={() => {
+							setBlocked(false)
+						}}
+					>
+						limit ends
+					</button>
+					<Composer
+						value=""
+						onValueChange={() => undefined}
+						onSubmit={() => undefined}
+						isPhotoBlocked={isBlocked}
+					/>
+				</>
+			)
+		}
+		renderWithProviders(<LimitEnds />)
+		expect(screen.getByRole('status').textContent).toBe(LIMIT_TEXT)
+
+		fireEvent.click(screen.getByRole('button', { name: 'limit ends' }))
+
+		expect(screen.queryByRole('status')).toBeNull()
+		expect(getCamera().disabled).toBe(false)
 	})
 })

@@ -8,6 +8,7 @@ import {
 	useComposerDraftStore,
 	useOutboxStore,
 	usePhotoDraftStore,
+	usePhotoLimitStore,
 	usePhotoSessionStore,
 } from '@/features/send-message'
 
@@ -28,6 +29,7 @@ export const syncOutboxOwner = (queryClient: QueryClient): (() => void) => {
 		useComposerDraftStore.getState().claim(ownerId)
 		usePhotoDraftStore.getState().claim(ownerId)
 		usePhotoSessionStore.getState().claim(ownerId)
+		usePhotoLimitStore.getState().claim(ownerId)
 		useFreshReplyStore.getState().claim(ownerId)
 		useGoalCelebrationStore.getState().claim(ownerId)
 	}

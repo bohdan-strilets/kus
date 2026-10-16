@@ -6,6 +6,7 @@ export type SendErrorKey =
 	| 'errors.api.MESSAGE_TOO_LONG'
 	| 'errors.api.DAILY_LIMIT_REACHED'
 	| 'errors.api.DAILY_PHOTO_LIMIT_REACHED'
+	| 'errors.api.STORAGE_UNAVAILABLE'
 	| 'chat.photoNeedsNetwork'
 	| 'chat.photoLost'
 	| 'chat.photoTooLarge'
@@ -39,10 +40,17 @@ const PHOTO_FIELD_ERRORS: Partial<Record<string, SendErrorKey>> = {
 
 const VALIDATION_ERROR_CODE = 'VALIDATION_ERROR'
 
+/** POST /photos names the field it refused (the full photo or its thumbnail), POST /messages — `photo`. */
+const PHOTO_FIELD_NAMES = ['photo', 'thumb'] as const
+
 const getPhotoFieldError = (details: Record<string, unknown>): SendErrorKey | undefined => {
 	const { fields } = details
-	if (typeof fields !== 'object' || fields === null || !('photo' in fields)) return undefined
-	return typeof fields.photo === 'string' ? PHOTO_FIELD_ERRORS[fields.photo] : undefined
+	if (typeof fields !== 'object' || fields === null) return undefined
+	for (const name of PHOTO_FIELD_NAMES) {
+		const reason: unknown = name in fields ? (fields as Record<string, unknown>)[name] : undefined
+		if (typeof reason === 'string' && PHOTO_FIELD_ERRORS[reason]) return PHOTO_FIELD_ERRORS[reason]
+	}
+	return undefined
 }
 
 const RETRIABLE_ERRORS: Partial<Record<string, SendErrorKey>> = {
@@ -50,6 +58,8 @@ const RETRIABLE_ERRORS: Partial<Record<string, SendErrorKey>> = {
 	// the per-minute throttler: a minute later the same message is fine
 	TOO_MANY_REQUESTS: 'errors.api.TOO_MANY_REQUESTS',
 	MESSAGE_IN_PROGRESS: 'errors.api.MESSAGE_IN_PROGRESS',
+	// the photo storage is down for now; the photo stays in the bubble, a later try may work
+	STORAGE_UNAVAILABLE: 'errors.api.STORAGE_UNAVAILABLE',
 	// another tab changed the entry the message was about; the resend sees the new day
 	ENTRY_CHANGED: 'errors.api.ENTRY_CHANGED',
 }

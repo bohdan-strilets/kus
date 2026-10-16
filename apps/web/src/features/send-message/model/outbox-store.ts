@@ -14,6 +14,8 @@ export interface OutboxPhoto {
 	/** blob: URL of the compressed picture, shown in the bubble; revoked once the item leaves. */
 	previewUrl: string
 	base64: string
+	/** Kept to upload again if the server has dropped the file (an unsent photo lives ~24 h). */
+	thumbBase64: string
 	mimeType: 'image/jpeg'
 	width: number
 	height: number
@@ -25,6 +27,11 @@ export interface OutboxItem {
 	/** Empty for a photo without words. */
 	text: string
 	photo?: OutboxPhoto
+	/**
+	 * Id of the photo already uploaded (step 1 done): a resend skips the upload. It is stored with
+	 * a failed item, so after a reload the message can still be resent without the picture.
+	 */
+	photoId?: string
 	/** Back from storage after a reload: the words are here, the photo is not. */
 	photoLost?: boolean
 	/** ISO; places the bubble in the feed until the server copy arrives. */
@@ -44,8 +51,14 @@ interface OutboxState {
 	hiddenIds: string[]
 	/** The signed-in user (null after logout); a different one drops the drafts of the previous. */
 	claim: (userId: string | null) => void
-	markSending: (item: Pick<OutboxItem, 'clientMessageId' | 'text' | 'createdAt' | 'photo'>) => void
+	markSending: (
+		item: Pick<OutboxItem, 'clientMessageId' | 'text' | 'createdAt' | 'photo' | 'photoId'>,
+	) => void
 	markFailed: (clientMessageId: string, error: SendError) => void
+	/** Step 1 is done: the id survives a failed step 2, so a resend never uploads twice. */
+	setPhotoId: (clientMessageId: string, photoId: string | undefined) => void
+	/** The server no longer has the file and this device no longer has the picture. */
+	markPhotoLost: (clientMessageId: string) => void
 	/** The server has the turn: the item leaves; its picture is handed back for the server copy. */
 	complete: (clientMessageId: string) => string | null
 	/** «Прибрати» or a final failure: the item and its picture go. */
@@ -65,9 +78,10 @@ const storedItemSchema = z
 		text: z.string().max(MESSAGE_TEXT_MAX_LENGTH),
 		createdAt: z.iso.datetime(),
 		photoLost: z.literal(true).optional(),
+		photoId: z.uuid().optional(),
 	})
 	// an empty text is only the leftover of a photo message
-	.refine((item) => item.text.length > 0 || item.photoLost === true)
+	.refine((item) => item.text.length > 0 || item.photoLost === true || item.photoId !== undefined)
 
 type StoredItem = z.infer<typeof storedItemSchema>
 
@@ -84,18 +98,20 @@ interface StoredState {
 }
 
 /**
- * «Не надіслано» survives a reload of the PWA; a message still sending is not stored. A photo is
- * never stored: only the fact that there was one, so the bubble can say it has to be retaken.
+ * «Не надіслано» survives a reload of the PWA; a message still sending is not stored. The bytes of
+ * a photo are never stored: an uploaded one keeps only its id (the file is on the server), one
+ * that never got there only the fact that there was one, so the bubble can say it has to be retaken.
  */
 const toStoredState = ({ ownerId, items, hiddenIds }: OutboxState): StoredState => ({
 	ownerId,
 	items: Object.values(items)
 		.filter((item) => item.status === 'failed')
-		.map(({ clientMessageId, text, createdAt, photo, photoLost }) => ({
+		.map(({ clientMessageId, text, createdAt, photo, photoId, photoLost }) => ({
 			clientMessageId,
 			text,
 			createdAt,
-			...(photo || photoLost ? { photoLost: true as const } : {}),
+			...(photoId ? { photoId } : {}),
+			...((photo || photoLost) && !photoId ? { photoLost: true as const } : {}),
 		})),
 	hiddenIds,
 })
@@ -153,6 +169,32 @@ export const useOutboxStore = create<OutboxState>()(
 						[item.clientMessageId]: { ...item, status: 'sending', error: null },
 					},
 				}))
+			},
+			setPhotoId: (clientMessageId, photoId) => {
+				set((state) => {
+					const item = state.items[clientMessageId]
+					if (!item) return state
+					return { items: { ...state.items, [clientMessageId]: { ...item, photoId } } }
+				})
+			},
+			markPhotoLost: (clientMessageId) => {
+				set((state) => {
+					const item = state.items[clientMessageId]
+					if (!item) return state
+					revokePreview(item)
+					const { photo: _photo, photoId: _photoId, ...rest } = item
+					return {
+						items: {
+							...state.items,
+							[clientMessageId]: {
+								...rest,
+								photoLost: true,
+								status: 'failed',
+								error: PHOTO_LOST_FAILURE,
+							},
+						},
+					}
+				})
 			},
 			markFailed: (clientMessageId, error) => {
 				set((state) => {

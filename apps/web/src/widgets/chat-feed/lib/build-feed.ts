@@ -67,7 +67,10 @@ const getServerUserState = (
 }
 
 const getOutboxPhoto = (item: OutboxItem): FeedPhoto | undefined => {
-	if (item.photo) return { kind: 'preview', url: item.photo.previewUrl }
+	if (item.photo) {
+		const { previewUrl: url, width, height } = item.photo
+		return { kind: 'preview', url, width, height }
+	}
 	// restored after a reload: the picture is gone from the phone, but it was uploaded
 	return item.photoLost || item.photoId ? { kind: 'placeholder' } : undefined
 }
@@ -93,10 +96,18 @@ const fromOutbox = (item: OutboxItem, params: BuildFeedParams): UserEntry => ({
 })
 
 const getServerPhoto = (message: ChatMessage, params: BuildFeedParams): FeedPhoto | undefined => {
-	if (!message.photo) return undefined
-	const url =
+	const [stored] = message.photos ?? []
+	// the old `photo` without `photos`: only the fact that it was there
+	if (!stored) return message.photo ? { kind: 'placeholder' } : undefined
+	const previewUrl =
 		message.clientMessageId === null ? undefined : params.previews?.[message.clientMessageId]
-	return url === undefined ? { kind: 'placeholder' } : { kind: 'preview', url }
+	return {
+		kind: 'stored',
+		fileId: stored.fileId,
+		width: stored.width,
+		height: stored.height,
+		...(previewUrl === undefined ? {} : { previewUrl }),
+	}
 }
 
 const toEntry = (message: ChatMessage, params: BuildFeedParams): Entry => {

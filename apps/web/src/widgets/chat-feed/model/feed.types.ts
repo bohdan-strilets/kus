@@ -13,8 +13,15 @@ export interface RetryParams {
 	photoId?: string
 }
 
-/** The picture in a user bubble: this device still has it, or only the fact that it was there. */
-export type FeedPhoto = { kind: 'preview'; url: string } | { kind: 'placeholder' }
+/**
+ * The picture in a user bubble: a stored one from the server (fileId null = the file is gone), a
+ * local one of this device still on its way, both with the size of the picture; or only the fact
+ * that it was there.
+ */
+export type FeedPhoto =
+	| { kind: 'stored'; fileId: string | null; width: number; height: number; previewUrl?: string }
+	| { kind: 'preview'; url: string; width: number; height: number }
+	| { kind: 'placeholder' }
 
 /** How the photo of a user message went on the server (it decides Kusik's face and the sound). */
 export type FeedPhotoStatus = 'PROCESSED' | 'FAILED'

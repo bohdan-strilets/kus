@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 
-import { MessageBubble } from '@/entities/message'
+import { MessageBubble, PhotoTile } from '@/entities/message'
 import { cn } from '@/shared/lib'
 import { Icon, ICON_SIZE, ProgressBar } from '@/shared/ui'
 
@@ -11,9 +11,9 @@ type UserFeedItem = Extract<FeedItem, { kind: 'user' }>
 const PHOTO_TEXT_PADDING = 'px-2.75 py-1.5'
 
 /**
- * The user's bubble: words, or a photo with the words under it (mockups/chat-photo.html: padding
- * 4, the picture 220×150 with radius 16). A photo this device no longer has is a «Фото» row; the
- * bar under the picture is how much of it has reached the server.
+ * The user's bubble: words, or a photo with the words under it (mockups/photo-history.html:
+ * padding 4, the tile 248 wide). A photo the server has no record of is a «Фото» row; the bar
+ * under the picture is how much of it has reached the server.
  */
 export const UserMessage = ({ item }: { item: UserFeedItem }) => {
 	const { t } = useTranslation()
@@ -29,17 +29,19 @@ export const UserMessage = ({ item }: { item: UserFeedItem }) => {
 
 	return (
 		<MessageBubble author="user" isFailed={state === 'failed'} className="p-1">
-			{photo.kind === 'preview' ? (
-				<img
-					src={photo.url}
-					alt={t('chat.photoAlt')}
-					className="block max-h-37.5 max-w-55 rounded-tile object-cover"
-				/>
-			) : (
+			{photo.kind === 'placeholder' ? (
 				<span className={cn('flex items-center gap-2', PHOTO_TEXT_PADDING)}>
 					<Icon name="image" size={ICON_SIZE.control} />
 					{t('chat.photoPlaceholder')}
 				</span>
+			) : (
+				<PhotoTile
+					fileId={photo.kind === 'stored' ? photo.fileId : null}
+					width={photo.width}
+					height={photo.height}
+					previewUrl={photo.kind === 'stored' ? photo.previewUrl : photo.url}
+					alt={t('chat.photoAlt')}
+				/>
 			)}
 			{state === 'sending' && uploadProgress !== undefined && uploadProgress < 1 && (
 				<ProgressBar

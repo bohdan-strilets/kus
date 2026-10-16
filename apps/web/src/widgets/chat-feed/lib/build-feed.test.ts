@@ -193,6 +193,22 @@ describe('buildFeed with photos', () => {
 		...overrides,
 	})
 	const userItem = (feed: ReturnType<typeof buildFeed>) => feed.find((item) => item.kind === 'user')
+	const getPhoto = (feed: ReturnType<typeof buildFeed>) => {
+		const user = userItem(feed)
+		return user?.kind === 'user' ? user.photo : undefined
+	}
+	const FILE_ID = '0199b3a4-0000-7000-8000-0000000000f1'
+	const OTHER_FILE_ID = '0199b3a4-0000-7000-8000-0000000000f2'
+	const storedPhoto = (
+		overrides: Partial<NonNullable<ChatMessage['photos']>[number]> = {},
+	): NonNullable<ChatMessage['photos']>[number] => ({
+		fileId: FILE_ID,
+		width: 1568,
+		height: 1176,
+		status: 'PROCESSED',
+		position: 0,
+		...overrides,
+	})
 
 	it('shows the picture of a message on its way, with the upload progress and the uploading dots', () => {
 		const item = outboxItem({ photo: outboxPhoto })
@@ -318,6 +334,7 @@ describe('buildFeed with photos', () => {
 			createdAt: '2026-10-07T06:40:00Z',
 			content: '150 г',
 			photo: { status: 'PROCESSED' },
+			photos: [storedPhoto()],
 		})
 		const feed = buildFeed({
 			...params([sent]),
@@ -327,8 +344,124 @@ describe('buildFeed with photos', () => {
 		expect(userItem(feed)).toMatchObject({
 			state: 'sent',
 			text: '150 г',
-			photo: { kind: 'preview', url: 'blob:http://localhost/sent' },
+			photo: {
+				kind: 'stored',
+				fileId: FILE_ID,
+				width: 1568,
+				height: 1176,
+				previewUrl: 'blob:http://localhost/sent',
+			},
 		})
+	})
+
+	it('shows a stored photo without a preview when this session never had the picture', () => {
+		const sent = message({
+			createdAt: '2026-10-07T06:40:00Z',
+			photo: { status: 'PROCESSED' },
+			photos: [storedPhoto()],
+		})
+		const photo = getPhoto(buildFeed(params([sent])))
+
+		expect(photo).toEqual({ kind: 'stored', fileId: FILE_ID, width: 1568, height: 1176 })
+		expect(photo).not.toHaveProperty('previewUrl')
+	})
+
+	it('ignores the preview of another message', () => {
+		const sent = message({
+			createdAt: '2026-10-07T06:40:00Z',
+			photo: { status: 'PROCESSED' },
+			photos: [storedPhoto()],
+		})
+		const feed = buildFeed({
+			...params([sent]),
+			previews: { 'client-other': 'blob:http://localhost/other' },
+		})
+
+		expect(getPhoto(feed)).not.toHaveProperty('previewUrl')
+	})
+
+	it('keeps fileId null when the stored file is gone', () => {
+		const sent = message({
+			createdAt: '2026-10-07T06:40:00Z',
+			photo: { status: 'PROCESSED' },
+			photos: [storedPhoto({ fileId: null })],
+		})
+
+		expect(getPhoto(buildFeed(params([sent])))).toMatchObject({ kind: 'stored', fileId: null })
+	})
+
+	it('takes the first of several stored photos', () => {
+		const sent = message({
+			createdAt: '2026-10-07T06:40:00Z',
+			photo: { status: 'PROCESSED' },
+			photos: [storedPhoto(), storedPhoto({ fileId: OTHER_FILE_ID, position: 1 })],
+		})
+
+		expect(getPhoto(buildFeed(params([sent])))).toMatchObject({ fileId: FILE_ID })
+	})
+
+	it('draws a placeholder for a photo the server reports without photos[], even with a preview', () => {
+		const sent = message({
+			createdAt: '2026-10-07T06:40:00Z',
+			photo: { status: 'PROCESSED' },
+		})
+		const feed = buildFeed({
+			...params([sent]),
+			previews: { [sent.clientMessageId ?? '']: 'blob:http://localhost/sent' },
+		})
+
+		expect(getPhoto(feed)).toEqual({ kind: 'placeholder' })
+	})
+
+	it('draws a placeholder for photo with an empty photos[]', () => {
+		const sent = message({
+			createdAt: '2026-10-07T06:40:00Z',
+			photo: { status: 'PROCESSED' },
+			photos: [],
+		})
+
+		expect(getPhoto(buildFeed(params([sent])))).toEqual({ kind: 'placeholder' })
+	})
+
+	it('has no photo for a text message', () => {
+		expect(getPhoto(buildFeed(params([message({ createdAt: '2026-10-07T06:40:00Z' })])))).toBe(
+			undefined,
+		)
+	})
+
+	it('passes the outbox size with the preview', () => {
+		const item = outboxItem({ photo: outboxPhoto })
+		const photo = getPhoto(buildFeed(params([], { [item.clientMessageId]: item })))
+
+		expect(photo).toEqual({ kind: 'preview', url: outboxPhoto.previewUrl, width: 800, height: 600 })
+	})
+
+	it('prefers the outbox picture of a resend over the stored one of the server copy', () => {
+		const pending = message({
+			createdAt: '2026-10-07T16:10:00Z',
+			status: 'FAILED',
+			clientMessageId: 'local-1',
+			photo: { status: 'PENDING' },
+			photos: [storedPhoto()],
+		})
+		const item = outboxItem({ photo: outboxPhoto, status: 'sending' })
+		const photo = getPhoto(buildFeed(params([pending], { [item.clientMessageId]: item })))
+
+		expect(photo).toMatchObject({ kind: 'preview', url: outboxPhoto.previewUrl })
+	})
+
+	it('falls back to the stored photo of the server copy when the outbox has no picture', () => {
+		const pending = message({
+			createdAt: '2026-10-07T16:10:00Z',
+			status: 'FAILED',
+			clientMessageId: 'local-1',
+			photo: { status: 'PENDING' },
+			photos: [storedPhoto()],
+		})
+		const item = outboxItem({ status: 'sending' })
+		const photo = getPhoto(buildFeed(params([pending], { [item.clientMessageId]: item })))
+
+		expect(photo).toMatchObject({ kind: 'stored', fileId: FILE_ID })
 	})
 
 	it('draws a placeholder for the photo of a server message and passes its status to the reply', () => {

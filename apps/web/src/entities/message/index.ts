@@ -12,5 +12,6 @@ export {
 export { DayDivider, type DayDividerProps } from './ui/day-divider/DayDivider'
 export { KusikRow, type KusikRowProps } from './ui/kusik-row/KusikRow'
 export { MessageBubble, type MessageBubbleProps } from './ui/message-bubble/MessageBubble'
+export { PhotoTile, type PhotoTileProps } from './ui/photo-tile'
 export { TimeDivider } from './ui/time-divider/TimeDivider'
 export { TypingIndicator, type TypingIndicatorProps } from './ui/typing-indicator/TypingIndicator'

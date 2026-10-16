@@ -37,7 +37,7 @@
 - **date-fns** — дати
 - **Recharts** — графіки (лише лінькові екрани)
 - **vite-plugin-pwa** — manifest і service worker
-- **Sentry** — помилки
+- **Sentry** — помилки (заплановано перед бетою для інших; зараз у проєкті його немає)
 
 ### Backend (`apps/api`)
 - NestJS, Prisma 7 (адаптер `PrismaPg`), PostgreSQL (Railway)
@@ -48,7 +48,7 @@
 - S3-сумісне сховище фото (Cloudflare R2, EU) — власний адаптер на `aws4fetch` у `modules/storage`, `STORAGE_PROVIDER=s3` у production
 
 ### Деплой
-- api і PostgreSQL — Railway; web — Vercel; сховище фото — Cloudflare R2 (EU); помилки — Sentry
+- api і PostgreSQL — Railway; web — Vercel; сховище фото — Cloudflare R2 (EU); помилки — Sentry (заплановано перед бетою)
 
 Перед використанням API бібліотеки звіряйся з актуальною документацією (Context7 MCP), не з пам'яті.
 
@@ -389,10 +389,10 @@ pnpm --filter web icons               # зібрати іконки з SVG (UI +
 
 ## 10.1. Логування
 
-- Бекенд — NestJS `Logger` з контекстом (`new Logger(EntriesService.name)`), не `console.log`; фронт — Sentry
+- Бекенд — NestJS `Logger` з контекстом (`new Logger(EntriesService.name)`), не `console.log`; фронт — Sentry (заплановано перед бетою; поки лише логи бекенду)
 - Рівні: `error` — збої, `warn` — підозріле, `log` — важливі події (реєстрація, невдалий логін, помилка AI), `debug` — лише в dev
 - Для AI логуємо метадані: модель, токени, вартість, тривалість, кількість викликів інструментів — без вмісту повідомлень
-- **Ніколи не логуємо й не відправляємо в Sentry:** паролі, хеші, токени, API-ключі, `DATABASE_URL`, тіло auth-запитів, текст повідомлень і фото користувача, вагу, записи їжі. За потреби — лише ідентифікатори (`userId`, `entryId`)
+- **Ніколи не логуємо й не відправляємо в Sentry (коли він з'явиться):** паролі, хеші, токени, API-ключі, `DATABASE_URL`, тіло auth-запитів, текст повідомлень і фото користувача, вагу, записи їжі. За потреби — лише ідентифікатори (`userId`, `entryId`)
 - Сумнів, чи безпечно логувати — не логуємо
 
 ---

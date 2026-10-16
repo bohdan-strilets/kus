@@ -125,7 +125,7 @@ New Project → цей репозиторій.
 Міграція `20261015120000_add_stored_files` додає `stored_files` і видаляє колонку `message_attachments.storage_key`. Файли тепер живуть у S3-сумісному сховищі, не в базі.
 
 1. **Бакет Cloudflare R2.** Створити бакет з юрисдикцією **EU**; окремі бакети для prod і dev. API-токен — права **Object Read & Write** лише на цей бакет. Endpoint для EU-юрисдикції має вигляд `https://<ACCOUNT_ID>.eu.r2.cloudflarestorage.com`, `S3_REGION=auto`, `S3_BUCKET` — назва бакета.
-2. **Бекап перед міграцією.** Логічний дамп прод-бази через Docker — точно за кроками з «Бекапи й відновлення» (проксі → `pg_dump` → закрити проксі). Перевірити цілісність: файл помітно більший за кілька кілобайт і `docker run --rm -v "$HOMEkus-backups:/backup" postgres:18 pg_restore --list /backup/kus-<дата>.dump` друкує список об'єктів без помилок.
+2. **Бекап перед міграцією.** Логічний дамп прод-бази через Docker — точно за кроками з «Бекапи й відновлення» (проксі → `pg_dump` → закрити проксі). Перевірити цілісність: файл помітно більший за кілька кілобайт і `docker run --rm -v "$HOME\kus-backups:/backup" postgres:18 pg_restore --list /backup/kus-<дата>.dump` друкує список об'єктів без помилок.
 3. **Запобіжник.** Виконати на проді (Railway → Postgres → Data → Query):
    ```sql
    SELECT count(*) FROM message_attachments WHERE storage_key IS NOT NULL;

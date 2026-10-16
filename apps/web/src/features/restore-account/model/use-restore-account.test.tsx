@@ -23,6 +23,7 @@ const baseUser = {
 const pendingUser = { ...baseUser, pendingDeletion: true, purgeAt: '2026-11-01T00:00:00.000Z' }
 const restoredUser = { ...baseUser, pendingDeletion: false, purgeAt: null }
 const ERROR_TEXT = 'Не вдалося відновити акаунт'
+const EXPIRED_TEXT = 'Відновити вже не вийде'
 
 afterEach(() => {
 	cleanup()
@@ -78,5 +79,44 @@ describe('useRestoreAccount', () => {
 		expect(await screen.findByText(new RegExp(ERROR_TEXT))).toBeTruthy()
 		expect(queryClient.getQueryData(SESSION_QUERY_KEY)).toEqual(pendingUser)
 		expect(paths.at(-1)).toBe('/restore')
+	})
+
+	it('an expired grace period explains that restoring is over, not "try again"', async () => {
+		httpClient.defaults.adapter = createFakeAdapter(() => ({
+			status: 409,
+			data: apiErrorBody(409, 'ACCOUNT_RESTORE_EXPIRED'),
+		})).adapter
+		const queryClient = new QueryClient()
+		queryClient.setQueryData(SESSION_QUERY_KEY, pendingUser)
+		const paths: string[] = []
+		const { result } = renderHookWithProviders(() => useRestoreAccount(), {
+			queryClient,
+			route: '/restore',
+			onPathname: (pathname) => paths.push(pathname),
+		})
+
+		act(() => {
+			result.current.restore()
+		})
+
+		expect(await screen.findByText(new RegExp(EXPIRED_TEXT))).toBeTruthy()
+		expect(screen.queryByText(new RegExp(ERROR_TEXT))).toBeNull()
+		expect(queryClient.getQueryData(SESSION_QUERY_KEY)).toEqual(pendingUser)
+		expect(paths.at(-1)).toBe('/restore')
+	})
+
+	it('another 409 keeps the general error', async () => {
+		httpClient.defaults.adapter = createFakeAdapter(() => ({
+			status: 409,
+			data: apiErrorBody(409, 'ENTRY_CHANGED'),
+		})).adapter
+		const { result } = renderHookWithProviders(() => useRestoreAccount(), { route: '/restore' })
+
+		act(() => {
+			result.current.restore()
+		})
+
+		expect(await screen.findByText(new RegExp(ERROR_TEXT))).toBeTruthy()
+		expect(screen.queryByText(new RegExp(EXPIRED_TEXT))).toBeNull()
 	})
 })

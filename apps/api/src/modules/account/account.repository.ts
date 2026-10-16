@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common'
 
-import type { Prisma } from '../../generated/prisma/client'
+import { Prisma } from '../../generated/prisma/client'
 import { PrismaService } from '../../prisma'
 
 export interface DeletionState {
@@ -27,10 +27,16 @@ export class AccountRepository {
 		})
 	}
 
-	/** true when the account was pending; false = nothing to restore (already active, or gone). */
-	async restore(userId: string, tx?: Prisma.TransactionClient): Promise<boolean> {
+	/**
+	 * true when the account was pending and its grace is not over; false = nothing was restored
+	 * (already active, gone, or past purgeAt: the caller tells these apart by findDeletionState).
+	 */
+	async restore(
+		{ userId, now }: { userId: string; now: Date },
+		tx?: Prisma.TransactionClient,
+	): Promise<boolean> {
 		const { count } = await (tx ?? this.prisma).user.updateMany({
-			where: { id: userId, purgeAt: { not: null } },
+			where: { id: userId, purgeAt: { gt: now } },
 			data: { deletionRequestedAt: null, purgeAt: null },
 		})
 		return count === 1
@@ -48,6 +54,21 @@ export class AccountRepository {
 			take: limit,
 		})
 		return users.map((user) => user.id)
+	}
+
+	/**
+	 * Locks the user's row until the transaction ends, only if its grace is over. A parallel restore
+	 * (UPDATE ... purgeAt > now) waits for the commit and then finds the row gone. `false` = nothing
+	 * to purge: restored, already deleted, or purgeAt still in the future.
+	 */
+	async lockExpiredUser(
+		{ userId, now }: { userId: string; now: Date },
+		tx: Prisma.TransactionClient,
+	): Promise<boolean> {
+		const rows = await tx.$queryRaw<{ id: string }[]>(
+			Prisma.sql`SELECT id FROM users WHERE id = ${userId}::uuid AND purge_at <= ${now}::timestamptz FOR UPDATE`,
+		)
+		return rows.length === 1
 	}
 
 	/**

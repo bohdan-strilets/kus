@@ -7,6 +7,7 @@ import { AuthService } from '../auth/auth.service'
 import { SessionService } from '../auth/session.service'
 import { ChatGreetingsService } from '../chat/chat-greetings.service'
 import { UsersService } from '../users/users.service'
+import { AccountRestoreExpiredException } from './account.exceptions'
 import { AccountRepository } from './account.repository'
 
 /**
@@ -41,11 +42,17 @@ export class AccountService {
 
 	/**
 	 * Idempotent: restoring an account that isn't pending just returns it. An account that really
-	 * came back gets Kusik's welcome in the chat, in the same transaction.
+	 * came back gets Kusik's welcome in the chat, in the same transaction. Past purgeAt the account
+	 * is not restored even though the purge hasn't run yet: the purge decision is final.
 	 */
 	async restore(userId: string): Promise<AuthUser> {
+		const now = new Date()
 		const { user, wasPending } = await this.prisma.$transaction(async (tx) => {
-			const wasPending = await this.accountRepository.restore(userId, tx)
+			const wasPending = await this.accountRepository.restore({ userId, now }, tx)
+			if (!wasPending) {
+				const state = await this.accountRepository.findDeletionState(userId, tx)
+				if (state?.purgeAt) throw new AccountRestoreExpiredException()
+			}
 			const user = await this.usersService.getMe(userId, tx)
 			if (wasPending) await this.chatGreetings.postWelcomeBack(user, tx)
 			return { user, wasPending }

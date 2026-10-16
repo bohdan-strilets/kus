@@ -12,3 +12,10 @@ export class AccountPendingDeletionException extends AppException {
 		})
 	}
 }
+
+/** 409 like the other "state no longer allows it" errors; nothing else is revealed. */
+export class AccountRestoreExpiredException extends AppException {
+	constructor() {
+		super({ status: HttpStatus.CONFLICT, errorCode: ErrorCodes.ACCOUNT_RESTORE_EXPIRED })
+	}
+}

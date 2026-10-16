@@ -32,6 +32,8 @@ export const ErrorCodes = {
 	PASSWORD_SAME: 'PASSWORD_SAME',
 	/** Deletion requested: the account can only be restored or logged out until it is purged. */
 	ACCOUNT_PENDING_DELETION: 'ACCOUNT_PENDING_DELETION',
+	/** The grace period is over: restoring is no longer possible, the purge removes the account. */
+	ACCOUNT_RESTORE_EXPIRED: 'ACCOUNT_RESTORE_EXPIRED',
 
 	// profile & goals
 	/** The goal calculation needs fields that «Мої дані» doesn't have yet (details.fields). */

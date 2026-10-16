@@ -210,7 +210,8 @@ describe('account purge with storage (e2e, real DB, memory storage)', () => {
 		const realFind = repository.findExpiredUserIds.bind(repository)
 		vi.spyOn(repository, 'findExpiredUserIds').mockImplementation(async (...args) => {
 			const ids = await realFind(...args)
-			await repository.restore(user)
+			// now before purgeAt: the restore that won the race while the grace was still running
+			await repository.restore({ userId: user, now: new Date(0) })
 			return ids
 		})
 
@@ -267,6 +268,49 @@ describe('account purge with storage (e2e, real DB, memory storage)', () => {
 			expect(await repository.deleteExpiredUser({ userId: due, now })).toBe(true)
 			expect(await repository.deleteExpiredUser({ userId: due, now })).toBe(false)
 			expect(await prisma.user.count()).toBe(2)
+		})
+
+		it('restore: only while purgeAt > now; exactly now, past, active and missing change nothing', async () => {
+			await start()
+			const purgeAt = new Date('2026-12-01T10:00:00.000Z')
+			const requested = new Date('2026-11-01T10:00:00.000Z')
+			const pendingUser = async (email: string): Promise<string> => {
+				const id = await registerUser(email)
+				await prisma.user.update({
+					where: { id },
+					data: { deletionRequestedAt: requested, purgeAt },
+				})
+				return id
+			}
+			const before = await pendingUser('before@kus.app')
+			const exact = await pendingUser('exact@kus.app')
+			const after = await pendingUser('after@kus.app')
+			const active = await registerUser('active@kus.app')
+			const missing = '0192a000-0000-7000-8000-00000000dead'
+			const stateOf = (id: string) =>
+				prisma.user.findUniqueOrThrow({
+					where: { id },
+					select: { purgeAt: true, deletionRequestedAt: true },
+				})
+
+			expect(
+				await repository.restore({ userId: before, now: new Date(purgeAt.getTime() - 1) }),
+			).toBe(true)
+			expect(await stateOf(before)).toEqual({ purgeAt: null, deletionRequestedAt: null })
+
+			// gt, not gte: at the very purgeAt the purge is already allowed to take the account
+			expect(await repository.restore({ userId: exact, now: purgeAt })).toBe(false)
+			expect(
+				await repository.restore({ userId: after, now: new Date(purgeAt.getTime() + 1) }),
+			).toBe(false)
+			expect(await stateOf(exact)).toEqual({ purgeAt, deletionRequestedAt: requested })
+			expect(await stateOf(after)).toEqual({ purgeAt, deletionRequestedAt: requested })
+
+			expect(await repository.restore({ userId: active, now: new Date() })).toBe(false)
+			expect(await stateOf(active)).toEqual({ purgeAt: null, deletionRequestedAt: null })
+			expect(await repository.restore({ userId: missing, now: new Date() })).toBe(false)
+			// restoring twice: the second call has nothing left to change
+			expect(await repository.restore({ userId: before, now: new Date(0) })).toBe(false)
 		})
 
 		it('findDeletionState: purgeAt for a pending user, null purgeAt for an active one, null for a missing user', async () => {

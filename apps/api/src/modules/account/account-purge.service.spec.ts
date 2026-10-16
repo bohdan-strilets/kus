@@ -3,18 +3,22 @@ import type { ConfigService } from '@nestjs/config'
 import { afterAll, beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest'
 
 import type { Env } from '../../config'
+import type { PrismaService } from '../../prisma'
 import { MemoryStorageAdapter } from '../storage/memory.adapter'
 import { buildStorageKey } from '../storage/storage-key'
 import { StorageService } from '../storage/storage.service'
-import { PURGE_BATCH_SIZE, USER_ID_PATTERN } from './account.constants'
+import {
+	PURGE_BATCH_SIZE,
+	PURGE_MAX_CONSECUTIVE_STORAGE_FAILURES,
+	PURGE_TRANSACTION_TIMEOUT_MS,
+	USER_ID_PATTERN,
+} from './account.constants'
 import { AccountPurgeService } from './account-purge.service'
 import type { AccountRepository } from './account.repository'
 
 const KEY_PREFIX = 'secret-env-prefix'
 const BUCKET_SECRET = 'bucket kus-secret-bucket at https://account.r2.example denied'
 const NOW = new Date('2026-10-16T04:00:00.000Z')
-const PAST = new Date('2026-10-15T04:00:00.000Z')
-const FUTURE = new Date('2026-10-20T04:00:00.000Z')
 
 const uuid = (n: number): string => `01999a00-0000-7000-8000-${String(n).padStart(12, '0')}`
 
@@ -23,15 +27,13 @@ const photoKey = (userId: string, fileId: string): string =>
 
 interface FakeRepository {
 	findExpiredUserIds: ReturnType<typeof vi.fn<AccountRepository['findExpiredUserIds']>>
-	findDeletionState: ReturnType<typeof vi.fn<AccountRepository['findDeletionState']>>
+	lockExpiredUser: ReturnType<typeof vi.fn<AccountRepository['lockExpiredUser']>>
 	deleteExpiredUser: ReturnType<typeof vi.fn<AccountRepository['deleteExpiredUser']>>
 }
 
 const createRepository = (): FakeRepository => ({
 	findExpiredUserIds: vi.fn<AccountRepository['findExpiredUserIds']>().mockResolvedValue([]),
-	findDeletionState: vi
-		.fn<AccountRepository['findDeletionState']>()
-		.mockResolvedValue({ purgeAt: PAST }),
+	lockExpiredUser: vi.fn<AccountRepository['lockExpiredUser']>().mockResolvedValue(true),
 	deleteExpiredUser: vi.fn<AccountRepository['deleteExpiredUser']>().mockResolvedValue(true),
 })
 
@@ -56,6 +58,8 @@ describe('AccountPurgeService', () => {
 	let deleteByPrefixSpy: MockInstance<MemoryStorageAdapter['deleteByPrefix']>
 	let originalDeleteByPrefix: MemoryStorageAdapter['deleteByPrefix']
 	let service: AccountPurgeService
+	let tx: object
+	let transactionSpy: ReturnType<typeof vi.fn>
 
 	const allLogs = (): string => JSON.stringify([logSpy, warnSpy, errorSpy].map((s) => s.mock.calls))
 
@@ -73,7 +77,10 @@ describe('AccountPurgeService', () => {
 		originalDeleteByPrefix = adapter.deleteByPrefix
 		deleteByPrefixSpy = vi.spyOn(adapter, 'deleteByPrefix')
 		const config = { get: () => KEY_PREFIX } as unknown as ConfigService<Env, true>
+		tx = { marker: 'tx' }
+		transactionSpy = vi.fn((callback: (client: object) => Promise<unknown>) => callback(tx))
 		service = new AccountPurgeService(
+			{ $transaction: transactionSpy } as unknown as PrismaService,
 			repository as unknown as AccountRepository,
 			new StorageService(adapter),
 			config,
@@ -96,7 +103,36 @@ describe('AccountPurgeService', () => {
 			expect(purged).toBe(1)
 			expect(await exists(aKey)).toBe(false)
 			expect(await exists(bKey)).toBe(true)
-			expect(repository.deleteExpiredUser).toHaveBeenCalledWith({ userId: a, now: NOW })
+			expect(repository.deleteExpiredUser).toHaveBeenCalledWith({ userId: a, now: NOW }, tx)
+		})
+
+		it('runs lock, storage delete and row delete in this order inside one transaction with a timeout', async () => {
+			const a = uuid(1)
+			serveExpired(repository, [a])
+			const order: string[] = []
+			repository.lockExpiredUser.mockImplementation(() => {
+				order.push('lock')
+				return Promise.resolve(true)
+			})
+			deleteByPrefixSpy.mockImplementation(() => {
+				order.push('storage')
+				return Promise.resolve()
+			})
+			repository.deleteExpiredUser.mockImplementation(() => {
+				order.push('delete')
+				return Promise.resolve(true)
+			})
+
+			await service.purgeExpired(NOW)
+
+			expect(order).toEqual(['lock', 'storage', 'delete'])
+			expect(transactionSpy).toHaveBeenCalledTimes(1)
+			expect(transactionSpy.mock.calls[0]?.[1]).toEqual({ timeout: PURGE_TRANSACTION_TIMEOUT_MS })
+			expect(repository.lockExpiredUser).toHaveBeenCalledWith({ userId: a, now: NOW }, tx)
+		})
+
+		it('uses a transaction timeout above the 5 s default', () => {
+			expect(PURGE_TRANSACTION_TIMEOUT_MS).toBeGreaterThan(5_000)
 		})
 
 		it('deletes a user who has no files in storage', async () => {
@@ -215,6 +251,59 @@ describe('AccountPurgeService', () => {
 
 				await expect(service.purgeExpired(NOW)).resolves.toBe(0)
 				expect(allLogs()).not.toContain('boom secret')
+				expect(errorSpy.mock.calls[0]?.[0]).toContain('unknown')
+			})
+
+			it.each([
+				[
+					'lock',
+					(): void => {
+						repository.lockExpiredUser.mockRejectedValue(
+							new TypeError('db.secret-host:5432 refused'),
+						)
+					},
+				],
+				[
+					'delete',
+					(): void => {
+						repository.deleteExpiredUser.mockRejectedValue(
+							new TypeError('db.secret-host:5432 refused'),
+						)
+					},
+				],
+				[
+					'$transaction',
+					(): void => {
+						transactionSpy.mockRejectedValue(new TypeError('db.secret-host:5432 refused'))
+					},
+				],
+			])(
+				'a failure from %s is skipped, logged by error.name only, never throws',
+				async (_name, arrange) => {
+					const a = uuid(1)
+					serveExpired(repository, [a])
+					await seedPhoto(a)
+					arrange()
+
+					await expect(service.purgeExpired(NOW)).resolves.toBe(0)
+
+					expect(errorSpy).toHaveBeenCalledTimes(1)
+					expect(errorSpy.mock.calls[0]?.[0]).toContain(a)
+					expect(errorSpy.mock.calls[0]?.[0]).toContain('TypeError')
+					expect(allLogs()).not.toContain('secret-host')
+					expect(allLogs()).not.toContain(KEY_PREFIX)
+					expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('purged 0, skipped 1'))
+				},
+			)
+
+			it('a lock failure never reaches storage or the delete', async () => {
+				serveExpired(repository, [uuid(1)])
+				repository.lockExpiredUser.mockRejectedValue(new Error('lock timeout'))
+
+				await service.purgeExpired(NOW)
+
+				expect(deleteByPrefixSpy).not.toHaveBeenCalled()
+				expect(repository.deleteExpiredUser).not.toHaveBeenCalled()
 			})
 		})
 
@@ -235,7 +324,8 @@ describe('AccountPurgeService', () => {
 					await expect(service.purgeExpired(NOW)).resolves.toBe(0)
 
 					expect(deleteByPrefixSpy).not.toHaveBeenCalled()
-					expect(repository.findDeletionState).not.toHaveBeenCalled()
+					expect(transactionSpy).not.toHaveBeenCalled()
+					expect(repository.lockExpiredUser).not.toHaveBeenCalled()
 					expect(repository.deleteExpiredUser).not.toHaveBeenCalled()
 					expect(errorSpy).toHaveBeenCalledTimes(1)
 					expect(allLogs()).not.toContain(KEY_PREFIX)
@@ -256,32 +346,37 @@ describe('AccountPurgeService', () => {
 
 		describe('race with restore', () => {
 			it.each([
-				['purgeAt is null (restored)', { purgeAt: null }],
-				['purgeAt moved to the future', { purgeAt: FUTURE }],
-				['the user is already gone', null],
-			])('%s: neither storage nor database is touched', async (_name, state) => {
+				['restored (purgeAt is null)'],
+				['purgeAt moved to the future'],
+				['the user is already gone'],
+			])('%s: the lock matches nothing, neither storage nor delete is touched', async () => {
 				const a = uuid(1)
 				serveExpired(repository, [a])
 				const key = await seedPhoto(a)
-				repository.findDeletionState.mockResolvedValue(state)
+				repository.lockExpiredUser.mockResolvedValue(false)
 
 				await expect(service.purgeExpired(NOW)).resolves.toBe(0)
 
+				expect(repository.lockExpiredUser).toHaveBeenCalledTimes(1)
 				expect(deleteByPrefixSpy).not.toHaveBeenCalled()
 				expect(repository.deleteExpiredUser).not.toHaveBeenCalled()
 				expect(await exists(key)).toBe(true)
+				expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('purged 0, skipped 1'))
 			})
 
-			it('purges when purgeAt is exactly now', async () => {
-				serveExpired(repository, [uuid(1)])
-				repository.findDeletionState.mockResolvedValue({ purgeAt: NOW })
+			it('purges when purgeAt is exactly now: the same now goes to the lock and the delete', async () => {
+				const a = uuid(1)
+				serveExpired(repository, [a])
 
 				await expect(service.purgeExpired(NOW)).resolves.toBe(1)
+
+				expect(repository.lockExpiredUser).toHaveBeenCalledWith({ userId: a, now: NOW }, tx)
+				expect(repository.deleteExpiredUser).toHaveBeenCalledWith({ userId: a, now: NOW }, tx)
 			})
 
-			it('skips (does not throw) when the state read itself fails', async () => {
+			it('skips (does not throw) when the lock query fails, and the others go on', async () => {
 				serveExpired(repository, [uuid(1), uuid(2)])
-				repository.findDeletionState.mockRejectedValueOnce(new Error('db down secret-host'))
+				repository.lockExpiredUser.mockRejectedValueOnce(new Error('db down secret-host'))
 
 				await expect(service.purgeExpired(NOW)).resolves.toBe(1)
 				expect(allLogs()).not.toContain('secret-host')
@@ -295,8 +390,8 @@ describe('AccountPurgeService', () => {
 				serveExpired(repository, ids)
 				// every 3rd user is skipped (restored meanwhile)
 				const restored = new Set(ids.filter((_, i) => i % 3 === 0))
-				repository.findDeletionState.mockImplementation((userId) =>
-					Promise.resolve({ purgeAt: restored.has(userId) ? null : PAST }),
+				repository.lockExpiredUser.mockImplementation(({ userId }) =>
+					Promise.resolve(!restored.has(userId)),
 				)
 
 				const purged = await service.purgeExpired(NOW)
@@ -320,7 +415,7 @@ describe('AccountPurgeService', () => {
 			it('terminates when a full page is entirely skipped', async () => {
 				const ids = Array.from({ length: PURGE_BATCH_SIZE + 5 }, (_, i) => uuid(i + 1))
 				serveExpired(repository, ids)
-				repository.findDeletionState.mockResolvedValue({ purgeAt: null })
+				repository.lockExpiredUser.mockResolvedValue(false)
 
 				await expect(service.purgeExpired(NOW)).resolves.toBe(0)
 
@@ -339,6 +434,236 @@ describe('AccountPurgeService', () => {
 				expect(repository.deleteExpiredUser.mock.calls.map(([arg]) => arg.userId)).toEqual(
 					[...ids].sort(),
 				)
+			})
+		})
+
+		describe('circuit breaker', () => {
+			const LIMIT = PURGE_MAX_CONSECUTIVE_STORAGE_FAILURES
+			const STOP_MESSAGE = `Account purge stopped after ${LIMIT} consecutive storage failures; the rest next run`
+
+			/** Storage fails (with a text full of secrets) for the listed users, works for the rest. */
+			const failStorageFor = (failing: Set<string>): void => {
+				const realDelete = originalDeleteByPrefix
+				deleteByPrefixSpy.mockImplementation((prefix: string) =>
+					[...failing].some((id) => prefix.includes(`/${id}/`))
+						? Promise.reject(new Error(BUCKET_SECRET))
+						: realDelete(prefix),
+				)
+			}
+			const ids = (from: number, to: number): string[] =>
+				Array.from({ length: to - from + 1 }, (_, i) => uuid(from + i))
+			const stopWarnings = (): unknown[][] =>
+				warnSpy.mock.calls.filter(([message]) => String(message).includes('stopped after'))
+
+			it('uses 5 as the threshold', () => {
+				expect(LIMIT).toBe(5)
+			})
+
+			it('stops the run after 5 storage failures in a row and leaves the rest untouched', async () => {
+				const all = ids(1, 8)
+				serveExpired(repository, all)
+				failStorageFor(new Set(all))
+
+				await expect(service.purgeExpired(NOW)).resolves.toBe(0)
+
+				expect(deleteByPrefixSpy).toHaveBeenCalledTimes(LIMIT)
+				const visited = repository.lockExpiredUser.mock.calls.map(([arg]) => arg.userId)
+				expect(visited).toEqual(all.slice(0, LIMIT))
+				expect(repository.deleteExpiredUser).not.toHaveBeenCalled()
+				expect(stopWarnings()).toEqual([[STOP_MESSAGE]])
+			})
+
+			it('returns the accounts already deleted and still prints the summary after stopping', async () => {
+				const all = ids(1, 10)
+				serveExpired(repository, all)
+				failStorageFor(new Set(all.slice(3)))
+
+				const purged = await service.purgeExpired(NOW)
+
+				expect(purged).toBe(3)
+				// users 4..8 fail, 9 and 10 are never tried
+				expect(deleteByPrefixSpy).toHaveBeenCalledTimes(8)
+				expect(repository.deleteExpiredUser).toHaveBeenCalledTimes(3)
+				expect(logSpy).toHaveBeenCalledExactlyOnceWith(
+					`Account purge done: purged 3, skipped ${LIMIT} (retried next run)`,
+				)
+				expect(stopWarnings()).toHaveLength(1)
+			})
+
+			it('does not stop on 4 failures in a row', async () => {
+				const all = ids(1, 6)
+				serveExpired(repository, all)
+				failStorageFor(new Set(all.slice(0, LIMIT - 1)))
+
+				await expect(service.purgeExpired(NOW)).resolves.toBe(2)
+
+				expect(stopWarnings()).toHaveLength(0)
+				expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('purged 2, skipped 4'))
+			})
+
+			it('is reset by a success: 4 failures, a success, 4 failures do not stop', async () => {
+				const all = ids(1, 10)
+				serveExpired(repository, all)
+				failStorageFor(new Set([...all.slice(0, 4), ...all.slice(5, 9)]))
+
+				await expect(service.purgeExpired(NOW)).resolves.toBe(2)
+
+				expect(deleteByPrefixSpy).toHaveBeenCalledTimes(10)
+				expect(stopWarnings()).toHaveLength(0)
+			})
+
+			it.each([
+				['a user restored meanwhile'],
+				['a user whose purgeAt moved to the future'],
+				['a user who is already gone'],
+			])('is reset by %s (lock matches nothing)', async () => {
+				const all = ids(1, 10)
+				serveExpired(repository, all)
+				failStorageFor(new Set([...all.slice(0, 4), ...all.slice(5, 9)]))
+				repository.lockExpiredUser.mockImplementation(({ userId }) =>
+					Promise.resolve(userId !== all[4]),
+				)
+
+				await expect(service.purgeExpired(NOW)).resolves.toBe(1)
+
+				expect(stopWarnings()).toHaveLength(0)
+				// the skipped user's storage was never touched
+				expect(deleteByPrefixSpy).toHaveBeenCalledTimes(9)
+			})
+
+			it('is reset by an invalid user id', async () => {
+				const all = ids(1, 9)
+				const withGarbage = [...all.slice(0, 4), 'garbage', ...all.slice(4)]
+				repository.findExpiredUserIds.mockResolvedValueOnce(withGarbage).mockResolvedValue([])
+				failStorageFor(new Set(all.slice(0, 8)))
+
+				await expect(service.purgeExpired(NOW)).resolves.toBe(1)
+
+				expect(stopWarnings()).toHaveLength(0)
+				expect(deleteByPrefixSpy).toHaveBeenCalledTimes(9)
+			})
+
+			it('is reset by a delete that found nothing to delete (restored in the last moment)', async () => {
+				const all = ids(1, 10)
+				serveExpired(repository, all)
+				failStorageFor(new Set([...all.slice(0, 4), ...all.slice(5, 9)]))
+				repository.deleteExpiredUser.mockResolvedValueOnce(false)
+
+				await expect(service.purgeExpired(NOW)).resolves.toBe(1)
+
+				expect(stopWarnings()).toHaveLength(0)
+			})
+
+			it('does not count a database failure as a storage failure: it resets and never stops', async () => {
+				const all = ids(1, 10)
+				serveExpired(repository, all)
+				failStorageFor(new Set([...all.slice(0, 4), ...all.slice(5, 9)]))
+				repository.lockExpiredUser.mockImplementation(({ userId }) =>
+					userId === all[4]
+						? Promise.reject(new TypeError('db.secret-host:5432 refused'))
+						: Promise.resolve(true),
+				)
+
+				await expect(service.purgeExpired(NOW)).resolves.toBe(1)
+
+				expect(stopWarnings()).toHaveLength(0)
+				expect(allLogs()).not.toContain('secret-host')
+			})
+
+			it('visits every user when the database read fails for all of them', async () => {
+				const all = ids(1, LIMIT * 2)
+				serveExpired(repository, all)
+				repository.lockExpiredUser.mockRejectedValue(new Error('db down'))
+
+				await expect(service.purgeExpired(NOW)).resolves.toBe(0)
+
+				expect(repository.lockExpiredUser).toHaveBeenCalledTimes(all.length)
+				expect(deleteByPrefixSpy).not.toHaveBeenCalled()
+				expect(stopWarnings()).toHaveLength(0)
+			})
+
+			it('does not count a $transaction failure towards the breaker', async () => {
+				const all = ids(1, LIMIT * 2)
+				serveExpired(repository, all)
+				transactionSpy.mockRejectedValue(new Error('db down'))
+
+				await expect(service.purgeExpired(NOW)).resolves.toBe(0)
+
+				expect(transactionSpy).toHaveBeenCalledTimes(all.length)
+				expect(stopWarnings()).toHaveLength(0)
+			})
+
+			it('does not count a database delete failure (storage already succeeded) towards the breaker', async () => {
+				const all = ids(1, LIMIT * 2)
+				serveExpired(repository, all)
+				repository.deleteExpiredUser.mockRejectedValue(new Error('db down'))
+
+				await expect(service.purgeExpired(NOW)).resolves.toBe(0)
+
+				expect(repository.deleteExpiredUser).toHaveBeenCalledTimes(all.length)
+				expect(stopWarnings()).toHaveLength(0)
+			})
+
+			it('counts failures across page boundaries and stops without reading further pages', async () => {
+				const total = PURGE_BATCH_SIZE * 2
+				const all = ids(1, total)
+				serveExpired(repository, all)
+				// the last 2 of page one and the first 3 of page two
+				const failing = new Set(all.slice(PURGE_BATCH_SIZE - 2, PURGE_BATCH_SIZE + 3))
+				failStorageFor(failing)
+
+				const purged = await service.purgeExpired(NOW)
+
+				expect(purged).toBe(PURGE_BATCH_SIZE - 2)
+				const calls = repository.findExpiredUserIds.mock.calls.map(([arg]) => arg)
+				expect(calls.map((arg) => arg.afterId)).toEqual([undefined, all[PURGE_BATCH_SIZE - 1]])
+				expect(stopWarnings()).toHaveLength(1)
+				expect(repository.lockExpiredUser).toHaveBeenCalledTimes(PURGE_BATCH_SIZE + 3)
+			})
+
+			it('keeps paginating normally when failures never reach the threshold', async () => {
+				const total = PURGE_BATCH_SIZE * 2 + 10
+				const all = ids(1, total)
+				serveExpired(repository, all)
+				// every 10th user fails: never 5 in a row
+				const failing = new Set(all.filter((_, i) => i % 10 === 0))
+				failStorageFor(failing)
+
+				await expect(service.purgeExpired(NOW)).resolves.toBe(total - failing.size)
+
+				expect(stopWarnings()).toHaveLength(0)
+				expect(repository.findExpiredUserIds).toHaveBeenCalledTimes(4)
+			})
+
+			it('stops on the next run too while the storage is down, then finishes once it is back', async () => {
+				const all = ids(1, 7)
+				serveExpired(repository, all)
+				failStorageFor(new Set(all))
+
+				expect(await service.purgeExpired(NOW)).toBe(0)
+				expect(await service.purgeExpired(NOW)).toBe(0)
+				expect(stopWarnings()).toHaveLength(2)
+
+				deleteByPrefixSpy.mockImplementation(originalDeleteByPrefix)
+				expect(await service.purgeExpired(NOW)).toBe(7)
+			})
+
+			it('logs the stop without keys, prefixes, bucket, user ids or SDK text', async () => {
+				const all = ids(1, 6)
+				serveExpired(repository, all)
+				for (const id of all) await seedPhoto(id)
+				failStorageFor(new Set(all))
+
+				await service.purgeExpired(NOW)
+
+				const logged = allLogs()
+				expect(logged).not.toContain(KEY_PREFIX)
+				expect(logged).not.toContain('/users/')
+				expect(logged).not.toContain('kus-secret-bucket')
+				expect(logged).not.toContain('r2.example')
+				expect(logged).not.toContain('denied')
+				expect(String(stopWarnings()[0]?.[0])).not.toMatch(USER_ID_PATTERN)
+				for (const id of all) expect(String(stopWarnings()[0]?.[0])).not.toContain(id)
 			})
 		})
 
@@ -369,14 +694,39 @@ describe('AccountPurgeService', () => {
 			await expect(service.purgeOnSchedule()).resolves.toBeUndefined()
 
 			expect(errorSpy).toHaveBeenCalledTimes(1)
-			expect(errorSpy.mock.calls[0]?.[0]).toBe('Account purge failed')
+			// only the error class: no message and no stack (both can carry hosts and credentials)
+			expect(errorSpy.mock.calls[0]).toEqual(['Account purge failed (Error)'])
+			expect(allLogs()).not.toContain('secret-host')
+			expect(allLogs()).not.toContain('postgres://')
 			expect(deleteByPrefixSpy).not.toHaveBeenCalled()
 		})
 
-		it('does not throw on a non-Error rejection', async () => {
-			repository.findExpiredUserIds.mockRejectedValue('weird')
+		it('logs only error.name for a subclass of Error', async () => {
+			repository.findExpiredUserIds.mockRejectedValue(new TypeError('boom secret-host'))
+
+			await service.purgeOnSchedule()
+
+			expect(errorSpy.mock.calls).toEqual([['Account purge failed (TypeError)']])
+		})
+
+		it('does not throw on a non-Error rejection and prints none of it', async () => {
+			repository.findExpiredUserIds.mockRejectedValue('weird secret')
 
 			await expect(service.purgeOnSchedule()).resolves.toBeUndefined()
+
+			expect(errorSpy.mock.calls).toEqual([['Account purge failed (unknown)']])
+			expect(allLogs()).not.toContain('weird secret')
+		})
+
+		it('does not throw when the storage keeps failing: the breaker stop is a normal result', async () => {
+			const all = Array.from({ length: 6 }, (_, i) => uuid(i + 1))
+			serveExpired(repository, all)
+			deleteByPrefixSpy.mockRejectedValue(new Error(BUCKET_SECRET))
+
+			await expect(service.purgeOnSchedule()).resolves.toBeUndefined()
+
+			expect(deleteByPrefixSpy).toHaveBeenCalledTimes(PURGE_MAX_CONSECUTIVE_STORAGE_FAILURES)
+			expect(allLogs()).not.toContain('Account purge failed')
 		})
 	})
 })

@@ -26,6 +26,7 @@ export const ICON_NAMES = [
 	'eye',
 	'flame',
 	'globe',
+	'image-off',
 	'image',
 	'info',
 	'lock',
@@ -193,6 +194,14 @@ export const ICON_PATHS: Record<IconName, ReactNode> = {
 			<circle cx="12" cy="12" r="8.5" />
 			<path d="M3.5 12h17" />
 			<path d="M12 3.5c2.5 2.5 3.5 5.5 3.5 8.5s-1 6-3.5 8.5c-2.5-2.5-3.5-5.5-3.5-8.5s1-6 3.5-8.5z" />
+		</>
+	),
+	'image-off': (
+		<>
+			<path d="M7 5h11a2.5 2.5 0 0 1 2.5 2.5V16" />
+			<path d="M19.5 19H6a2.5 2.5 0 0 1-2.5-2.5v-10" />
+			<path d="M4 17l5-5 3 3" />
+			<path d="M3 3l18 18" />
 		</>
 	),
 	'image': (

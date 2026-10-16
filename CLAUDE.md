@@ -70,7 +70,7 @@
 | Макети (еталон) | `design/mockups/*.html`, `design/screenshots/*.png` |
 | Токени | `design/tokens/theme.css` → `shared/ui/theme/tokens.css`; пояснення — `design/tokens/tokens.json` |
 | Готовий код бренду | `design/src/` (іконки, іконки страв, лого, лоадер, хом'як, Motion-пресети, звуки) — переносити в `shared/ui` / `shared/lib` |
-| Іконки | `design/src/icon/svg/` (51) і `design/src/food/svg/` (45) → `shared/ui/icon`, `shared/ui/food-icon`; генератор `design/scripts/build-icons.mjs` → `apps/web/scripts/` |
+| Іконки | `design/src/icon/svg/` (53) і `design/src/food/svg/` (45) → `shared/ui/icon`, `shared/ui/food-icon`; генератор `design/scripts/build-icons.mjs` → `apps/web/scripts/` |
 | Категорії страв | `design/docs/food-categories.md` — список, zod/Prisma, текст для промпту |
 
 Перш ніж хардкодити колір, відступ чи шрифт — перевір, чи це вже токен. Токени — у `shared/ui/theme/tokens.css` через `@theme` Tailwind v4, класи генеруються з них (`bg-primary`, `rounded-card`, `shadow-card`). Значення — лише з `design/tokens/theme.css`; змінюєш токен — синхронізуй `tokens.json`.

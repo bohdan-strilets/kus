@@ -6,6 +6,56 @@ All notable changes to Kusik are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.6.0] — 2026-10-17
+
+> **Deploy note:** the release needs new Railway variables, and the API does not start in production without them: `STORAGE_PROVIDER=s3`, `S3_ENDPOINT`, `S3_REGION`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_BUCKET`, `STORAGE_KEY_PREFIX`, `PHOTOS_PER_MESSAGE_MAX=1`, `PHOTO_DAILY_UPLOAD_LIMIT`, `AI_DAILY_PHOTO_LIMIT`, `PHOTO_ORPHAN_TTL_HOURS`. The migration `20261015120000_add_stored_files` drops `message_attachments.storage_key` and raises, changing nothing, if any row still has it set. Take a `pg_dump` first (`docs/deploy.md`).
+
+Photo v2, sub-stage A: photos are stored in S3-compatible object storage (Cloudflare R2, EU) and uploaded before the message is sent, instead of travelling as base64 inside `POST /messages`.
+
+### Added
+
+- Storage module: `StorageService` over a `StorageAdapter` (`put` / `get` / `delete` / `deleteByPrefix`), per-user object keys, the `STORAGE_UNAVAILABLE` error, a memory adapter for dev and tests, and an S3 adapter (path-style, SigV4 through `aws4fetch`, so no AWS SDK) that works with R2, Backblaze B2 and the like; production requires `STORAGE_PROVIDER=s3` ([e3e8f77], [ab3aec5])
+- Opt-in smoke test that round-trips `put` / `get` / `deleteByPrefix` against a real bucket on a temporary prefix; skipped in `pnpm test` and CI, run with `pnpm --filter api test:smoke:storage` ([caa7912])
+- `POST /api/v1/photos`, `GET /api/v1/photos/:id` and `DELETE /api/v1/photos/:id`: a JPEG and its thumbnail are checked (JPEG only, magic bytes, size, dimensions), stripped of metadata and of everything after the end-of-image marker, and stored; reads are owner-only with `nosniff` and `private, immutable` caching; a photo attached to a message cannot be deleted; per-IP throttles, a daily upload limit (`PHOTO_DAILY_UPLOAD_LIMIT`) and the AI photo limit answer `DAILY_PHOTO_LIMIT_REACHED` with `resetsAt`; the body limit comes from the shared photo constants ([8bdd00c])
+- `StoredFile` table (original and thumbnail keys, owned by a user, cascade on account deletion) and `fileId` / `position` on `MessageAttachment`; the migration refuses to run while a `storage_key` is set and drops that never-written column ([83955c9])
+- `POST /messages` accepts `photoIds`: the bytes are read from storage before the message is created, so a storage failure or a missing object leaves nothing behind; the attachment is created with the message and `unique(file_id)` decides who owns a photo, so replay and retry keep working; messages carry `photos[]` ([65167f2])
+- Shared photo constants and schemas (target side 1568 px, thumbnail 768 px / 150 KB, at most 6 photos per message in the schema), `photoIds` in the send-message request and `photos[]` in the chat message ([a06f641])
+- Orphan cleanup cron at 03:30: photos uploaded but never attached and older than `PHOTO_ORPHAN_TTL_HOURS` are deleted, sharing one row-locked transaction with `DELETE /photos/:id` so a photo attached in parallel is never lost ([caa5c75])
+- Account purge deletes the user's stored objects: expired accounts are walked one by one, the user row is removed only after the storage was cleared, and a failure skips that user until the next run ([fe9a8e5])
+- Client upload in two steps: `POST /photos` with progress (the 1568 px photo and a 768 px thumbnail, both re-encoded), then `POST /messages` with `photoIds`; the photo id lives in the outbox, so a retry never uploads twice and a failed message with an uploaded photo survives a reload; the picker accepts `image/*` and a format the browser cannot decode gives a clear error; the camera is disabled until `resetsAt` once the daily limit is reached ([f56c4a7])
+- `PhotoTile` in the chat history: the height is known from the API (124–330 px), a skeleton with fade-in while the thumbnail loads, an error state whose retry first renews the session through a light request (an `<img>` bypasses the axios refresh), and a neutral "photo not saved" state; a photo sent in this session keeps showing its local copy ([68dbdf3])
+- `image-off` interface icon (53 icons) ([66f8fd2])
+
+### Changed
+
+- `stripJpegMetadata` also cuts everything after the end-of-image marker; photo validation moved to `common/photo`, shared by chat and photos ([8bdd00c])
+- Photo error texts follow the design word for word: neutral "photo lost" and "invalid photo", one "too large" text, and the composer shows the first sentence as the problem and the rest as the hint; the retry in a single photo tile uses `primary-deep` (6.5:1 instead of 4.4:1) ([6a28b6f])
+- S3 `delete` and `list` requests time out after 10 s (`put` and `get` keep 20 s); the transaction timeouts of photo deletion, the orphan cron and the account purge derive from the worst single request in `storage.constants` ([d34d6d6])
+- The daily photo limit text in the composer is `danger` 13/700 as in the mockup; the loading photo tile is `role="status"` ([d34d6d6])
+
+### Fixed
+
+- Restoring an account is allowed only while `purgeAt` is in the future: afterwards `POST /account/restore` answers 409 `ACCOUNT_RESTORE_EXPIRED` even if the purge cron has not run yet; the purge locks the user row (`FOR UPDATE`), removes the storage objects and deletes the row in one transaction, so a restore cannot win in between, and five storage failures in a row stop a run ([d2ffdb4])
+- The restore toast says that restoring is no longer possible for `ACCOUNT_RESTORE_EXPIRED` instead of a generic "try again" ([9f1fa85])
+- A server failure of a message with a stored photo is retried with its photo id instead of showing "photo lost"; a bubble with a final photo error (`PHOTO_NOT_FOUND`, `PHOTO_IN_USE`) always keeps "Прибрати"; both codes have texts ([d34d6d6])
+- The photo sentence split avoids a regex lookbehind, which Safari before 16.4 cannot parse ([6a28b6f])
+
+### Design
+
+- Photo v2 mockups: history tile, multi-photo composer, photo grid in the bubble, full-screen viewer and memory thumbnail, plus the remaining states (retry tile, viewer loading and failure, daily limit during upload, plural error texts) and the 132 px composer max-height fix ([1e7d5e7], [5f13da4])
+- Sub-stage A sync: neutral error texts, one `photoTooLarge`, `primary-deep` for the single-tile retry, Skeleton pulse instead of the shimmer and a 1 px dashed outline for photos that were not saved ([6ed00d5])
+
+### Docs
+
+- Stored photo flow, restore rule after the grace period, privacy and rules in `docs/architecture.md` and `CLAUDE.md`; photo-storage release steps (R2 EU bucket, variables, `pg_dump`, `storage_key` check, smoke test) in `docs/deploy.md` ([ba97a30], [c92a9fb], [2b7a320])
+- Sentry is marked as planned before the beta, not as present ([c426aad])
+
+### Known limitations
+
+- One photo per message for now (`PHOTOS_PER_MESSAGE_MAX=1`); several photos are the next stage
+- The photo eval (D1) is postponed
+- The old `photo` field stays in the API and types for cached clients and is removed in B2.6 ([68dbdf3], [65167f2])
+
 ## [0.5.3] — 2026-10-14
 
 Design sync with `design/` v0.5.2. Web only: no API, shared-package or migration changes, so no database backup is needed.
@@ -169,7 +219,31 @@ Design sync with `design/` v0.5.2. Web only: no API, shared-package or migration
 
 ## 0.2.0 / 0.1.0 — see tags
 
-[Unreleased]: https://github.com/bohdan-strilets/kus/compare/v0.5.3...HEAD
+[Unreleased]: https://github.com/bohdan-strilets/kus/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/bohdan-strilets/kus/compare/v0.5.3...v0.6.0
+[e3e8f77]: https://github.com/bohdan-strilets/kus/commit/e3e8f778460e737d14a5606ecd53efcc7f307085
+[ab3aec5]: https://github.com/bohdan-strilets/kus/commit/ab3aec5b4a1d4a6a3e5b9a4bacfbe307cc75a15c
+[caa7912]: https://github.com/bohdan-strilets/kus/commit/caa79121d7fcbcc2de1dfdae4233ac2cfe6e05c1
+[1e7d5e7]: https://github.com/bohdan-strilets/kus/commit/1e7d5e7c24140cba2054c17ae8647ee754678fe4
+[a06f641]: https://github.com/bohdan-strilets/kus/commit/a06f64166db6775865a9d3002b60f2491175381e
+[83955c9]: https://github.com/bohdan-strilets/kus/commit/83955c99edc5d9825063cef32e4419784bc8d522
+[5f13da4]: https://github.com/bohdan-strilets/kus/commit/5f13da4918562b133089aad14035f4cba3658b92
+[8bdd00c]: https://github.com/bohdan-strilets/kus/commit/8bdd00cc50d5d9b1cd09f0030c31e28c70a50ed7
+[65167f2]: https://github.com/bohdan-strilets/kus/commit/65167f2889705609cb32fa8253240faf7dc70371
+[fe9a8e5]: https://github.com/bohdan-strilets/kus/commit/fe9a8e577a98e6e436db0768ebdb1c222854a504
+[caa5c75]: https://github.com/bohdan-strilets/kus/commit/caa5c75b0743a59293eea6b7f4995d3595a8392e
+[d2ffdb4]: https://github.com/bohdan-strilets/kus/commit/d2ffdb4cbb8b48fa2282094536b18de242f5ac83
+[9f1fa85]: https://github.com/bohdan-strilets/kus/commit/9f1fa854d2c6ebe5c2e6d7f415815120abb054e0
+[66f8fd2]: https://github.com/bohdan-strilets/kus/commit/66f8fd2df003b26a0c48dfa026698b17caf8817f
+[f56c4a7]: https://github.com/bohdan-strilets/kus/commit/f56c4a7652c474b9b4872cbc41171a5f96afd02d
+[68dbdf3]: https://github.com/bohdan-strilets/kus/commit/68dbdf365c6cfb58afec8287893b712a2de6df0f
+[ba97a30]: https://github.com/bohdan-strilets/kus/commit/ba97a30d3fd563a49139eb7df733f029587de578
+[c92a9fb]: https://github.com/bohdan-strilets/kus/commit/c92a9fb5143991562a8d034678b2af3891c1172c
+[6ed00d5]: https://github.com/bohdan-strilets/kus/commit/6ed00d5ebe816b283f927e4c444f55e1e8eac560
+[6a28b6f]: https://github.com/bohdan-strilets/kus/commit/6a28b6f838526546f4f3ab9d241664b57f4b3269
+[d34d6d6]: https://github.com/bohdan-strilets/kus/commit/d34d6d668e5f663368813150fec266f5f190d597
+[c426aad]: https://github.com/bohdan-strilets/kus/commit/c426aaded04e8d5937b3065fb9288c9ccfa20442
+[2b7a320]: https://github.com/bohdan-strilets/kus/commit/2b7a320c495060c2f807b7003f1dceb71d81b013
 [0.5.3]: https://github.com/bohdan-strilets/kus/compare/v0.5.2...v0.5.3
 [7ccee90]: https://github.com/bohdan-strilets/kus/commit/7ccee906f136f7308280770d18ba120957e514f2
 [4ca87d5]: https://github.com/bohdan-strilets/kus/commit/4ca87d59519ff534ad45456abbdf3ed61ad35ba9

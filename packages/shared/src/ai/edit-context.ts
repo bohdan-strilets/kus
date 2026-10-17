@@ -21,6 +21,11 @@ export interface TodayEntryContext {
 	fiber: number | null
 	category: FoodCategory
 	source: FoodSource
+	/**
+	 * Changed after it was logged: by hand, via `correct_entry` or by moving it to another meal.
+	 * The values here are no longer the AI's original estimate.
+	 */
+	isEdited: boolean
 }
 
 export type DeletedEntryContext = Pick<TodayEntryContext, 'ref' | 'name' | 'grams' | 'kcal'>
@@ -36,8 +41,11 @@ export interface OpenClarificationContext {
 
 const round = (value: number): number => Math.round(value)
 
+/** Tells the model the entry no longer holds what it logged, so the turn is not logged again. */
+const CHANGED_MARKER = ' (changed after logging)'
+
 const formatEntry = (entry: TodayEntryContext): string =>
-	`- ${entry.ref} ${entry.mealType} "${entry.name}": ${round(entry.grams)} g, ${round(entry.kcal)} kcal, P ${round(entry.protein)} F ${round(entry.fat)} C ${round(entry.carbs)}`
+	`- ${entry.ref} ${entry.mealType} "${entry.name}": ${round(entry.grams)} g, ${round(entry.kcal)} kcal, P ${round(entry.protein)} F ${round(entry.fat)} C ${round(entry.carbs)}${entry.isEdited ? CHANGED_MARKER : ''}`
 
 const formatClarification = (clarification: OpenClarificationContext): string => {
 	const options = clarification.options
@@ -59,7 +67,7 @@ export const formatEditContext = ({
 		entries.length === 0
 			? ['Nothing logged yet today.']
 			: [
-					"Today's entries (refs for correct_entry / delete_entry; only these can be changed):",
+					"Today's entries — already logged, current values (refs for correct_entry / delete_entry; only these can be changed):",
 					...entries.map(formatEntry),
 				]
 	if (deletedEntries.length > 0) {

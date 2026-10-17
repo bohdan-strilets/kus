@@ -5,14 +5,13 @@ import {
 	type FoodParseContext,
 	type GoalContext,
 	HISTORY_MAX_MESSAGES,
-	type HistoryTurn,
 	MAX_CONTEXT_OPEN_CLARIFICATIONS,
 	type MeasurementsContext,
 	type MemoryFoodContext,
 } from '@kus/shared'
 
 import { formatDbDate, formatLocalTime } from '../../common/time'
-import { MeasurementKind, MessageRole } from '../../generated/prisma/client'
+import { MeasurementKind } from '../../generated/prisma/client'
 import { type DaySummary, EntriesService } from '../entries/entries.service'
 import { GoalsService } from '../goals/goals.service'
 import { MeasurementsService } from '../measurements/measurements.service'
@@ -20,6 +19,7 @@ import { ProfileService } from '../profile/profile.service'
 import { ChatRepository, type MessageWithAttachments } from './chat.repository'
 import { ClarificationsRepository } from './clarifications.repository'
 import { buildEditContext, type EditRefIds } from './edit-context'
+import { toHistoryTurns } from './history-turns'
 
 export interface DayOverview {
 	summary: DaySummary
@@ -36,13 +36,16 @@ interface BuildContextParams {
 	memory: MemoryFoodContext[]
 }
 
-const toHistoryTurn = (message: MessageWithAttachments): HistoryTurn[] => {
-	const role = message.role === MessageRole.USER ? 'user' : 'assistant'
-	// the photo itself is never sent again: the model sees a marker next to the words
-	if (message.attachments.length > 0) {
-		return [{ role, content: message.content ?? '', hasPhoto: true }]
+/** Message id → ids of the entries it logged; built from the day already loaded, no extra query. */
+const groupEntryIdsBySourceMessage = (
+	entries: { id: string; sourceMessageId: string | null }[],
+): Map<string, string[]> => {
+	const grouped = new Map<string, string[]>()
+	for (const { id, sourceMessageId } of entries) {
+		if (sourceMessageId === null) continue
+		grouped.set(sourceMessageId, [...(grouped.get(sourceMessageId) ?? []), id])
 	}
-	return message.content === null ? [] : [{ role, content: message.content }]
+	return grouped
 }
 
 const CONTEXT_WEIGHT_COUNT = 2
@@ -129,7 +132,14 @@ export class ChatContextService {
 			// a few spare: questions whose entries fell out of the context are skipped
 			take: MAX_CONTEXT_OPEN_CLARIFICATIONS * 2,
 		})
-		const { refIds, ...edit } = buildEditContext({ ...editable, clarifications })
+		const { refIds, refByEntryId, ...edit } = buildEditContext({
+			active: editable.active,
+			deleted: editable.deleted,
+			clarifications,
+		})
+		// all the day's entries, not only the windowed ones: a turn whose entries lost their refs
+		// must still read as logged
+		const entryIdsBySourceMessageId = groupEntryIdsBySourceMessage(editable.sourceMessages)
 		const goalContext: GoalContext | null =
 			goal && totals.remainingKcal !== null
 				? {
@@ -150,7 +160,9 @@ export class ChatContextService {
 				goal: goalContext,
 				measurements,
 				memory,
-				history: history.reverse().flatMap(toHistoryTurn),
+				history: history
+					.reverse()
+					.flatMap((turn) => toHistoryTurns(turn, refByEntryId, entryIdsBySourceMessageId)),
 			},
 			refIds,
 		}

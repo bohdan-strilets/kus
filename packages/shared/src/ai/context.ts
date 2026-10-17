@@ -53,14 +53,32 @@ export interface HistoryTurn {
 	content: string
 	/** The user turn carried a photo; the model sees a marker, never the image again. */
 	hasPhoto?: boolean
+	/** Refs of today's entries this user turn logged; the model must not log them again. */
+	loggedRefs?: string[]
+	/** The user turn logged entries, but none of them is in today's context window: no ref to show. */
+	hasLoggedEntries?: boolean
 }
 
 /** In the user's language, like the chat itself: the model answers in it anyway. */
 export const PHOTO_HISTORY_MARKER = '[фото]'
 
-const toHistoryText = ({ content, hasPhoto = false }: HistoryTurn): string => {
-	if (!hasPhoto) return content
-	return content.length > 0 ? `${PHOTO_HISTORY_MARKER} ${content}` : PHOTO_HISTORY_MARKER
+// first, so that cutting a long message never drops it
+const formatLoggedMarker = ({
+	role,
+	loggedRefs = [],
+	hasLoggedEntries = false,
+}: HistoryTurn): string => {
+	if (role !== 'user') return ''
+	if (loggedRefs.length > 0) return `[logged: ${loggedRefs.join(', ')}] `
+	return hasLoggedEntries ? '[logged] ' : ''
+}
+
+const toHistoryText = (turn: HistoryTurn): string => {
+	const { content, hasPhoto = false } = turn
+	const marker = formatLoggedMarker(turn)
+	if (!hasPhoto) return `${marker}${content}`
+	const withPhoto = content.length > 0 ? `${PHOTO_HISTORY_MARKER} ${content}` : PHOTO_HISTORY_MARKER
+	return `${marker}${withPhoto}`
 }
 
 /** The latest body measurements; the model compares them with a new one and never calculates. */

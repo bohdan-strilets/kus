@@ -24,6 +24,8 @@ export interface EditContext {
 	deletedEntries: DeletedEntryContext[]
 	openClarifications: OpenClarificationContext[]
 	refIds: EditRefIds
+	/** Entry id → `e1`…, active and deleted: what history turns point at. */
+	refByEntryId: ReadonlyMap<string, string>
 }
 
 const toEntryContext = (entry: EntryWithMealType, ref: string): TodayEntryContext => ({
@@ -38,6 +40,7 @@ const toEntryContext = (entry: EntryWithMealType, ref: string): TodayEntryContex
 	fiber: entry.fiberG,
 	category: entry.category,
 	source: entry.source,
+	isEdited: entry.isEdited,
 })
 
 /**
@@ -94,5 +97,6 @@ export const buildEditContext = ({
 			deletedEntries: new Map(deletedRefs.map(({ entry, ref }) => [ref, entry.id])),
 			clarifications: new Map(openClarifications.map(({ id, context }) => [context.ref, id])),
 		},
+		refByEntryId: new Map([...activeRefs, ...deletedRefs].map(({ entry, ref }) => [entry.id, ref])),
 	}
 }

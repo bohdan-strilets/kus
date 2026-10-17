@@ -30,6 +30,7 @@ const borscht: TodayEntryContext = {
 	fiber: null,
 	category: 'borscht',
 	source: 'ESTIMATE',
+	isEdited: false,
 }
 
 const refs: ParseRefs = {
@@ -51,6 +52,7 @@ const soup = {
 	fiber: 0,
 	category: 'soup',
 	source: 'ESTIMATE',
+	isEdited: false,
 	confidence: 0.4,
 	assumption: null,
 	memoryRef: null,

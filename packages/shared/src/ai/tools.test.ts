@@ -56,6 +56,7 @@ const context: FoodParseContext = {
 			fiber: null,
 			category: 'porridge',
 			source: 'ESTIMATE',
+			isEdited: false,
 		},
 	],
 	deletedEntries: [],

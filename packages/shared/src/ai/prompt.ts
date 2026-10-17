@@ -2,7 +2,7 @@
 // After any change here: run `pnpm --filter ai-eval eval` and add a line to PROMPT_CHANGELOG.md.
 
 /** Bump on every prompt or tool change; stored in the eval results next to the metrics. */
-export const PROMPT_VERSION = '2026-10-13.5'
+export const PROMPT_VERSION = '2026-10-17.1'
 
 /**
  * Static part only, so providers can cache it as a prefix. Everything about the user and the day

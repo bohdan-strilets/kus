@@ -17,6 +17,7 @@ const borscht: TodayEntryContext = {
 	fiber: null,
 	category: 'borscht',
 	source: 'ESTIMATE',
+	isEdited: false,
 }
 
 const pork: TodayEntryContext = {

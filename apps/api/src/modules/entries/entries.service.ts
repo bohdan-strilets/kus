@@ -155,7 +155,12 @@ export class EntriesService {
 	async getEditableEntries(
 		userId: string,
 		localDate: Date,
-	): Promise<{ active: EntryWithMealType[]; deleted: EntryWithMealType[] }> {
+	): Promise<{
+		active: EntryWithMealType[]
+		deleted: EntryWithMealType[]
+		/** Every entry of the day before the context limits: tells which messages logged something. */
+		sourceMessages: { id: string; sourceMessageId: string | null }[]
+	}> {
 		const entries = await this.entriesRepository.findDayEntries({ userId, localDate })
 		const deleted = entries.flatMap((entry) =>
 			entry.deletedAt === null ? [] : [{ entry, deletedAt: entry.deletedAt.getTime() }],
@@ -166,6 +171,7 @@ export class EntriesService {
 				.sort((a, b) => b.deletedAt - a.deletedAt)
 				.slice(0, MAX_CONTEXT_DELETED_ENTRIES)
 				.map(({ entry }) => entry),
+			sourceMessages: entries.map(({ id, sourceMessageId }) => ({ id, sourceMessageId })),
 		}
 	}
 

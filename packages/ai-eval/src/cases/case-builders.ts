@@ -29,7 +29,7 @@ export const entry = (
 	grams: number,
 	kcal: number,
 	category: FoodCategory,
-	macros: Partial<Pick<TodayEntryContext, 'protein' | 'fat' | 'carbs'>> = {},
+	macros: Partial<Pick<TodayEntryContext, 'protein' | 'fat' | 'carbs' | 'isEdited'>> = {},
 ): TodayEntryContext => ({
 	ref,
 	name,
@@ -42,4 +42,5 @@ export const entry = (
 	fiber: null,
 	category,
 	source: 'ESTIMATE',
+	isEdited: macros.isEdited ?? false,
 })

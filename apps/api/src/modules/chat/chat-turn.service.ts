@@ -219,11 +219,16 @@ export class ChatTurnService {
 		if (decision.kind !== 'day') return undefined
 		const today = formatDbDate(localDate)
 		const day = decision.date ?? today
-		this.assertLoggableDay({ day, today, userId, messageId: message.id })
+		// the card is read-only, so any past day is fine (not just the logging window); only the
+		// upper bound mirrors the parser, and a miss there is a bug that stops the turn
+		if (getDayOffset(day, today) > ENTRY_AHEAD_MAX_DAYS) {
+			this.logger.error(`Day out of range user=${userId} message=${message.id}`)
+			throw new TurnDateOutOfRangeException()
+		}
 		return (await this.dayCards.build({ userId, localDate: day, today, now })) ?? undefined
 	}
 
-	/** The parser rejects days outside the window, so a miss here is a bug and stops the turn. */
+	/** Food is logged only in the window; the parser rejects other days, so a miss is a bug and stops the turn. */
 	private assertLoggableDay({
 		day,
 		today,

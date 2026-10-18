@@ -261,16 +261,41 @@ describe('ChatTurnService.saveDecision show_day', () => {
 		expect((params as { dayCard?: unknown }).dayCard).toBeUndefined()
 	})
 
-	it.each(['2026-10-14', '2026-10-20'])(
-		'stops the turn for %s, outside the window',
-		async (date) => {
-			const { save, build, completeTurn } = createService()
+	it.each([
+		['2026-10-13', -5],
+		['2020-01-01', -2108],
+	])('builds the snapshot for %s, older than the logging window', async (date) => {
+		const { save, build, completeTurn } = createService()
+		const card = { version: 1, localDate: date, kind: 'past' }
+		build.mockResolvedValue(card)
 
-			await expect(save(toDayDecision(date))).rejects.toBeInstanceOf(TurnDateOutOfRangeException)
-			expect(build).not.toHaveBeenCalled()
-			expect(completeTurn).not.toHaveBeenCalled()
-		},
-	)
+		await save(toDayDecision(date))
+
+		expect(build).toHaveBeenCalledWith(expect.objectContaining({ localDate: date }))
+		expect(completeTurn).toHaveBeenCalledWith(
+			expect.objectContaining({ dayCard: card }),
+			expect.anything(),
+		)
+	})
+
+	it('stops the turn for a day after tomorrow', async () => {
+		const { save, build, completeTurn } = createService()
+
+		await expect(save(toDayDecision('2026-10-20'))).rejects.toBeInstanceOf(
+			TurnDateOutOfRangeException,
+		)
+		expect(build).not.toHaveBeenCalled()
+		expect(completeTurn).not.toHaveBeenCalled()
+	})
+
+	it('still refuses to log food on the same old day', async () => {
+		const { save, logEntries } = createService()
+
+		await expect(save(toLogDecision([toItem('a', { date: '2026-10-13' })]))).rejects.toBeInstanceOf(
+			TurnDateOutOfRangeException,
+		)
+		expect(logEntries).not.toHaveBeenCalled()
+	})
 
 	it('stores no snapshot for other kinds of answers', async () => {
 		const { save, build } = createService()

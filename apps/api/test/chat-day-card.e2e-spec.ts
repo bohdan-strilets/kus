@@ -111,6 +111,45 @@ describe('day card of show_day (e2e, real DB, fake model)', () => {
 		expect(stored.dayCard).not.toBeNull()
 	})
 
+	it('answers with a past snapshot for a day older than the logging window', async () => {
+		await start()
+		const owner = await registerUser('owner@kus.app')
+		const oldDay = formatDbDate(addDays(getToday(owner), -5))
+		const meal = await prisma.meal.create({
+			data: {
+				userId: owner.userId,
+				type: 'DINNER',
+				localDate: new Date(`${oldDay}T00:00:00Z`),
+				eatenAt: new Date(`${oldDay}T17:00:00Z`),
+			},
+		})
+		await prisma.foodEntry.create({
+			data: {
+				userId: owner.userId,
+				mealId: meal.id,
+				name: 'Суп',
+				grams: 300,
+				kcal: SOUP_ITEM.kcal,
+				proteinG: 10,
+				fatG: 5,
+				carbsG: 20,
+				source: 'ESTIMATE',
+				confidence: 0.5,
+			},
+		})
+		fake.respond(createCompletion([showDay(oldDay)]))
+
+		const response = await send(owner, 'покажи позавчора й раніше').expect(201)
+
+		const { data } = sendResponseSchema.parse(response.body)
+		expect(data.assistantMessage.dayCard).toMatchObject({
+			localDate: oldDay,
+			kind: 'past',
+			totals: { kcal: SOUP_ITEM.kcal },
+			meals: [{ type: 'DINNER', kcal: SOUP_ITEM.kcal }],
+		})
+	})
+
 	it('shows today as it stands now and tomorrow as planned', async () => {
 		await start()
 		const owner = await registerUser('owner@kus.app')

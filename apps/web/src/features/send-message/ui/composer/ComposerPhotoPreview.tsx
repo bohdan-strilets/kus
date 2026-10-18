@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 
-import { cn } from '@/shared/lib'
+import { cn, keepFieldFocus } from '@/shared/lib'
 import { Icon, IconButton, Loader, Text } from '@/shared/ui'
 
 import type { ComposerPhotoState } from './composer.types'
@@ -70,6 +70,8 @@ export const ComposerPhotoPreview = ({ photo }: ComposerPhotoPreviewProps) => {
 					size="xs"
 					label={t('composer.removePhoto')}
 					onClick={photo.onRemove}
+					onPointerDown={keepFieldFocus}
+					onMouseDown={keepFieldFocus}
 					className="absolute -top-2 -right-2"
 				>
 					<Icon name="close" size={REMOVE_ICON_SIZE} />

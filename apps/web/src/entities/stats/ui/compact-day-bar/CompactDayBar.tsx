@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 
 import { ROUTES } from '@/shared/config'
-import { formatInteger } from '@/shared/lib'
+import { formatInteger, keepFieldFocus } from '@/shared/lib'
 import { Text } from '@/shared/ui'
 
 import { getGaugeState } from '../../lib/get-gauge-state'
@@ -85,9 +85,7 @@ export const CompactDayBar = ({
 				aria-label={label}
 				onClick={onExpand}
 				// the field keeps focus, so the keyboard stays up while the header opens
-				onMouseDown={(event) => {
-					event.preventDefault()
-				}}
+				onMouseDown={keepFieldFocus}
 				className={BAR_CLASS}
 			>
 				{content}

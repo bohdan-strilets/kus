@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 
-import { cn } from '@/shared/lib'
+import { cn, keepFieldFocus } from '@/shared/lib'
 import { Icon, ICON_SIZE, IconButton } from '@/shared/ui'
 
 interface ComposerActionProps {
@@ -30,6 +30,8 @@ export const ComposerAction = ({ canSend, onVoiceStart, isVoiceEnabled }: Compos
 				variant="primary"
 				size="sm"
 				label={t('composer.send')}
+				onPointerDown={keepFieldFocus}
+				onMouseDown={keepFieldFocus}
 				disabled={!canSend}
 			>
 				<Icon name="send" size={ICON_SIZE.control} />
@@ -44,6 +46,8 @@ export const ComposerAction = ({ canSend, onVoiceStart, isVoiceEnabled }: Compos
 			size="sm"
 			label={canSend ? t('composer.send') : t('composer.voice')}
 			onClick={canSend ? undefined : onVoiceStart}
+			onPointerDown={keepFieldFocus}
+			onMouseDown={keepFieldFocus}
 		>
 			<span className="relative size-4.5">
 				<Icon

@@ -8,7 +8,7 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { COARSE_POINTER_QUERY, cn, useMediaQuery } from '@/shared/lib'
+import { COARSE_POINTER_QUERY, cn, keepFieldFocus, useMediaQuery } from '@/shared/lib'
 import { Icon, ICON_SIZE, IconButton, Text, Textarea } from '@/shared/ui'
 
 import { getEnterAction } from '../../model/get-enter-action'
@@ -140,6 +140,8 @@ export const Composer = ({
 						size="sm"
 						label={t('composer.addPhoto')}
 						onClick={openPhotoPicker}
+						onPointerDown={keepFieldFocus}
+						onMouseDown={keepFieldFocus}
 						disabled={isPhotoBlocked}
 						aria-describedby={isPhotoBlocked ? photoNoticeId : undefined}
 					>
@@ -179,6 +181,8 @@ export const Composer = ({
 						type="submit"
 						variant="primary"
 						label={t('composer.send')}
+						onPointerDown={keepFieldFocus}
+						onMouseDown={keepFieldFocus}
 						disabled={!canSend}
 					>
 						<Icon name="send" size={ICON_SIZE.control} />

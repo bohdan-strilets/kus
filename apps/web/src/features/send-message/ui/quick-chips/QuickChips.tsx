@@ -1,7 +1,7 @@
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useTranslation } from 'react-i18next'
 
-import { expandVariants, TRANSITION } from '@/shared/lib'
+import { expandVariants, keepFieldFocus, TRANSITION } from '@/shared/lib'
 import { Chip } from '@/shared/ui'
 
 import { useStartMeasurementDraft } from '../../model/use-start-measurement-draft'
@@ -33,8 +33,20 @@ export const QuickChips = ({ isShown }: { isShown: boolean }) => {
 						aria-label={t('chat.quickChips.label')}
 						className="flex gap-2 pt-1 pb-3"
 					>
-						<Chip onClick={startWeightDraft}>{t('chat.quickChips.addWeight')}</Chip>
-						<Chip onClick={startWaistDraft}>{t('chat.quickChips.addWaist')}</Chip>
+						<Chip
+							onClick={startWeightDraft}
+							onPointerDown={keepFieldFocus}
+							onMouseDown={keepFieldFocus}
+						>
+							{t('chat.quickChips.addWeight')}
+						</Chip>
+						<Chip
+							onClick={startWaistDraft}
+							onPointerDown={keepFieldFocus}
+							onMouseDown={keepFieldFocus}
+						>
+							{t('chat.quickChips.addWaist')}
+						</Chip>
 					</div>
 				</motion.div>
 			)}

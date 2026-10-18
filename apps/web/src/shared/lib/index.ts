@@ -74,6 +74,7 @@ export {
 } from './sound'
 export { focusDialogContainer } from './focus-dialog-container'
 export { focusFirstField } from './focus-first-field'
+export { keepFieldFocus } from './keep-field-focus'
 export { DEFAULT_FLAG_DELAY_MS, useDelayedFlag } from './use-delayed-flag'
 export { useAutoHeight } from './use-auto-height'
 export { COARSE_POINTER_QUERY, useMediaQuery } from './use-media-query'

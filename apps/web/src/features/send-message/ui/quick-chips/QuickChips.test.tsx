@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { renderWithProviders } from '@/shared/testing'
@@ -70,5 +71,42 @@ describe('QuickChips visibility', () => {
 		await waitFor(() => {
 			expect(screen.queryByRole('group', { name: 'Швидкі дії' })).toBeNull()
 		})
+	})
+})
+
+describe('QuickChips keep the field focused (iOS keyboard stays up)', () => {
+	const CHIP_NAMES = ['Додати вагу', 'Додати талію'] as const
+
+	it.each(CHIP_NAMES)('«%s»: pointerdown default is prevented', (name) => {
+		renderWithProviders(<QuickChips isShown />)
+
+		expect(fireEvent.pointerDown(screen.getByRole('button', { name }))).toBe(false)
+	})
+
+	it.each(CHIP_NAMES)('«%s»: mousedown default is prevented', (name) => {
+		renderWithProviders(<QuickChips isShown />)
+
+		expect(fireEvent.mouseDown(screen.getByRole('button', { name }))).toBe(false)
+	})
+
+	it.each([
+		['Додати вагу', 'вага '],
+		['Додати талію', 'талія '],
+	] as const)('a tap on «%s» acts at once and leaves the field focused', async (name, draft) => {
+		const user = userEvent.setup()
+		renderWithProviders(
+			<>
+				<textarea aria-label="field" />
+				<QuickChips isShown />
+			</>,
+		)
+		const field = screen.getByRole('textbox', { name: 'field' })
+		field.focus()
+
+		await user.click(screen.getByRole('button', { name }))
+
+		expect(useComposerDraftStore.getState().text).toBe(draft)
+		expect(useComposerDraftStore.getState().isFocusRequested).toBe(true)
+		expect(document.activeElement).toBe(field)
 	})
 })

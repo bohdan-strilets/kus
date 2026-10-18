@@ -1,3 +1,4 @@
+import { useReducedMotion } from 'motion/react'
 import { type RefObject, useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 import type { FeedItem } from './feed.types'
@@ -13,6 +14,14 @@ const COMPACT_FROM_PX = 200
 const EXPAND_UNDER_PX = BOTTOM_SLACK_PX
 /** The header's exit + enter (base 200 ms each, AnimatePresence mode="wait") and a little air. */
 const HEADER_SWAP_SETTLE_MS = 500
+/**
+ * iOS Safari can stop a native smooth scroll short when photos load under it: once it should have
+ * finished (~300 ms), whatever is left to the end is scrolled instantly.
+ */
+export const SMOOTH_SCROLL_SAFETY_MS = 350
+const SCROLL_END_TOLERANCE_PX = 1
+
+type ScrollBehaviorMode = 'auto' | 'smooth'
 
 interface Snapshot {
 	/** The oldest message, not a divider: an older page of the same day keeps the day pill first. */
@@ -36,10 +45,16 @@ interface FeedScroll {
 	contentRef: RefObject<HTMLDivElement | null>
 	/** Scrolled far enough from the newest message for the «to the end» button to show. */
 	isScrolledUp: boolean
+	/** The «to the end» button: a smooth scroll (instant under reduced motion). */
+	scrollToEndOnTap: () => void
 }
 
 const getDistanceFromBottom = (element: HTMLElement): number =>
 	element.scrollHeight - element.scrollTop - element.clientHeight
+
+const scrollElementToEnd = (element: HTMLElement, behavior: ScrollBehaviorMode): void => {
+	element.scrollTo({ top: element.scrollHeight, behavior })
+}
 
 /**
  * The chat reads from the bottom: it opens at the newest message and stays there while new ones
@@ -61,6 +76,32 @@ export const useFeedScroll = ({
 	useLayoutEffect(() => {
 		onCompactChangeRef.current = onCompactChange
 	})
+	const isReducedMotion = useReducedMotion()
+	const safetyTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+	const clearSafetyTimer = (): void => {
+		clearTimeout(safetyTimer.current)
+		safetyTimer.current = undefined
+	}
+	useEffect(() => clearSafetyTimer, [])
+
+	const scrollToEndOnTap = (): void => {
+		const element = scrollRef.current
+		if (!element) return
+		clearSafetyTimer()
+		if (isReducedMotion) {
+			scrollElementToEnd(element, 'auto')
+			isAtBottom.current = true
+			setIsScrolledUp(false)
+			return
+		}
+		scrollElementToEnd(element, 'smooth')
+		safetyTimer.current = setTimeout(() => {
+			safetyTimer.current = undefined
+			if (getDistanceFromBottom(element) > SCROLL_END_TOLERANCE_PX) {
+				scrollElementToEnd(element, 'auto')
+			}
+		}, SMOOTH_SCROLL_SAFETY_MS)
+	}
 
 	useLayoutEffect(() => {
 		const element = scrollRef.current
@@ -84,6 +125,7 @@ export const useFeedScroll = ({
 	useLayoutEffect(() => {
 		const element = scrollRef.current
 		if (scrollToEndRequest === 0 || !element) return
+		clearSafetyTimer()
 		element.scrollTop = element.scrollHeight
 		isAtBottom.current = true
 		setIsScrolledUp(false)
@@ -140,12 +182,17 @@ export const useFeedScroll = ({
 		observer.observe(element)
 		observer.observe(content)
 		element.addEventListener('scroll', handleScroll, { passive: true })
+		// the user took over the scroll: the safety jump must not drag them back
+		element.addEventListener('touchstart', clearSafetyTimer, { passive: true })
+		element.addEventListener('wheel', clearSafetyTimer, { passive: true })
 		return () => {
 			clearTimeout(settleTimer)
 			observer.disconnect()
 			element.removeEventListener('scroll', handleScroll)
+			element.removeEventListener('touchstart', clearSafetyTimer)
+			element.removeEventListener('wheel', clearSafetyTimer)
 		}
 	}, [])
 
-	return { scrollRef, contentRef, isScrolledUp }
+	return { scrollRef, contentRef, isScrolledUp, scrollToEndOnTap }
 }

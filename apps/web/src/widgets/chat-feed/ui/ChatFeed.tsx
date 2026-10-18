@@ -5,12 +5,7 @@ import { useTranslation } from 'react-i18next'
 
 import { messagesQueryOptions } from '@/entities/message'
 import type { Addressee } from '@/entities/user'
-import {
-	useComposerDraftStore,
-	useOutboxStore,
-	usePhotoSessionStore,
-	useSendMessage,
-} from '@/features/send-message'
+import { useOutboxStore, usePhotoSessionStore, useSendMessage } from '@/features/send-message'
 import { bubbleVariants, shiftLocalDate } from '@/shared/lib'
 import { Button, Loader, Text } from '@/shared/ui'
 
@@ -61,7 +56,6 @@ export const ChatFeed = ({
 	const { retry } = useSendMessage()
 	const topRef = useRef<HTMLDivElement>(null)
 	const now = useNow()
-	const requestScrollToEnd = useComposerDraftStore((state) => state.requestScrollToEnd)
 
 	const pages = query.data?.pages
 	const items = useMemo(
@@ -86,7 +80,7 @@ export const ChatFeed = ({
 		else hideMessage(target.id)
 	}
 	const newKeys = useNewItemKeys(items)
-	const { scrollRef, contentRef, isScrolledUp } = useFeedScroll({
+	const { scrollRef, contentRef, isScrolledUp, scrollToEndOnTap } = useFeedScroll({
 		items,
 		onCompactChange,
 		scrollToEndRequest,
@@ -165,7 +159,7 @@ export const ChatFeed = ({
 					{renderContent()}
 				</div>
 			</div>
-			<ScrollToEndButton isShown={isScrolledUp} onPress={requestScrollToEnd} />
+			<ScrollToEndButton isShown={isScrolledUp} onPress={scrollToEndOnTap} />
 		</div>
 	)
 }

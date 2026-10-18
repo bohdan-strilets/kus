@@ -1,4 +1,6 @@
 import { Injectable } from '@nestjs/common'
+import type { DayCard } from '@kus/shared'
+
 import {
 	AttachmentStatus,
 	type Message,
@@ -173,7 +175,8 @@ export class ChatRepository {
 			userId,
 			userMessageId,
 			replyText,
-		}: { userId: string; userMessageId: string; replyText: string },
+			dayCard,
+		}: { userId: string; userMessageId: string; replyText: string; dayCard?: DayCard },
 		tx: Prisma.TransactionClient,
 	): Promise<Message | null> {
 		const { count } = await tx.message.updateMany({
@@ -188,6 +191,7 @@ export class ChatRepository {
 				content: replyText,
 				status: MessageStatus.COMPLETED,
 				replyToId: userMessageId,
+				...(dayCard ? { dayCard } : {}),
 			},
 		})
 	}

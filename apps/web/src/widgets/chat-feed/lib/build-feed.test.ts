@@ -22,6 +22,7 @@ const message = (overrides: Partial<ChatMessage> & Pick<ChatMessage, 'createdAt'
 		clarifications: [],
 		measurements: [],
 		achievements: [],
+		dayCard: null,
 		photo: null,
 		...overrides,
 	}

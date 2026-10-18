@@ -161,6 +161,45 @@ export const chatMessagePhotoSchema = z.object({
 
 export type ChatMessagePhoto = z.infer<typeof chatMessagePhotoSchema>
 
+export const DAY_CARD_VERSION = 1
+
+export const dayCardKindSchema = z.enum(['today', 'past', 'planned'])
+
+export type DayCardKind = z.infer<typeof dayCardKindSchema>
+
+const dayCardMacrosSchema = z.object({
+	kcal: z.number(),
+	protein: z.number(),
+	fat: z.number(),
+	carbs: z.number(),
+})
+
+/**
+ * A day as Kusik showed it when answering show_day: a snapshot, the numbers are not refreshed after
+ * later edits. All of it is counted by the backend; the model only names the day.
+ */
+export const dayCardSchema = z.object({
+	version: z.literal(DAY_CARD_VERSION),
+	/** `YYYY-MM-DD`, the user's calendar day. */
+	localDate: z.iso.date(),
+	kind: dayCardKindSchema,
+	/** When the snapshot was taken, for `today` only: the day is still going. */
+	asOf: z.iso.datetime().nullable(),
+	totals: dayCardMacrosSchema,
+	goal: dayCardMacrosSchema.nullable(),
+	/** Goal kcal − eaten kcal, negative when over; null without a goal. */
+	remainingKcal: z.number().nullable(),
+	meals: z.array(
+		z.object({
+			type: mealTypeSchema,
+			eatenAt: z.iso.datetime().nullable(),
+			kcal: z.number(),
+		}),
+	),
+})
+
+export type DayCard = z.infer<typeof dayCardSchema>
+
 export const chatMessageSchema = z.object({
 	id: z.uuid(),
 	role: messageRoleSchema,
@@ -188,6 +227,8 @@ export const chatMessageSchema = z.object({
 	measurements: z.array(measurementCardSchema),
 	/** Assistant replies only: the milestone this turn reached — the highest one per type. */
 	achievements: z.array(achievementResponseSchema),
+	/** Replies to show_day only: the day snapshot. null elsewhere and in payloads of older servers. */
+	dayCard: dayCardSchema.nullable().default(null),
 })
 
 export type ChatMessage = z.infer<typeof chatMessageSchema>

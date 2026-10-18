@@ -453,10 +453,12 @@ model Message {
   clientMessageId String?       @map("client_message_id")
   // assistant reply → user message it answers
   replyToId       String?       @map("reply_to_id") @db.Uuid
+  // assistant reply to show_day: the day card as it was when written (a snapshot, never refreshed)
+  dayCard         Json?         @map("day_card")
   createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz
   updatedAt       DateTime      @updatedAt @map("updated_at") @db.Timestamptz
 
-  user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user               User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   replyTo            Message?            @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
   replies            Message[]           @relation("MessageReplies")
   attachments        MessageAttachment[]

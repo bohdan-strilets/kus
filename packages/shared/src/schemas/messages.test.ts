@@ -159,3 +159,60 @@ describe('chatMessageSchema photo', () => {
 		expect(chatMessageSchema.safeParse({ ...base, photo: { status: 'LOST' } }).success).toBe(false)
 	})
 })
+
+describe('chatMessageSchema dayCard', () => {
+	const base = {
+		id: clientMessageId,
+		role: 'ASSISTANT',
+		content: 'Ось день',
+		status: 'COMPLETED',
+		clientMessageId: null,
+		replyToId: clientMessageId,
+		createdAt: '2026-10-18T10:00:00.000Z',
+		photo: null,
+		meals: [],
+		clarifications: [],
+		measurements: [],
+		achievements: [],
+	}
+	const macros = { kcal: 1800, protein: 120, fat: 60, carbs: 200 }
+	const dayCard = {
+		version: 1,
+		localDate: '2026-10-17',
+		kind: 'past',
+		asOf: null,
+		totals: macros,
+		goal: { ...macros, kcal: 2000 },
+		remainingKcal: 200,
+		meals: [{ type: 'LUNCH', eatenAt: '2026-10-17T11:00:00.000Z', kcal: 800 }],
+	}
+
+	it('defaults to null when the payload has no such field', () => {
+		expect(chatMessageSchema.parse(base).dayCard).toBeNull()
+	})
+
+	it('takes null and a full snapshot', () => {
+		expect(chatMessageSchema.parse({ ...base, dayCard: null }).dayCard).toBeNull()
+		expect(chatMessageSchema.parse({ ...base, dayCard }).dayCard).toEqual(dayCard)
+	})
+
+	it('takes a day without a goal', () => {
+		const noGoal = { ...dayCard, goal: null, remainingKcal: null }
+		expect(chatMessageSchema.parse({ ...base, dayCard: noGoal }).dayCard).toEqual(noGoal)
+	})
+
+	it('rejects an unknown version, kind, meal type and a bad date', () => {
+		const rejected = [
+			{ version: 2 },
+			{ kind: 'yesterday' },
+			{ localDate: '17.10.2026' },
+			{ asOf: '2026-10-18' },
+			{ meals: [{ type: 'BRUNCH', eatenAt: null, kcal: 1 }] },
+		]
+		for (const bad of rejected) {
+			expect(
+				chatMessageSchema.safeParse({ ...base, dayCard: { ...dayCard, ...bad } }).success,
+			).toBe(false)
+		}
+	})
+})

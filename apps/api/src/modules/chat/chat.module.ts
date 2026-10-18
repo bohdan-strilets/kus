@@ -10,6 +10,7 @@ import { PhotosModule } from '../photos/photos.module'
 import { ProfileModule } from '../profile/profile.module'
 import { UsersModule } from '../users/users.module'
 import { ChatContextService } from './chat-context.service'
+import { ChatDayCardService } from './chat-day-card.service'
 import { ChatEditsService } from './chat-edits.service'
 import { ChatFeedService } from './chat-feed.service'
 import { ChatGreetingsService } from './chat-greetings.service'
@@ -43,6 +44,7 @@ import { ClarificationsService } from './clarifications.service'
 		ChatFeedService,
 		ChatGreetingsService,
 		ChatContextService,
+		ChatDayCardService,
 		ChatEditsService,
 		ChatMeasurementCardsService,
 		ChatPhotosService,

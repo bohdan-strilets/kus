@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common'
 import {
 	type AiFoodItem,
+	type DayCard,
 	type DeleteMeasurementInput,
 	ENTRY_AHEAD_MAX_DAYS,
 	ENTRY_BACKDATE_MAX_DAYS,
@@ -17,6 +18,7 @@ import { AchievementsService } from '../achievements/achievements.service'
 import { EntriesService } from '../entries/entries.service'
 import type { LogEntriesParams, MealEntryInput, NewFoodEntry } from '../entries/entries.types'
 import { MemoryService, type RelevantFoods } from '../memory/memory.service'
+import { ChatDayCardService } from './chat-day-card.service'
 import { ChatEditsService, type EditedMessages, NO_EDITED_MESSAGES } from './chat-edits.service'
 import { MessageInProgressException, TurnDateOutOfRangeException } from './chat.exceptions'
 import { ChatTurnMeasurementsService } from './chat-turn-measurements.service'
@@ -77,16 +79,19 @@ export class ChatTurnService {
 		private readonly memoryService: MemoryService,
 		private readonly turnMeasurements: ChatTurnMeasurementsService,
 		private readonly achievementsService: AchievementsService,
+		private readonly dayCards: ChatDayCardService,
 	) {}
 
-	saveDecision(
+	async saveDecision(
 		{ userId, timezone, message, photo, now, localDate }: TurnParams,
 		decision: FoodParseDecision,
 		{ memory, refIds }: { memory: RelevantFoods; refIds: EditRefIds },
 	): Promise<TurnResult> {
+		// the numbers of the card are counted before the turn is written; a card is a snapshot anyway
+		const dayCard = await this.buildDayCard({ userId, message, now, localDate }, decision)
 		return this.prisma.$transaction(async (tx) => {
 			const reply = await this.chatRepository.completeTurn(
-				{ userId, userMessageId: message.id, replyText: getReplyText(decision) },
+				{ userId, userMessageId: message.id, replyText: getReplyText(decision), dayCard },
 				tx,
 			)
 			// a resend of a stale turn finished it meanwhile; roll back instead of logging food twice
@@ -201,6 +206,41 @@ export class ChatTurnService {
 		})
 	}
 
+	/** show_day only; null when the day is empty (the reply stays a text). */
+	private async buildDayCard(
+		{
+			userId,
+			message,
+			now,
+			localDate,
+		}: Pick<TurnParams, 'userId' | 'message' | 'now' | 'localDate'>,
+		decision: FoodParseDecision,
+	): Promise<DayCard | undefined> {
+		if (decision.kind !== 'day') return undefined
+		const today = formatDbDate(localDate)
+		const day = decision.date ?? today
+		this.assertLoggableDay({ day, today, userId, messageId: message.id })
+		return (await this.dayCards.build({ userId, localDate: day, today, now })) ?? undefined
+	}
+
+	/** The parser rejects days outside the window, so a miss here is a bug and stops the turn. */
+	private assertLoggableDay({
+		day,
+		today,
+		userId,
+		messageId,
+	}: {
+		day: string
+		today: string
+		userId: string
+		messageId: string
+	}): void {
+		const offset = getDayOffset(day, today)
+		if (offset >= -ENTRY_BACKDATE_MAX_DAYS && offset <= ENTRY_AHEAD_MAX_DAYS) return
+		this.logger.error(`Day out of range user=${userId} message=${messageId}`)
+		throw new TurnDateOutOfRangeException()
+	}
+
 	/** Deletions first (the parser keeps them apart from new values), then the new values. */
 	private async saveMeasurements(
 		params: Pick<TurnParams, 'userId' | 'timezone' | 'message' | 'now' | 'localDate'>,
@@ -242,11 +282,7 @@ export class ChatTurnService {
 		const namedMeals = new Set<string>()
 		const entries = log.items.map((item) => {
 			const day = item.date ?? log.date ?? today
-			const offset = getDayOffset(day, today)
-			if (offset < -ENTRY_BACKDATE_MAX_DAYS || offset > ENTRY_AHEAD_MAX_DAYS) {
-				this.logger.error(`Food date out of range user=${userId} message=${message.id}`)
-				throw new TurnDateOutOfRangeException()
-			}
+			this.assertLoggableDay({ day, today, userId, messageId: message.id })
 			const namedType = item.mealType ?? log.mealType
 			if (namedType) namedMeals.add(getMealKey(day, namedType))
 			return {

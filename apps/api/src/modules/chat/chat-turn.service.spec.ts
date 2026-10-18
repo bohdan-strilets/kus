@@ -46,15 +46,18 @@ const createService = () => {
 	const logEntries = vi.fn().mockResolvedValue({ meals: [], entryIds: [] })
 	const remove = vi.fn().mockResolvedValue([])
 	const record = vi.fn().mockResolvedValue([])
+	const build = vi.fn().mockResolvedValue(null)
+	const completeTurn = vi.fn().mockResolvedValue({ id: 'reply-1' })
 	const service = new ChatTurnService(
 		{ $transaction: (callback: (tx: unknown) => unknown) => callback({}) } as never,
-		{ completeTurn: vi.fn().mockResolvedValue({ id: 'reply-1' }) } as never,
+		{ completeTurn } as never,
 		{ createClarification: vi.fn() } as never,
 		{ applyEdits: vi.fn().mockResolvedValue({ sourceMessageIds: [], replyIds: [] }) } as never,
 		{ logEntries } as never,
 		{ markUsed: vi.fn() } as never,
 		{ remove, record } as never,
 		{ recordForTurn: vi.fn() } as never,
+		{ build } as never,
 	)
 	const save = (decision: never) =>
 		service.saveDecision(
@@ -68,7 +71,7 @@ const createService = () => {
 			decision,
 			{ memory: { byRef: new Map(), context: [] }, refIds: {} } as never,
 		)
-	return { save, logEntries, remove, record }
+	return { save, logEntries, remove, record, build, completeTurn }
 }
 
 const getLogged = (logEntries: ReturnType<typeof vi.fn>) => {
@@ -215,5 +218,65 @@ describe('ChatTurnService.saveDecision measurement deletions', () => {
 			expect.anything(),
 		)
 		expect(result.replacedMeasurementMessageIds).toEqual(['old-message', 'replaced-message'])
+	})
+})
+
+describe('ChatTurnService.saveDecision show_day', () => {
+	const toDayDecision = (date: string | null) => ({ kind: 'day', date, text: 'Ось день' }) as never
+	const CARD = { version: 1, localDate: '2026-10-17' }
+
+	it('stores the snapshot with the reply, counted for the named day', async () => {
+		const { save, build, completeTurn } = createService()
+		build.mockResolvedValue(CARD)
+
+		await save(toDayDecision('2026-10-17'))
+
+		expect(build).toHaveBeenCalledWith({
+			userId: 'u1',
+			localDate: '2026-10-17',
+			today: '2026-10-18',
+			now: NOW,
+		})
+		expect(completeTurn).toHaveBeenCalledWith(
+			expect.objectContaining({ replyText: 'Ось день', dayCard: CARD }),
+			expect.anything(),
+		)
+	})
+
+	it('shows today when the model names no date', async () => {
+		const { save, build } = createService()
+
+		await save(toDayDecision(null))
+
+		expect(build).toHaveBeenCalledWith(expect.objectContaining({ localDate: '2026-10-18' }))
+	})
+
+	it('keeps only the text for an empty day', async () => {
+		const { save, completeTurn } = createService()
+
+		await save(toDayDecision('2026-10-16'))
+
+		const params: unknown = completeTurn.mock.calls[0]?.[0]
+		expect(params).toMatchObject({ replyText: 'Ось день' })
+		expect((params as { dayCard?: unknown }).dayCard).toBeUndefined()
+	})
+
+	it.each(['2026-10-14', '2026-10-20'])(
+		'stops the turn for %s, outside the window',
+		async (date) => {
+			const { save, build, completeTurn } = createService()
+
+			await expect(save(toDayDecision(date))).rejects.toBeInstanceOf(TurnDateOutOfRangeException)
+			expect(build).not.toHaveBeenCalled()
+			expect(completeTurn).not.toHaveBeenCalled()
+		},
+	)
+
+	it('stores no snapshot for other kinds of answers', async () => {
+		const { save, build } = createService()
+
+		await save({ kind: 'not_food', reply: 'ні' } as never)
+
+		expect(build).not.toHaveBeenCalled()
 	})
 })

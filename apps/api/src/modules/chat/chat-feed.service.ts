@@ -1,8 +1,9 @@
-import { Injectable } from '@nestjs/common'
+import { Injectable, Logger } from '@nestjs/common'
 import {
 	type AchievementResponse,
 	type ChatMessage,
 	type ClarificationResponse,
+	type DayCard,
 	clarifyOptionViewSchema,
 	type ListMessagesQuery,
 	type LoggedMeal,
@@ -21,6 +22,7 @@ import {
 	ClarificationsRepository,
 } from './clarifications.repository'
 import { ChatRepository, type MessageWithAttachments } from './chat.repository'
+import { readStoredDayCard } from './day-card'
 import { decodeMessageCursor, encodeMessageCursor } from './message-cursor'
 
 // only what the chat shows, so rows stored before options carried macros still read
@@ -47,11 +49,13 @@ interface ChatMessageExtras {
 	measurements: Map<string, MeasurementCard[]>
 	/** By the assistant reply that announced them. */
 	achievements: Map<string, AchievementResponse[]>
+	/** By the assistant reply that holds them. */
+	dayCards: Map<string, DayCard>
 }
 
 const toChatMessage = (
 	message: MessageWithAttachments,
-	{ meals, clarifications, measurements, achievements }: ChatMessageExtras,
+	{ meals, clarifications, measurements, achievements, dayCards }: ChatMessageExtras,
 ): ChatMessage => {
 	const isAssistant = message.role === MessageRole.ASSISTANT
 	const [attachment] = message.attachments
@@ -80,12 +84,15 @@ const toChatMessage = (
 		measurements:
 			isAssistant && message.replyToId ? (measurements.get(message.replyToId) ?? []) : [],
 		achievements: isAssistant ? (achievements.get(message.id) ?? []) : [],
+		dayCard: dayCards.get(message.id) ?? null,
 	}
 }
 
 /** Messages as the chat shows them: assistant replies carry their meal card and questions. */
 @Injectable()
 export class ChatFeedService {
+	private readonly logger = new Logger(ChatFeedService.name)
+
 	constructor(
 		private readonly chatRepository: ChatRepository,
 		private readonly clarificationsRepository: ClarificationsRepository,
@@ -111,9 +118,21 @@ export class ChatFeedService {
 				replies.map((message) => message.id),
 			),
 		])
+		const dayCards = this.readDayCards(replies)
 		return messages.map((message) =>
-			toChatMessage(message, { meals, clarifications, measurements, achievements }),
+			toChatMessage(message, { meals, clarifications, measurements, achievements, dayCards }),
 		)
+	}
+
+	/** A snapshot that no longer parses is dropped (the text stays), without its content in the log. */
+	private readDayCards(replies: MessageWithAttachments[]): Map<string, DayCard> {
+		const dayCards = new Map<string, DayCard>()
+		for (const { id, dayCard } of replies) {
+			const { card, isUnreadable } = readStoredDayCard(dayCard)
+			if (isUnreadable) this.logger.warn(`Unreadable day card message=${id}`)
+			if (card) dayCards.set(id, card)
+		}
+		return dayCards
 	}
 
 	/** Newest first; `nextCursor` points at the next, older page. */

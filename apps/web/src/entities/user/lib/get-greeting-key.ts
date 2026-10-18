@@ -1,12 +1,16 @@
-export type GreetingKey = 'chat.greeting.morning' | 'chat.greeting.day' | 'chat.greeting.evening'
+export type GreetingKey =
+	'chat.greeting.morning' | 'chat.greeting.day' | 'chat.greeting.evening' | 'chat.greeting.night'
 
-/** [from, to) local hours; the night (22–4) keeps «Добрий вечір». */
-const MORNING = { from: 4, to: 12 }
-const DAY = { from: 12, to: 18 }
+/** Local-hour boundaries; the night [EVENING_END, MORNING_START) wraps over midnight. */
+const MORNING_START = 5
+const DAY_START = 12
+const EVENING_START = 18
+const EVENING_END = 23
 
-/** «Доброго ранку / Добрий день / Добрий вечір» by the user's local hour. */
+/** «Доброго ранку / Добрий день / Добрий вечір / Привіт» by the user's local hour. */
 export const getGreetingKey = (hour: number): GreetingKey => {
-	if (hour >= MORNING.from && hour < MORNING.to) return 'chat.greeting.morning'
-	if (hour >= DAY.from && hour < DAY.to) return 'chat.greeting.day'
-	return 'chat.greeting.evening'
+	if (hour >= MORNING_START && hour < DAY_START) return 'chat.greeting.morning'
+	if (hour >= DAY_START && hour < EVENING_START) return 'chat.greeting.day'
+	if (hour >= EVENING_START && hour < EVENING_END) return 'chat.greeting.evening'
+	return 'chat.greeting.night'
 }

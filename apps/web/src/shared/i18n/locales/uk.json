@@ -495,7 +495,8 @@
 		"greeting": {
 			"morning": "Доброго ранку",
 			"day": "Добрий день",
-			"evening": "Добрий вечір"
+			"evening": "Добрий вечір",
+			"night": "Привіт"
 		},
 		"greetingWithName": "{{greeting}}, {{name}}",
 		"newDay": "{{greeting}}! Пиши, що їси, звичайними словами — я все порахую.",

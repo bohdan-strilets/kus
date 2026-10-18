@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { getMealEatenAt, getMealTypeByHour } from './meal-type'
+import { getMealEatenAt, getMealEatenAtForDay, getMealTypeByHour } from './meal-type'
 
 describe('getMealTypeByHour', () => {
 	it.each([
@@ -38,5 +38,64 @@ describe('getMealEatenAt', () => {
 
 	it('never puts a later named meal in the future', () => {
 		expect(getMealEatenAt({ mealType: 'DINNER', isNamed: true, now, timezone })).toBe(now)
+	})
+})
+
+describe('getMealEatenAtForDay', () => {
+	const timezone = 'Europe/Warsaw'
+	// 14:20 on 2026-10-07 in Warsaw (UTC+2)
+	const now = new Date('2026-10-07T12:20:00Z')
+	const day = (date: string): Date => new Date(`${date}T00:00:00Z`)
+
+	it('follows getMealEatenAt for today', () => {
+		const params = { mealType: 'BREAKFAST', isNamed: true, now, timezone } as const
+		expect(getMealEatenAtForDay({ ...params, localDate: day('2026-10-07') })).toEqual(
+			getMealEatenAt(params),
+		)
+		expect(
+			getMealEatenAtForDay({
+				mealType: 'LUNCH',
+				isNamed: false,
+				localDate: day('2026-10-07'),
+				now,
+				timezone,
+			}),
+		).toBe(now)
+	})
+
+	it('puts a past day at the typical hour of the meal, even if the meal is the current one', () => {
+		const eatenAt = getMealEatenAtForDay({
+			mealType: 'LUNCH',
+			isNamed: false,
+			localDate: day('2026-10-06'),
+			now,
+			timezone,
+		})
+		expect(eatenAt.toISOString()).toBe('2026-10-06T11:00:00.000Z')
+	})
+
+	it('puts tomorrow at the typical hour of the meal — in the future on purpose', () => {
+		const eatenAt = getMealEatenAtForDay({
+			mealType: 'DINNER',
+			isNamed: true,
+			localDate: day('2026-10-08'),
+			now,
+			timezone,
+		})
+		expect(eatenAt.toISOString()).toBe('2026-10-08T17:00:00.000Z')
+		expect(eatenAt.getTime()).toBeGreaterThan(now.getTime())
+	})
+
+	it('uses the user day, not the UTC day, to tell today from tomorrow', () => {
+		// 00:30 on Oct 8 in Warsaw is still Oct 7 in UTC
+		const lateNow = new Date('2026-10-07T22:30:00Z')
+		const eatenAt = getMealEatenAtForDay({
+			mealType: 'BREAKFAST',
+			isNamed: false,
+			localDate: day('2026-10-08'),
+			now: lateNow,
+			timezone,
+		})
+		expect(eatenAt).toBe(lateNow)
 	})
 })

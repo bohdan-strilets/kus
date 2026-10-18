@@ -12,7 +12,7 @@ interface BuildResponseParams {
 	userId: string
 	userMessageId: string
 	timezone: string
-	/** null for a replay: the day of the logged meal, else of the reply. */
+	/** The day of the turn (its header totals); null for a replay: the day the message was sent. */
 	localDate: Date | null
 	edited: EditedMessages & {
 		/** User messages whose weight or waist this turn replaced: their replies lose the card. */
@@ -46,9 +46,8 @@ export class ChatResponseService {
 
 		const [userDto, replyDto] = await this.chatFeed.toChatMessages(userId, [userMessage, reply])
 		if (!userDto || !replyDto) throw new Error('Chat turn lost a message while mapping')
-		const [firstMeal] = replyDto.meals
-		const mealDate = firstMeal ? new Date(`${firstMeal.localDate}T00:00:00Z`) : null
-		const dayDate = localDate ?? mealDate ?? getLocalDate(reply.createdAt, timezone)
+		// never the day of a meal: a log for yesterday or tomorrow still leaves today in the header
+		const dayDate = localDate ?? getLocalDate(userMessage.createdAt, timezone)
 		const [{ totals }, updatedMessages] = await Promise.all([
 			this.chatContext.getDayOverview(userId, dayDate),
 			this.findUpdatedMessages(userId, edited, reply.id),

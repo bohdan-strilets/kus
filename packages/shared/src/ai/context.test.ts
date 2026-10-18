@@ -99,6 +99,15 @@ describe('formatContext entries', () => {
 		expect(text).toMatch(/- e1 BREAKFAST .*\(changed after logging\)/)
 	})
 
+	it('tells the date of an entry of another day, right after its meal', () => {
+		const text = formatContext({
+			...baseContext,
+			entries: [baseEntry, { ...baseEntry, ref: 'e2', mealType: 'DINNER', date: '2026-10-06' }],
+		})
+		expect(text).toContain('- e2 DINNER 2026-10-06 "Вівсянка"')
+		expect(text).toContain('- e1 BREAKFAST "Вівсянка"')
+	})
+
 	it('does not mark an untouched entry', () => {
 		expect(formatContext(baseContext)).not.toContain(CHANGED_MARKER)
 	})

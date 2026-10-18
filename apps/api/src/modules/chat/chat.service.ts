@@ -57,8 +57,6 @@ export class ChatService {
 		const { timezone } = await this.usersService.getMe(userId)
 		const existing = await this.chatRepository.findByClientMessageId({ userId, clientMessageId })
 		if (existing) this.assertSameRequest(existing, params)
-		const now = new Date()
-		const localDate = getLocalDate(now, timezone)
 
 		if (existing?.status === MessageStatus.COMPLETED) {
 			return this.chatResponse.build({
@@ -75,16 +73,16 @@ export class ChatService {
 		const message = existing
 			? await this.claimForRetry(userId, existing, photo)
 			: await this.createMessage({ userId, params, stored })
-		const edited = await this.processTurn({
-			userId,
-			timezone,
-			message,
-			text,
-			photo,
-			now,
-			localDate,
-		})
-		// the day the entries went to, even if the resend happened after midnight
+		// the turn's clock is the message's own: a resend after midnight still means "today" as the
+		// user saw it when sending. A new message is as old as now (the app clock, not the DB's)
+		const now = existing ? message.createdAt : new Date()
+		const localDate = getLocalDate(now, timezone)
+		const edited = await this.processTurn(
+			{ userId, timezone, message, text, photo, now, localDate },
+			// the daily budget is spent on the day the model is actually called
+			getLocalDate(new Date(), timezone),
+		)
+		// the day of the turn, even if the resend happened after midnight
 		return this.chatResponse.build({
 			userId,
 			userMessageId: message.id,
@@ -162,12 +160,12 @@ export class ChatService {
 		return { ...existing, status: MessageStatus.PENDING }
 	}
 
-	private async processTurn(params: TurnParams): Promise<TurnResult> {
+	private async processTurn(params: TurnParams, usageDate: Date): Promise<TurnResult> {
 		const { userId, message, photo } = params
 		try {
 			await this.aiUsage.reserveUsage({
 				userId,
-				localDate: params.localDate,
+				localDate: usageDate,
 				hasPhoto: photo !== undefined,
 			})
 			const memory = await this.memoryService.findRelevantFoods(userId, params.text ?? '')

@@ -21,8 +21,8 @@ import {
 	type EntryWithMealType,
 	type MealWithEntries,
 } from './entries.repository'
-import { getMealRank, MEAL_TYPE_ORDER } from './entries.constants'
-import type { LogEntriesParams, NewFoodEntry } from './entries.types'
+import { getMealRank } from './entries.constants'
+import type { LogEntriesParams, MealEntryInput, NewFoodEntry } from './entries.types'
 
 const roundEntry = (entry: NewFoodEntry): NewFoodEntry => ({
 	...entry,
@@ -33,6 +33,29 @@ const roundEntry = (entry: NewFoodEntry): NewFoodEntry => ({
 	carbs: roundNutrition(entry.carbs),
 	fiber: entry.fiber === null ? null : roundNutrition(entry.fiber),
 })
+
+interface MealGroup {
+	mealType: MealEntryInput['mealType']
+	localDate: Date
+	/** `index` is the position in the input. */
+	group: { index: number; entry: NewFoodEntry }[]
+}
+
+/** One group per (day, meal type): earlier days first, each day in its course. */
+const groupByMeal = (entries: MealEntryInput[]): MealGroup[] => {
+	const groups = new Map<string, MealGroup>()
+	entries.forEach(({ mealType, localDate, entry }, index) => {
+		const key = `${formatDbDate(localDate)}|${mealType}`
+		const existing = groups.get(key)
+		if (existing) existing.group.push({ index, entry })
+		else groups.set(key, { mealType, localDate, group: [{ index, entry }] })
+	})
+	return [...groups.values()].sort(
+		(a, b) =>
+			a.localDate.getTime() - b.localDate.getTime() ||
+			getMealRank(a.mealType) - getMealRank(b.mealType),
+	)
+}
 
 export interface DaySummary {
 	totals: NutritionTotals
@@ -54,18 +77,20 @@ export class EntriesService {
 	 * caller's tx. `entryIds` follow the input order, so clarify item indexes still map.
 	 */
 	async logEntries(
-		{ userId, sourceMessageId, getEatenAt, localDate, entries }: LogEntriesParams,
+		{ userId, sourceMessageId, getEatenAt, entries }: LogEntriesParams,
 		tx: Prisma.TransactionClient,
 	): Promise<{ meals: LoggedMeal[]; entryIds: string[] }> {
 		const entryIds: string[] = []
 		const meals: LoggedMeal[] = []
-		for (const mealType of MEAL_TYPE_ORDER) {
-			const group = entries.flatMap((input, index) =>
-				input.mealType === mealType ? [{ index, entry: input.entry }] : [],
-			)
-			if (group.length === 0) continue
+		for (const { mealType, localDate, group } of groupByMeal(entries)) {
 			const meal = await this.entriesRepository.findOrCreateMeal(
-				{ userId, type: mealType, localDate, eatenAt: getEatenAt(mealType), sourceMessageId },
+				{
+					userId,
+					type: mealType,
+					localDate,
+					eatenAt: getEatenAt({ type: mealType, localDate }),
+					sourceMessageId,
+				},
 				tx,
 			)
 			const created = await this.entriesRepository.createEntries(
@@ -151,17 +176,21 @@ export class EntriesService {
 		}
 	}
 
-	/** What the model may change: the day's newest active entries and the last deleted ones. */
+	/**
+	 * What the model may change: the day's newest active entries and the last deleted ones. With
+	 * `otherDays`, entries of the neighbouring days that were logged since `createdSince` join them.
+	 */
 	async getEditableEntries(
 		userId: string,
 		localDate: Date,
+		otherDays?: { from: Date; to: Date; createdSince: Date },
 	): Promise<{
 		active: EntryWithMealType[]
 		deleted: EntryWithMealType[]
 		/** Every entry of the day before the context limits: tells which messages logged something. */
 		sourceMessages: { id: string; sourceMessageId: string | null }[]
 	}> {
-		const entries = await this.entriesRepository.findDayEntries({ userId, localDate })
+		const entries = await this.entriesRepository.findDayEntries({ userId, localDate, otherDays })
 		const deleted = entries.flatMap((entry) =>
 			entry.deletedAt === null ? [] : [{ entry, deletedAt: entry.deletedAt.getTime() }],
 		)
@@ -201,7 +230,10 @@ export class EntriesService {
 		const result = new Map<string, LoggedMeal[]>()
 		if (messageIds.length === 0) return result
 		const meals = await this.entriesRepository.findMealsBySourceMessages({ userId, messageIds })
-		const ordered = [...meals].sort((a, b) => getMealRank(a.type) - getMealRank(b.type))
+		const ordered = [...meals].sort(
+			(a, b) =>
+				a.localDate.getTime() - b.localDate.getTime() || getMealRank(a.type) - getMealRank(b.type),
+		)
 		for (const meal of ordered) {
 			const sources = new Set(meal.entries.map((entry) => entry.sourceMessageId))
 			for (const messageId of messageIds) {

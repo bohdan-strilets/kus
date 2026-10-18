@@ -16,6 +16,7 @@ import { ChatGreetingsService } from './chat-greetings.service'
 import { ChatMeasurementCardsService } from './chat-measurement-cards.service'
 import { ChatPhotosService } from './chat-photos.service'
 import { ChatResponseService } from './chat-response.service'
+import { ChatTurnMeasurementsService } from './chat-turn-measurements.service'
 import { ChatTurnService } from './chat-turn.service'
 import { ChatController } from './chat.controller'
 import { ChatRepository } from './chat.repository'
@@ -47,6 +48,7 @@ import { ClarificationsService } from './clarifications.service'
 		ChatPhotosService,
 		ChatRepository,
 		ChatResponseService,
+		ChatTurnMeasurementsService,
 		ChatTurnService,
 		ClarificationsRepository,
 		ClarificationsService,

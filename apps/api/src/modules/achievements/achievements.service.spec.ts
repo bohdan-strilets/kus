@@ -373,12 +373,15 @@ describe('AchievementsService.recordForTurn', () => {
 				)
 			})
 
-			it('does not announce a weight written for an earlier day', async () => {
-				const newest = weigh(84, { localDate: '2026-10-12', messageId: OLD_MESSAGE_ID })
+			it('does not announce a weight written for an earlier day than a newer chat weight', async () => {
+				// this turn wrote 87.2 for 10-08; a chat weight of 86.4 from 10-12 is newer by day and
+				// sits one small step (0.8 kg) after it, crossing the third kilogram of the 90 start
+				const backDated = weigh(87.2, { localDate: '2026-10-08', messageId: USER_MESSAGE_ID })
+				const newest = weigh(86.4, { localDate: '2026-10-12', messageId: OLD_MESSAGE_ID })
 				measurements.findFirst.mockResolvedValue(weigh(90, { localDate: '2026-10-01' }))
-				// this turn recorded a weight for 10-10, but 10-12 is the newest
 				measurements.findLatest.mockResolvedValue(newest)
-				measurements.findInRange.mockResolvedValue([weigh(90), newest])
+				measurements.findBefore.mockResolvedValue(backDated)
+				measurements.findInRange.mockResolvedValue([backDated, newest])
 
 				await recordWeight()
 

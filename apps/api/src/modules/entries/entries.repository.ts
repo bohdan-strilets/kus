@@ -8,7 +8,7 @@ import type { NewFoodEntry } from './entries.types'
 
 export type MealWithEntries = Meal & { entries: FoodEntry[] }
 
-export type EntryWithMealType = FoodEntry & { meal: Pick<Meal, 'type'> }
+export type EntryWithMealType = FoodEntry & { meal: Pick<Meal, 'type' | 'localDate'> }
 
 export type EntryWithMeal = FoodEntry & { meal: Meal }
 
@@ -133,17 +133,38 @@ export class EntriesRepository {
 		})
 	}
 
-	/** Every entry of the day's active meals, deleted ones too, oldest first. */
+	/**
+	 * Every entry of the day's active meals, deleted ones too, oldest first. With `otherDays` also the
+	 * entries of the other loggable days that were written since `createdSince` (today's input).
+	 */
 	findDayEntries({
 		userId,
 		localDate,
+		otherDays,
 	}: {
 		userId: string
 		localDate: Date
+		otherDays?: { from: Date; to: Date; createdSince: Date }
 	}): Promise<EntryWithMealType[]> {
 		return this.prisma.foodEntry.findMany({
-			where: { userId, meal: { localDate, deletedAt: null } },
-			include: { meal: { select: { type: true } } },
+			where: {
+				userId,
+				OR: [
+					{ meal: { localDate, deletedAt: null } },
+					...(otherDays
+						? [
+								{
+									createdAt: { gte: otherDays.createdSince },
+									meal: {
+										deletedAt: null,
+										localDate: { gte: otherDays.from, lte: otherDays.to, not: localDate },
+									},
+								},
+							]
+						: []),
+				],
+			},
+			include: { meal: { select: { type: true, localDate: true } } },
 			// the id keeps e1…eN stable among the entries of one message
 			orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
 		})

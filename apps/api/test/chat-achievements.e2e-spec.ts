@@ -135,6 +135,8 @@ describe('measurement cards and achievements in chat messages (e2e, real DB, fak
 				carbsG: 60,
 				source: 'ESTIMATE',
 				confidence: 0.5,
+				// written on its own day, so it is not one of the entries the chat can edit today
+				createdAt: localDate,
 			},
 		})
 	}
@@ -190,10 +192,10 @@ describe('measurement cards and achievements in chat messages (e2e, real DB, fak
 			const owner = await registerUser('owner@kus.app')
 			const today = await getToday(owner.userId)
 			await seedWeight(owner.userId, addDays(today, -2), 84)
-			const backdated = formatDbDate(addDays(today, -5))
+			const backdated = formatDbDate(addDays(today, -3))
 			fake.respond(createCompletion([measurementCall({ value: 83, date: backdated }), replyCall]))
 
-			const { assistantMessage } = await send(owner, 'п’ять днів тому було 83')
+			const { assistantMessage } = await send(owner, 'три дні тому було 83')
 
 			expect(assistantMessage.measurements[0]).toMatchObject({
 				localDate: backdated,

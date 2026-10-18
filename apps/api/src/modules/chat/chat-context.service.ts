@@ -1,16 +1,23 @@
 import { Injectable } from '@nestjs/common'
 import {
 	type DailyGoal,
+	type DayContext,
 	type DayTotals,
 	type FoodParseContext,
 	type GoalContext,
+	ENTRY_AHEAD_MAX_DAYS,
+	ENTRY_BACKDATE_MAX_DAYS,
+	getLoggableDays,
 	HISTORY_MAX_MESSAGES,
 	MAX_CONTEXT_OPEN_CLARIFICATIONS,
+	MEASUREMENT_FIX_MAX_DAYS,
 	type MeasurementsContext,
 	type MemoryFoodContext,
+	type RecentMeasurementContext,
+	shiftDate,
 } from '@kus/shared'
 
-import { formatDbDate, formatLocalTime } from '../../common/time'
+import { addDays, formatDbDate, formatLocalTime, getZonedMoment } from '../../common/time'
 import { MeasurementKind } from '../../generated/prisma/client'
 import { type DaySummary, EntriesService } from '../entries/entries.service'
 import { GoalsService } from '../goals/goals.service'
@@ -18,6 +25,7 @@ import { MeasurementsService } from '../measurements/measurements.service'
 import { ProfileService } from '../profile/profile.service'
 import { ChatRepository, type MessageWithAttachments } from './chat.repository'
 import { ClarificationsRepository } from './clarifications.repository'
+import { buildDaysContext } from './days-context'
 import { buildEditContext, type EditRefIds } from './edit-context'
 import { toHistoryTurns } from './history-turns'
 
@@ -49,6 +57,9 @@ const groupEntryIdsBySourceMessage = (
 }
 
 const CONTEXT_WEIGHT_COUNT = 2
+const MEASUREMENT_KINDS = [MeasurementKind.WEIGHT, MeasurementKind.WAIST] as const
+
+const toDbDate = (date: string): Date => new Date(`${date}T00:00:00Z`)
 
 const toPoint = ({ value, localDate }: { value: number; localDate: Date }) => ({
 	value,
@@ -85,12 +96,45 @@ export class ChatContextService {
 		}
 	}
 
+	/** Today − 3 … today + 1: kcal, entries and the overshoot of past days, all counted here. */
+	private async getDaysContext(userId: string, today: string): Promise<DayContext[]> {
+		const [totalsByDay, goalKcalByDay] = await Promise.all([
+			this.entriesService.getDaysKcal(userId, {
+				from: toDbDate(shiftDate(today, -ENTRY_BACKDATE_MAX_DAYS)),
+				to: toDbDate(shiftDate(today, ENTRY_AHEAD_MAX_DAYS)),
+			}),
+			this.goalsService.getGoalKcalByDay(
+				userId,
+				getLoggableDays(today).map(({ localDate }) => localDate),
+			),
+		])
+		return buildDaysContext({ today, totalsByDay, goalKcalByDay })
+	}
+
+	/** The stored values of the last week: the only ones the model may fix or delete far back. */
+	private async getRecentMeasurements(
+		userId: string,
+		localDate: Date,
+	): Promise<RecentMeasurementContext[]> {
+		const from = addDays(localDate, -MEASUREMENT_FIX_MAX_DAYS)
+		const perKind = await Promise.all(
+			MEASUREMENT_KINDS.map((kind) =>
+				this.measurementsService.findInRange({ userId, kind, from, to: localDate }),
+			),
+		)
+		return perKind.flat().map(({ kind, localDate: day, value }) => ({
+			kind,
+			localDate: formatDbDate(day),
+			value,
+		}))
+	}
+
 	/** The latest weights and waist to compare a new one with; the model calculates nothing. */
 	private async getMeasurementsContext(
 		userId: string,
 		localDate: Date,
 	): Promise<MeasurementsContext> {
-		const [weights, waist, targetWeightKg] = await Promise.all([
+		const [weights, waist, targetWeightKg, recent] = await Promise.all([
 			this.measurementsService.findRecent({
 				userId,
 				kind: MeasurementKind.WEIGHT,
@@ -98,12 +142,14 @@ export class ChatContextService {
 			}),
 			this.measurementsService.findLatest({ userId, kind: MeasurementKind.WAIST }),
 			this.profileService.findTargetWeightKg(userId),
+			this.getRecentMeasurements(userId, localDate),
 		])
 		return {
 			today: formatDbDate(localDate),
 			weights: weights.map(toPoint),
 			waist: waist ? toPoint(waist) : null,
 			targetWeightKg,
+			recent,
 		}
 	}
 
@@ -116,15 +162,22 @@ export class ChatContextService {
 		localDate,
 		memory,
 	}: BuildContextParams): Promise<{ context: FoodParseContext; refIds: EditRefIds }> {
-		const [{ summary, goal, totals }, history, editable, measurements] = await Promise.all([
+		const today = formatDbDate(localDate)
+		const [{ summary, goal, totals }, history, editable, measurements, days] = await Promise.all([
 			this.getDayOverview(userId, localDate),
 			this.chatRepository.findHistory({
 				userId,
 				beforeId: message.id,
 				limit: HISTORY_MAX_MESSAGES,
 			}),
-			this.entriesService.getEditableEntries(userId, localDate),
+			// entries of other days written today stay editable in the chat
+			this.entriesService.getEditableEntries(userId, localDate, {
+				from: toDbDate(shiftDate(today, -ENTRY_BACKDATE_MAX_DAYS)),
+				to: toDbDate(shiftDate(today, ENTRY_AHEAD_MAX_DAYS)),
+				createdSince: getZonedMoment(localDate, 0, timezone),
+			}),
 			this.getMeasurementsContext(userId, localDate),
+			this.getDaysContext(userId, today),
 		])
 		const clarifications = await this.clarificationsRepository.findOpenClarifications({
 			userId,
@@ -136,6 +189,7 @@ export class ChatContextService {
 			active: editable.active,
 			deleted: editable.deleted,
 			clarifications,
+			today,
 		})
 		// all the day's entries, not only the windowed ones: a turn whose entries lost their refs
 		// must still read as logged
@@ -158,6 +212,7 @@ export class ChatContextService {
 				meals: summary.meals,
 				...edit,
 				goal: goalContext,
+				days,
 				measurements,
 				memory,
 				history: history

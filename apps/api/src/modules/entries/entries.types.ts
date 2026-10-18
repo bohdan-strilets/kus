@@ -23,6 +23,8 @@ export interface NewFoodEntry {
 
 export interface MealEntryInput {
 	mealType: LoggableMealType
+	/** The meal's day, a @db.Date value: the items of one message may go to different days. */
+	localDate: Date
 	entry: NewFoodEntry
 }
 
@@ -30,8 +32,7 @@ export interface LogEntriesParams {
 	userId: string
 	sourceMessageId: string
 	/** When a meal created by this log was eaten; an existing meal keeps its time. */
-	getEatenAt: (mealType: LoggableMealType) => Date
-	localDate: Date
+	getEatenAt: (meal: { type: LoggableMealType; localDate: Date }) => Date
 	/** In the model's item order; a whole day may span several meals. */
 	entries: MealEntryInput[]
 }

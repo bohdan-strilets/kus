@@ -1,26 +1,30 @@
-import { Injectable } from '@nestjs/common'
-import type { AiFoodItem, FoodParseDecision, LogMeasurementInput } from '@kus/shared'
-
-import { formatDbDate, getLocalHour, getZonedMoment } from '../../common/time'
+import { Injectable, Logger } from '@nestjs/common'
 import {
-	AttachmentStatus,
-	MeasurementKind,
-	MeasurementSource,
-	type Prisma,
-} from '../../generated/prisma/client'
+	type AiFoodItem,
+	type DeleteMeasurementInput,
+	ENTRY_AHEAD_MAX_DAYS,
+	ENTRY_BACKDATE_MAX_DAYS,
+	type FoodParseDecision,
+	getDayOffset,
+	type LogFoodInput,
+	type LogMeasurementInput,
+} from '@kus/shared'
+
+import { formatDbDate, getLocalHour } from '../../common/time'
+import { AttachmentStatus, MeasurementKind, type Prisma } from '../../generated/prisma/client'
 import { PrismaService } from '../../prisma'
 import { AchievementsService } from '../achievements/achievements.service'
 import { EntriesService } from '../entries/entries.service'
-import type { NewFoodEntry } from '../entries/entries.types'
-import { MeasurementsService } from '../measurements/measurements.service'
+import type { LogEntriesParams, MealEntryInput, NewFoodEntry } from '../entries/entries.types'
 import { MemoryService, type RelevantFoods } from '../memory/memory.service'
 import { ChatEditsService, type EditedMessages, NO_EDITED_MESSAGES } from './chat-edits.service'
-import { MessageInProgressException } from './chat.exceptions'
+import { MessageInProgressException, TurnDateOutOfRangeException } from './chat.exceptions'
+import { ChatTurnMeasurementsService } from './chat-turn-measurements.service'
 import { ChatRepository, type MessageWithAttachments } from './chat.repository'
 import type { PhotoPayload } from '../../common/photo'
 import { ClarificationsRepository } from './clarifications.repository'
 import type { EditRefIds } from './edit-context'
-import { getMealEatenAt, getMealTypeByHour } from '../entries/meal-type'
+import { getMealEatenAtForDay, getMealTypeByHour } from '../entries/meal-type'
 
 export interface TurnParams {
 	userId: string
@@ -36,8 +40,6 @@ export interface TurnParams {
 export interface TurnResult extends EditedMessages {
 	replacedMeasurementMessageIds: string[]
 }
-
-const MEASUREMENT_BACKDATE_HOUR = 12
 
 const hasWeight = (measurements: LogMeasurementInput[]): boolean =>
 	measurements.some(({ kind }) => kind === MeasurementKind.WEIGHT)
@@ -57,9 +59,15 @@ const getReplyText = (decision: FoodParseDecision): string => {
 	}
 }
 
+const getMealKey = (day: string, mealType: string): string => `${day}|${mealType}`
+
+const toDbDate = (date: string): Date => new Date(`${date}T00:00:00Z`)
+
 /** Stores what the model decided for one turn: the reply, the edits, new entries and questions. */
 @Injectable()
 export class ChatTurnService {
+	private readonly logger = new Logger(ChatTurnService.name)
+
 	constructor(
 		private readonly prisma: PrismaService,
 		private readonly chatRepository: ChatRepository,
@@ -67,7 +75,7 @@ export class ChatTurnService {
 		private readonly chatEdits: ChatEditsService,
 		private readonly entriesService: EntriesService,
 		private readonly memoryService: MemoryService,
-		private readonly measurementsService: MeasurementsService,
+		private readonly turnMeasurements: ChatTurnMeasurementsService,
 		private readonly achievementsService: AchievementsService,
 	) {}
 
@@ -97,8 +105,9 @@ export class ChatTurnService {
 				)
 			}
 			if (decision.kind === 'reply') {
-				const replaced = await this.recordMeasurements(
-					{ userId, timezone, message, now, localDate, measurements: decision.measurements },
+				const replaced = await this.saveMeasurements(
+					{ userId, timezone, message, now, localDate },
+					decision,
 					tx,
 				)
 				await this.achievementsService.recordForTurn(
@@ -140,25 +149,14 @@ export class ChatTurnService {
 				return { ...edited, replacedMeasurementMessageIds: [] }
 			}
 
-			// an item's own meal, else the message's, else the clock
-			const fallbackMealType =
-				decision.log.mealType ?? getMealTypeByHour(getLocalHour(now, timezone))
-			const namedMealTypes = new Set(
-				decision.log.items.flatMap((item) => item.mealType ?? decision.log.mealType ?? []),
-			)
-			const entries = decision.log.items.map((item) => ({
-				mealType: item.mealType ?? fallbackMealType,
-				entry: this.toNewEntry(item, memory, photo !== undefined),
-			}))
+			const { entries, getEatenAt } = this.planEntries({
+				params: { userId, timezone, message, now, localDate },
+				log: decision.log,
+				memory,
+				isFromPhoto: photo !== undefined,
+			})
 			const { entryIds } = await this.entriesService.logEntries(
-				{
-					userId,
-					sourceMessageId: message.id,
-					getEatenAt: (mealType) =>
-						getMealEatenAt({ mealType, isNamed: namedMealTypes.has(mealType), now, timezone }),
-					localDate,
-					entries,
-				},
+				{ userId, sourceMessageId: message.id, getEatenAt, entries },
 				tx,
 			)
 			const usedFoodIds = [...new Set(entries.flatMap(({ entry }) => entry.myFoodId ?? []))]
@@ -177,8 +175,9 @@ export class ChatTurnService {
 					tx,
 				)
 			}
-			const replaced = await this.recordMeasurements(
-				{ userId, timezone, message, now, localDate, measurements: decision.measurements },
+			const replaced = await this.saveMeasurements(
+				{ userId, timezone, message, now, localDate },
+				decision,
 				tx,
 			)
 			await this.achievementsService.recordForTurn(
@@ -202,49 +201,71 @@ export class ChatTurnService {
 		})
 	}
 
-	/**
-	 * Weight and waist of the message, one per day and kind: a second value of a day replaces the
-	 * first. Returns the messages that carried the replaced values.
-	 */
-	private async recordMeasurements(
+	/** Deletions first (the parser keeps them apart from new values), then the new values. */
+	private async saveMeasurements(
+		params: Pick<TurnParams, 'userId' | 'timezone' | 'message' | 'now' | 'localDate'>,
 		{
-			userId,
-			timezone,
-			message,
-			now,
-			localDate,
 			measurements,
-		}: Pick<TurnParams, 'userId' | 'timezone' | 'message' | 'now' | 'localDate'> & {
+			measurementDeletions,
+		}: {
 			measurements: LogMeasurementInput[]
+			measurementDeletions: DeleteMeasurementInput[]
 		},
 		tx: Prisma.TransactionClient,
 	): Promise<string[]> {
-		const replacedMessageIds: string[] = []
-		for (const { kind, value, date } of measurements) {
-			const day = date === null ? localDate : new Date(`${date}T00:00:00Z`)
-			const isToday = formatDbDate(day) === formatDbDate(localDate)
-			const previous = await this.measurementsService.findByDate(
-				{ userId, kind, localDate: day },
-				tx,
-			)
-			await this.measurementsService.record(
-				{
-					userId,
-					kind,
-					value,
-					localDate: day,
-					// a past day has no real time of day: noon keeps it on that date in any timezone
-					measuredAt: isToday ? now : getZonedMoment(day, MEASUREMENT_BACKDATE_HOUR, timezone),
-					source: MeasurementSource.CHAT,
-					messageId: message.id,
-				},
-				tx,
-			)
-			if (previous?.messageId && previous.messageId !== message.id) {
-				replacedMessageIds.push(previous.messageId)
+		const deleted = await this.turnMeasurements.remove(
+			{ ...params, deletions: measurementDeletions },
+			tx,
+		)
+		const replaced = await this.turnMeasurements.record({ ...params, measurements }, tx)
+		return [...deleted, ...replaced]
+	}
+
+	/**
+	 * Each item goes to its own day (item, else the call, else today) and meal (item, else the call,
+	 * else the clock of the turn — also for another day). Days outside the loggable window never get
+	 * here: the parser rejects them, so a miss is a bug and stops the turn.
+	 */
+	private planEntries({
+		params: { userId, timezone, message, now, localDate },
+		log,
+		memory,
+		isFromPhoto,
+	}: {
+		params: Pick<TurnParams, 'userId' | 'timezone' | 'message' | 'now' | 'localDate'>
+		log: LogFoodInput
+		memory: RelevantFoods
+		isFromPhoto: boolean
+	}): { entries: MealEntryInput[]; getEatenAt: LogEntriesParams['getEatenAt'] } {
+		const today = formatDbDate(localDate)
+		const clockMealType = getMealTypeByHour(getLocalHour(now, timezone))
+		const namedMeals = new Set<string>()
+		const entries = log.items.map((item) => {
+			const day = item.date ?? log.date ?? today
+			const offset = getDayOffset(day, today)
+			if (offset < -ENTRY_BACKDATE_MAX_DAYS || offset > ENTRY_AHEAD_MAX_DAYS) {
+				this.logger.error(`Food date out of range user=${userId} message=${message.id}`)
+				throw new TurnDateOutOfRangeException()
 			}
+			const namedType = item.mealType ?? log.mealType
+			if (namedType) namedMeals.add(getMealKey(day, namedType))
+			return {
+				mealType: namedType ?? clockMealType,
+				localDate: toDbDate(day),
+				entry: this.toNewEntry(item, memory, isFromPhoto),
+			}
+		})
+		return {
+			entries,
+			getEatenAt: ({ type, localDate: mealDate }) =>
+				getMealEatenAtForDay({
+					mealType: type,
+					isNamed: namedMeals.has(getMealKey(formatDbDate(mealDate), type)),
+					localDate: mealDate,
+					now,
+					timezone,
+				}),
 		}
-		return replacedMessageIds
 	}
 
 	/** A memory item takes its numbers from the saved food, scaled by the backend. */

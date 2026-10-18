@@ -56,3 +56,19 @@ export const getMealEatenAt = ({ mealType, isNamed, now, timezone }: MealEatenAt
 	if (mealType === getMealTypeByHour(getLocalHour(now, timezone))) return now
 	return getTypicalMealEatenAt({ mealType, localDate: getLocalDate(now, timezone), now, timezone })
 }
+
+interface MealEatenAtForDayParams extends MealEatenAtParams {
+	/** The meal's day, a @db.Date value. */
+	localDate: Date
+}
+
+/**
+ * When a new meal of `localDate` was eaten. Today follows getMealEatenAt. Another day has no
+ * "now" to keep: the typical hour of the meal, even for tomorrow (a planned meal, deliberately in
+ * the future — the only place eatenAt may be later than now).
+ */
+export const getMealEatenAtForDay = ({ localDate, ...params }: MealEatenAtForDayParams): Date => {
+	const { mealType, now, timezone } = params
+	if (localDate.getTime() === getLocalDate(now, timezone).getTime()) return getMealEatenAt(params)
+	return getZonedMoment(localDate, TYPICAL_MEAL_HOUR[mealType], timezone)
+}

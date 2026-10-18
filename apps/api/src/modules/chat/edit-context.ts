@@ -7,6 +7,7 @@ import {
 } from '@kus/shared'
 import { z } from 'zod'
 
+import { formatDbDate } from '../../common/time'
 import type { EntryWithMealType } from '../entries/entries.repository'
 import type { ClarificationWithEntries } from './clarifications.repository'
 
@@ -28,10 +29,18 @@ export interface EditContext {
 	refByEntryId: ReadonlyMap<string, string>
 }
 
-const toEntryContext = (entry: EntryWithMealType, ref: string): TodayEntryContext => ({
+const toEntryContext = (
+	entry: EntryWithMealType,
+	ref: string,
+	today: string,
+): TodayEntryContext => ({
 	ref,
 	name: entry.name,
 	mealType: entry.meal.type,
+	// an entry of another day is told by its date; today's need none
+	...(formatDbDate(entry.meal.localDate) === today
+		? {}
+		: { date: formatDbDate(entry.meal.localDate) }),
 	grams: entry.grams,
 	kcal: entry.kcal,
 	protein: entry.proteinG,
@@ -51,10 +60,13 @@ export const buildEditContext = ({
 	active,
 	deleted,
 	clarifications,
+	today,
 }: {
 	active: EntryWithMealType[]
 	deleted: EntryWithMealType[]
 	clarifications: ClarificationWithEntries[]
+	/** `YYYY-MM-DD` of the user's today. */
+	today: string
 }): EditContext => {
 	const activeRefs = active.map((entry, index) => ({ entry, ref: `e${index + 1}` }))
 	const deletedRefs = deleted.map((entry, index) => ({
@@ -84,7 +96,7 @@ export const buildEditContext = ({
 		}))
 
 	return {
-		entries: activeRefs.map(({ entry, ref }) => toEntryContext(entry, ref)),
+		entries: activeRefs.map(({ entry, ref }) => toEntryContext(entry, ref, today)),
 		deletedEntries: deletedRefs.map(({ entry, ref }) => ({
 			ref,
 			name: entry.name,

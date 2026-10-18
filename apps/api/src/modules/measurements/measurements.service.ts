@@ -31,8 +31,8 @@ export class MeasurementsService {
 	}
 
 	/** false when the row is not the user's or is already deleted. */
-	softDelete(id: string, userId: string): Promise<boolean> {
-		return this.measurementsRepository.softDelete(id, userId)
+	softDelete(id: string, userId: string, tx?: Prisma.TransactionClient): Promise<boolean> {
+		return this.measurementsRepository.softDelete(id, userId, tx)
 	}
 
 	/** false when the row is not the user's or is not deleted. */

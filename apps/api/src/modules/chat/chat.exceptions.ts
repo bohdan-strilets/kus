@@ -64,3 +64,13 @@ export class TooManyPhotosException extends AppException {
 		})
 	}
 }
+
+/**
+ * A date the parser should have rejected reached the backend: a bug, not user input, so it answers
+ * as an internal error (the client offers a resend) and the log says which message it was.
+ */
+export class TurnDateOutOfRangeException extends AppException {
+	constructor() {
+		super({ status: HttpStatus.INTERNAL_SERVER_ERROR, errorCode: ErrorCodes.INTERNAL_ERROR })
+	}
+}

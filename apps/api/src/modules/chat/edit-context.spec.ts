@@ -17,7 +17,7 @@ const toEntry = (id: string, overrides: Record<string, unknown> = {}): Active[nu
 		category: 'OTHER',
 		source: 'ESTIMATE',
 		isEdited: false,
-		meal: { type: 'LUNCH' },
+		meal: { type: 'LUNCH', localDate: new Date('2026-10-18T00:00:00Z') },
 		...overrides,
 	}) as unknown as Active[number]
 
@@ -26,6 +26,7 @@ describe('buildEditContext', () => {
 		active: [toEntry('a1'), toEntry('a2', { isEdited: true })],
 		deleted: [toEntry('d1'), toEntry('d2')],
 		clarifications: [],
+		today: '2026-10-18',
 	})
 
 	it('maps active and deleted entry ids to refs, deleted ones continuing after the active', () => {
@@ -53,6 +54,20 @@ describe('buildEditContext', () => {
 			{ ref: 'e1', isEdited: false },
 			{ ref: 'e2', isEdited: true },
 		])
+	})
+
+	it('tells the date of an entry of another day, not of today', () => {
+		const { entries } = buildEditContext({
+			active: [
+				toEntry('a1'),
+				toEntry('a2', { meal: { type: 'DINNER', localDate: new Date('2026-10-17T00:00:00Z') } }),
+			],
+			deleted: [],
+			clarifications: [],
+			today: '2026-10-18',
+		})
+
+		expect(entries.map(({ date }) => date)).toEqual([undefined, '2026-10-17'])
 	})
 
 	it('refs deleted entries in the deleted context too', () => {

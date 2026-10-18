@@ -13,6 +13,8 @@ export interface TodayEntryContext {
 	ref: string
 	name: string
 	mealType: MealType
+	/** `YYYY-MM-DD`; only for an entry of another day than today, written today. */
+	date?: string
 	grams: number
 	kcal: number
 	protein: number
@@ -45,7 +47,7 @@ const round = (value: number): number => Math.round(value)
 const CHANGED_MARKER = ' (changed after logging)'
 
 const formatEntry = (entry: TodayEntryContext): string =>
-	`- ${entry.ref} ${entry.mealType} "${entry.name}": ${round(entry.grams)} g, ${round(entry.kcal)} kcal, P ${round(entry.protein)} F ${round(entry.fat)} C ${round(entry.carbs)}${entry.isEdited ? CHANGED_MARKER : ''}`
+	`- ${entry.ref} ${entry.mealType}${entry.date ? ` ${entry.date}` : ''} "${entry.name}": ${round(entry.grams)} g, ${round(entry.kcal)} kcal, P ${round(entry.protein)} F ${round(entry.fat)} C ${round(entry.carbs)}${entry.isEdited ? CHANGED_MARKER : ''}`
 
 const formatClarification = (clarification: OpenClarificationContext): string => {
 	const options = clarification.options

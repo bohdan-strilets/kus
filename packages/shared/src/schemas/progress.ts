@@ -37,6 +37,13 @@ export const progressWeightSchema = progressWaistSchema.extend({
 	/** Kg left in the direction of the goal, never negative (0 once reached); null without a target and for MAINTAIN. */
 	toGoal: z.number().nullable(),
 	isGoalReached: z.boolean().nullable(),
+	/**
+	 * The first weigh-in that is not deleted, by the time it was written (a backdated entry does not
+	 * move it). Absent in answers of an older API, read as null.
+	 */
+	start: progressMeasurementCurrentSchema.nullable().default(null),
+	/** Current minus the start; null without a start, and when the start is the current value. */
+	fromStart: z.number().nullable().default(null),
 })
 
 export type ProgressWeight = z.infer<typeof progressWeightSchema>

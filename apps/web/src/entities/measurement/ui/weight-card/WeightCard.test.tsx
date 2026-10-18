@@ -16,6 +16,8 @@ const createCard = (overrides: Partial<MeasurementCard> = {}): MeasurementCard =
 	value: 82.4,
 	localDate: TODAY,
 	source: 'CHAT',
+	measuredAt: null,
+	isDeleted: false,
 	fromStart: -1.6,
 	toGoal: 4.4,
 	isGoalReached: false,

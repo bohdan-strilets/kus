@@ -6,6 +6,7 @@ import type { MeasurementKind } from '../../generated/prisma/client'
 import type { MeasurementValue } from '../measurements/measurements.mapper'
 import { MeasurementsService } from '../measurements/measurements.service'
 import { ProfileService } from '../profile/profile.service'
+import { UsersService } from '../users/users.service'
 import { buildMeasurementCard, MEASUREMENT_CHART_SPAN_DAYS } from './measurement-card'
 
 const getEarliest = (rows: MeasurementValue[]): Date =>
@@ -20,6 +21,7 @@ export class ChatMeasurementCardsService {
 	constructor(
 		private readonly measurementsService: MeasurementsService,
 		private readonly profileService: ProfileService,
+		private readonly usersService: UsersService,
 	) {}
 
 	/**
@@ -35,8 +37,9 @@ export class ChatMeasurementCardsService {
 		if (rows.length === 0) return cards
 
 		const kinds = [...new Set(rows.map((row) => row.kind))]
-		const [goal, ...perKind] = await Promise.all([
+		const [goal, { timezone }, ...perKind] = await Promise.all([
 			this.profileService.findWeightGoal(userId),
+			this.usersService.getMe(userId),
 			...kinds.map((kind) => this.loadKindContext(userId, kind, rows)),
 		])
 		const contextByKind = new Map(kinds.map((kind, index) => [kind, perKind[index]]))
@@ -44,10 +47,20 @@ export class ChatMeasurementCardsService {
 		for (const row of rows) {
 			const context = contextByKind.get(row.kind)
 			if (row.messageId === null || !context) continue
-			const card = buildMeasurementCard({ row, goal, ...context })
+			const card = buildMeasurementCard({ row, goal, timezone, ...context })
 			cards.set(row.messageId, [...(cards.get(row.messageId) ?? []), card])
 		}
 		return cards
+	}
+
+	/** The card of one value (the edit sheet's answer), deleted or not. */
+	async getCard(userId: string, row: MeasurementValue): Promise<MeasurementCard> {
+		const [goal, { timezone }, context] = await Promise.all([
+			this.profileService.findWeightGoal(userId),
+			this.usersService.getMe(userId),
+			this.loadKindContext(userId, row.kind, [row]),
+		])
+		return buildMeasurementCard({ row, goal, timezone, ...context })
 	}
 
 	private async loadKindContext(

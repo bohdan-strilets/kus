@@ -169,7 +169,7 @@ apps/api/src/
 - Схема спроєктована одразу на весь домен, реалізація — по roadmap. Моделі: User, AuthCredentials, Session, VerificationToken, UserProfile, UserGoal, Measurement, Achievement, Message, MessageAttachment, AiRun, AiToolCall, Clarification, ClarificationEntry, Meal, FoodEntry, MyFood, Recipe, RecipeIngredient, Correction, UserFact, DailyUsage, ExerciseEntry, StoredFile. Опис і діаграма — `docs/database.md`
 - Enum'и схеми дзеркаляться zod-enum'ами в `packages/shared/src/schemas/enums.ts` — змінюєш одне, змінюй і друге
 - Перед додаванням поля чи моделі — перевір актуальну `schema.prisma`, не опис у документах
-- Soft delete (`deletedAt`) для записів користувача (Meal, FoodEntry, MyFood, Recipe, UserFact, ExerciseEntry) — завжди фільтр `deletedAt: null`; це дає «скасувати» в чаті. `StoredFile` у цьому списку немає: soft delete для нього не діє, файл видаляється фізично
+- Soft delete (`deletedAt`) для записів користувача (Meal, FoodEntry, MyFood, Recipe, UserFact, ExerciseEntry, Measurement) — завжди фільтр `deletedAt: null`; це дає «скасувати» в чаті. `StoredFile` у цьому списку немає: soft delete для нього не діє, файл видаляється фізично
 - Кожна вибірка даних користувача фільтрується за `userId` з токена — ніколи не довіряти лише `:id` з запиту (IDOR)
 - Явно обробляти `null` там, де Prisma може його повернути
 

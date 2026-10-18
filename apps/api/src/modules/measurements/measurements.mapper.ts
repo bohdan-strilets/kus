@@ -9,6 +9,9 @@ export interface MeasurementValue {
 	measuredAt: Date
 	source: MeasurementSource
 	messageId: string | null
+	/** When the row was first written; a backdated entry is told by it from the day it is for. */
+	createdAt: Date
+	deletedAt: Date | null
 }
 
 export const toMeasurementValue = (row: Measurement): MeasurementValue => ({
@@ -19,4 +22,6 @@ export const toMeasurementValue = (row: Measurement): MeasurementValue => ({
 	measuredAt: row.measuredAt,
 	source: row.source,
 	messageId: row.messageId,
+	createdAt: row.createdAt,
+	deletedAt: row.deletedAt,
 })

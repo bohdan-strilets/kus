@@ -53,6 +53,8 @@ const weight = (localDate: string, value: number): MeasurementValue => ({
 	measuredAt: new Date(`${localDate}T08:00:00Z`),
 	source: 'CHAT',
 	messageId: null,
+	createdAt: new Date(),
+	deletedAt: null,
 })
 
 describe('getWeekPaceKg', () => {

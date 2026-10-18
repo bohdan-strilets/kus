@@ -17,6 +17,8 @@ export const makeProgress = (overrides: Partial<ProgressResponse> = {}): Progres
 		target: 78,
 		toGoal: 4.4,
 		isGoalReached: false,
+		start: { value: 84, localDate: '2026-09-13' },
+		fromStart: -1.6,
 	},
 	waist: null,
 	week: {

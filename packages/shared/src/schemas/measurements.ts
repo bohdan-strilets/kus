@@ -19,6 +19,16 @@ export const measurementResponseSchema = z.object({
 	source: measurementSourceSchema,
 })
 
+/** Path of the /measurements/:id routes. */
+export const measurementParamsSchema = z.object({ id: z.uuid() })
+
+export type MeasurementParams = z.infer<typeof measurementParamsSchema>
+
+/** Body of PATCH /measurements/:id; the bounds by kind are checked by the backend (422 on `value`). */
+export const updateMeasurementRequestSchema = z.object({ value: z.number().positive() })
+
+export type UpdateMeasurementRequest = z.infer<typeof updateMeasurementRequestSchema>
+
 export type MeasurementResponse = z.infer<typeof measurementResponseSchema>
 
 export const measurementChartPointSchema = z.object({
@@ -33,6 +43,13 @@ export type MeasurementChartPoint = z.infer<typeof measurementChartPointSchema>
  * is computed by the backend; the nullable ones are null when there is nothing to compare with.
  */
 export const measurementCardSchema = measurementResponseSchema.extend({
+	/**
+	 * When it was weighed; null for a value written for an earlier day (backdated). Absent in answers
+	 * of an older API, read as null.
+	 */
+	measuredAt: z.iso.datetime().nullable().default(null),
+	/** Soft-deleted: the chat keeps the card as a «deleted» row. Absent in older answers, read as false. */
+	isDeleted: z.boolean().default(false),
 	/** Current minus the first weigh-in of this kind. */
 	fromStart: z.number().nullable(),
 	/** Kg left in the direction of the goal, never negative (0 once reached or passed); null for WAIST, without a target, and for MAINTAIN. */

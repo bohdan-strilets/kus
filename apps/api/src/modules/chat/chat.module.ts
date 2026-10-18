@@ -52,7 +52,7 @@ import { ClarificationsService } from './clarifications.service'
 		ClarificationsService,
 	],
 	// the edit sheet (food-entries) closes the open questions of an entry it changed; account-restore
-	// writes Kusik's welcome back into the chat
-	exports: [ClarificationsService, ChatGreetingsService],
+	// writes Kusik's welcome back into the chat; the measurement sheet answers with a chat card
+	exports: [ClarificationsService, ChatGreetingsService, ChatMeasurementCardsService],
 })
 export class ChatModule {}

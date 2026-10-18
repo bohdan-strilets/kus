@@ -1,10 +1,10 @@
 import { Injectable } from '@nestjs/common'
 
-import type {
-	Measurement,
-	MeasurementKind,
+import {
+	type Measurement,
+	type MeasurementKind,
 	MeasurementSource,
-	Prisma,
+	type Prisma,
 } from '../../generated/prisma/client'
 import { PrismaService } from '../../prisma'
 
@@ -18,13 +18,15 @@ export interface UpsertMeasurementData {
 	messageId: string | null
 }
 
+/** Every read skips soft-deleted rows, except the two that exist to show or restore them. */
 @Injectable()
 export class MeasurementsRepository {
 	constructor(private readonly prisma: PrismaService) {}
 
 	/**
-	 * One value per kind per local day: a second one that day replaces it. A write without a
-	 * message (the profile) keeps the message that already carries the day's value, so its chat card stays.
+	 * One value per kind per local day: a second one that day replaces it (and revives a deleted
+	 * one, keeping its createdAt). A write without a message (the profile) keeps the message that
+	 * already carries the day's value, so its chat card stays.
 	 */
 	upsert(
 		{ userId, kind, value, localDate, measuredAt, source, messageId }: UpsertMeasurementData,
@@ -33,8 +35,55 @@ export class MeasurementsRepository {
 		return (tx ?? this.prisma).measurement.upsert({
 			where: { userId_kind_localDate: { userId, kind, localDate } },
 			create: { userId, kind, value, localDate, measuredAt, source, messageId },
-			update: { value, measuredAt, source, ...(messageId === null ? {} : { messageId }) },
+			update: {
+				value,
+				measuredAt,
+				source,
+				deletedAt: null,
+				...(messageId === null ? {} : { messageId }),
+			},
 		})
+	}
+
+	/** The row by id for its owner, deleted or not: the caller decides what a deleted one means. */
+	findByIdForUser(
+		id: string,
+		userId: string,
+		tx?: Prisma.TransactionClient,
+	): Promise<Measurement | null> {
+		return (tx ?? this.prisma).measurement.findFirst({ where: { id, userId } })
+	}
+
+	/** Marks the owner's row deleted; false when it is not theirs or already deleted. */
+	async softDelete(id: string, userId: string, tx?: Prisma.TransactionClient): Promise<boolean> {
+		const { count } = await (tx ?? this.prisma).measurement.updateMany({
+			where: { id, userId, deletedAt: null },
+			data: { deletedAt: new Date() },
+		})
+		return count > 0
+	}
+
+	/** Brings the owner's deleted row back; false when it is not theirs or not deleted. */
+	async restore(id: string, userId: string, tx?: Prisma.TransactionClient): Promise<boolean> {
+		const { count } = await (tx ?? this.prisma).measurement.updateMany({
+			where: { id, userId, deletedAt: { not: null } },
+			data: { deletedAt: null },
+		})
+		return count > 0
+	}
+
+	/** A manual correction of the value; the day and the message stay. false when no live row. */
+	async updateValue(
+		id: string,
+		userId: string,
+		value: number,
+		tx?: Prisma.TransactionClient,
+	): Promise<boolean> {
+		const { count } = await (tx ?? this.prisma).measurement.updateMany({
+			where: { id, userId, deletedAt: null },
+			data: { value, source: MeasurementSource.EDIT },
+		})
+		return count > 0
 	}
 
 	/** The most recent day, and the latest write within it. */
@@ -43,18 +92,18 @@ export class MeasurementsRepository {
 		tx?: Prisma.TransactionClient,
 	): Promise<Measurement | null> {
 		return (tx ?? this.prisma).measurement.findFirst({
-			where: { userId, kind },
+			where: { userId, kind, deletedAt: null },
 			orderBy: [{ localDate: 'desc' }, { measuredAt: 'desc' }],
 		})
 	}
 
-	/** The first row ever written, by creation time: a backdated entry doesn't move the start. */
+	/** The first live row by creation time: a backdated entry doesn't move the start. */
 	findFirst(
 		{ userId, kind }: { userId: string; kind: MeasurementKind },
 		tx?: Prisma.TransactionClient,
 	): Promise<Measurement | null> {
 		return (tx ?? this.prisma).measurement.findFirst({
-			where: { userId, kind },
+			where: { userId, kind, deletedAt: null },
 			orderBy: { createdAt: 'asc' },
 		})
 	}
@@ -65,7 +114,7 @@ export class MeasurementsRepository {
 		tx?: Prisma.TransactionClient,
 	): Promise<Measurement[]> {
 		return (tx ?? this.prisma).measurement.findMany({
-			where: { userId, kind, localDate: { gte: from, lte: to } },
+			where: { userId, kind, deletedAt: null, localDate: { gte: from, lte: to } },
 			orderBy: { localDate: 'asc' },
 		})
 	}
@@ -74,8 +123,8 @@ export class MeasurementsRepository {
 		{ userId, kind, localDate }: { userId: string; kind: MeasurementKind; localDate: Date },
 		tx?: Prisma.TransactionClient,
 	): Promise<Measurement | null> {
-		return (tx ?? this.prisma).measurement.findUnique({
-			where: { userId_kind_localDate: { userId, kind, localDate } },
+		return (tx ?? this.prisma).measurement.findFirst({
+			where: { userId, kind, localDate, deletedAt: null },
 		})
 	}
 
@@ -90,12 +139,21 @@ export class MeasurementsRepository {
 		tx?: Prisma.TransactionClient,
 	): Promise<Measurement | null> {
 		return (tx ?? this.prisma).measurement.findFirst({
-			where: { userId, kind, localDate: { lt: before }, ...(source ? { source } : {}) },
+			where: {
+				userId,
+				kind,
+				deletedAt: null,
+				localDate: { lt: before },
+				...(source ? { source } : {}),
+			},
 			orderBy: [{ localDate: 'desc' }, { measuredAt: 'desc' }],
 		})
 	}
 
-	/** The values that came from these user messages (the chat cards), WEIGHT before WAIST. */
+	/**
+	 * The values that came from these user messages (the chat cards), WEIGHT before WAIST. Deleted
+	 * ones are included: the card stays in the chat as a «deleted» row.
+	 */
 	findByMessageIds({
 		userId,
 		messageIds,
@@ -115,7 +173,7 @@ export class MeasurementsRepository {
 		tx?: Prisma.TransactionClient,
 	): Promise<Measurement[]> {
 		return (tx ?? this.prisma).measurement.findMany({
-			where: { userId, kind },
+			where: { userId, kind, deletedAt: null },
 			orderBy: { localDate: 'desc' },
 			take,
 		})

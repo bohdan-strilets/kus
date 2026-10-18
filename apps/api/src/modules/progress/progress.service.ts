@@ -59,9 +59,10 @@ export class ProgressService {
 		const windowFrom = addDays(today, -(EMPTY_STATE_WINDOW_DAYS - 1))
 		const rangeFrom = addDays(today, -(range - 1))
 
-		const [latestWeight, latestWaist, totalsByDay, goal] = await Promise.all([
+		const [latestWeight, latestWaist, startWeight, totalsByDay, goal] = await Promise.all([
 			this.measurementsService.findLatest({ userId, kind: MeasurementKind.WEIGHT }),
 			this.measurementsService.findLatest({ userId, kind: MeasurementKind.WAIST }),
+			this.measurementsService.findFirst({ userId, kind: MeasurementKind.WEIGHT }),
 			this.entriesService.getDaysTotals(userId, { from: windowFrom, to: today }),
 			this.profileService.findWeightGoal(userId),
 		])
@@ -93,7 +94,15 @@ export class ProgressService {
 			from: formatDbDate(rangeFrom),
 			to: formatDbDate(today),
 			isEmpty,
-			weight: latestWeight ? this.buildWeight(latestWeight, weightHistory, rangeFrom, goal) : null,
+			weight: latestWeight
+				? this.buildWeight({
+						latest: latestWeight,
+						start: startWeight,
+						history: weightHistory,
+						rangeFrom,
+						goal,
+					})
+				: null,
 			waist: latestWaist ? this.buildTrend(latestWaist, waistHistory, rangeFrom) : null,
 			week,
 			insight: {
@@ -128,12 +137,19 @@ export class ProgressService {
 		}
 	}
 
-	private buildWeight(
-		latest: MeasurementValue,
-		history: MeasurementValue[],
-		rangeFrom: Date,
-		goal: WeightGoal,
-	): ProgressWeight {
+	private buildWeight({
+		latest,
+		start,
+		history,
+		rangeFrom,
+		goal,
+	}: {
+		latest: MeasurementValue
+		start: MeasurementValue | null
+		history: MeasurementValue[]
+		rangeFrom: Date
+		goal: WeightGoal
+	}): ProgressWeight {
 		const { goalType, targetWeightKg } = goal
 		return {
 			...this.buildTrend(latest, history, rangeFrom),
@@ -142,6 +158,9 @@ export class ProgressService {
 				? getKgToGoal({ goalType, current: latest.value, target: targetWeightKg })
 				: null,
 			isGoalReached: getIsGoalReached({ goalType, current: latest.value, target: targetWeightKg }),
+			start: start ? toPoint(start) : null,
+			// the start has nothing to be compared with
+			fromStart: start && start.id !== latest.id ? subtractTenths(latest.value, start.value) : null,
 		}
 	}
 

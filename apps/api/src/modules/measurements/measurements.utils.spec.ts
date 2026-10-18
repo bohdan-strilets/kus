@@ -11,6 +11,8 @@ const weight = (localDate: string, value = 80): MeasurementValue => ({
 	measuredAt: new Date(`${localDate}T08:00:00Z`),
 	source: 'CHAT',
 	messageId: null,
+	createdAt: new Date(),
+	deletedAt: null,
 })
 
 describe('subtractTenths', () => {

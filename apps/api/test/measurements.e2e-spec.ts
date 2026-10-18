@@ -255,6 +255,30 @@ describe('measurements (real DB)', () => {
 		expect(latest).toMatchObject({ value: 80, messageId: null })
 	})
 
+	it('hides a deleted value from every read; a new one for the same day revives the row', async () => {
+		await start()
+		const userId = await createUser('a@kus.app')
+		const first = await weigh(userId, 85, '2026-10-10')
+		await weigh(userId, 83, '2026-10-12')
+		const query = { userId, kind: MeasurementKind.WEIGHT }
+
+		expect(await service.softDelete(first.id, userId)).toBe(true)
+
+		expect((await service.findFirst(query))?.value).toBe(83)
+		expect(
+			await service.findInRange({ ...query, from: day('2026-10-01'), to: day('2026-10-31') }),
+		).toHaveLength(1)
+		expect(await service.findByDate({ ...query, localDate: day('2026-10-10') })).toBeNull()
+		expect(await service.findBefore({ ...query, before: day('2026-10-12') })).toBeNull()
+		expect(await service.findRecent({ ...query, take: 5 })).toHaveLength(1)
+		expect((await service.findByIdForUser(first.id, userId))?.deletedAt).not.toBeNull()
+
+		const revived = await weigh(userId, 84, '2026-10-10')
+
+		expect(revived).toMatchObject({ id: first.id, value: 84, deletedAt: null })
+		expect(revived.createdAt).toEqual(first.createdAt)
+	})
+
 	it('goes with the user: nothing is left after the account is deleted', async () => {
 		await start()
 		const userId = await createUser('a@kus.app')

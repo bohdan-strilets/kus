@@ -18,6 +18,8 @@ const createWeight = (points: ProgressWeight['points']): ProgressWeight => ({
 	target: null,
 	toGoal: null,
 	isGoalReached: null,
+	start: null,
+	fromStart: null,
 })
 
 describe('WeightProgressCard chart labels', () => {

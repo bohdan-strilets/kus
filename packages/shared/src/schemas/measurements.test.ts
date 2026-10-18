@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest'
 
 import { achievementResponseSchema, FOOD_STREAK_MILESTONES } from './achievements.js'
-import { getIsGoalReached, MEASUREMENT_LIMITS, measurementCardSchema } from './measurements.js'
+import {
+	getIsGoalReached,
+	MEASUREMENT_LIMITS,
+	measurementCardSchema,
+	updateMeasurementRequestSchema,
+} from './measurements.js'
 import { PROFILE_LIMITS, updateProfileRequestSchema } from './profile.js'
 import { progressQuerySchema } from './progress.js'
 
@@ -115,6 +120,22 @@ describe('measurementCardSchema', () => {
 	it('accepts an empty chart', () => {
 		expect(measurementCardSchema.safeParse(card([])).success).toBe(true)
 	})
+
+	it('reads a card of an older API as not deleted and without a time', () => {
+		const parsed = measurementCardSchema.parse(card([]))
+
+		expect(parsed).toMatchObject({ isDeleted: false, measuredAt: null })
+	})
+
+	it('keeps the time and the deleted flag of a newer API', () => {
+		const parsed = measurementCardSchema.parse({
+			...card([]),
+			measuredAt: '2026-10-07T08:30:00.000Z',
+			isDeleted: true,
+		})
+
+		expect(parsed).toMatchObject({ isDeleted: true, measuredAt: '2026-10-07T08:30:00.000Z' })
+	})
 })
 
 describe('achievementResponseSchema', () => {
@@ -130,5 +151,14 @@ describe('achievementResponseSchema', () => {
 		expect(achievementResponseSchema.safeParse(achievement(0)).success).toBe(false)
 		expect(achievementResponseSchema.safeParse(achievement(-1)).success).toBe(false)
 		expect(achievementResponseSchema.safeParse(achievement(1.5)).success).toBe(false)
+	})
+})
+
+describe('updateMeasurementRequestSchema', () => {
+	it('takes a positive number and nothing else', () => {
+		expect(updateMeasurementRequestSchema.safeParse({ value: 82.4 }).success).toBe(true)
+		expect(updateMeasurementRequestSchema.safeParse({ value: 0 }).success).toBe(false)
+		expect(updateMeasurementRequestSchema.safeParse({ value: -1 }).success).toBe(false)
+		expect(updateMeasurementRequestSchema.safeParse({}).success).toBe(false)
 	})
 })

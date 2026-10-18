@@ -24,6 +24,27 @@ export class MeasurementsService {
 		return toMeasurementValue(row)
 	}
 
+	/** The owner's row by id, deleted or not. */
+	async findByIdForUser(id: string, userId: string): Promise<MeasurementValue | null> {
+		const row = await this.measurementsRepository.findByIdForUser(id, userId)
+		return row ? toMeasurementValue(row) : null
+	}
+
+	/** false when the row is not the user's or is already deleted. */
+	softDelete(id: string, userId: string): Promise<boolean> {
+		return this.measurementsRepository.softDelete(id, userId)
+	}
+
+	/** false when the row is not the user's or is not deleted. */
+	restore(id: string, userId: string): Promise<boolean> {
+		return this.measurementsRepository.restore(id, userId)
+	}
+
+	/** A manual correction (source EDIT); false when there is no live row of the user's. */
+	updateValue(id: string, userId: string, value: number): Promise<boolean> {
+		return this.measurementsRepository.updateValue(id, userId, value)
+	}
+
 	async findLatest(
 		query: { userId: string; kind: MeasurementKind },
 		tx?: Prisma.TransactionClient,

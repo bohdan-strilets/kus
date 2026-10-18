@@ -5,7 +5,7 @@ import {
 	type MeasurementChartPoint,
 } from '@kus/shared'
 
-import { addDays, formatDbDate } from '../../common/time'
+import { addDays, formatDbDate, getLocalDateString } from '../../common/time'
 import { GoalType, MeasurementKind } from '../../generated/prisma/client'
 import type { MeasurementValue } from '../measurements/measurements.mapper'
 import {
@@ -52,6 +52,8 @@ interface MeasurementCardInput {
 	/** Values of this kind around the card's day (at least `MEASUREMENT_CHART_SPAN_DAYS` back). */
 	history: MeasurementValue[]
 	goal: WeightGoal
+	/** The user's, to tell a value written for an earlier day from one written the same day. */
+	timezone: string
 }
 
 /** A value as the chat card shows it: a snapshot at the card's own day, all numbers from the backend. */
@@ -60,6 +62,7 @@ export const buildMeasurementCard = ({
 	start,
 	history,
 	goal,
+	timezone,
 }: MeasurementCardInput): MeasurementCard => {
 	const isWeight = row.kind === MeasurementKind.WEIGHT
 	const { goalType, targetWeightKg } = goal
@@ -71,6 +74,12 @@ export const buildMeasurementCard = ({
 		value: row.value,
 		localDate: formatDbDate(row.localDate),
 		source: row.source,
+		// a backdated value was not weighed at that moment, so it has no time to show
+		measuredAt:
+			getLocalDateString(row.createdAt, timezone) === formatDbDate(row.localDate)
+				? row.measuredAt.toISOString()
+				: null,
+		isDeleted: row.deletedAt !== null,
 		// the first value has nothing to be compared with
 		fromStart: start && start.id !== row.id ? subtractTenths(row.value, start.value) : null,
 		toGoal: hasDirection

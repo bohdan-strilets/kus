@@ -127,6 +127,115 @@ describe('AchievementsService.recordForTurn', () => {
 		})
 	})
 
+	describe('food streak with entries on other days', () => {
+		const NOW = new Date('2026-10-12T12:00:00Z')
+
+		/** Like the database: only the days inside the requested range come back. */
+		const mockDaysInRange = (dates: string[]) =>
+			entries.getDaysKcal.mockImplementation((_userId, { from, to }) =>
+				Promise.resolve(
+					toDays(
+						dates.filter((date) => {
+							const day = new Date(`${date}T00:00:00Z`)
+							return day >= from && day <= to
+						}),
+					),
+				),
+			)
+
+		const awardedValues = (): number[] | undefined =>
+			repository.createMissing.mock.calls[0]?.[0].values
+
+		describe('tomorrow', () => {
+			it('is not counted: three days up to tomorrow are a streak of two', async () => {
+				mockDaysInRange(['2026-10-11', '2026-10-12', '2026-10-13'])
+
+				await recordFood(NOW)
+
+				expect(repository.createMissing).not.toHaveBeenCalled()
+			})
+
+			it('does not change the streak of today and pays nothing for itself', async () => {
+				mockDaysInRange(['2026-10-10', '2026-10-11', '2026-10-12', '2026-10-13', '2026-10-14'])
+
+				await recordFood(NOW)
+
+				expect(awardedValues()).toEqual([3])
+			})
+
+			it('does not break today and does not make it: food only tomorrow is a streak of zero', async () => {
+				mockDaysInRange(['2026-10-13'])
+
+				await recordFood(NOW)
+
+				expect(repository.createMissing).not.toHaveBeenCalled()
+			})
+
+			it('is not read at all: the range ends today', async () => {
+				mockDaysInRange(['2026-10-13'])
+
+				await recordFood(NOW)
+
+				expect(entries.getDaysKcal.mock.calls[0]?.[1].to).toEqual(new Date('2026-10-12T00:00:00Z'))
+			})
+		})
+
+		describe('yesterday, back-dated', () => {
+			it('closes the gap with an empty yesterday and pays the milestone of the joined run', async () => {
+				// 10-10 and 10-09 were a run cut off by an empty 10-11; today has food
+				mockDaysInRange(['2026-10-12', '2026-10-10', '2026-10-09'])
+				await recordFood(NOW)
+				expect(repository.createMissing).not.toHaveBeenCalled()
+
+				mockDaysInRange(['2026-10-12', '2026-10-11', '2026-10-10', '2026-10-09'])
+				await recordFood(NOW)
+				expect(awardedValues()).toEqual([3])
+			})
+
+			it('with food today only extends the run by one day, no milestone yet', async () => {
+				mockDaysInRange(['2026-10-12', '2026-10-11'])
+
+				await recordFood(NOW)
+
+				expect(repository.createMissing).not.toHaveBeenCalled()
+			})
+
+			it('pays nothing while today is empty, however long the run behind it', async () => {
+				mockDaysInRange(['2026-10-11', '2026-10-10', '2026-10-09', '2026-10-08'])
+
+				await recordFood(NOW)
+
+				expect(repository.createMissing).not.toHaveBeenCalled()
+			})
+		})
+
+		describe('two and three days ago, back-dated', () => {
+			it('closes a gap two days ago and pays the milestone', async () => {
+				mockDaysInRange(['2026-10-12', '2026-10-11', '2026-10-10'])
+
+				await recordFood(NOW)
+
+				expect(awardedValues()).toEqual([3])
+			})
+
+			it('closes a gap three days ago when the days between have food', async () => {
+				mockDaysInRange(['2026-10-12', '2026-10-11', '2026-10-10', '2026-10-09'])
+
+				await recordFood(NOW)
+
+				expect(awardedValues()).toEqual([3])
+			})
+
+			it('does not help the streak while yesterday stays empty', async () => {
+				mockDaysInRange(['2026-10-12', '2026-10-10', '2026-10-09'])
+
+				await recordFood(NOW)
+
+				expect(repository.createMissing).not.toHaveBeenCalled()
+			})
+		})
+	})
+
 	describe('kg lost', () => {
 		const recordWeight = () =>
 			service.recordForTurn(

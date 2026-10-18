@@ -17,6 +17,7 @@ import { afterAll, afterEach, describe, expect, it, vi } from 'vitest'
 import { addDays, formatDbDate, getLocalDate } from '../src/common/time'
 import { GoalType, MeasurementKind, MeasurementSource } from '../src/generated/prisma/client'
 import { createCompletion, createFakeAiClient } from '../src/modules/ai/ai.test-utils'
+import { MeasurementsService } from '../src/modules/measurements/measurements.service'
 import type { PrismaService } from '../src/prisma'
 import { createDbTestApp } from './create-db-test-app'
 
@@ -93,7 +94,12 @@ describe('measurement cards and achievements in chat messages (e2e, real DB, fak
 		return getLocalDate(new Date(), timezone)
 	}
 
-	const seedWeight = (userId: string, localDate: Date, value: number) =>
+	const seedWeight = (
+		userId: string,
+		localDate: Date,
+		value: number,
+		source: MeasurementSource = MeasurementSource.CHAT,
+	) =>
 		prisma.measurement.create({
 			data: {
 				userId,
@@ -101,7 +107,7 @@ describe('measurement cards and achievements in chat messages (e2e, real DB, fak
 				value,
 				localDate,
 				measuredAt: localDate,
-				source: MeasurementSource.CHAT,
+				source,
 			},
 		})
 
@@ -452,6 +458,175 @@ describe('measurement cards and achievements in chat messages (e2e, real DB, fak
 
 			expect(same.assistantMessage.achievements).toEqual([])
 			expect(up.assistantMessage.achievements).toEqual([])
+			expect(await findAchievements(owner.userId)).toEqual([])
+		})
+	})
+
+	describe('a weight from the profile', () => {
+		const { PROFILE } = MeasurementSource
+		const PROFILE_URL = '/api/v1/profile'
+
+		const sendWeight = (
+			user: TestUser,
+			value: number,
+			{ date = null, confirmedJump = false }: { date?: Date | null; confirmedJump?: boolean } = {},
+		) => {
+			fake.respond(
+				createCompletion([
+					measurementCall({ value, date: date ? formatDbDate(date) : null, confirmedJump }),
+					replyCall,
+				]),
+			)
+			return send(user, `вага ${value}`)
+		}
+
+		const findKgValues = async (userId: string): Promise<number[]> =>
+			(await findAchievements(userId)).map((row) => row.value)
+
+		it('pays out the kilograms between two chat weights even when a profile weight lies between them', async () => {
+			await start()
+			const owner = await registerUser('owner@kus.app')
+			const today = await getToday(owner.userId)
+			await seedWeight(owner.userId, addDays(today, -2), 84)
+			await seedWeight(owner.userId, addDays(today, -1), 82, PROFILE)
+
+			const { assistantMessage } = await sendWeight(owner, 81.9)
+
+			expect(assistantMessage.achievements.map((item) => item.value)).toEqual([2])
+			expect(await findKgValues(owner.userId)).toEqual([1, 2])
+		})
+
+		it('measures the new kilograms from the last chat weight, not from the profile one', async () => {
+			await start()
+			const owner = await registerUser('owner@kus.app')
+			const today = await getToday(owner.userId)
+			await seedWeight(owner.userId, addDays(today, -3), 90)
+			await seedWeight(owner.userId, addDays(today, -2), 88)
+			await seedWeight(owner.userId, addDays(today, -1), 85, PROFILE)
+
+			const { assistantMessage } = await sendWeight(owner, 84.9)
+
+			expect(assistantMessage.achievements.map((item) => item.value)).toEqual([5])
+			expect(await findKgValues(owner.userId)).toEqual([3, 4, 5])
+		})
+
+		it('writes nothing for a typo right after a profile weight', async () => {
+			await start()
+			const owner = await registerUser('owner@kus.app')
+			const today = await getToday(owner.userId)
+			await seedWeight(owner.userId, addDays(today, -2), 84)
+			await seedWeight(owner.userId, addDays(today, -1), 82, PROFILE)
+
+			const { assistantMessage } = await sendWeight(owner, 78, { confirmedJump: true })
+
+			expect(assistantMessage.achievements).toEqual([])
+			expect(await findAchievements(owner.userId)).toEqual([])
+		})
+
+		it('does not pay out a big correction made by the profile weight', async () => {
+			await start()
+			const owner = await registerUser('owner@kus.app')
+			const today = await getToday(owner.userId)
+			await seedWeight(owner.userId, addDays(today, -2), 90)
+			await seedWeight(owner.userId, addDays(today, -1), 85, PROFILE)
+
+			const { assistantMessage } = await sendWeight(owner, 84.8)
+
+			expect(assistantMessage.achievements).toEqual([])
+			expect(await findAchievements(owner.userId)).toEqual([])
+		})
+
+		it('does not pay out the part of a 4 kg compromise step either', async () => {
+			await start()
+			const owner = await registerUser('owner@kus.app')
+			const today = await getToday(owner.userId)
+			await seedWeight(owner.userId, addDays(today, -2), 90)
+			await seedWeight(owner.userId, addDays(today, -1), 86, PROFILE)
+
+			const { assistantMessage } = await sendWeight(owner, 85.5)
+
+			expect(assistantMessage.achievements).toEqual([])
+			expect(await findAchievements(owner.userId)).toEqual([])
+		})
+
+		it('counts from the profile weight when it is the first one ever', async () => {
+			await start()
+			const owner = await registerUser('owner@kus.app')
+			const today = await getToday(owner.userId)
+			await seedWeight(owner.userId, addDays(today, -1), 90, PROFILE)
+
+			const { assistantMessage } = await sendWeight(owner, 88.9)
+
+			expect(assistantMessage.achievements.map((item) => item.value)).toEqual([1])
+			expect(await findKgValues(owner.userId)).toEqual([1])
+		})
+
+		it('treats a day overwritten by the profile as a profile weight, though it keeps its message', async () => {
+			await start()
+			const owner = await registerUser('owner@kus.app')
+			const today = await getToday(owner.userId)
+			const yesterday = addDays(today, -1)
+			await seedWeight(owner.userId, addDays(today, -3), 85)
+			const first = await sendWeight(owner, 84, { date: yesterday })
+			expect(first.assistantMessage.achievements.map((item) => item.value)).toEqual([1])
+
+			await app.get(MeasurementsService).record({
+				userId: owner.userId,
+				kind: MeasurementKind.WEIGHT,
+				value: 83,
+				localDate: yesterday,
+				measuredAt: new Date(),
+				source: PROFILE,
+			})
+			const overwritten = await prisma.measurement.findFirstOrThrow({
+				where: { userId: owner.userId, kind: MeasurementKind.WEIGHT, localDate: yesterday },
+			})
+			expect(overwritten.source).toBe(PROFILE)
+			expect(Number(overwritten.value)).toBe(83)
+			expect(overwritten.messageId).not.toBeNull()
+
+			const { assistantMessage } = await sendWeight(owner, 82.9)
+
+			expect(assistantMessage.achievements.map((item) => item.value)).toEqual([2])
+			expect(await findKgValues(owner.userId)).toEqual([1, 2])
+		})
+
+		it('writes nothing when a chat weight is added behind a newer profile weight', async () => {
+			await start()
+			const owner = await registerUser('owner@kus.app')
+			const today = await getToday(owner.userId)
+			await seedWeight(owner.userId, addDays(today, -3), 84)
+			await seedWeight(owner.userId, today, 82, PROFILE)
+
+			const { assistantMessage } = await sendWeight(owner, 83.5, { date: addDays(today, -1) })
+
+			expect(assistantMessage.measurements).toHaveLength(1)
+			expect(assistantMessage.achievements).toEqual([])
+			expect(await findAchievements(owner.userId)).toEqual([])
+		})
+
+		it('does not announce again when the same chat weight is sent twice', async () => {
+			await start()
+			const owner = await registerUser('owner@kus.app')
+			const today = await getToday(owner.userId)
+			await seedWeight(owner.userId, addDays(today, -2), 84)
+			await seedWeight(owner.userId, addDays(today, -1), 82, PROFILE)
+			const first = await sendWeight(owner, 81.9)
+			expect(first.assistantMessage.achievements.map((item) => item.value)).toEqual([2])
+
+			const repeat = await sendWeight(owner, 81.9)
+
+			expect(repeat.assistantMessage.achievements).toEqual([])
+			expect(await findKgValues(owner.userId)).toEqual([1, 2])
+		})
+
+		it('does not award anything for a weight saved in the profile', async () => {
+			await start()
+			const owner = await registerUser('owner@kus.app')
+			await sendWeight(owner, 90)
+
+			await owner.agent.patch(PROFILE_URL).send({ weightKg: 85 }).expect(200)
+
 			expect(await findAchievements(owner.userId)).toEqual([])
 		})
 	})

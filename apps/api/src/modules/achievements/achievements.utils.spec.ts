@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
 	getFoodStreak,
+	getKgLostBaseline,
 	getKgThresholds,
 	getWholeKgLost,
 	isBigWeightStep,
@@ -35,6 +36,36 @@ describe('isBigWeightStep', () => {
 		[80, 80, false],
 	])('from %s to %s is big: %s', (previousKg, currentKg, expected) => {
 		expect(isBigWeightStep({ previousKg, currentKg })).toBe(expected)
+	})
+})
+
+describe('getKgLostBaseline', () => {
+	it.each([
+		['the first weight when no step is big', [84, 82, 81.9], 84],
+		['the weight after a big step in the middle (a correction)', [90, 85, 84.8], 85],
+		['the first weight: the steps 3.0 and 0.1 are not big', [88, 85, 84.9], 88],
+		['the weight after the last big step in the middle', [90, 70, 69.5], 70],
+		['the weight after a compromise step of 4 kg', [90, 86, 85.5], 86],
+		['the first weight: a step of exactly 3.0 kg is not big', [90, 87, 86.9], 90],
+	])('is %s', (_name, chainKg, expected) => {
+		expect(getKgLostBaseline({ chainKg })).toBe(expected)
+	})
+
+	it('is null when the last step is big (a typo)', () => {
+		expect(getKgLostBaseline({ chainKg: [84, 82, 78] })).toBeNull()
+	})
+
+	it('is null for a chain of one weight or none', () => {
+		expect(getKgLostBaseline({ chainKg: [90] })).toBeNull()
+		expect(getKgLostBaseline({ chainKg: [] })).toBeNull()
+	})
+
+	it('does not change the chain it reads', () => {
+		const chainKg = [90, 85, 84.8]
+
+		getKgLostBaseline({ chainKg })
+
+		expect(chainKg).toEqual([90, 85, 84.8])
 	})
 })
 

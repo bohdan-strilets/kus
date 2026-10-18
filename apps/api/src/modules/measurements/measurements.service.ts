@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common'
 
-import type { MeasurementKind, Prisma } from '../../generated/prisma/client'
+import type { MeasurementKind, MeasurementSource, Prisma } from '../../generated/prisma/client'
 import { type MeasurementValue, toMeasurementValue } from './measurements.mapper'
 import { MeasurementsRepository, type UpsertMeasurementData } from './measurements.repository'
 
@@ -56,8 +56,9 @@ export class MeasurementsService {
 		return row ? toMeasurementValue(row) : null
 	}
 
+	/** The nearest day before `before`, optionally of one source. */
 	async findBefore(
-		query: { userId: string; kind: MeasurementKind; before: Date },
+		query: { userId: string; kind: MeasurementKind; before: Date; source?: MeasurementSource },
 		tx?: Prisma.TransactionClient,
 	): Promise<MeasurementValue | null> {
 		const row = await this.measurementsRepository.findBefore(query, tx)

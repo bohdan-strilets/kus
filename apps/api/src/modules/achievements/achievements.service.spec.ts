@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import type { Achievement, Prisma } from '../../generated/prisma/client'
+import type { Achievement, MeasurementSource, Prisma } from '../../generated/prisma/client'
 import type { EntriesService } from '../entries/entries.service'
 import type { MeasurementsService } from '../measurements/measurements.service'
 import type { ProfileService } from '../profile/profile.service'
@@ -35,6 +35,7 @@ describe('AchievementsService.recordForTurn', () => {
 		findFirst: vi.fn<MeasurementsService['findFirst']>(),
 		findLatest: vi.fn<MeasurementsService['findLatest']>(),
 		findBefore: vi.fn<MeasurementsService['findBefore']>(),
+		findInRange: vi.fn<MeasurementsService['findInRange']>(),
 	}
 	const profile = { findWeightGoal: vi.fn<ProfileService['findWeightGoal']>() }
 	const service = new AchievementsService(
@@ -69,6 +70,7 @@ describe('AchievementsService.recordForTurn', () => {
 			paceKgPerWeek: null,
 		})
 		measurements.findBefore.mockResolvedValue(null)
+		measurements.findInRange.mockResolvedValue([])
 	})
 
 	describe('food streak', () => {
@@ -136,20 +138,32 @@ describe('AchievementsService.recordForTurn', () => {
 				tx,
 			)
 
-		const weigh = (value: number) => ({
+		const weigh = (
+			value: number,
+			{
+				localDate = '2026-10-12',
+				source = 'CHAT',
+			}: { localDate?: string; source?: MeasurementSource } = {},
+		) => ({
 			id: 'm',
 			kind: 'WEIGHT' as const,
 			value,
-			localDate: new Date('2026-10-12T00:00:00Z'),
+			localDate: new Date(`${localDate}T00:00:00Z`),
 			measuredAt: new Date(),
-			source: 'CHAT' as const,
+			source,
 			messageId: null,
 		})
+
+		/** The weights from the base to the current one, oldest first, one per day. */
+		const toChain = (...values: number[]) =>
+			values.map((value, index) =>
+				weigh(value, { localDate: `2026-10-${String(1 + index).padStart(2, '0')}` }),
+			)
 
 		it('writes the whole kilograms between the first and the latest weight', async () => {
 			measurements.findFirst.mockResolvedValue(weigh(84))
 			measurements.findLatest.mockResolvedValue(weigh(81.9))
-			measurements.findBefore.mockResolvedValue(weigh(84))
+			measurements.findInRange.mockResolvedValue(toChain(84, 81.9))
 
 			await recordWeight()
 
@@ -163,6 +177,7 @@ describe('AchievementsService.recordForTurn', () => {
 		it('writes nothing for a part of a kilogram', async () => {
 			measurements.findFirst.mockResolvedValue(weigh(84))
 			measurements.findLatest.mockResolvedValue(weigh(83.1))
+			measurements.findInRange.mockResolvedValue(toChain(84, 83.1))
 
 			await recordWeight()
 
@@ -179,6 +194,7 @@ describe('AchievementsService.recordForTurn', () => {
 				})
 				measurements.findFirst.mockResolvedValue(weigh(84))
 				measurements.findLatest.mockResolvedValue(weigh(80))
+				measurements.findInRange.mockResolvedValue(toChain(84, 80))
 
 				await recordWeight()
 
@@ -188,18 +204,22 @@ describe('AchievementsService.recordForTurn', () => {
 
 		describe('a big step from the previous weight', () => {
 			it('writes nothing for a step of more than 3 kg, of any age', async () => {
-				measurements.findFirst.mockResolvedValue(weigh(90))
+				const base = weigh(90, { localDate: '2026-01-01' })
+				measurements.findFirst.mockResolvedValue(base)
 				measurements.findLatest.mockResolvedValue(weigh(70))
-				measurements.findBefore.mockResolvedValue({
-					...weigh(90),
-					localDate: new Date('2026-01-01T00:00:00Z'),
-				})
+				measurements.findBefore.mockResolvedValue(base)
+				measurements.findInRange.mockResolvedValue([base, weigh(70)])
 
 				await recordWeight()
 
 				expect(repository.createMissing).not.toHaveBeenCalled()
 				expect(measurements.findBefore).toHaveBeenCalledWith(
-					{ userId: USER_ID, kind: 'WEIGHT', before: new Date('2026-10-12T00:00:00Z') },
+					{
+						userId: USER_ID,
+						kind: 'WEIGHT',
+						before: new Date('2026-10-12T00:00:00Z'),
+						source: 'CHAT',
+					},
 					tx,
 				)
 			})
@@ -207,7 +227,7 @@ describe('AchievementsService.recordForTurn', () => {
 			it('writes a kilogram for a step of 1.5 kg', async () => {
 				measurements.findFirst.mockResolvedValue(weigh(90))
 				measurements.findLatest.mockResolvedValue(weigh(88.5))
-				measurements.findBefore.mockResolvedValue(weigh(90))
+				measurements.findInRange.mockResolvedValue(toChain(90, 88.5))
 
 				await recordWeight()
 
@@ -217,7 +237,7 @@ describe('AchievementsService.recordForTurn', () => {
 			it('counts a step of exactly 3.0 kg', async () => {
 				measurements.findFirst.mockResolvedValue(weigh(90))
 				measurements.findLatest.mockResolvedValue(weigh(87))
-				measurements.findBefore.mockResolvedValue(weigh(90))
+				measurements.findInRange.mockResolvedValue(toChain(90, 87))
 
 				await recordWeight()
 
@@ -227,7 +247,7 @@ describe('AchievementsService.recordForTurn', () => {
 			it('skips a step of 3.1 kg', async () => {
 				measurements.findFirst.mockResolvedValue(weigh(90))
 				measurements.findLatest.mockResolvedValue(weigh(86.9))
-				measurements.findBefore.mockResolvedValue(weigh(90))
+				measurements.findInRange.mockResolvedValue(toChain(90, 86.9))
 
 				await recordWeight()
 
@@ -237,7 +257,7 @@ describe('AchievementsService.recordForTurn', () => {
 			it('never pays out the interval of a skipped jump: 70 then 69.5 writes nothing', async () => {
 				measurements.findFirst.mockResolvedValue(weigh(90))
 				measurements.findLatest.mockResolvedValue(weigh(69.5))
-				measurements.findBefore.mockResolvedValue(weigh(70))
+				measurements.findInRange.mockResolvedValue(toChain(90, 70, 69.5))
 
 				await recordWeight()
 
@@ -247,7 +267,7 @@ describe('AchievementsService.recordForTurn', () => {
 			it('writes only the threshold crossed after the jump: 69.5 then 68.9 gives 21', async () => {
 				measurements.findFirst.mockResolvedValue(weigh(90))
 				measurements.findLatest.mockResolvedValue(weigh(68.9))
-				measurements.findBefore.mockResolvedValue(weigh(69.5))
+				measurements.findInRange.mockResolvedValue(toChain(90, 70, 69.5, 68.9))
 
 				await recordWeight()
 
@@ -256,10 +276,13 @@ describe('AchievementsService.recordForTurn', () => {
 
 			it('writes nothing when the weight did not change or went up', async () => {
 				measurements.findFirst.mockResolvedValue(weigh(90))
-				measurements.findLatest.mockResolvedValue(weigh(88.5))
+				// the earlier 88.5 was a chat weight, so it is the base the chain starts from
 				measurements.findBefore.mockResolvedValue(weigh(88.5))
+				measurements.findLatest.mockResolvedValue(weigh(88.5))
+				measurements.findInRange.mockResolvedValue(toChain(88.5, 88.5))
 				await recordWeight()
 				measurements.findLatest.mockResolvedValue(weigh(89.5))
+				measurements.findInRange.mockResolvedValue(toChain(88.5, 89.5))
 				await recordWeight()
 
 				expect(repository.createMissing).not.toHaveBeenCalled()
@@ -268,6 +291,7 @@ describe('AchievementsService.recordForTurn', () => {
 			it('writes nothing for the first record: there is no previous weight', async () => {
 				measurements.findFirst.mockResolvedValue(weigh(90))
 				measurements.findLatest.mockResolvedValue(weigh(90))
+				measurements.findInRange.mockResolvedValue([weigh(90)])
 
 				await recordWeight()
 
@@ -283,11 +307,86 @@ describe('AchievementsService.recordForTurn', () => {
 			})
 			measurements.findFirst.mockResolvedValue(weigh(84))
 			measurements.findLatest.mockResolvedValue(weigh(83))
-			measurements.findBefore.mockResolvedValue(weigh(84))
+			measurements.findInRange.mockResolvedValue(toChain(84, 83))
 
 			await recordWeight()
 
 			expect(repository.createMissing.mock.calls[0]?.[0].values).toEqual([1])
+		})
+
+		describe('a weight from the profile', () => {
+			it('does nothing when the latest weight comes from the profile', async () => {
+				measurements.findFirst.mockResolvedValue(weigh(84))
+				measurements.findLatest.mockResolvedValue(weigh(82, { source: 'PROFILE' }))
+				measurements.findInRange.mockResolvedValue(toChain(84, 82))
+
+				await recordWeight()
+
+				expect(repository.createMissing).not.toHaveBeenCalled()
+				expect(repository.attachToMessage).not.toHaveBeenCalled()
+			})
+
+			it('reads the base among the chat weights and the chain from that day on', async () => {
+				const base = weigh(86, { localDate: '2026-10-05' })
+				measurements.findFirst.mockResolvedValue(weigh(90, { localDate: '2026-10-01' }))
+				measurements.findLatest.mockResolvedValue(weigh(84.9))
+				measurements.findBefore.mockResolvedValue(base)
+				measurements.findInRange.mockResolvedValue([
+					base,
+					weigh(85, { localDate: '2026-10-08', source: 'PROFILE' }),
+					weigh(84.9),
+				])
+
+				await recordWeight()
+
+				expect(measurements.findInRange).toHaveBeenCalledWith(
+					{
+						userId: USER_ID,
+						kind: 'WEIGHT',
+						from: new Date('2026-10-05T00:00:00Z'),
+						to: new Date('2026-10-12T00:00:00Z'),
+					},
+					tx,
+				)
+				expect(repository.createMissing.mock.calls[0]?.[0].values).toEqual([5])
+			})
+
+			it('starts the chain at the first weight when there is no earlier chat weight', async () => {
+				measurements.findFirst.mockResolvedValue(weigh(90, { localDate: '2026-10-03' }))
+				measurements.findLatest.mockResolvedValue(weigh(88.9))
+				measurements.findBefore.mockResolvedValue(null)
+				measurements.findInRange.mockResolvedValue([
+					weigh(90, { localDate: '2026-10-03' }),
+					weigh(88.9),
+				])
+
+				await recordWeight()
+
+				expect(measurements.findInRange.mock.calls[0]?.[0].from).toEqual(
+					new Date('2026-10-03T00:00:00Z'),
+				)
+				expect(repository.createMissing.mock.calls[0]?.[0].values).toEqual([1])
+			})
+
+			it('passes the userId into every weight query', async () => {
+				measurements.findFirst.mockResolvedValue(weigh(84))
+				measurements.findLatest.mockResolvedValue(weigh(83))
+				measurements.findBefore.mockResolvedValue(weigh(84, { localDate: '2026-10-05' }))
+				measurements.findInRange.mockResolvedValue(toChain(84, 83))
+
+				await recordWeight()
+
+				for (const query of [
+					measurements.findFirst,
+					measurements.findLatest,
+					measurements.findBefore,
+					measurements.findInRange,
+				]) {
+					expect(query).toHaveBeenCalledOnce()
+					expect(query.mock.calls[0]?.[0]).toMatchObject({ userId: USER_ID, kind: 'WEIGHT' })
+					expect(query.mock.calls[0]?.[1]).toBe(tx)
+				}
+			})
 		})
 	})
 
@@ -352,6 +451,7 @@ describe('AchievementsService.recordForTurn', () => {
 		})
 		measurements.findFirst.mockResolvedValue(weigh(80))
 		measurements.findLatest.mockResolvedValue(weigh(85))
+		measurements.findInRange.mockResolvedValue([weigh(80), weigh(85)])
 
 		await service.recordForTurn(
 			{

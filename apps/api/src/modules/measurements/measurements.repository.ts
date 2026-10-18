@@ -79,13 +79,18 @@ export class MeasurementsRepository {
 		})
 	}
 
-	/** The nearest day before `before`, the latest write within it. */
+	/** The nearest day before `before`, optionally of one source; the latest write within it. */
 	findBefore(
-		{ userId, kind, before }: { userId: string; kind: MeasurementKind; before: Date },
+		{
+			userId,
+			kind,
+			before,
+			source,
+		}: { userId: string; kind: MeasurementKind; before: Date; source?: MeasurementSource },
 		tx?: Prisma.TransactionClient,
 	): Promise<Measurement | null> {
 		return (tx ?? this.prisma).measurement.findFirst({
-			where: { userId, kind, localDate: { lt: before } },
+			where: { userId, kind, localDate: { lt: before }, ...(source ? { source } : {}) },
 			orderBy: [{ localDate: 'desc' }, { measuredAt: 'desc' }],
 		})
 	}

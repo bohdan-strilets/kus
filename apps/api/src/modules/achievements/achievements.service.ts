@@ -7,6 +7,7 @@ import {
 	AchievementType,
 	GoalType,
 	MeasurementKind,
+	MeasurementSource,
 	type Prisma,
 } from '../../generated/prisma/client'
 import { EntriesService } from '../entries/entries.service'
@@ -17,9 +18,9 @@ import { toAchievementResponse } from './achievements.mapper'
 import { AchievementsRepository } from './achievements.repository'
 import {
 	getFoodStreak,
+	getKgLostBaseline,
 	getKgThresholds,
 	getWholeKgLost,
-	isBigWeightStep,
 } from './achievements.utils'
 
 export interface TurnAchievementsParams {
@@ -112,15 +113,31 @@ export class AchievementsService {
 			this.measurementsService.findLatest({ userId, kind: MeasurementKind.WEIGHT }, tx),
 		])
 		if (!start || !current) return
-		// a huge step from the previous weight (of any age) is a typo or a wrong number, not progress
-		const previous = await this.measurementsService.findBefore(
-			{ userId, kind: MeasurementKind.WEIGHT, before: current.localDate },
+		// nothing is celebrated from the profile: such a weight joins the chain of the next chat record
+		if (current.source !== MeasurementSource.CHAT) return
+		const chatBase = await this.measurementsService.findBefore(
+			{
+				userId,
+				kind: MeasurementKind.WEIGHT,
+				before: current.localDate,
+				source: MeasurementSource.CHAT,
+			},
 			tx,
 		)
-		if (!previous) return
-		if (isBigWeightStep({ previousKg: previous.value, currentKg: current.value })) return
-		// only the kilograms this record crossed: a skipped jump is never paid out later
-		const lostBefore = getWholeKgLost({ startKg: start.value, currentKg: previous.value })
+		// a weight back-dated before the start is not in the chain: that only ever pays out less
+		const chain = await this.measurementsService.findInRange(
+			{
+				userId,
+				kind: MeasurementKind.WEIGHT,
+				from: chatBase?.localDate ?? start.localDate,
+				to: current.localDate,
+			},
+			tx,
+		)
+		// kg since the last chat-checked weight; a big step (a typo or a profile correction) is never paid out
+		const baseKg = getKgLostBaseline({ chainKg: chain.map((weight) => weight.value) })
+		if (baseKg === null) return
+		const lostBefore = getWholeKgLost({ startKg: start.value, currentKg: baseKg })
 		const lost = getWholeKgLost({ startKg: start.value, currentKg: current.value })
 		await this.award(
 			{

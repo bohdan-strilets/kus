@@ -1,11 +1,15 @@
 import { cva, type VariantProps } from 'class-variance-authority'
 
-/** Track: white 80% inside a macro tile (today), `track` on a plain card (docs MacroBar). */
+/**
+ * Track: white 80% inside a macro tile (today), `track` on a plain card (docs MacroBar),
+ * primary 25% on the peach user bubble (upload progress), where `track` and white vanish.
+ */
 export const progressTrackVariants = cva('h-1.25 overflow-hidden rounded-full', {
 	variants: {
 		track: {
 			white: 'bg-white/80',
 			track: 'bg-track',
+			onBubble: 'bg-primary/25',
 		},
 	},
 	defaultVariants: { track: 'track' },

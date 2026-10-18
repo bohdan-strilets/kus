@@ -47,6 +47,7 @@ export const UserMessage = ({ item }: { item: UserFeedItem }) => {
 				<ProgressBar
 					value={uploadProgress}
 					max={1}
+					track="onBubble"
 					label={t('chat.uploadProgress')}
 					className="mx-2 mt-1.5 mb-1"
 				/>

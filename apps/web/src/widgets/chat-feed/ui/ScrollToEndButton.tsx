@@ -28,7 +28,8 @@ export const ScrollToEndButton = ({ isShown, onPress }: ScrollToEndButtonProps) 
 						label={t('chat.scrollToEnd')}
 						onClick={onPress}
 						onMouseDown={keepFieldFocus}
-						className="shadow-card"
+						// chat-scroll-to-end: 2px primary outline, 3px offset
+						className="shadow-card focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-primary"
 					>
 						<Icon name="chevron-down" size={ICON_SIZE.control} />
 					</IconButton>

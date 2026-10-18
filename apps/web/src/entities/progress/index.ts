@@ -1,6 +1,6 @@
 export { getProgress } from './api/get-progress'
 export { buildInsight, getInsightKeys, type InsightPart } from './lib/build-insight'
-export { PROGRESS_QUERY_KEY, progressQueryOptions } from './model/progress-query'
+export { PROGRESS_QUERY_KEY } from './model/progress-query'
 export type { ProgressRange } from './model/progress.types'
 export { useProgress } from './model/use-progress'
 export { InsightCard, type InsightCardProps } from './ui/insight-card/InsightCard'

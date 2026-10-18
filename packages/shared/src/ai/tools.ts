@@ -254,7 +254,7 @@ export const showDayInputSchema = z.object({
 		.default(null)
 		.describe('YYYY-MM-DD from "Days"; null for today. Any earlier day or tomorrow'),
 	reply: replyTextSchema.describe(
-		'One short sentence in the language of the user next to the card. No totals — the card shows them',
+		'One short sentence in the language of the user next to the card. Numbers only from the context, never added up; often none — the card shows the totals.',
 	),
 })
 

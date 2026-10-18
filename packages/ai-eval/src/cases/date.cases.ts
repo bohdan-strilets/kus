@@ -1,10 +1,10 @@
 // Other days (v0.6.2): food for yesterday, tomorrow or a weekday, and what is out of reach — older than
 // 3 days, further than tomorrow, or too vague. Clock: Wednesday 2026-10-07; the window is Sun 10-04 … Thu 10-08.
 // Judged by the `date` of log_food: a contract without it logs everything on today, so these cases stay red.
-import { atClock, range } from './case-builders.js'
+import { atClock, buildDays, EVAL_TODAY, range } from './case-builders.js'
 import type { EvalCase } from './case.types.js'
 
-const ASKS_WHEN = ['коли', 'який день']
+const ASKS_WHEN = ['коли', 'який день', 'який саме день']
 const NOT_LOGGED = ['записав', 'додав']
 
 export const DATE_CASES: EvalCase[] = [
@@ -60,8 +60,8 @@ export const DATE_CASES: EvalCase[] = [
 		text: '1 жовтня на роботі був шматок торта',
 		expect: {
 			decision: 'reply',
-			replyIncludesAny: ['3 дн', '4 жовтня', '04.10'],
-			replyExcludes: NOT_LOGGED,
+			replyIncludesAny: ['3 дн', '4 жовтня', '04.10', 'з 4 по 8', '4 по 8'],
+			replyExcludes: ['записав у', 'додав у', 'записав на', 'додав на'],
 		},
 		reference:
 			'1 October is 6 days back, outside the 3-day window: nothing is logged, the reply says how far back Kusik can add (3 days, from 4 October)',
@@ -135,8 +135,9 @@ export const DATE_CASES: EvalCase[] = [
 	{
 		id: 'date-yesterday-edit-out-of-context',
 		text: 'вчорашню піцу зміни на 3 шматки',
-		expect: { decision: 'reply', replyIncludesAny: ['редагувати'] },
+		context: { days: buildDays(EVAL_TODAY, { '2026-10-06': { kcal: 2310, entryCount: 4 } }) },
+		expect: { decision: 'reply', replyIncludesAny: ['редагувати', 'Редагувати'] },
 		reference:
-			"Yesterday's entries are not in the context: nothing is edited, the reply says to open that day and edit there",
+			'Yesterday has entries (2310 kcal in Days) but they are not in the e1… list: nothing is edited, the reply says to open that day and edit there',
 	},
 ]

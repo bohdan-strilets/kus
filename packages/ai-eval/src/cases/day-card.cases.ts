@@ -45,6 +45,7 @@ export const DAY_CARD_CASES: EvalCase[] = [
 	{
 		id: 'day-card-yesterday',
 		text: 'а що було вчора?',
+		context: { days: buildDays(EVAL_TODAY, { '2026-10-06': { kcal: 2310, entryCount: 4 } }) },
 		expect: { decision: 'day_card', dayCard: { date: '2026-10-06' } },
 		reference: "Yesterday is in the window → the card of 2026-10-06, the numbers are the backend's",
 	},

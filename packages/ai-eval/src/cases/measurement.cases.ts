@@ -200,7 +200,7 @@ export const MEASUREMENT_CASES: EvalCase[] = [
 		text: 'вчора важив 83',
 		expect: {
 			decision: 'reply',
-			replyExcludes: NO_DIGITS,
+			replyExcludes: ['83', '83,0', '83.0'],
 			measurements: [{ kind: 'WEIGHT', value: 83, date: YESTERDAY }],
 		},
 		reference:

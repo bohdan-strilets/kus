@@ -43,7 +43,7 @@ export const ChatPartsSection = () => {
 					{t('devUi.seed.userLunchFailed')}
 				</MessageBubble>
 				<KusikRow kind="error">
-					<MessageBubble tone="error">
+					<MessageBubble>
 						<Text>{t('devUi.seed.kusikError')}</Text>
 						<Button
 							size="md"

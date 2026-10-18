@@ -48,7 +48,6 @@ export const UserMessage = ({ item }: { item: UserFeedItem }) => {
 					value={uploadProgress}
 					max={1}
 					label={t('chat.uploadProgress')}
-					track="white"
 					className="mx-2 mt-1.5 mb-1"
 				/>
 			)}

@@ -22,7 +22,7 @@ export const SendFailure = ({ error, retry, dismiss, onRetry, onDismiss }: SendF
 
 	return (
 		<KusikRow kind="error">
-			<MessageBubble tone="error">
+			<MessageBubble>
 				<Text>{t(error.messageKey)}</Text>
 				{dismiss && (
 					<Button

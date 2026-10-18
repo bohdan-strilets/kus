@@ -36,7 +36,7 @@ export const ChatMotionDemos = () => {
 					variants={bubbleVariants}
 					initial="hidden"
 					animate="visible"
-					className="self-end rounded-bubble rounded-br-tail bg-primary px-4 py-2.5 text-white shadow-accent"
+					className="self-end rounded-bubble rounded-br-tail bg-primary-soft px-4 py-2.5 text-ink"
 				>
 					{t('devUi.demo.bubbleText')}
 				</motion.div>

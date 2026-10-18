@@ -17,7 +17,6 @@ export type MessageBubbleProps = MessageBubbleVariantProps & {
 /** A chat bubble. Place Kusik's inside KusikRow so the head sits next to it. */
 export const MessageBubble = ({
 	author = 'kusik',
-	tone,
 	isFailed = false,
 	className,
 	children,
@@ -26,7 +25,7 @@ export const MessageBubble = ({
 	const bubble = (
 		<div
 			className={cn(
-				messageBubbleVariants({ author, tone }),
+				messageBubbleVariants({ author }),
 				isFailed && 'max-w-full opacity-75',
 				author === 'user' && !isFailed && 'self-end',
 				className,

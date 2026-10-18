@@ -5,7 +5,7 @@ import { Link } from 'react-router'
 
 import { ROUTES } from '@/shared/config'
 import { cn, formatDayMonthShort, toCalendarDate, TRANSITION } from '@/shared/lib'
-import { Sparkline, Surface, Text } from '@/shared/ui'
+import { Button, Sparkline, Surface, Text } from '@/shared/ui'
 
 import {
 	formatMeasurement,
@@ -28,6 +28,8 @@ export interface WeightCardProps {
 	isFresh?: boolean
 	/** The entrance is over: the card is no longer «fresh». */
 	onEntered?: () => void
+	/** «Редагувати»; the editor lives in a feature, so the page above passes it down. Without it there is no button. */
+	onEdit?: () => void
 }
 
 /**
@@ -42,6 +44,7 @@ export const WeightCard = ({
 	hasTail = true,
 	isFresh = false,
 	onEntered,
+	onEdit,
 }: WeightCardProps) => {
 	const { t } = useTranslation()
 	const { kind, chart } = card
@@ -91,6 +94,12 @@ export const WeightCard = ({
 				<div className="flex items-center justify-between">
 					<Text as="span" variant="cardTitle">
 						{t(`measurement.title.${kind}`)}
+						{card.source === 'EDIT' && (
+							<Text as="span" variant="cardTitle" weight="medium" tone="muted">
+								{' '}
+								· {t('measurement.edited')}
+							</Text>
+						)}
 					</Text>
 					<span className="rounded-badge bg-success-soft px-2.5 py-1 text-card-title font-extrabold text-success-ink tabular-nums">
 						{formatMeasurement(card.value, kind, t)}
@@ -149,14 +158,21 @@ export const WeightCard = ({
 
 				{sentence && <Text>{sentence}</Text>}
 
-				<Link
-					to={ROUTES.progress}
-					className="relative self-start rounded-tile-sm after:absolute after:inset-x-0 after:-inset-y-3.5"
-				>
-					<Text as="span" variant="cardTitle" tone="primary">
-						{t('measurement.openProgress')}
-					</Text>
-				</Link>
+				<div className="flex items-center justify-between gap-3">
+					<Link
+						to={ROUTES.progress}
+						className="relative rounded-tile-sm after:absolute after:inset-x-0 after:-inset-y-3.5"
+					>
+						<Text as="span" variant="cardTitle" tone="primary">
+							{t('measurement.openProgress')}
+						</Text>
+					</Link>
+					{onEdit && (
+						<Button variant="secondary" size="sm" onClick={onEdit}>
+							{t('measurement.edit')}
+						</Button>
+					)}
+				</div>
 			</Surface>
 		</motion.div>
 	)

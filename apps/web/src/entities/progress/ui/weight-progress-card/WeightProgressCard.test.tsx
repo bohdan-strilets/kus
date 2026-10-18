@@ -84,3 +84,70 @@ describe('WeightProgressCard chart marks', () => {
 		expect(container.querySelector('[data-sparkline-end-dot]')).toBeTruthy()
 	})
 })
+
+describe('WeightProgressCard start row', () => {
+	const points = [
+		{ localDate: '2026-08-28', value: 85 },
+		{ localDate: TODAY, value: 82.4 },
+	]
+
+	it('shows the start with its date and the change from it', () => {
+		render(
+			<WeightProgressCard
+				weight={{
+					...createWeight(points),
+					start: { value: 85, localDate: '2026-08-28' },
+					fromStart: -2.6,
+				}}
+				range={7}
+				today={TODAY}
+			/>,
+		)
+
+		expect(screen.getByText('85,0 кг')).toBeTruthy()
+		expect(screen.getByText(/· 28 серп/)).toBeTruthy()
+		const delta = screen.getByText('−2,6 кг')
+		expect(delta.className).toContain('text-success-ink')
+	})
+
+	it('keeps the success tone for a gain too', () => {
+		render(
+			<WeightProgressCard
+				weight={{
+					...createWeight(points),
+					start: { value: 70, localDate: '2026-08-28' },
+					fromStart: 12.4,
+				}}
+				range={7}
+				today={TODAY}
+			/>,
+		)
+
+		expect(screen.getByText('+12,4 кг').className).toContain('text-success-ink')
+	})
+
+	it('has no row without a start', () => {
+		render(<WeightProgressCard weight={createWeight(points)} range={7} today={TODAY} />)
+
+		expect(screen.queryByText('Старт')).toBeNull()
+		expect(screen.queryByText(/від старту/)).toBeNull()
+	})
+
+	it('start equal to the current weight: only «Старт … · сьогодні»', () => {
+		render(
+			<WeightProgressCard
+				weight={{
+					...createWeight([{ localDate: TODAY, value: 82.4 }]),
+					start: { value: 82.4, localDate: TODAY },
+					fromStart: null,
+				}}
+				range={7}
+				today={TODAY}
+			/>,
+		)
+
+		expect(screen.getAllByText('82,4 кг').length).toBeGreaterThan(0)
+		expect(screen.queryByText(/від старту/)).toBeNull()
+		expect(screen.getAllByText(/сьогодні/).length).toBeGreaterThan(1)
+	})
+})

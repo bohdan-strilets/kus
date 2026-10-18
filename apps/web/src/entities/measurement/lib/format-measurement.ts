@@ -30,3 +30,10 @@ export const formatTargetWeight = (value: number, t: TFunction): string =>
 			? formatInteger(value)
 			: formatDecimal(value, 1),
 	})
+
+/** «30 кг», «200 см» — a bound of the allowed range, whole. */
+export const formatMeasurementLimit = (
+	value: number,
+	kind: MeasurementKind,
+	t: TFunction,
+): string => t(UNIT_KEY[kind], { value: formatInteger(value) })

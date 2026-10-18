@@ -4,6 +4,7 @@ import { useLocalToday } from '@/entities/day'
 import { useSessionUser } from '@/entities/session'
 import type { Addressee } from '@/entities/user'
 import { EditEntrySheet } from '@/features/edit-entry'
+import { EditMeasurementSheet } from '@/features/edit-measurement'
 import {
 	Composer,
 	QuickChips,
@@ -101,6 +102,7 @@ const ChatScreen = ({ addressee, timeZone }: { addressee: Addressee; timeZone: s
 				/>
 			</div>
 			<EditEntrySheet />
+			<EditMeasurementSheet />
 		</div>
 	)
 }

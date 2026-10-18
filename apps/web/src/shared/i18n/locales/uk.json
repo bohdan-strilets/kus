@@ -73,6 +73,7 @@
 			"CLARIFICATION_NOT_APPLICABLE": "Цю відповідь уже не застосувати — напиши уточнення в чат.",
 			"ENTRY_CHANGED": "Запис щойно змінився в іншому вікні. Спробуй ще раз.",
 			"ENTRY_NOT_FOUND": "Цього запису вже немає. Онови екран.",
+			"MEASUREMENT_NOT_FOUND": "Цього заміру вже немає. Онови екран.",
 			"PASSWORD_INCORRECT": "Неправильний пароль.",
 			"PASSWORD_SAME": "Новий пароль має відрізнятися від поточного.",
 			"ACCOUNT_PENDING_DELETION": "Акаунт чекає на видалення. Віднови його, щоб продовжити.",
@@ -558,6 +559,9 @@
 		"toGoal": "До цілі",
 		"goalReached": "Ціль досягнута",
 		"openProgress": "Відкрити прогрес",
+		"edit": "Редагувати",
+		"edited": "змінено",
+		"deleted": "Замір {{value}} за {{date}} видалено.",
 		"pace": {
 			"steady": {
 				"WEIGHT": "За тиждень вага майже без змін.",
@@ -593,7 +597,9 @@
 			"unit": "кг",
 			"target": "ціль {{target}}",
 			"targetLeft": "ціль {{target}} · до цілі {{left}}",
-			"chartLabel": "Вага за {{days}} днів: від {{from}} до {{to}}"
+			"chartLabel": "Вага за {{days}} днів: від {{from}} до {{to}}",
+			"start": "Старт",
+			"fromStart": "від старту"
 		},
 		"weightCta": {
 			"text": "Запиши вагу, і тут з'явиться графік.",
@@ -674,6 +680,31 @@
 		"foodStreak_one": "{{value}} день поспіль із записами",
 		"foodStreak_few": "{{value}} дні поспіль із записами",
 		"foodStreak_many": "{{value}} днів поспіль із записами"
+	},
+	"editMeasurement": {
+		"title": {
+			"WEIGHT": "Вага",
+			"WAIST": "Талія"
+		},
+		"unit": {
+			"WEIGHT": "кг",
+			"WAIST": "см"
+		},
+		"subtitle": "{{date}} · {{time}}",
+		"save": "Зберегти",
+		"saving": "Зберігаю…",
+		"delete": "Видалити замір",
+		"deleted": "Замір видалено",
+		"restore": "Повернути",
+		"saveError": "Не вдалося зберегти замір. Спробуй ще раз.",
+		"deleteError": "Не вдалося видалити замір. Спробуй ще раз.",
+		"restoreError": "Не вдалося повернути замір. Спробуй ще раз.",
+		"validation": {
+			"required": "Вкажи число",
+			"number": "Лише число, наприклад 82,4",
+			"tooSmall": "Не менше {{min}}",
+			"tooLarge": "Не більше {{max}}"
+		}
 	},
 	"editEntry": {
 		"subtitle": "{{meal}} · {{time}}",

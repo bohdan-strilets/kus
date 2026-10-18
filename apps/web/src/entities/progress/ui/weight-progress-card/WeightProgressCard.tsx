@@ -11,6 +11,7 @@ import { formatDayMonthShort, toCalendarDate } from '@/shared/lib'
 import { Sparkline, Surface, Text } from '@/shared/ui'
 
 import type { ProgressRange } from '../../model/progress.types'
+import { WeightStartRow } from './WeightStartRow'
 
 export interface WeightProgressCardProps {
 	weight: ProgressWeight
@@ -26,7 +27,7 @@ export interface WeightProgressCardProps {
  */
 export const WeightProgressCard = ({ weight, range, today }: WeightProgressCardProps) => {
 	const { t } = useTranslation()
-	const { current, changeInRange, points, target, toGoal, isGoalReached } = weight
+	const { current, changeInRange, points, target, toGoal, isGoalReached, start, fromStart } = weight
 	const first = points[0]
 	const last = points[points.length - 1]
 	const hasPoints = first !== undefined && last !== undefined
@@ -109,6 +110,8 @@ export const WeightProgressCard = ({ weight, range, today }: WeightProgressCardP
 					{t('progress.noWeighIns')}
 				</Text>
 			)}
+
+			{start && <WeightStartRow start={start} fromStart={fromStart} today={today} />}
 		</Surface>
 	)
 }

@@ -71,7 +71,9 @@ describe('ProgressPage', () => {
 		renderPage()
 
 		expect(await screen.findAllByText('82,4')).not.toHaveLength(0)
-		expect(screen.getByText('−1,6 кг')).toBeTruthy()
+		// the period badge and the start row (84,0 → 82,4) say the same here
+		expect(screen.getAllByText('−1,6 кг')).toHaveLength(2)
+		expect(screen.getByText(/· 13 вер/)).toBeTruthy()
 		expect(screen.getByText('ціль 78 кг · до цілі 4,4 кг')).toBeTruthy()
 		expect(screen.getByText('Середнє')).toBeTruthy()
 		expect(screen.getByText('2 195 ккал')).toBeTruthy()
@@ -106,7 +108,13 @@ describe('ProgressPage', () => {
 		const base = makeProgress()
 		showsProgress(
 			makeProgress({
-				weight: base.weight && { ...base.weight, points: [], changeInRange: null },
+				weight: base.weight && {
+					...base.weight,
+					points: [],
+					changeInRange: null,
+					start: null,
+					fromStart: null,
+				},
 			}),
 		)
 

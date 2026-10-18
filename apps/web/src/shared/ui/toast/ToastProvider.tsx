@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 
 import { TRANSITION } from '@/shared/lib'
 
+import { Button } from '../button'
 import { MAX_VISIBLE_TOASTS, TOAST_DURATION_MS, TOAST_ENTER_OFFSET_PX } from './toast.constants'
 import { type ToastApi, ToastContext } from './toast.context'
 import type { ToastItem } from './toast.types'
@@ -21,9 +22,9 @@ export const ToastProvider = ({ children }: { children: ReactNode }) => {
 
 	const api = useMemo<ToastApi>(
 		() => ({
-			show: (message) => {
+			show: (message, options) => {
 				nextId.current += 1
-				const toast = { id: nextId.current, message }
+				const toast: ToastItem = { id: nextId.current, message, action: options?.action }
 				setToasts((current) => [...current, toast].slice(-MAX_VISIBLE_TOASTS))
 			},
 		}),
@@ -57,11 +58,18 @@ export const ToastProvider = ({ children }: { children: ReactNode }) => {
 								initial={{ opacity: 0, y: TOAST_ENTER_OFFSET_PX }}
 								animate={{ opacity: 1, y: 0, transition: TRANSITION.base }}
 								exit={{ opacity: 0, transition: TRANSITION.exit }}
-								className="pointer-events-auto rounded-chip bg-surface px-4 py-3 shadow-chip"
+								className="pointer-events-auto flex items-center justify-between gap-3 rounded-chip bg-surface px-4 py-3 shadow-chip"
 							>
 								<RadixToast.Description className="text-card-title font-semibold text-ink">
 									{toast.message}
 								</RadixToast.Description>
+								{toast.action && (
+									<RadixToast.Action asChild altText={toast.action.label}>
+										<Button variant="secondary" size="sm" onClick={toast.action.onClick}>
+											{toast.action.label}
+										</Button>
+									</RadixToast.Action>
+								)}
 							</motion.li>
 						</RadixToast.Root>
 					))}

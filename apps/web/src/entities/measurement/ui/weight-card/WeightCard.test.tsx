@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 import type { MeasurementCard } from '@kus/shared'
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import '@/shared/i18n'
 
@@ -142,5 +142,36 @@ describe('WeightCard', () => {
 
 		expect(screen.queryByText('сьогодні')).toBeNull()
 		expect(screen.getByText('3 жовт')).toBeTruthy()
+	})
+
+	it('has no «Редагувати» without a handler', () => {
+		renderCard(createCard())
+
+		expect(screen.queryByRole('button', { name: 'Редагувати' })).toBeNull()
+	})
+
+	it('«Редагувати» calls the handler the page passed down', () => {
+		const onEdit = vi.fn()
+		render(
+			<MemoryRouter>
+				<WeightCard card={createCard()} today={TODAY} onEdit={onEdit} />
+			</MemoryRouter>,
+		)
+
+		fireEvent.click(screen.getByRole('button', { name: 'Редагувати' }))
+
+		expect(onEdit).toHaveBeenCalledTimes(1)
+	})
+
+	it('marks a corrected value with «· змінено» next to the title', () => {
+		renderCard(createCard({ source: 'EDIT' }))
+
+		expect(screen.getByText(/· змінено/)).toBeTruthy()
+	})
+
+	it('has no mark for a value from the chat', () => {
+		renderCard(createCard({ source: 'CHAT' }))
+
+		expect(screen.queryByText(/змінено/)).toBeNull()
 	})
 })

@@ -73,4 +73,10 @@ export { Surface, type SurfaceProps } from './surface'
 export { Switch, type SwitchProps } from './switch'
 export { Text, type TextProps } from './text'
 export { Textarea, type TextareaProps } from './textarea'
-export { type ToastApi, ToastProvider, useToast } from './toast'
+export {
+	type ToastAction,
+	type ToastApi,
+	type ToastOptions,
+	ToastProvider,
+	useToast,
+} from './toast'

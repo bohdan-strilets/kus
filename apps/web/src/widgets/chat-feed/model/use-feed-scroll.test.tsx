@@ -42,11 +42,11 @@ interface Metrics {
 
 const metrics: Metrics = { scrollHeight: 0, clientHeight: 0, scrollTop: 0 }
 
-const Harness = () => {
+const Harness = ({ scrollToEndRequest = 0 }: { scrollToEndRequest?: number }) => {
 	const { scrollRef, contentRef } = useFeedScroll({
 		items,
 		onCompactChange: () => undefined,
-		isPinnedToEnd: false,
+		scrollToEndRequest,
 	})
 	return (
 		<div data-testid="container" ref={scrollRef}>
@@ -80,7 +80,13 @@ const distanceFromBottom = (): number =>
 
 const renderFeed = () => {
 	const view = render(<Harness />)
-	return { container: view.getByTestId('container'), content: view.getByTestId('content') }
+	return {
+		container: view.getByTestId('container'),
+		content: view.getByTestId('content'),
+		request: (scrollToEndRequest: number): void => {
+			view.rerender(<Harness scrollToEndRequest={scrollToEndRequest} />)
+		},
+	}
 }
 
 const scrollTo = (container: HTMLElement, distance: number): void => {
@@ -156,6 +162,60 @@ describe('useFeedScroll', () => {
 
 		metrics.scrollHeight += 300
 		resize(content)
+
+		expect(metrics.scrollTop).toBe(before)
+	})
+})
+
+describe('useFeedScroll scrollToEndRequest', () => {
+	it('jumps to the end when the counter grows while scrolled up', () => {
+		const { container, request } = renderFeed()
+		scrollTo(container, FAR_FROM_BOTTOM_PX)
+
+		request(1)
+
+		expect(distanceFromBottom()).toBe(0)
+	})
+
+	it('jumps again on every next request, even though nothing else changed', () => {
+		const { container, request } = renderFeed()
+		scrollTo(container, FAR_FROM_BOTTOM_PX)
+		request(1)
+		scrollTo(container, FAR_FROM_BOTTOM_PX)
+
+		request(2)
+
+		expect(distanceFromBottom()).toBe(0)
+	})
+
+	it('counts as «at the bottom» afterwards: growing content keeps the end', () => {
+		const { container, content, request } = renderFeed()
+		scrollTo(container, FAR_FROM_BOTTOM_PX)
+		request(1)
+
+		metrics.scrollHeight += 300
+		resize(content)
+
+		expect(distanceFromBottom()).toBe(0)
+	})
+
+	it('does not scroll while the counter stays the same', () => {
+		const { container, request } = renderFeed()
+		scrollTo(container, FAR_FROM_BOTTOM_PX)
+		const before = metrics.scrollTop
+
+		request(0)
+
+		expect(metrics.scrollTop).toBe(before)
+	})
+
+	it('does not scroll again on a rerender with the same non-zero counter', () => {
+		const { container, request } = renderFeed()
+		request(1)
+		scrollTo(container, FAR_FROM_BOTTOM_PX)
+		const before = metrics.scrollTop
+
+		request(1)
 
 		expect(metrics.scrollTop).toBe(before)
 	})

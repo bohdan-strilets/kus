@@ -41,6 +41,12 @@ const ChatScreen = ({ addressee, timeZone }: { addressee: Addressee; timeZone: s
 	const clearText = useComposerDraftStore((state) => state.clear)
 	const isFocusRequested = useComposerDraftStore((state) => state.isFocusRequested)
 	const resolveFocus = useComposerDraftStore((state) => state.resolveFocus)
+	const scrollToEndRequest = useComposerDraftStore((state) => state.scrollToEndRequest)
+	const requestScrollToEnd = useComposerDraftStore((state) => state.requestScrollToEnd)
+	const handleFocusChange = (isFocused: boolean): void => {
+		header.onComposerFocusChange(isFocused)
+		if (isFocused) requestScrollToEnd()
+	}
 	const photoDraft = usePhotoDraftStore()
 	const isPhotoBlocked = useIsPhotoBlocked()
 	const { send } = useSendMessage()
@@ -65,14 +71,15 @@ const ChatScreen = ({ addressee, timeZone }: { addressee: Addressee; timeZone: s
 				timeZone={timeZone}
 				today={today}
 				onCompactChange={header.onScrolledUpChange}
-				isComposerFocused={header.isComposerFocused}
+				scrollToEndRequest={scrollToEndRequest}
 			/>
 			<div className="px-gutter pb-2.5">
 				<QuickChips isShown={hasQuickChips} />
 				<Composer
 					value={text}
 					onValueChange={setText}
-					onFocusChange={header.onComposerFocusChange}
+					onFocusChange={handleFocusChange}
+					onFieldPress={requestScrollToEnd}
 					onSubmit={() => {
 						send({ text, photo: photoDraft.photo })
 						clearText()

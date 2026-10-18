@@ -163,6 +163,52 @@ describe('Composer buttons keep the field focused (iOS keyboard stays up)', () =
 	})
 })
 
+describe('Composer onFieldPress', () => {
+	it('is called by a click on the field that is focused already', async () => {
+		const user = userEvent.setup()
+		const onFieldPress = vi.fn()
+		renderWithProviders(
+			<Composer
+				value=""
+				onValueChange={() => undefined}
+				onSubmit={() => undefined}
+				onFieldPress={onFieldPress}
+			/>,
+		)
+		getField().focus()
+
+		await user.click(getField())
+
+		expect(onFieldPress).toHaveBeenCalled()
+	})
+
+	it('is not called by a tap on a button', async () => {
+		const user = userEvent.setup()
+		const onFieldPress = vi.fn()
+		renderWithProviders(
+			<Composer
+				value={TEXT}
+				onValueChange={() => undefined}
+				onSubmit={() => undefined}
+				onFieldPress={onFieldPress}
+			/>,
+		)
+
+		await user.click(screen.getByRole('button', { name: 'Додати фото їжі' }))
+
+		expect(onFieldPress).not.toHaveBeenCalled()
+	})
+
+	it('is optional: a click on the field without it does not throw', async () => {
+		const user = userEvent.setup()
+		renderComposer()
+
+		await user.click(getField())
+
+		expect(document.activeElement).toBe(getField())
+	})
+})
+
 describe('the «прибрати фото» button keeps the field focused', () => {
 	const photo: ComposerPhotoState = {
 		status: 'ready',

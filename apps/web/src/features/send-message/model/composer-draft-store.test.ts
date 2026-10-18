@@ -66,6 +66,57 @@ describe('composer draft', () => {
 		expect(useComposerDraftStore.getState().text).toBe('')
 	})
 
+	describe('scroll-to-end requests', () => {
+		beforeEach(() => {
+			useComposerDraftStore.setState({ scrollToEndRequest: 0, isFocusRequested: false })
+		})
+
+		it('starts at 0', () => {
+			expect(useComposerDraftStore.getState().scrollToEndRequest).toBe(0)
+		})
+
+		it('requestScrollToEnd adds one each time', () => {
+			const { requestScrollToEnd } = useComposerDraftStore.getState()
+			requestScrollToEnd()
+			requestScrollToEnd()
+
+			expect(useComposerDraftStore.getState().scrollToEndRequest).toBe(2)
+		})
+
+		it('requestFocus also asks to scroll to the end', () => {
+			useComposerDraftStore.getState().requestFocus()
+
+			expect(useComposerDraftStore.getState().scrollToEndRequest).toBe(1)
+			expect(useComposerDraftStore.getState().isFocusRequested).toBe(true)
+		})
+
+		it('a second requestFocus asks again', () => {
+			const { requestFocus } = useComposerDraftStore.getState()
+			requestFocus()
+			requestFocus()
+
+			expect(useComposerDraftStore.getState().scrollToEndRequest).toBe(2)
+		})
+
+		it('other actions leave the counter alone', () => {
+			const { setText, clear, claim, resolveFocus } = useComposerDraftStore.getState()
+			setText('суп')
+			clear()
+			claim(OWNER_ID)
+			claim(OTHER_ID)
+			resolveFocus()
+
+			expect(useComposerDraftStore.getState().scrollToEndRequest).toBe(0)
+		})
+
+		it('is not persisted', () => {
+			useComposerDraftStore.getState().requestScrollToEnd()
+			useComposerDraftStore.getState().setText('x')
+
+			expect(JSON.stringify(readStored())).not.toContain('scrollToEndRequest')
+		})
+	})
+
 	it('restores only a well-formed draft with an owner', () => {
 		expect(restoreComposerDraft({ ownerId: OWNER_ID, text: 'суп' })).toEqual({
 			ownerId: OWNER_ID,

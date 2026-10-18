@@ -24,8 +24,11 @@ interface Snapshot {
 interface FeedScrollOptions {
 	items: readonly FeedItem[]
 	onCompactChange: (isCompact: boolean) => void
-	/** The composer took focus: jump to the newest message and stay there while the keyboard opens. */
-	isPinnedToEnd: boolean
+	/**
+	 * Grows on every ask to show the newest message (the field was tapped or focused, a chip was
+	 * tapped): jump to the end and stay there while the keyboard opens.
+	 */
+	scrollToEndRequest: number
 }
 
 interface FeedScroll {
@@ -44,7 +47,7 @@ const getDistanceFromBottom = (element: HTMLElement): number =>
 export const useFeedScroll = ({
 	items,
 	onCompactChange,
-	isPinnedToEnd,
+	scrollToEndRequest,
 }: FeedScrollOptions): FeedScroll => {
 	const scrollRef = useRef<HTMLDivElement>(null)
 	const contentRef = useRef<HTMLDivElement>(null)
@@ -77,10 +80,10 @@ export const useFeedScroll = ({
 	// the keyboard then shrinks the feed: keepBottom below holds the end while it does
 	useLayoutEffect(() => {
 		const element = scrollRef.current
-		if (!isPinnedToEnd || !element) return
+		if (scrollToEndRequest === 0 || !element) return
 		element.scrollTop = element.scrollHeight
 		isAtBottom.current = true
-	}, [isPinnedToEnd])
+	}, [scrollToEndRequest])
 
 	useEffect(() => {
 		const element = scrollRef.current

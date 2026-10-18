@@ -9,11 +9,14 @@ interface ComposerDraftState {
 	text: string
 	/** Something asked the field for focus (not persisted): the chat takes it once it is on screen. */
 	isFocusRequested: boolean
+	/** Grows on every ask for the feed to show its end (not persisted); the feed reacts to a change. */
+	scrollToEndRequest: number
 	/** The signed-in user (null after logout); a different one drops the previous one's text. */
 	claim: (userId: string | null) => void
 	setText: (text: string) => void
 	clear: () => void
 	requestFocus: () => void
+	requestScrollToEnd: () => void
 	resolveFocus: () => void
 }
 
@@ -41,6 +44,7 @@ export const useComposerDraftStore = create<ComposerDraftState>()(
 			ownerId: null,
 			text: '',
 			isFocusRequested: false,
+			scrollToEndRequest: 0,
 			claim: (userId) => {
 				set((state) => (state.ownerId === userId ? state : { ownerId: userId, text: '' }))
 			},
@@ -50,8 +54,15 @@ export const useComposerDraftStore = create<ComposerDraftState>()(
 			clear: () => {
 				set({ text: '' })
 			},
+			// a chip taps without changing focus when the field has it already: the feed still has to follow
 			requestFocus: () => {
-				set({ isFocusRequested: true })
+				set((state) => ({
+					isFocusRequested: true,
+					scrollToEndRequest: state.scrollToEndRequest + 1,
+				}))
+			},
+			requestScrollToEnd: () => {
+				set((state) => ({ scrollToEndRequest: state.scrollToEndRequest + 1 }))
 			},
 			resolveFocus: () => {
 				set({ isFocusRequested: false })

@@ -61,6 +61,28 @@ describe('QuickChips', () => {
 	})
 })
 
+describe('QuickChips ask the chat to scroll to the end', () => {
+	it.each(['Додати вагу', 'Додати талію'] as const)(
+		'a tap on «%s» bumps scrollToEndRequest, also when the field is focused already',
+		(name) => {
+			useComposerDraftStore.setState({ scrollToEndRequest: 0 })
+			renderWithProviders(
+				<>
+					<textarea aria-label="field" />
+					<QuickChips isShown />
+				</>,
+			)
+			screen.getByRole('textbox', { name: 'field' }).focus()
+
+			fireEvent.click(screen.getByRole('button', { name }))
+			expect(useComposerDraftStore.getState().scrollToEndRequest).toBe(1)
+
+			fireEvent.click(screen.getByRole('button', { name }))
+			expect(useComposerDraftStore.getState().scrollToEndRequest).toBe(2)
+		},
+	)
+})
+
 describe('QuickChips visibility', () => {
 	it('removes the row once it is hidden, after the exit animation', async () => {
 		const view = renderWithProviders(<QuickChips isShown />)

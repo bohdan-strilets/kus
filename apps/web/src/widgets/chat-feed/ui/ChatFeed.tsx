@@ -25,8 +25,8 @@ export interface ChatFeedProps {
 	today: string
 	/** The user scrolled up into the history: the header collapses (mockups/chat-compact.html). */
 	onCompactChange: (isCompact: boolean) => void
-	/** The composer has focus: the feed shows the newest message above the keyboard. */
-	isComposerFocused: boolean
+	/** Grows when the feed should show the newest message above the keyboard (see useFeedScroll). */
+	scrollToEndRequest: number
 }
 
 /** Start loading the older page this far before the top edge comes into view. */
@@ -42,7 +42,7 @@ export const ChatFeed = ({
 	timeZone,
 	today,
 	onCompactChange,
-	isComposerFocused,
+	scrollToEndRequest,
 }: ChatFeedProps) => {
 	const { t } = useTranslation()
 	const query = useInfiniteQuery(messagesQueryOptions)
@@ -82,7 +82,7 @@ export const ChatFeed = ({
 	const { scrollRef, contentRef } = useFeedScroll({
 		items,
 		onCompactChange,
-		isPinnedToEnd: isComposerFocused,
+		scrollToEndRequest,
 	})
 	const latestReplyKey = items.findLast((item) => item.kind === 'kusik')?.key
 

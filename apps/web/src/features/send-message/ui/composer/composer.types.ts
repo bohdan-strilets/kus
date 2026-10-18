@@ -22,6 +22,8 @@ export interface ComposerProps {
 	onSubmit: () => void
 	/** The field took or lost focus — the chat header collapses while the keyboard is up. */
 	onFocusChange?: (isFocused: boolean) => void
+	/** A tap on the field, also when it has focus already (onFocusChange stays silent then). */
+	onFieldPress?: () => void
 	/** A file chosen with the camera button (the system sheet offers camera or gallery). */
 	onPhotoPick?: (file: File) => void
 	onVoiceStart?: () => void

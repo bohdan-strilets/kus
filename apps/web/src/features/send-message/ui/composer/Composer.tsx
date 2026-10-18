@@ -39,6 +39,7 @@ export const Composer = ({
 	onValueChange,
 	onSubmit,
 	onFocusChange,
+	onFieldPress,
 	onPhotoPick,
 	onVoiceStart,
 	voice,
@@ -163,6 +164,7 @@ export const Composer = ({
 				onKeyDown={handleKeyDown}
 				onFocus={() => onFocusChange?.(true)}
 				onBlur={() => onFocusChange?.(false)}
+				onClick={() => onFieldPress?.()}
 				onChange={(event) => {
 					onValueChange(event.target.value)
 					measure()

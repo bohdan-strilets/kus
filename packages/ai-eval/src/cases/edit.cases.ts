@@ -122,6 +122,23 @@ const DAY_WITH_SOUP_QUESTION: Partial<FoodParseContext> = {
 /** Stems of a reply that claims a change; a reply about yesterday must not. */
 const CHANGE_CLAIMS = ['змінив', 'замінив', 'виправив', 'оновив', 'видалив']
 
+const EGGS = entry('e1', 'Яйця варені', 'BREAKFAST', 150, 210, 'eggs', { isEdited: true })
+const RYE_BREAD = entry('e2', 'Хліб житній', 'BREAKFAST', 30, 75, 'bread', { isEdited: true })
+
+/** A logged turn whose entries were then edited by hand: «60 г хліба» in the history, 30 г in the day. */
+const DAY_AFTER_LOGGED_TURN: Partial<FoodParseContext> = {
+	dayTotals: { kcal: 285, protein: 20, fat: 15, carbs: 20 },
+	meals: [{ type: 'BREAKFAST', kcal: 285 }],
+	entries: [EGGS, RYE_BREAD],
+	history: [
+		{ role: 'user', content: '2 яйця і 60 г хліба', loggedRefs: ['e1', 'e2'] },
+		{ role: 'assistant', content: 'Записано. Смачного!' },
+	],
+}
+
+/** Stems of a reply that claims a new record or echoes the history marker. */
+const RELOG_CLAIMS = ['записав', 'додав', '[logged']
+
 export const EDIT_CASES: EvalCase[] = [
 	{
 		id: 'edit-portion-grams',
@@ -267,5 +284,27 @@ export const EDIT_CASES: EvalCase[] = [
 			clarifyRenames: true,
 		},
 		reference: 'Cooked ~316 vs dry ~740 kcal; the «сухі» option renames the item',
+	},
+	{
+		id: 'no-relog-day-closed',
+		text: 'день закрито',
+		context: DAY_AFTER_LOGGED_TURN,
+		expect: { decision: 'reply', replyExcludes: RELOG_CLAIMS },
+		reference: 'A logged turn in the history is not a new meal: reply, log nothing again',
+	},
+	{
+		id: 'no-relog-thanks',
+		text: 'дякую, на сьогодні все',
+		context: DAY_AFTER_LOGGED_TURN,
+		expect: { decision: 'reply', replyExcludes: RELOG_CLAIMS },
+		reference: 'Thanks after a logged turn: reply only, no repeat of eggs and bread',
+	},
+	{
+		id: 'log-only-new-after-edit',
+		text: 'ще яблуко',
+		context: DAY_AFTER_LOGGED_TURN,
+		expect: { decision: 'log', categories: ['fruit'], kcal: range(70, 110) },
+		reference:
+			'Apple ~94 kcal; the upper bound catches re-logged eggs (210) or bread (75) next to it',
 	},
 ]

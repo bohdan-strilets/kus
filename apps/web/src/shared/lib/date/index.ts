@@ -1,3 +1,4 @@
+export { useLocalDate, useLocalHour } from './clock-store'
 export {
 	fromCalendarDate,
 	getLocalDateString,

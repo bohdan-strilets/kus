@@ -1,10 +1,12 @@
 // @vitest-environment jsdom
-import type { ProgressResponse } from '@kus/shared'
+import type { AuthUser, ProgressResponse } from '@kus/shared'
+import { QueryClient } from '@tanstack/react-query'
 import type { AxiosResponse } from 'axios'
 import { AxiosHeaders } from 'axios'
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { SESSION_QUERY_KEY } from '@/entities/session'
 import { useComposerDraftStore } from '@/features/send-message'
 import { httpClient } from '@/shared/api'
 import { ROUTES } from '@/shared/config'
@@ -22,8 +24,24 @@ const reply = (progress: ProgressResponse): AxiosResponse => ({
 	config: { headers: new AxiosHeaders() },
 })
 
-const renderPage = (onPathname?: (pathname: string) => void) =>
-	renderWithProviders(<ProgressPage />, { route: ROUTES.progress, onPathname })
+// seeded, so the page does not ask the (spied) http client for the session first
+const user: AuthUser = {
+	id: '0199b3a4-0000-7000-8000-00000000000a',
+	email: 'user@example.com',
+	name: null,
+	addressAs: null,
+	locale: 'uk',
+	timezone: 'Europe/Warsaw',
+	createdAt: '2026-10-01T10:00:00.000Z',
+	pendingDeletion: false,
+	purgeAt: null,
+}
+
+const renderPage = (onPathname?: (pathname: string) => void) => {
+	const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+	queryClient.setQueryData(SESSION_QUERY_KEY, user)
+	return renderWithProviders(<ProgressPage />, { route: ROUTES.progress, onPathname, queryClient })
+}
 
 const showsProgress = (progress: ProgressResponse): void => {
 	getMock.mockResolvedValue(reply(progress))

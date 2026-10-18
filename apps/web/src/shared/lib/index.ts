@@ -4,6 +4,8 @@ export {
 	getLocalDateString,
 	getLocalHour,
 	shiftLocalDate,
+	useLocalDate,
+	useLocalHour,
 	toCalendarDate,
 } from './date'
 export {

@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 
-import { getLocalHour } from '@/shared/lib'
+import { useLocalHour } from '@/shared/lib'
 
 import { type Addressee, getAddressName } from '@kus/shared'
 import { getGreetingKey } from '../lib/get-greeting-key'
@@ -17,7 +17,7 @@ export const useGreeting = ({
 	timeZone: string
 }): string => {
 	const { t } = useTranslation()
-	const greeting = t(getGreetingKey(getLocalHour(new Date(), timeZone)))
+	const greeting = t(getGreetingKey(useLocalHour(timeZone)))
 	const name = getAddressName(addressee)
 	return name === null ? greeting : t('chat.greetingWithName', { greeting, name })
 }

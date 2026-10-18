@@ -9,6 +9,7 @@ const refs: ParseRefs = {
 	deletedEntryRefs: new Set(),
 	clarifications: new Map(),
 	today: '2026-10-07',
+	measurementDays: new Set(),
 }
 
 const egg = {

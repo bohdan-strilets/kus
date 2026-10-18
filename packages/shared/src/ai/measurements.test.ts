@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
 	getJumpErrors,
+	getMeasurementDeletionErrors,
 	getMeasurementErrors,
 	roundMeasurementValue,
 	type MeasurementPoint,
@@ -9,7 +10,7 @@ import {
 } from './measurements.js'
 import type { LogMeasurementInput } from './tools.js'
 
-const refs: MeasurementRefs = { today: '2026-10-07' }
+const refs: MeasurementRefs = { today: '2026-10-07', measurementDays: new Set() }
 
 const PREVIOUS: MeasurementPoint = { value: 82.8, localDate: '2026-10-05' }
 
@@ -49,17 +50,30 @@ describe('getMeasurementErrors', () => {
 	})
 
 	describe('date', () => {
-		it('accepts a day within a week back and today', () => {
-			expect(errorsOf([weight(82.5, { date: '2026-09-30' })])).toEqual([])
+		it('accepts today and up to 3 days back', () => {
+			expect(errorsOf([weight(82.5, { date: '2026-10-04' })])).toEqual([])
 			expect(errorsOf([weight(82.5, { date: '2026-10-07' })])).toEqual([])
+		})
+
+		it('rejects 4 days back when the value is not listed', () => {
+			expect(errorsOf([weight(82.5, { date: '2026-10-03' })])[0]).toContain('Recent measurements')
+		})
+
+		it('accepts a fix of a listed value 4 to 7 days back, of the same kind only', () => {
+			const listed: MeasurementRefs = { ...refs, measurementDays: new Set(['WEIGHT:2026-09-30']) }
+			expect(getMeasurementErrors([weight(82.5, { date: '2026-09-30' })], listed)).toEqual([])
+			expect(getMeasurementErrors([waist(94, { date: '2026-09-30' })], listed)).toHaveLength(1)
 		})
 
 		it('rejects tomorrow', () => {
 			expect(errorsOf([weight(82.5, { date: '2026-10-08' })])[0]).toContain('future')
 		})
 
-		it('rejects 8 days back', () => {
-			expect(errorsOf([weight(82.5, { date: '2026-09-29' })])[0]).toContain('days back')
+		it('rejects 8 days back even when listed', () => {
+			const listed: MeasurementRefs = { ...refs, measurementDays: new Set(['WEIGHT:2026-09-29']) }
+			expect(getMeasurementErrors([weight(82.5, { date: '2026-09-29' })], listed)[0]).toContain(
+				'more than 7 days back',
+			)
 		})
 	})
 
@@ -192,5 +206,24 @@ describe('roundMeasurementValue', () => {
 			expect(roundMeasurementValue(Infinity)).toBe(Infinity)
 			expect(roundMeasurementValue(-Infinity)).toBe(-Infinity)
 		})
+	})
+})
+
+describe('getMeasurementDeletionErrors', () => {
+	const listed: MeasurementRefs = { ...refs, measurementDays: new Set(['WEIGHT:2026-10-06']) }
+
+	it('accepts a listed value', () => {
+		expect(getMeasurementDeletionErrors([{ kind: 'WEIGHT', date: '2026-10-06' }], listed)).toEqual(
+			[],
+		)
+	})
+
+	it('rejects a value that is not listed, by kind and by day', () => {
+		expect(
+			getMeasurementDeletionErrors([{ kind: 'WAIST', date: '2026-10-06' }], listed),
+		).toHaveLength(1)
+		expect(
+			getMeasurementDeletionErrors([{ kind: 'WEIGHT', date: '2026-10-05' }], listed),
+		).toHaveLength(1)
 	})
 })

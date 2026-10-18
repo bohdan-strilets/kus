@@ -4,7 +4,7 @@ import { isMacrosConsistent, MAX_KCAL_PER_GRAM } from '../schemas/food-entry.js'
 import type { FoodParseContext } from './context.js'
 import type { TodayEntryContext } from './edit-context.js'
 import type { EntryChange, EntryEdits, ResolveClarificationInput } from './edit-tools.js'
-import type { MeasurementRefs } from './measurements.js'
+import { getMeasurementDayKey, type MeasurementRefs } from './measurements.js'
 import { distributeOptionValues, type EntryValues, roundNutrition } from './option-values.js'
 
 /** Refs given to the model in this request; anything else is invented or out of reach. */
@@ -21,6 +21,11 @@ export const getParseRefs = (context: FoodParseContext): ParseRefs => ({
 	deletedEntryRefs: new Set(context.deletedEntries.map((entry) => entry.ref)),
 	clarifications: new Map(context.openClarifications.map((item) => [item.ref, item])),
 	today: context.measurements.today,
+	measurementDays: new Set(
+		(context.measurements.recent ?? []).map(({ kind, localDate }) =>
+			getMeasurementDayKey(kind, localDate),
+		),
+	),
 })
 
 export const toEntryValues = (entry: TodayEntryContext): EntryValues => ({

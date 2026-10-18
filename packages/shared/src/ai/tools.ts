@@ -20,6 +20,7 @@ import {
 export const AI_TOOL_NAMES = {
 	logFood: 'log_food',
 	logMeasurement: 'log_measurement',
+	deleteMeasurement: 'delete_measurement',
 	clarify: 'clarify',
 	correctEntry: 'correct_entry',
 	deleteEntry: 'delete_entry',
@@ -27,6 +28,7 @@ export const AI_TOOL_NAMES = {
 	resolveClarification: 'resolve_clarification',
 	notFood: 'not_food',
 	photoUnusable: 'photo_unusable',
+	showDay: 'show_day',
 	reply: 'reply',
 } as const
 
@@ -85,6 +87,11 @@ export const aiFoodItemSchema = foodEntryBaseSchema
 			.describe(
 				'Meal of this item when this message names several ("сніданок: …, обід: …"); else null — the message-level mealType or the clock decides. Never from earlier messages or the day so far',
 			),
+		date: z.iso
+			.date()
+			.nullable()
+			.default(null)
+			.describe('Day of this item when one message has food of different days; else null'),
 	})
 	.superRefine(refineFoodEntry)
 
@@ -92,6 +99,13 @@ export type AiFoodItem = z.infer<typeof aiFoodItemSchema>
 
 export const logFoodInputSchema = z.object({
 	items: z.array(aiFoodItemSchema).min(1).max(MAX_ITEMS_PER_MESSAGE),
+	date: z.iso
+		.date()
+		.nullable()
+		.default(null)
+		.describe(
+			'YYYY-MM-DD from "Days" when the user names another day ("вчора", "на завтра", "у п\'ятницю"); null for today',
+		),
 	mealType: loggableMealTypeSchema
 		.nullable()
 		.default(null)
@@ -216,7 +230,7 @@ export const logMeasurementInputSchema = z.object({
 		.nullable()
 		.default(null)
 		.describe(
-			'YYYY-MM-DD when the user names another day ("вчора", "у понеділок"), at most 7 days back; null for today',
+			'YYYY-MM-DD from "Days" for another day, never tomorrow; up to 3 days back, or an earlier listed value to fix it; null for today',
 		),
 	confirmedJump: z
 		.boolean()
@@ -226,9 +240,30 @@ export const logMeasurementInputSchema = z.object({
 
 export type LogMeasurementInput = z.infer<typeof logMeasurementInputSchema>
 
+export const deleteMeasurementInputSchema = z.object({
+	kind: measurementKindSchema.describe('WEIGHT or WAIST'),
+	date: z.iso.date().describe('YYYY-MM-DD of the listed value to remove'),
+})
+
+export type DeleteMeasurementInput = z.infer<typeof deleteMeasurementInputSchema>
+
+export const showDayInputSchema = z.object({
+	date: z.iso
+		.date()
+		.nullable()
+		.default(null)
+		.describe('YYYY-MM-DD from "Days"; null for today. Any earlier day or tomorrow'),
+	reply: replyTextSchema.describe(
+		'One short sentence in the language of the user next to the card. No totals — the card shows them',
+	),
+})
+
+export type ShowDayInput = z.infer<typeof showDayInputSchema>
+
 export const AI_TOOL_SCHEMAS: Record<AiToolName, z.ZodType> = {
 	log_food: logFoodInputSchema,
 	log_measurement: logMeasurementInputSchema,
+	delete_measurement: deleteMeasurementInputSchema,
 	clarify: clarifyInputSchema,
 	correct_entry: correctEntryInputSchema,
 	delete_entry: deleteEntryInputSchema,
@@ -236,14 +271,19 @@ export const AI_TOOL_SCHEMAS: Record<AiToolName, z.ZodType> = {
 	resolve_clarification: resolveClarificationInputSchema,
 	not_food: notFoodInputSchema,
 	photo_unusable: photoUnusableInputSchema,
+	show_day: showDayInputSchema,
 	reply: replyInputSchema,
 }
 
 const AI_TOOL_DESCRIPTIONS: Record<AiToolName, string> = {
 	log_food:
-		'Log everything the user says they ate or drank in this message. Always log your best estimate, even when you also ask a clarify question. Never to fix something already logged.',
+		'Log everything the user says they ate or drank in this message. Always log your best estimate, even when you also ask a clarify question. For today or another day from "Days". Never to fix something already logged.',
 	log_measurement:
 		'Log body weight (kg) or waist (cm) the user reports. Fix a wrong value of a day by logging it again for that date. confirmedJump only after the user confirmed an unusual change in a later message.',
+	delete_measurement:
+		'Remove a wrong weight or waist value listed in the context, by kind and date. Goes with one reply.',
+	show_day:
+		'Show the card of a day: what is logged so far, totals, meals. date null for today; any earlier day or tomorrow. Nothing is logged. reply — one short sentence next to the card.',
 	clarify:
 		'Ask about logged items only when the answer changes their kcal a lot (by 80+ kcal and 15%+), or with kind "rename" which real food a strange name was (no kcal threshold). Call together with log_food, at most 2 per message.',
 	correct_entry:

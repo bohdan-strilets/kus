@@ -47,6 +47,7 @@ const getReplyText = (decision: FoodParseDecision): string => {
 		case 'log':
 			return decision.log.reply
 		case 'edit':
+		case 'day':
 			return decision.text
 		case 'not_food':
 		case 'photo_unusable':
@@ -247,9 +248,9 @@ export class ChatTurnService {
 	}
 
 	/** A memory item takes its numbers from the saved food, scaled by the backend. */
-	// mealType and memoryRef aren't FoodEntry columns: left in the spread, Prisma would reject them
+	// mealType, date and memoryRef aren't FoodEntry columns: left in the spread, Prisma would reject them
 	private toNewEntry(
-		{ memoryRef, mealType: _mealType, ...item }: AiFoodItem,
+		{ memoryRef, mealType: _mealType, date: _date, ...item }: AiFoodItem,
 		memory: RelevantFoods,
 		fromPhoto: boolean,
 	): NewFoodEntry {

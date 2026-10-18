@@ -1,7 +1,7 @@
 import type { EvalCase } from './case.types.js'
 import { CATEGORY_CASES } from './category.cases.js'
 import { DATE_CASES } from './date.cases.js'
-import { DAY_CARD_CASES, PENDING_DAY_CARD_CASES } from './day-card.cases.js'
+import { DAY_CARD_CASES } from './day-card.cases.js'
 import { DAY_CASES } from './day.cases.js'
 import { DECISION_CASES } from './decision.cases.js'
 import { EDIT_CASES } from './edit.cases.js'
@@ -35,8 +35,8 @@ export const REPO_CASES: EvalCase[] = [
 	...DAY_CARD_CASES,
 ]
 
-/** Written, but need a context the contract doesn't have yet; not run until it does. */
-export const PENDING_CASES: EvalCase[] = [...PENDING_DAY_CARD_CASES]
+/** Written, but need a context the contract doesn't have yet; not run until it does. None now. */
+export const PENDING_CASES: EvalCase[] = []
 
 export const loadCases = async (): Promise<EvalCase[]> => [
 	...REPO_CASES,

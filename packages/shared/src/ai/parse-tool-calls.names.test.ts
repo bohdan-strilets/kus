@@ -39,6 +39,7 @@ const refs: ParseRefs = {
 	deletedEntryRefs: new Set(),
 	clarifications: new Map(),
 	today: '2026-10-07',
+	measurementDays: new Set(),
 }
 
 const soup = {
@@ -146,6 +147,6 @@ describe('AI tool JSON schemas', () => {
 	// schemas; update it only on purpose.
 	it('are unchanged', () => {
 		const hash = createHash('sha256').update(JSON.stringify(getAiFunctionTools())).digest('hex')
-		expect(hash).toBe('6fe293729046f6985b7f3194073e422da4c50182aaaf9ab3226052b25b422b4a')
+		expect(hash).toBe('b825775520fd4f810c42a504368c6affabee31e00c0a420aed24e8d15263aed5')
 	})
 })

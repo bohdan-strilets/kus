@@ -1,6 +1,6 @@
 // The day card (v0.6.2): «покажи, що є», «скільки вже набралось?», «а що було вчора?» → show_day
 // instead of a wordy answer; an empty day gets a plain reply. Clock: Wednesday 2026-10-07, 13:20.
-import { entry } from './case-builders.js'
+import { buildDays, entry, EVAL_TODAY } from './case-builders.js'
 import type { EvalCase } from './case.types.js'
 
 /** Breakfast and lunch are logged: 895 kcal. */
@@ -19,6 +19,13 @@ const DAY_TWO_MEALS: EvalCase['context'] = {
 }
 
 const NOTHING_LOGGED = ['нічого не записано']
+
+const TOMORROW = '2026-10-08'
+
+/** Tomorrow has two planned entries (525 kcal). */
+const TOMORROW_PLANNED: EvalCase['context'] = {
+	days: buildDays(EVAL_TODAY, { [TOMORROW]: { kcal: 525, entryCount: 2 } }),
+}
 
 export const DAY_CARD_CASES: EvalCase[] = [
 	{
@@ -47,20 +54,17 @@ export const DAY_CARD_CASES: EvalCase[] = [
 		expect: { decision: 'reply', replyIncludesAny: NOTHING_LOGGED },
 		reference: 'Nothing logged today: no empty card, a short reply that nothing is recorded yet',
 	},
-]
-
-// pending: needs Days/recent-measurements context (commit 11) — the context has no per-day list yet,
-// so «є записи на завтра» and «завтра порожнє» cannot be told to the model. Not in REPO_CASES.
-export const PENDING_DAY_CARD_CASES: EvalCase[] = [
 	{
 		id: 'day-card-tomorrow',
 		text: 'що в мене на завтра?',
-		expect: { decision: 'day_card', dayCard: { date: '2026-10-08' } },
+		context: TOMORROW_PLANNED,
+		expect: { decision: 'day_card', dayCard: { date: TOMORROW } },
 		reference: 'Tomorrow has planned entries (Days context) → the card of 2026-10-08',
 	},
 	{
 		id: 'day-card-empty-tomorrow',
 		text: 'що в мене на завтра?',
+		context: { days: buildDays(EVAL_TODAY) },
 		expect: { decision: 'reply', replyIncludesAny: NOTHING_LOGGED },
 		reference: 'Tomorrow is empty in the Days context → a short reply that nothing is recorded',
 	},

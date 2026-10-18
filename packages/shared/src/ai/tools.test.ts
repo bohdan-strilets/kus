@@ -11,6 +11,7 @@ describe('getAiFunctionTools', () => {
 		expect(tools.map((tool) => tool.function.name)).toEqual([
 			'log_food',
 			'log_measurement',
+			'delete_measurement',
 			'clarify',
 			'correct_entry',
 			'delete_entry',
@@ -18,6 +19,7 @@ describe('getAiFunctionTools', () => {
 			'resolve_clarification',
 			'not_food',
 			'photo_unusable',
+			'show_day',
 			'reply',
 		])
 	})

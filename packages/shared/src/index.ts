@@ -1,5 +1,7 @@
 export * from './ai/clarifications.js'
 export * from './ai/context.js'
+export * from './ai/date-errors.js'
+export * from './ai/dates.js'
 export * from './ai/edit-context.js'
 export * from './ai/edit-tools.js'
 export * from './ai/entry-edits.js'

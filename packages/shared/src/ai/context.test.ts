@@ -2,12 +2,14 @@ import { describe, expect, it } from 'vitest'
 
 import {
 	buildFoodParseMessages,
+	type DayContext,
 	formatContext,
 	type FoodParseContext,
 	formatMeasurements,
 	HISTORY_MESSAGE_MAX_CHARS,
 	type HistoryTurn,
 	PHOTO_HISTORY_MARKER,
+	type RecentMeasurementContext,
 	selectHistory,
 } from './context.js'
 import type { TodayEntryContext } from './edit-context.js'
@@ -185,5 +187,59 @@ describe('history turns with logged entries', () => {
 	it('never marks an assistant turn', () => {
 		const [turn] = selectHistory([{ role: 'assistant', content: 'Записано', loggedRefs: ['e1'] }])
 		expect(turn?.content).toBe('Записано')
+	})
+})
+
+describe('formatContext days and recent measurements', () => {
+	const context: FoodParseContext = {
+		localTime: '2026-10-07 13:20, Wednesday',
+		dayTotals: { kcal: 0, protein: 0, fat: 0, carbs: 0 },
+		meals: [],
+		entries: [],
+		deletedEntries: [],
+		openClarifications: [],
+		goal: null,
+		measurements: { today: '2026-10-07', weights: [], waist: null, targetWeightKg: null },
+		memory: [],
+		history: [],
+	}
+	const days: DayContext[] = [
+		{ localDate: '2026-10-04', label: null, kcal: 0, overKcal: null, entryCount: 0 },
+		{ localDate: '2026-10-05', label: null, kcal: 1950, overKcal: null, entryCount: 5 },
+		{ localDate: '2026-10-06', label: 'yesterday', kcal: 2310, overKcal: 110, entryCount: 6 },
+		{ localDate: '2026-10-07', label: 'today', kcal: 800, overKcal: null, entryCount: 3 },
+		{ localDate: '2026-10-08', label: 'tomorrow', kcal: 525, overKcal: null, entryCount: 2 },
+	]
+
+	it('renders Days: no total for today, planned for tomorrow, nothing logged for empty days', () => {
+		expect(formatContext({ ...context, days })).toContain(
+			'Days: 2026-10-04 Sun: nothing logged; 2026-10-05 Mon: 1950 kcal; 2026-10-06 Tue (yesterday): 2310 kcal, over the goal by 110; 2026-10-07 Wed (today); 2026-10-08 Thu (tomorrow): 525 kcal planned.',
+		)
+	})
+
+	it('says nothing logged for an empty tomorrow', () => {
+		const empty = days.map((day) =>
+			day.label === 'tomorrow' ? { ...day, kcal: 0, entryCount: 0 } : day,
+		)
+		expect(formatContext({ ...context, days: empty })).toContain(
+			'2026-10-08 Thu (tomorrow): nothing logged.',
+		)
+	})
+
+	it('renders recent measurements of both kinds', () => {
+		const recent: RecentMeasurementContext[] = [
+			{ kind: 'WEIGHT', localDate: '2026-10-06', value: 82.4 },
+			{ kind: 'WAIST', localDate: '2026-10-05', value: 94 },
+		]
+		expect(
+			formatContext({ ...context, measurements: { ...context.measurements, recent } }),
+		).toContain('Recent measurements: WEIGHT 2026-10-06 82.4; WAIST 2026-10-05 94.')
+	})
+
+	it('adds no line when the lists are missing or empty', () => {
+		const empty = { ...context, days: [], measurements: { ...context.measurements, recent: [] } }
+		expect(formatContext(empty)).toBe(formatContext(context))
+		expect(formatContext(empty)).not.toContain('Days:')
+		expect(formatContext(empty)).not.toContain('Recent measurements')
 	})
 })

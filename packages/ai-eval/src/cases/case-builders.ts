@@ -1,8 +1,10 @@
-import type {
-	FoodCategory,
-	FoodParseContext,
-	LoggableMealType,
-	TodayEntryContext,
+import {
+	type DayContext,
+	type FoodCategory,
+	type FoodParseContext,
+	getLoggableDays,
+	type LoggableMealType,
+	type TodayEntryContext,
 } from '@kus/shared'
 
 import type { ExpectedValue } from './case.types.js'
@@ -65,3 +67,20 @@ export const atClock = (localTime: string): Partial<FoodParseContext> => {
 	if (!today) throw new Error(`localTime must start with YYYY-MM-DD: ${localTime}`)
 	return { localTime, measurements: { today, weights: [], waist: null, targetWeightKg: null } }
 }
+
+/** What the backend counted for a day of the "Days" context (before the defaults of an empty day). */
+export type DayOverride = Partial<Pick<DayContext, 'kcal' | 'overKcal' | 'entryCount'>>
+
+/** The "Days" context of a case clock: every loggable day, empty unless `byDate` says otherwise. */
+export const buildDays = (
+	today: string,
+	byDate: Readonly<Record<string, DayOverride>> = {},
+): DayContext[] =>
+	getLoggableDays(today).map(({ localDate, label }) => ({
+		localDate,
+		label,
+		kcal: 0,
+		overKcal: null,
+		entryCount: 0,
+		...byDate[localDate],
+	}))

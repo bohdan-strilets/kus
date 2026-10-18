@@ -14,14 +14,9 @@ import {
 } from '@kus/shared'
 
 import { EVAL_TODAY } from './cases/case-builders.js'
+import { withDayContext } from './day-context.js'
 import type { EvalCase } from './cases/index.js'
-import type {
-	ActualDecision,
-	CallFacts,
-	CaseResult,
-	LoggedItem,
-	ValidationAttempt,
-} from './eval.types.js'
+import type { ActualDecision, CaseResult, LoggedItem, ValidationAttempt } from './eval.types.js'
 import { EMPTY_CALL_FACTS, getCallFacts } from './call-facts.js'
 import { getClarifyCalls } from './clarify-calls.js'
 import { getEditResult } from './edit-result.js'
@@ -92,8 +87,9 @@ const sumItems = (items: AiFoodItem[], memory: MemoryFoodContext[]) =>
 		{ kcal: 0, protein: 0 },
 	)
 
-const toActualDecision = (decision: FoodParseDecision, calls: CallFacts): ActualDecision => {
-	if (decision.kind !== 'log') return calls.dayCards.length > 0 ? 'day_card' : decision.kind
+const toActualDecision = (decision: FoodParseDecision): ActualDecision => {
+	if (decision.kind === 'day') return 'day_card'
+	if (decision.kind !== 'log') return decision.kind
 	return decision.clarifications.length > 0 ? 'clarify' : 'log'
 }
 
@@ -109,6 +105,7 @@ const getReplyText = (decision: FoodParseDecision): string => {
 			return decision.reply
 		case 'edit':
 		case 'reply':
+		case 'day':
 			return decision.text
 	}
 }
@@ -153,7 +150,7 @@ export const runCase = async (
 	evalCase: EvalCase,
 	options: EvalModelOptions,
 ): Promise<CaseResult> => {
-	const context: FoodParseContext = { ...BASE_CONTEXT, ...evalCase.context }
+	const context = withDayContext({ ...BASE_CONTEXT, ...evalCase.context })
 	const { memory } = context
 	const refs = getParseRefs(context)
 	let messages: AiRequestMessage[] = buildFoodParseMessages(context, evalCase.text, evalCase.photo)
@@ -199,7 +196,7 @@ export const runCase = async (
 					...base,
 					...usage,
 					attempts: attempt,
-					decision: toActualDecision(result.decision, calls),
+					decision: toActualDecision(result.decision),
 					error: null,
 					kcal: totals?.kcal ?? null,
 					protein: totals?.protein ?? null,

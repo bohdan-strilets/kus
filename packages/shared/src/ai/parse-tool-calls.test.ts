@@ -61,6 +61,7 @@ const options: ParseRefs = {
 	deletedEntryRefs: new Set(),
 	clarifications: new Map(),
 	today: '2026-10-07',
+	measurementDays: new Set(),
 }
 
 describe('parseToolCalls', () => {

@@ -8,6 +8,8 @@ import {
 	type AiToolName,
 	type ClarifyInput,
 	clarifyInputSchema,
+	type DeleteMeasurementInput,
+	deleteMeasurementInputSchema,
 	type LogFoodInput,
 	type LogMeasurementInput,
 	logMeasurementInputSchema,
@@ -19,7 +21,10 @@ import {
 	photoUnusableInputSchema,
 	type ReplyInput,
 	replyInputSchema,
+	type ShowDayInput,
+	showDayInputSchema,
 } from './tools.js'
+import { getFoodDateErrors, getShowDayErrors } from './date-errors.js'
 import {
 	type ClarificationResult,
 	filterClarifications,
@@ -38,7 +43,13 @@ import {
 	restoreEntryInputSchema,
 } from './edit-tools.js'
 import { getEditErrors, type ParseRefs } from './entry-edits.js'
-import { getMeasurementErrors, roundMeasurementValue } from './measurements.js'
+import {
+	getMeasurementDay,
+	getMeasurementDayKey,
+	getMeasurementDeletionErrors,
+	getMeasurementErrors,
+	roundMeasurementValue,
+} from './measurements.js'
 import { normalizeFoodName } from './normalize-food-name.js'
 
 /** Hints appended to validation errors so the model can fix them on the retry. */
@@ -63,7 +74,7 @@ export interface ParsedToolCall {
 
 /**
  * `log` may also change earlier entries; `edit` only changes them and answers with `text`.
- * Weight and waist ride along with `log` and `reply`.
+ * Weight and waist (logged or deleted) ride along with `log` and `reply`; `day` shows the card of a day.
  */
 export type FoodParseDecision =
 	| {
@@ -72,11 +83,19 @@ export type FoodParseDecision =
 			clarifications: ClarificationResult[]
 			edits: EntryEdits
 			measurements: LogMeasurementInput[]
+			measurementDeletions: DeleteMeasurementInput[]
 	  }
 	| { kind: 'edit'; edits: EntryEdits; text: string }
 	| { kind: 'not_food'; reply: string }
 	| { kind: 'photo_unusable'; reason: PhotoUnusableReason; reply: string }
-	| { kind: 'reply'; text: string; measurements: LogMeasurementInput[] }
+	| {
+			kind: 'reply'
+			text: string
+			measurements: LogMeasurementInput[]
+			measurementDeletions: DeleteMeasurementInput[]
+	  }
+	/** `date` null = today. */
+	| { kind: 'day'; date: string | null; text: string }
 
 export type FoodParseResult =
 	| { ok: true; decision: FoodParseDecision; calls: ParsedToolCall[] }
@@ -93,6 +112,8 @@ export interface ParseMessageOptions {
 type ValidatedCall =
 	| { name: typeof AI_TOOL_NAMES.logFood; data: LogFoodInput }
 	| { name: typeof AI_TOOL_NAMES.logMeasurement; data: LogMeasurementInput }
+	| { name: typeof AI_TOOL_NAMES.deleteMeasurement; data: DeleteMeasurementInput }
+	| { name: typeof AI_TOOL_NAMES.showDay; data: ShowDayInput }
 	| { name: typeof AI_TOOL_NAMES.clarify; data: ClarifyInput }
 	| { name: typeof AI_TOOL_NAMES.correctEntry; data: CorrectEntryInput }
 	| { name: typeof AI_TOOL_NAMES.deleteEntry; data: DeleteEntryInput }
@@ -118,6 +139,13 @@ const parseInput = (name: AiToolName, value: unknown): InputParse => {
 			return toInputParse(logFoodInputSchema.safeParse(value), (data) => ({ name, data }))
 		case AI_TOOL_NAMES.logMeasurement:
 			return toInputParse(logMeasurementInputSchema.safeParse(value), (data) => ({ name, data }))
+		case AI_TOOL_NAMES.deleteMeasurement:
+			return toInputParse(deleteMeasurementInputSchema.safeParse(value), (data) => ({
+				name,
+				data,
+			}))
+		case AI_TOOL_NAMES.showDay:
+			return toInputParse(showDayInputSchema.safeParse(value), (data) => ({ name, data }))
 		case AI_TOOL_NAMES.clarify:
 			return toInputParse(clarifyInputSchema.safeParse(value), (data) => ({ name, data }))
 		case AI_TOOL_NAMES.correctEntry:
@@ -251,12 +279,35 @@ const checkLogReferences = (
 }
 
 const ONE_DECISION_ERROR =
-	'call log_food (with clarify and edit tools if needed), or edit tools (correct_entry, delete_entry, restore_entry, resolve_clarification) with exactly one reply, or exactly one of not_food, photo_unusable or reply'
+	'call log_food (with clarify and edit tools if needed), or edit tools (correct_entry, delete_entry, restore_entry, resolve_clarification) with exactly one reply, or exactly one of not_food, photo_unusable, show_day or reply'
+const SHOW_DAY_ALONE_ERROR =
+	'show_day is the whole answer — not with log_food, reply, clarify, measurement or edit tools'
 const NO_PHOTO_ERROR =
 	'photo_unusable: this message has no photo — answer with reply (or not_food) instead'
 
 const MEASUREMENT_WITH_ANSWER_ERROR =
 	'log_measurement goes together with exactly one log_food or reply — not with not_food, photo_unusable or edit tools'
+
+const MEASUREMENT_DELETION_WITH_ANSWER_ERROR =
+	'delete_measurement goes together with exactly one log_food or reply — not with not_food, photo_unusable, show_day or edit tools'
+
+/** A value is either logged or deleted in a turn, never both. */
+const getMeasurementOverlapErrors = (
+	measurements: readonly LogMeasurementInput[],
+	deletions: readonly DeleteMeasurementInput[],
+	today: string,
+): string[] => {
+	const logged = new Set(
+		measurements.map((input) => getMeasurementDayKey(input.kind, getMeasurementDay(input, today))),
+	)
+	return deletions.flatMap(({ kind, date }) =>
+		logged.has(getMeasurementDayKey(kind, date))
+			? [
+					`delete_measurement: ${kind} ${date} is also logged in this message — one change per value`,
+				]
+			: [],
+	)
+}
 
 type Decision = { decision: FoodParseDecision; errors: [] } | { decision: null; errors: string[] }
 
@@ -294,33 +345,61 @@ const decide = (
 			? [{ ...call.data, value: roundMeasurementValue(call.data.value) }]
 			: [],
 	)
+	const deletions = valid.flatMap((call) =>
+		call.name === AI_TOOL_NAMES.deleteMeasurement ? [call.data] : [],
+	)
+	const shows = valid.flatMap((call) => (call.name === AI_TOOL_NAMES.showDay ? [call.data] : []))
 	const edits = collectEdits(valid)
 	const isEditing = hasEdits(edits)
 	const [log] = logs
 	const [rejected] = notFood
 	const [photoUnusable] = unusable
 	const [reply] = replies
+	const [show] = shows
 
 	// log_food speaks for the whole turn, an edit-only turn speaks through reply
-	const answers = logs.length + notFood.length + unusable.length + replies.length
+	const answers = logs.length + notFood.length + unusable.length + replies.length + shows.length
 	if (answers !== 1 || ((rejected || photoUnusable) && isEditing))
 		return { decision: null, errors: [ONE_DECISION_ERROR] }
+	if (show) {
+		const isAlone = !isEditing && measurements.length === 0 && deletions.length === 0
+		if (!isAlone || clarifications.length > 0)
+			return { decision: null, errors: [SHOW_DAY_ALONE_ERROR] }
+		const errors = getShowDayErrors(show.date, refs.today)
+		if (errors.length > 0) return { decision: null, errors }
+		return { decision: { kind: 'day', date: show.date, text: show.reply }, errors: [] }
+	}
 	if (photoUnusable && !hasImage) return { decision: null, errors: [NO_PHOTO_ERROR] }
 	const hasMeasurements = measurements.length > 0
 	if (hasMeasurements && (rejected || photoUnusable || (reply && isEditing))) {
 		return { decision: null, errors: [MEASUREMENT_WITH_ANSWER_ERROR] }
 	}
-	const measurementErrors = getMeasurementErrors(measurements, refs)
+	if (deletions.length > 0 && (rejected || photoUnusable || (reply && isEditing))) {
+		return { decision: null, errors: [MEASUREMENT_DELETION_WITH_ANSWER_ERROR] }
+	}
+	const measurementErrors = [
+		...getMeasurementErrors(measurements, refs),
+		...getMeasurementDeletionErrors(deletions, refs),
+		...getMeasurementOverlapErrors(measurements, deletions, refs.today),
+	]
 	if (log) {
 		const errors = [
 			...checkLogReferences(log, clarifications, refs),
+			...getFoodDateErrors(log, refs.today),
 			...getEditErrors(edits, refs),
 			...measurementErrors,
 		]
 		if (errors.length > 0) return { decision: null, errors }
 		const selected = filterClarifications(log, clarifications)
 		return {
-			decision: { kind: 'log', log, clarifications: selected, edits, measurements },
+			decision: {
+				kind: 'log',
+				log,
+				clarifications: selected,
+				edits,
+				measurements,
+				measurementDeletions: deletions,
+			},
 			errors: [],
 		}
 	}
@@ -339,7 +418,15 @@ const decide = (
 	if (!reply) return { decision: null, errors: [ONE_DECISION_ERROR] }
 	if (!isEditing) {
 		if (measurementErrors.length > 0) return { decision: null, errors: measurementErrors }
-		return { decision: { kind: 'reply', text: reply.text, measurements }, errors: [] }
+		return {
+			decision: {
+				kind: 'reply',
+				text: reply.text,
+				measurements,
+				measurementDeletions: deletions,
+			},
+			errors: [],
+		}
 	}
 	const errors = getEditErrors(edits, refs)
 	if (errors.length > 0) return { decision: null, errors }

@@ -1,5 +1,6 @@
 // Builds the model input: static prompt (cacheable) + day/memory context + recent turns + the message.
-import type { FoodCategory, MealType } from '../schemas/enums.js'
+import type { FoodCategory, MealType, MeasurementKind } from '../schemas/enums.js'
+import { getWeekday, type LoggableDayLabel } from './dates.js'
 import {
 	type DeletedEntryContext,
 	formatEditContext,
@@ -81,6 +82,25 @@ const toHistoryText = (turn: HistoryTurn): string => {
 	return `${marker}${withPhoto}`
 }
 
+/** A stored value of the last days, listed so the model can fix or delete it. */
+export interface RecentMeasurementContext {
+	kind: MeasurementKind
+	/** `YYYY-MM-DD` */
+	localDate: string
+	value: number
+}
+
+/** A day the user can log to, with what the backend counted for it. */
+export interface DayContext {
+	/** `YYYY-MM-DD` */
+	localDate: string
+	label: LoggableDayLabel | null
+	kcal: number
+	/** Past days only: kcal over the goal, null when within it or without a goal. */
+	overKcal: number | null
+	entryCount: number
+}
+
 /** The latest body measurements; the model compares them with a new one and never calculates. */
 export interface MeasurementsContext {
 	/** The user's local day, `YYYY-MM-DD`. */
@@ -89,6 +109,8 @@ export interface MeasurementsContext {
 	weights: MeasurementPoint[]
 	waist: MeasurementPoint | null
 	targetWeightKg: number | null
+	/** Values of the last 7 days, both kinds; none when omitted. */
+	recent?: RecentMeasurementContext[]
 }
 
 export interface FoodParseContext {
@@ -101,6 +123,8 @@ export interface FoodParseContext {
 	deletedEntries: DeletedEntryContext[]
 	openClarifications: OpenClarificationContext[]
 	goal: GoalContext | null
+	/** Today − 3 … today + 1; no line in the context when omitted or empty. */
+	days?: DayContext[]
 	measurements: MeasurementsContext
 	memory: MemoryFoodContext[]
 	/** Oldest first. */
@@ -181,6 +205,26 @@ export const formatMeasurements = ({
 	return `${weight}${waistLine}${target}`
 }
 
+const formatDay = ({ localDate, label, kcal, overKcal, entryCount }: DayContext): string => {
+	const head = `${localDate} ${getWeekday(localDate)}${label ? ` (${label})` : ''}`
+	// today's total is already in "Eaten today"
+	if (label === 'today') return head
+	if (entryCount === 0) return `${head}: nothing logged`
+	if (label === 'tomorrow') return `${head}: ${round(kcal)} kcal planned`
+	const over = overKcal === null ? '' : `, over the goal by ${round(overKcal)}`
+	return `${head}: ${round(kcal)} kcal${over}`
+}
+
+export const formatDays = (days: readonly DayContext[]): string[] =>
+	days.length === 0 ? [] : [`Days: ${days.map(formatDay).join('; ')}.`]
+
+export const formatRecentMeasurements = (recent: readonly RecentMeasurementContext[]): string[] =>
+	recent.length === 0
+		? []
+		: [
+				`Recent measurements: ${recent.map(({ kind, localDate, value }) => `${kind} ${localDate} ${value}`).join('; ')}.`,
+			]
+
 const formatMemoryFood = (food: MemoryFoodContext): string => {
 	const aliases = food.aliases.length > 0 ? ` (also: ${food.aliases.join(', ')})` : ''
 	const piece = food.pieceGrams === null ? '' : `; 1 piece = ${food.pieceGrams} g`
@@ -206,7 +250,9 @@ export const formatContext = (context: FoodParseContext): string => {
 		...meals,
 		...formatEditContext(context),
 		formatGoal(context.goal),
+		...formatDays(context.days ?? []),
 		formatMeasurements(context.measurements),
+		...formatRecentMeasurements(context.measurements.recent ?? []),
 		memory,
 	].join('\n')
 }

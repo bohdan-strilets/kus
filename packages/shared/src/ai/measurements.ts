@@ -1,15 +1,19 @@
 // What the parser rejects in log_measurement. Shared, so the backend and the eval judge the same way.
+import type { MeasurementKind } from '../schemas/enums.js'
 import { MEASUREMENT_LIMITS } from '../schemas/measurements.js'
-import type { LogMeasurementInput } from './tools.js'
+import { getDayNumber } from './dates.js'
+import type { DeleteMeasurementInput, LogMeasurementInput } from './tools.js'
 
 /** A weight change bigger than this within the window needs the user's confirmation. */
 export const WEIGHT_JUMP_KG = 3
 export const WEIGHT_JUMP_WINDOW_DAYS = 7
 /** A change bigger than this from the last weight, however long ago, needs confirmation too. */
 export const WEIGHT_BIG_JUMP_KG = 15
-export const MEASUREMENT_BACKDATE_MAX_DAYS = 7
+/** A new measurement can be added this many days back... */
+export const MEASUREMENT_BACKDATE_MAX_DAYS = 3
+/** ...an existing one listed in the context can still be fixed or deleted this many days back. */
+export const MEASUREMENT_FIX_MAX_DAYS = 7
 
-const MS_IN_DAY = 24 * 60 * 60 * 1000
 const TENTHS = 10
 
 const UNITS = { WEIGHT: 'kg', WAIST: 'cm' } as const
@@ -24,14 +28,17 @@ export interface MeasurementPoint {
 export interface MeasurementRefs {
 	/** The user's local day, `YYYY-MM-DD`. */
 	today: string
+	/** `getMeasurementDayKey` of every value listed in "Recent measurements". */
+	measurementDays: ReadonlySet<string>
 }
+
+/** `WEIGHT:2026-10-06` — the key of one stored value. */
+export const getMeasurementDayKey = (kind: MeasurementKind, date: string): string =>
+	`${kind}:${date}`
 
 /** The day a measurement belongs to. */
 export const getMeasurementDay = ({ date }: LogMeasurementInput, today: string): string =>
 	date ?? today
-
-const getDayNumber = (date: string): number =>
-	Math.round(Date.parse(`${date}T00:00:00Z`) / MS_IN_DAY)
 
 /** Whole tenths, so 3.1 − 0.1 never turns into 2.9999999999999996. */
 const toTenths = (value: number): number => Math.round(value * TENTHS)
@@ -44,15 +51,27 @@ const getRangeErrors = ({ kind, value }: LogMeasurementInput): string[] => {
 	]
 }
 
-const getDateErrors = ({ date }: LogMeasurementInput, today: string): string[] => {
+const getDateErrors = (
+	{ kind, date }: LogMeasurementInput,
+	{ today, measurementDays }: MeasurementRefs,
+): string[] => {
 	if (date === null) return []
-	if (date > today) return [`log_measurement: date ${date} is in the future (today is ${today})`]
-	if (getDayNumber(today) - getDayNumber(date) > MEASUREMENT_BACKDATE_MAX_DAYS) {
+	if (date > today) {
 		return [
-			`log_measurement: date ${date} is more than ${MEASUREMENT_BACKDATE_MAX_DAYS} days back — do not log; tell the user with reply that only the last ${MEASUREMENT_BACKDATE_MAX_DAYS} days can be added`,
+			`log_measurement: date ${date} is in the future (today is ${today}) — do not log; tell the user with reply that only today and the last ${MEASUREMENT_BACKDATE_MAX_DAYS} days can be added`,
 		]
 	}
-	return []
+	const daysBack = getDayNumber(today) - getDayNumber(date)
+	if (daysBack <= MEASUREMENT_BACKDATE_MAX_DAYS) return []
+	if (daysBack > MEASUREMENT_FIX_MAX_DAYS) {
+		return [
+			`log_measurement: date ${date} is more than ${MEASUREMENT_FIX_MAX_DAYS} days back — do not log; tell the user with reply that only the last ${MEASUREMENT_BACKDATE_MAX_DAYS} days can be added`,
+		]
+	}
+	if (measurementDays.has(getMeasurementDayKey(kind, date))) return []
+	return [
+		`log_measurement: date ${date} is more than ${MEASUREMENT_BACKDATE_MAX_DAYS} days back and no ${kind} of that day is in "Recent measurements" — do not log; tell the user with reply that only the last ${MEASUREMENT_BACKDATE_MAX_DAYS} days can be added`,
+	]
 }
 
 /**
@@ -94,8 +113,21 @@ export const getMeasurementErrors = (
 	refs: MeasurementRefs,
 ): string[] => [
 	...getDuplicateErrors(inputs),
-	...inputs.flatMap((input) => [...getRangeErrors(input), ...getDateErrors(input, refs.today)]),
+	...inputs.flatMap((input) => [...getRangeErrors(input), ...getDateErrors(input, refs)]),
 ]
+
+/** A value can be deleted only if "Recent measurements" lists it: the model never guesses a day. */
+export const getMeasurementDeletionErrors = (
+	deletions: readonly DeleteMeasurementInput[],
+	{ measurementDays }: MeasurementRefs,
+): string[] =>
+	deletions.flatMap(({ kind, date }) =>
+		measurementDays.has(getMeasurementDayKey(kind, date))
+			? []
+			: [
+					`delete_measurement: no ${kind} on ${date} in "Recent measurements" — do not delete; tell the user with reply that this day can be edited by opening it`,
+				],
+	)
 
 /**
  * Rounds to one decimal, half away from zero, like Postgres `numeric` does on write — so the checks

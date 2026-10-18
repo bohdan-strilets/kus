@@ -14,11 +14,25 @@ const readCurrent = (): ViewportBox => {
 const subscribe = (onChange: () => void): (() => void) => {
 	const viewport = window.visualViewport
 	if (!viewport) return () => undefined
+	// iOS doesn't always fire resize/scroll on visualViewport when the PWA returns from the
+	// background or rotates, so the shell would keep a stale height: re-read on these too.
+	const onResume = (): void => {
+		if (document.visibilityState === 'hidden') return
+		onChange()
+	}
 	viewport.addEventListener('resize', onChange)
 	viewport.addEventListener('scroll', onChange)
+	document.addEventListener('visibilitychange', onResume)
+	window.addEventListener('pageshow', onResume)
+	window.addEventListener('focus', onResume)
+	window.addEventListener('orientationchange', onResume)
 	return () => {
 		viewport.removeEventListener('resize', onChange)
 		viewport.removeEventListener('scroll', onChange)
+		document.removeEventListener('visibilitychange', onResume)
+		window.removeEventListener('pageshow', onResume)
+		window.removeEventListener('focus', onResume)
+		window.removeEventListener('orientationchange', onResume)
 	}
 }
 

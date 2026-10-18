@@ -141,7 +141,6 @@ export const Composer = ({
 						size="sm"
 						label={t('composer.addPhoto')}
 						onClick={openPhotoPicker}
-						onPointerDown={keepFieldFocus}
 						onMouseDown={keepFieldFocus}
 						disabled={isPhotoBlocked}
 						aria-describedby={isPhotoBlocked ? photoNoticeId : undefined}
@@ -183,7 +182,6 @@ export const Composer = ({
 						type="submit"
 						variant="primary"
 						label={t('composer.send')}
-						onPointerDown={keepFieldFocus}
 						onMouseDown={keepFieldFocus}
 						disabled={!canSend}
 					>

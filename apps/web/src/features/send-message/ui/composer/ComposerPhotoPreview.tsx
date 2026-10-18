@@ -70,7 +70,6 @@ export const ComposerPhotoPreview = ({ photo }: ComposerPhotoPreviewProps) => {
 					size="xs"
 					label={t('composer.removePhoto')}
 					onClick={photo.onRemove}
-					onPointerDown={keepFieldFocus}
 					onMouseDown={keepFieldFocus}
 					className="absolute -top-2 -right-2"
 				>

@@ -27,7 +27,6 @@ export const ScrollToEndButton = ({ isShown, onPress }: ScrollToEndButtonProps) 
 						size="md"
 						label={t('chat.scrollToEnd')}
 						onClick={onPress}
-						onPointerDown={keepFieldFocus}
 						onMouseDown={keepFieldFocus}
 						className="shadow-card"
 					>

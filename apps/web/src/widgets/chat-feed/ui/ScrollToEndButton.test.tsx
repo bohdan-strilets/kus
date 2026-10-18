@@ -38,16 +38,24 @@ describe('ScrollToEndButton', () => {
 		expect(onPress).toHaveBeenCalledTimes(1)
 	})
 
-	it('keeps the field focus: pointerdown and mousedown are default-prevented', () => {
+	it('keeps the field focus: mousedown is default-prevented', () => {
+		renderWithProviders(<ScrollToEndButton isShown onPress={vi.fn()} />)
+		const button = screen.getByRole('button', { name: getLabel() })
+
+		const mouseDown = createEvent.mouseDown(button)
+		fireEvent(button, mouseDown)
+
+		expect(mouseDown.defaultPrevented).toBe(true)
+	})
+
+	// iOS/WebKit: preventDefault on pointerdown swallows the click of a touch tap
+	it('does not cancel pointerdown', () => {
 		renderWithProviders(<ScrollToEndButton isShown onPress={vi.fn()} />)
 		const button = screen.getByRole('button', { name: getLabel() })
 
 		const pointerDown = createEvent.pointerDown(button)
 		fireEvent(button, pointerDown)
-		const mouseDown = createEvent.mouseDown(button)
-		fireEvent(button, mouseDown)
 
-		expect(pointerDown.defaultPrevented).toBe(true)
-		expect(mouseDown.defaultPrevented).toBe(true)
+		expect(pointerDown.defaultPrevented).toBe(false)
 	})
 })

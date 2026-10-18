@@ -88,30 +88,35 @@ describe('Composer buttons keep the field focused (iOS keyboard stays up)', () =
 	const getCamera = () => screen.getByRole('button', { name: 'Додати фото їжі' })
 	const getSend = () => screen.getByRole('button', { name: 'Надіслати' })
 
-	describe.each(['pointerDown', 'mouseDown'] as const)('%s default is prevented', (eventName) => {
+	// iOS/WebKit: preventDefault on pointerdown swallows the click of a touch tap,
+	// so only mousedown may be cancelled
+	describe.each([
+		['mouseDown', false],
+		['pointerDown', true],
+	] as const)('%s returns %s (not-cancelled flag)', (eventName, expected) => {
 		it('on the camera button', () => {
 			renderComposer()
 
-			expect(fireEvent[eventName](getCamera())).toBe(false)
+			expect(fireEvent[eventName](getCamera())).toBe(expected)
 		})
 
 		it('on the send button next to the mic (single line, voice on)', () => {
 			renderComposer()
 
-			expect(fireEvent[eventName](getSend())).toBe(false)
+			expect(fireEvent[eventName](getSend())).toBe(expected)
 		})
 
 		it('on the send button without voice', () => {
 			renderComposer({ isVoiceEnabled: false })
 
-			expect(fireEvent[eventName](getSend())).toBe(false)
+			expect(fireEvent[eventName](getSend())).toBe(expected)
 		})
 
 		it('on the send button of the long layout', () => {
 			renderComposer({ isMultiline: true })
 			expect(screen.getByText('Kusik розбере все на окремі продукти')).toBeTruthy()
 
-			expect(fireEvent[eventName](getSend())).toBe(false)
+			expect(fireEvent[eventName](getSend())).toBe(expected)
 		})
 
 		it('on the mic button', () => {
@@ -119,7 +124,7 @@ describe('Composer buttons keep the field focused (iOS keyboard stays up)', () =
 
 			expect(
 				fireEvent[eventName](screen.getByRole('button', { name: 'Голосове повідомлення' })),
-			).toBe(false)
+			).toBe(expected)
 		})
 	})
 
@@ -222,10 +227,17 @@ describe('the «прибрати фото» button keeps the field focused', () 
 		vi.mocked(photo.onRemove).mockClear()
 	})
 
-	it.each(['pointerDown', 'mouseDown'] as const)('prevents the default on %s', (eventName) => {
+	it('prevents the default on mouseDown', () => {
 		renderComposer({ photo })
 
-		expect(fireEvent[eventName](getRemove())).toBe(false)
+		expect(fireEvent.mouseDown(getRemove())).toBe(false)
+	})
+
+	// iOS/WebKit: preventDefault on pointerdown swallows the click of a touch tap
+	it('does not cancel pointerDown', () => {
+		renderComposer({ photo })
+
+		expect(fireEvent.pointerDown(getRemove())).toBe(true)
 	})
 
 	it('removes on the first tap and the field stays focused', async () => {

@@ -30,7 +30,6 @@ export const ComposerAction = ({ canSend, onVoiceStart, isVoiceEnabled }: Compos
 				variant="primary"
 				size="sm"
 				label={t('composer.send')}
-				onPointerDown={keepFieldFocus}
 				onMouseDown={keepFieldFocus}
 				disabled={!canSend}
 			>
@@ -46,7 +45,6 @@ export const ComposerAction = ({ canSend, onVoiceStart, isVoiceEnabled }: Compos
 			size="sm"
 			label={canSend ? t('composer.send') : t('composer.voice')}
 			onClick={canSend ? undefined : onVoiceStart}
-			onPointerDown={keepFieldFocus}
 			onMouseDown={keepFieldFocus}
 		>
 			<span className="relative size-4.5">

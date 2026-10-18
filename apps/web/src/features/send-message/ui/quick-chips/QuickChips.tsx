@@ -33,18 +33,10 @@ export const QuickChips = ({ isShown }: { isShown: boolean }) => {
 						aria-label={t('chat.quickChips.label')}
 						className="flex gap-2 pt-1 pb-3"
 					>
-						<Chip
-							onClick={startWeightDraft}
-							onPointerDown={keepFieldFocus}
-							onMouseDown={keepFieldFocus}
-						>
+						<Chip onClick={startWeightDraft} onMouseDown={keepFieldFocus}>
 							{t('chat.quickChips.addWeight')}
 						</Chip>
-						<Chip
-							onClick={startWaistDraft}
-							onPointerDown={keepFieldFocus}
-							onMouseDown={keepFieldFocus}
-						>
+						<Chip onClick={startWaistDraft} onMouseDown={keepFieldFocus}>
 							{t('chat.quickChips.addWaist')}
 						</Chip>
 					</div>

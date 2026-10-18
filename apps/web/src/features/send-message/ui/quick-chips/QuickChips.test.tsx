@@ -99,10 +99,11 @@ describe('QuickChips visibility', () => {
 describe('QuickChips keep the field focused (iOS keyboard stays up)', () => {
 	const CHIP_NAMES = ['Додати вагу', 'Додати талію'] as const
 
-	it.each(CHIP_NAMES)('«%s»: pointerdown default is prevented', (name) => {
+	// iOS/WebKit: preventDefault on pointerdown swallows the click of a touch tap
+	it.each(CHIP_NAMES)('«%s»: pointerdown is not cancelled', (name) => {
 		renderWithProviders(<QuickChips isShown />)
 
-		expect(fireEvent.pointerDown(screen.getByRole('button', { name }))).toBe(false)
+		expect(fireEvent.pointerDown(screen.getByRole('button', { name }))).toBe(true)
 	})
 
 	it.each(CHIP_NAMES)('«%s»: mousedown default is prevented', (name) => {

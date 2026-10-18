@@ -29,6 +29,8 @@ export interface TurnAchievementsParams {
 	now: Date
 	/** The assistant reply of the turn: the highest new achievement of each type is announced in it. */
 	replyMessageId: string
+	/** The user message of the turn: the weight it recorded is the one that may be announced. */
+	userMessageId: string
 	/** The turn logged or restored food. */
 	isFoodChanged: boolean
 	/** The turn recorded a weight from the chat. */
@@ -102,7 +104,7 @@ export class AchievementsService {
 	}
 
 	private async recordKgLost(
-		{ userId, now, replyMessageId }: TurnAchievementsParams,
+		{ userId, now, replyMessageId, userMessageId }: TurnAchievementsParams,
 		tx: Prisma.TransactionClient,
 	): Promise<void> {
 		const { goalType } = await this.profileService.findWeightGoal(userId, tx)
@@ -113,8 +115,11 @@ export class AchievementsService {
 			this.measurementsService.findLatest({ userId, kind: MeasurementKind.WEIGHT }, tx),
 		])
 		if (!start || !current) return
-		// nothing is celebrated from the profile: such a weight joins the chain of the next chat record
-		if (current.source !== MeasurementSource.CHAT) return
+		// only the weight this very message recorded may be announced, and only while it is the newest
+		// by day: one written for an earlier day just joins the chain of the next record. Weights
+		// from the profile or edited by hand are unverified: they never start a payout nor serve as a
+		// base, they only sit in the chain, so a correction of up to 3 kg is paid by the next chat weight
+		if (current.messageId !== userMessageId || current.source !== MeasurementSource.CHAT) return
 		const chatBase = await this.measurementsService.findBefore(
 			{
 				userId,

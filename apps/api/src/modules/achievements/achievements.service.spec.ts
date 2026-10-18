@@ -9,6 +9,8 @@ import { AchievementsService } from './achievements.service'
 
 const USER_ID = '01999a00-0000-7000-8000-000000000001'
 const REPLY_ID = '01999a00-0000-7000-8000-0000000000aa'
+const USER_MESSAGE_ID = '01999a00-0000-7000-8000-0000000000bb'
+const OLD_MESSAGE_ID = '01999a00-0000-7000-8000-0000000000cc'
 const TIMEZONE = 'Europe/Warsaw'
 const tx = { tag: 'tx' } as unknown as Prisma.TransactionClient
 
@@ -52,6 +54,7 @@ describe('AchievementsService.recordForTurn', () => {
 				timezone: TIMEZONE,
 				now,
 				replyMessageId: REPLY_ID,
+				userMessageId: USER_MESSAGE_ID,
 				isFoodChanged: true,
 				isWeightLogged: false,
 			},
@@ -132,6 +135,7 @@ describe('AchievementsService.recordForTurn', () => {
 					timezone: TIMEZONE,
 					now: new Date('2026-10-12T12:00:00Z'),
 					replyMessageId: REPLY_ID,
+					userMessageId: USER_MESSAGE_ID,
 					isFoodChanged: false,
 					isWeightLogged: true,
 				},
@@ -143,7 +147,8 @@ describe('AchievementsService.recordForTurn', () => {
 			{
 				localDate = '2026-10-12',
 				source = 'CHAT',
-			}: { localDate?: string; source?: MeasurementSource } = {},
+				messageId = USER_MESSAGE_ID,
+			}: { localDate?: string; source?: MeasurementSource; messageId?: string } = {},
 		) => ({
 			id: 'm',
 			kind: 'WEIGHT' as const,
@@ -151,7 +156,9 @@ describe('AchievementsService.recordForTurn', () => {
 			localDate: new Date(`${localDate}T00:00:00Z`),
 			measuredAt: new Date(),
 			source,
-			messageId: null,
+			messageId,
+			createdAt: new Date(),
+			deletedAt: null,
 		})
 
 		/** The weights from the base to the current one, oldest first, one per day. */
@@ -314,6 +321,111 @@ describe('AchievementsService.recordForTurn', () => {
 			expect(repository.createMissing.mock.calls[0]?.[0].values).toEqual([1])
 		})
 
+		describe('edited and back-dated weights', () => {
+			it('does not announce a weight edited down, but pays it with the next chat weight', async () => {
+				// 84 (chat) → edited to 82 by hand (a correction of 2 kg) → a chat weight of 82.5 today
+				const base = weigh(84, { localDate: '2026-10-05', messageId: OLD_MESSAGE_ID })
+				const edited = weigh(82, {
+					localDate: '2026-10-08',
+					source: 'EDIT',
+					messageId: OLD_MESSAGE_ID,
+				})
+				measurements.findFirst.mockResolvedValue(weigh(85, { localDate: '2026-10-01' }))
+				measurements.findLatest.mockResolvedValue(edited)
+				await recordWeight()
+				expect(repository.createMissing).not.toHaveBeenCalled()
+
+				measurements.findLatest.mockResolvedValue(weigh(82.5))
+				measurements.findBefore.mockResolvedValue(base)
+				measurements.findInRange.mockResolvedValue([base, edited, weigh(82.5)])
+				await recordWeight()
+
+				expect(repository.createMissing.mock.calls[0]?.[0].values).toEqual([2])
+			})
+
+			it('keeps an edit of more than 3 kg as the new base instead of paying it', async () => {
+				const base = weigh(88, { localDate: '2026-10-05', messageId: OLD_MESSAGE_ID })
+				const edited = weigh(84, {
+					localDate: '2026-10-08',
+					source: 'EDIT',
+					messageId: OLD_MESSAGE_ID,
+				})
+				measurements.findFirst.mockResolvedValue(weigh(88, { localDate: '2026-10-01' }))
+				measurements.findLatest.mockResolvedValue(weigh(83.5))
+				measurements.findBefore.mockResolvedValue(base)
+				measurements.findInRange.mockResolvedValue([base, edited, weigh(83.5)])
+
+				await recordWeight()
+
+				// 4 kg step to the edit: the base moves to 84, only 83.5 − 84 counts: no whole kg
+				expect(repository.createMissing).not.toHaveBeenCalled()
+			})
+
+			it('never takes an edited weight as the base', async () => {
+				measurements.findFirst.mockResolvedValue(weigh(90, { localDate: '2026-10-01' }))
+				measurements.findLatest.mockResolvedValue(weigh(88))
+
+				await recordWeight()
+
+				expect(measurements.findBefore).toHaveBeenCalledWith(
+					expect.objectContaining({ source: 'CHAT' }),
+					tx,
+				)
+			})
+
+			it('does not announce a weight written for an earlier day', async () => {
+				const newest = weigh(84, { localDate: '2026-10-12', messageId: OLD_MESSAGE_ID })
+				measurements.findFirst.mockResolvedValue(weigh(90, { localDate: '2026-10-01' }))
+				// this turn recorded a weight for 10-10, but 10-12 is the newest
+				measurements.findLatest.mockResolvedValue(newest)
+				measurements.findInRange.mockResolvedValue([weigh(90), newest])
+
+				await recordWeight()
+
+				expect(repository.createMissing).not.toHaveBeenCalled()
+				expect(repository.attachToMessage).not.toHaveBeenCalled()
+			})
+
+			it('does not announce a back-dated chat weight even when it would cross a kilogram', async () => {
+				// the step to the newest weight is small, so only the message guard can stop the payout
+				const newest = weigh(88.9, { localDate: '2026-10-12', messageId: OLD_MESSAGE_ID })
+				measurements.findFirst.mockResolvedValue(weigh(90, { localDate: '2026-10-01' }))
+				measurements.findLatest.mockResolvedValue(newest)
+				measurements.findInRange.mockResolvedValue([weigh(90), newest])
+
+				await recordWeight()
+
+				expect(repository.createMissing).not.toHaveBeenCalled()
+				expect(repository.attachToMessage).not.toHaveBeenCalled()
+			})
+
+			it('moves the base to the previous chat weight when the base is deleted', async () => {
+				// the repository no longer returns the deleted row: the nearest live chat weight is the base
+				const previous = weigh(90, { localDate: '2026-09-20', messageId: OLD_MESSAGE_ID })
+				measurements.findFirst.mockResolvedValue(previous)
+				measurements.findLatest.mockResolvedValue(weigh(88.9))
+				measurements.findBefore.mockResolvedValue(previous)
+				measurements.findInRange.mockResolvedValue([previous, weigh(88.9)])
+
+				await recordWeight()
+
+				expect(measurements.findInRange.mock.calls[0]?.[0].from).toEqual(
+					new Date('2026-09-20T00:00:00Z'),
+				)
+				expect(repository.createMissing.mock.calls[0]?.[0].values).toEqual([1])
+			})
+
+			it('does not revoke what was paid: a lower start after a deletion only adds', async () => {
+				measurements.findFirst.mockResolvedValue(weigh(84, { localDate: '2026-10-01' }))
+				measurements.findLatest.mockResolvedValue(weigh(83.9))
+				measurements.findInRange.mockResolvedValue(toChain(84, 83.9))
+
+				await recordWeight()
+
+				expect(repository.createMissing).not.toHaveBeenCalled()
+			})
+		})
+
 		describe('a weight from the profile', () => {
 			it('does nothing when the latest weight comes from the profile', async () => {
 				measurements.findFirst.mockResolvedValue(weigh(84))
@@ -430,6 +542,7 @@ describe('AchievementsService.recordForTurn', () => {
 				timezone: TIMEZONE,
 				now: new Date('2026-10-12T12:00:00Z'),
 				replyMessageId: REPLY_ID,
+				userMessageId: USER_MESSAGE_ID,
 				isFoodChanged: false,
 				isWeightLogged: true,
 			},
@@ -447,7 +560,9 @@ describe('AchievementsService.recordForTurn', () => {
 			localDate: new Date('2026-10-12T00:00:00Z'),
 			measuredAt: new Date(),
 			source: 'CHAT' as const,
-			messageId: null,
+			messageId: USER_MESSAGE_ID,
+			createdAt: new Date(),
+			deletedAt: null,
 		})
 		measurements.findFirst.mockResolvedValue(weigh(80))
 		measurements.findLatest.mockResolvedValue(weigh(85))
@@ -459,6 +574,7 @@ describe('AchievementsService.recordForTurn', () => {
 				timezone: TIMEZONE,
 				now: new Date('2026-10-12T12:00:00Z'),
 				replyMessageId: REPLY_ID,
+				userMessageId: USER_MESSAGE_ID,
 				isFoodChanged: false,
 				isWeightLogged: true,
 			},
@@ -475,6 +591,7 @@ describe('AchievementsService.recordForTurn', () => {
 				timezone: TIMEZONE,
 				now: new Date(),
 				replyMessageId: REPLY_ID,
+				userMessageId: USER_MESSAGE_ID,
 				isFoodChanged: false,
 				isWeightLogged: false,
 			},

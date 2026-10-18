@@ -4,9 +4,9 @@ import { Controller, useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 
 import type { ProfileFieldKey } from '@/entities/profile'
+import { limitDecimals } from '@/shared/lib'
 import { Button, NumberField, Text } from '@/shared/ui'
 
-import { limitDecimals } from '../lib/limit-decimals'
 import type { FieldDefinition } from '../model/field-definitions.types'
 import {
 	createNumberFieldSchema,

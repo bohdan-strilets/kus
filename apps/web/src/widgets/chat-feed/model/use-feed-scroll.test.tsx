@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, cleanup, render } from '@testing-library/react'
+import { act, cleanup, render, screen } from '@testing-library/react'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { FeedItem } from './feed.types'
@@ -9,6 +9,7 @@ const INITIAL_SCROLL_HEIGHT = 2000
 const INITIAL_CLIENT_HEIGHT = 500
 const HEADER_DELTA_PX = 115
 const FAR_FROM_BOTTOM_PX = 500
+const NEAR_BOTTOM_PX = 10
 
 type ObserverCallback = (entries: { target: Element }[]) => void
 
@@ -43,7 +44,7 @@ interface Metrics {
 const metrics: Metrics = { scrollHeight: 0, clientHeight: 0, scrollTop: 0 }
 
 const Harness = ({ scrollToEndRequest = 0 }: { scrollToEndRequest?: number }) => {
-	const { scrollRef, contentRef } = useFeedScroll({
+	const { scrollRef, contentRef, isScrolledUp } = useFeedScroll({
 		items,
 		onCompactChange: () => undefined,
 		scrollToEndRequest,
@@ -51,6 +52,7 @@ const Harness = ({ scrollToEndRequest = 0 }: { scrollToEndRequest?: number }) =>
 	return (
 		<div data-testid="container" ref={scrollRef}>
 			<div data-testid="content" ref={contentRef} />
+			<output data-testid="scrolled-up">{String(isScrolledUp)}</output>
 		</div>
 	)
 }
@@ -95,6 +97,8 @@ const scrollTo = (container: HTMLElement, distance: number): void => {
 		container.dispatchEvent(new Event('scroll'))
 	})
 }
+
+const readScrolledUp = (): string | null => screen.getByTestId('scrolled-up').textContent
 
 const resize = (target: Element): void => {
 	act(() => {
@@ -218,5 +222,57 @@ describe('useFeedScroll scrollToEndRequest', () => {
 		request(1)
 
 		expect(metrics.scrollTop).toBe(before)
+	})
+})
+
+describe('useFeedScroll isScrolledUp', () => {
+	it('is false initially, at the bottom', () => {
+		renderFeed()
+
+		expect(readScrolledUp()).toBe('false')
+	})
+
+	it('is true after scrolling far up from the end', () => {
+		const { container } = renderFeed()
+
+		scrollTo(container, FAR_FROM_BOTTOM_PX)
+
+		expect(readScrolledUp()).toBe('true')
+	})
+
+	it('stays false for a small scroll near the end', () => {
+		const { container } = renderFeed()
+
+		scrollTo(container, NEAR_BOTTOM_PX)
+
+		expect(readScrolledUp()).toBe('false')
+	})
+
+	it('is false again after scrolling back down', () => {
+		const { container } = renderFeed()
+		scrollTo(container, FAR_FROM_BOTTOM_PX)
+
+		scrollTo(container, 0)
+
+		expect(readScrolledUp()).toBe('false')
+	})
+
+	it('is false after a scroll-to-end request', () => {
+		const { container, request } = renderFeed()
+		scrollTo(container, FAR_FROM_BOTTOM_PX)
+
+		request(1)
+
+		expect(readScrolledUp()).toBe('false')
+	})
+
+	it('follows a content resize: a user scrolled up stays «up» as the content grows', () => {
+		const { container, content } = renderFeed()
+		scrollTo(container, FAR_FROM_BOTTOM_PX)
+
+		metrics.scrollHeight += 400
+		resize(content)
+
+		expect(readScrolledUp()).toBe('true')
 	})
 })

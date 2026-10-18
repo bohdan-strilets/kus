@@ -1,4 +1,4 @@
-import { type RefObject, useEffect, useLayoutEffect, useRef } from 'react'
+import { type RefObject, useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 import type { FeedItem } from './feed.types'
 
@@ -34,6 +34,8 @@ interface FeedScrollOptions {
 interface FeedScroll {
 	scrollRef: RefObject<HTMLDivElement | null>
 	contentRef: RefObject<HTMLDivElement | null>
+	/** Scrolled far enough from the newest message for the «to the end» button to show. */
+	isScrolledUp: boolean
 }
 
 const getDistanceFromBottom = (element: HTMLElement): number =>
@@ -54,6 +56,7 @@ export const useFeedScroll = ({
 	const snapshot = useRef<Snapshot | null>(null)
 	const isAtBottom = useRef(true)
 	const isCompact = useRef(false)
+	const [isScrolledUp, setIsScrolledUp] = useState(false)
 	const onCompactChangeRef = useRef(onCompactChange)
 	useLayoutEffect(() => {
 		onCompactChangeRef.current = onCompactChange
@@ -83,6 +86,7 @@ export const useFeedScroll = ({
 		if (scrollToEndRequest === 0 || !element) return
 		element.scrollTop = element.scrollHeight
 		isAtBottom.current = true
+		setIsScrolledUp(false)
 	}, [scrollToEndRequest])
 
 	useEffect(() => {
@@ -93,6 +97,9 @@ export const useFeedScroll = ({
 		let settleTimer: ReturnType<typeof setTimeout> | undefined
 		let isSettling = false
 
+		const updateScrolledUp = (): void => {
+			setIsScrolledUp(getDistanceFromBottom(element) > COMPACT_FROM_PX)
+		}
 		const updateCompact = (): void => {
 			const distance = getDistanceFromBottom(element)
 			const nextCompact = isCompact.current
@@ -111,6 +118,7 @@ export const useFeedScroll = ({
 		}
 		const handleScroll = (): void => {
 			isAtBottom.current = getDistanceFromBottom(element) <= BOTTOM_SLACK_PX
+			updateScrolledUp()
 			if (!isSettling) updateCompact()
 		}
 		let lastClientHeight = element.clientHeight
@@ -126,6 +134,7 @@ export const useFeedScroll = ({
 			}
 			if (isAtBottom.current) element.scrollTop = element.scrollHeight
 			if (snapshot.current) snapshot.current.scrollHeight = element.scrollHeight
+			updateScrolledUp()
 		}
 		const observer = new ResizeObserver(keepBottom)
 		observer.observe(element)
@@ -138,5 +147,5 @@ export const useFeedScroll = ({
 		}
 	}, [])
 
-	return { scrollRef, contentRef }
+	return { scrollRef, contentRef, isScrolledUp }
 }

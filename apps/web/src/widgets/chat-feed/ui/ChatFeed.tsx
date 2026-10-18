@@ -5,7 +5,12 @@ import { useTranslation } from 'react-i18next'
 
 import { messagesQueryOptions } from '@/entities/message'
 import type { Addressee } from '@/entities/user'
-import { usePhotoSessionStore, useOutboxStore, useSendMessage } from '@/features/send-message'
+import {
+	useComposerDraftStore,
+	useOutboxStore,
+	usePhotoSessionStore,
+	useSendMessage,
+} from '@/features/send-message'
 import { bubbleVariants, shiftLocalDate } from '@/shared/lib'
 import { Button, Loader, Text } from '@/shared/ui'
 
@@ -16,6 +21,7 @@ import { useFeedScroll } from '../model/use-feed-scroll'
 import { useNewItemKeys } from '../model/use-new-item-keys'
 import { FeedItemView } from './FeedItemView'
 import { FeedSkeleton } from './FeedSkeleton'
+import { ScrollToEndButton } from './ScrollToEndButton'
 
 export interface ChatFeedProps {
 	/** Who the new-day greeting calls by name. */
@@ -55,6 +61,7 @@ export const ChatFeed = ({
 	const { retry } = useSendMessage()
 	const topRef = useRef<HTMLDivElement>(null)
 	const now = useNow()
+	const requestScrollToEnd = useComposerDraftStore((state) => state.requestScrollToEnd)
 
 	const pages = query.data?.pages
 	const items = useMemo(
@@ -79,7 +86,7 @@ export const ChatFeed = ({
 		else hideMessage(target.id)
 	}
 	const newKeys = useNewItemKeys(items)
-	const { scrollRef, contentRef } = useFeedScroll({
+	const { scrollRef, contentRef, isScrolledUp } = useFeedScroll({
 		items,
 		onCompactChange,
 		scrollToEndRequest,
@@ -136,26 +143,29 @@ export const ChatFeed = ({
 	}
 
 	return (
-		<div
-			ref={scrollRef}
-			className="scrollbar-none min-h-0 flex-1 overflow-y-auto overscroll-contain mask-fade-top"
-		>
+		<div className="relative flex min-h-0 flex-1 flex-col">
 			<div
-				ref={contentRef}
-				role="log"
-				aria-label={t('chat.feedLabel')}
-				className="flex min-h-full flex-col justify-end gap-4 px-gutter pt-3.5 pb-2.5"
+				ref={scrollRef}
+				className="scrollbar-none min-h-0 flex-1 overflow-y-auto overscroll-contain mask-fade-top"
 			>
-				<div ref={topRef} aria-hidden="true" />
-				{isFetchingNextPage && (
-					<Loader
-						size={OLDER_LOADER_SIZE}
-						ariaLabel={t('chat.loadingOlder')}
-						className="self-center"
-					/>
-				)}
-				{renderContent()}
+				<div
+					ref={contentRef}
+					role="log"
+					aria-label={t('chat.feedLabel')}
+					className="flex min-h-full flex-col justify-end gap-4 px-gutter pt-3.5 pb-2.5"
+				>
+					<div ref={topRef} aria-hidden="true" />
+					{isFetchingNextPage && (
+						<Loader
+							size={OLDER_LOADER_SIZE}
+							ariaLabel={t('chat.loadingOlder')}
+							className="self-center"
+						/>
+					)}
+					{renderContent()}
+				</div>
 			</div>
+			<ScrollToEndButton isShown={isScrolledUp} onPress={requestScrollToEnd} />
 		</div>
 	)
 }

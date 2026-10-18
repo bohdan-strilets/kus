@@ -3,12 +3,12 @@
 // it to the clock.
 import type { FoodParseContext } from '@kus/shared'
 
-import { entry, range } from './case-builders.js'
+import { atClock, entry, range } from './case-builders.js'
 import type { EvalCase } from './case.types.js'
 
 /** The morning so far: breakfast logged at 05:17, nothing since; now it is evening. */
 const EVENING_AFTER_BREAKFAST: Partial<FoodParseContext> = {
-	localTime: '2026-10-09 19:30, Friday',
+	...atClock('2026-10-09 19:30, Friday'),
 	dayTotals: { kcal: 482, protein: 24, fat: 16, carbs: 60 },
 	meals: [{ type: 'BREAKFAST', kcal: 482 }],
 	entries: [

@@ -20,6 +20,25 @@ const DAY_WITH_GOAL: EvalCase['context'] = {
 	goal: { dailyKcal: 2000, protein: 140, fat: 70, carbs: 200, remainingKcal: 760 },
 }
 
+/** Over the goal by 300 kcal. */
+const DAY_OVER_GOAL: EvalCase['context'] = {
+	dayTotals: { kcal: 2300, protein: 100, fat: 90, carbs: 260 },
+	meals: [
+		{ type: 'BREAKFAST', kcal: 600 },
+		{ type: 'LUNCH', kcal: 900 },
+		{ type: 'DINNER', kcal: 800 },
+	],
+	entries: [
+		entry('e1', 'Омлет з сиром', 'BREAKFAST', 250, 600, 'eggs'),
+		entry('e2', 'Паста з куркою', 'LUNCH', 400, 900, 'pasta'),
+		entry('e3', 'Піца', 'DINNER', 300, 800, 'fast_food'),
+	],
+	goal: { dailyKcal: 2000, protein: 140, fat: 70, carbs: 200, remainingKcal: -300 },
+}
+
+/** A feast is one honest estimate; no lecture, no «tomorrow eat less». */
+const NO_LECTURE = ['забагато', 'завтра менше', 'компенс', 'обережн', 'варто']
+
 export const DECISION_CASES: EvalCase[] = [
 	{
 		id: 'not-food-stone',
@@ -147,5 +166,44 @@ export const DECISION_CASES: EvalCase[] = [
 		text: '80 г макаронів',
 		expect: { decision: 'clarify', kcal: range(120, 300), categories: ['pasta'] },
 		reference: 'Cooked ~126 vs dry ~297 kcal (USDA) → clarify',
+	},
+	{
+		id: 'feast-wedding',
+		text: 'був на весіллі, їв усього потроху',
+		expect: {
+			decision: 'log',
+			maxItems: 1,
+			kcal: range(1500, 2500),
+			replyExcludes: NO_LECTURE,
+		},
+		reference:
+			'A wedding feast: one item with a feast-sized estimate (1500–2500 kcal), assumption stated, no made-up menu and no moralising',
+	},
+	{
+		id: 'feast-with-wine',
+		text: 'застілля в родичів, ще 3 келихи вина',
+		expect: { decision: 'log', maxItems: 2, kcal: range(1400, 2400) },
+		reference:
+			'The feast (~1200–1800) and 3 glasses of wine (3 × 120–150 ml × ~85 kcal per 125 ml): at most two items',
+	},
+	{
+		id: 'feast-with-number',
+		text: 'вчора було застілля, десь 4000',
+		expect: {
+			decision: 'log',
+			logDate: '2026-10-06',
+			maxItems: 1,
+			kcal: range(3900, 4100),
+			replyExcludes: NO_LECTURE,
+		},
+		reference: "The user's own number (4000 kcal) is taken as it is, for yesterday, as one item",
+	},
+	{
+		id: 'feast-over-goal-no-lecture',
+		text: 'день народження у друга, застілля',
+		context: DAY_OVER_GOAL,
+		expect: { decision: 'log', kcal: range(1500, 2500), replyExcludes: NO_LECTURE },
+		reference:
+			'Already 300 over the goal: the feast is still logged honestly, without a reminder of the goal or advice',
 	},
 ]

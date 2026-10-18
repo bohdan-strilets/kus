@@ -42,6 +42,16 @@ const JUST_WEIGHED: Partial<FoodParseContext> = {
 	],
 }
 
+/** An older weight the context lists (the latest ones), so it may still be fixed or deleted. */
+const weightListed = (value: number, localDate: string): Partial<FoodParseContext> => ({
+	measurements: {
+		today: EVAL_TODAY,
+		weights: [{ value, localDate }],
+		waist: null,
+		targetWeightKg: null,
+	},
+})
+
 /** Kusik asked whether 87 is right after 82 two days ago; the user answers next. */
 const JUMP_ASKED: Partial<FoodParseContext> = {
 	...LAST_WEIGHT_TWO_DAYS_AGO,
@@ -193,7 +203,56 @@ export const MEASUREMENT_CASES: EvalCase[] = [
 			replyExcludes: NO_DIGITS,
 			measurements: [{ kind: 'WEIGHT', value: 83, date: YESTERDAY }],
 		},
-		reference: '«Вчора» is the context date minus one day, within the 7-day backdate limit',
+		reference:
+			'«Вчора» is the context date minus one day, within the 3-day limit for new measurements (older ones are only fixed when the context lists them)',
+	},
+	{
+		id: 'weight-backdate-out-of-window',
+		text: 'у суботу вага була 83',
+		expect: { decision: 'reply', measurements: [] },
+		reference:
+			'Saturday is 2026-10-03, 4 days back: outside the 3-day window and not in the context, so nothing is logged and the reply says it cannot be added',
+	},
+	{
+		id: 'weight-tomorrow',
+		text: 'на завтра запиши вагу 82',
+		expect: { decision: 'reply', measurements: [] },
+		reference: 'A weight cannot be for the future: nothing is logged, the reply says so',
+	},
+	{
+		id: 'weight-fix-old-listed',
+		text: '2 жовтня вага була не 82,6, а 82,1',
+		context: weightListed(82.6, '2026-10-02'),
+		expect: {
+			decision: 'reply',
+			measurements: [{ kind: 'WEIGHT', value: 82.1, date: '2026-10-02' }],
+		},
+		reference:
+			'2 October is 5 days back, but its weight (82.6) is listed in the context: it may be fixed by logging 82.1 for that date',
+	},
+	{
+		id: 'measurement-delete-yesterday',
+		text: 'видали вчорашню вагу, це була помилка',
+		context: weightListed(82.4, YESTERDAY),
+		expect: {
+			decision: 'reply',
+			measurements: [],
+			deletedMeasurements: [{ kind: 'WEIGHT', date: YESTERDAY }],
+		},
+		reference:
+			"Yesterday's weight (82.4) is in the context: delete_measurement for WEIGHT 2026-10-06, nothing logged",
+	},
+	{
+		id: 'measurement-delete-not-listed',
+		text: 'видали вагу за 20 вересня',
+		expect: {
+			decision: 'reply',
+			measurements: [],
+			deletedMeasurements: [],
+			replyIncludesAny: ['редагувати'],
+		},
+		reference:
+			'20 September is not in the context: nothing is deleted, the reply says to open that day and edit there',
 	},
 	{
 		id: 'weight-implausible-hundreds',

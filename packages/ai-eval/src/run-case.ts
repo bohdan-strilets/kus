@@ -15,7 +15,14 @@ import {
 
 import { EVAL_TODAY } from './cases/case-builders.js'
 import type { EvalCase } from './cases/index.js'
-import type { ActualDecision, CaseResult, LoggedItem, ValidationAttempt } from './eval.types.js'
+import type {
+	ActualDecision,
+	CallFacts,
+	CaseResult,
+	LoggedItem,
+	ValidationAttempt,
+} from './eval.types.js'
+import { EMPTY_CALL_FACTS, getCallFacts } from './call-facts.js'
 import { getClarifyCalls } from './clarify-calls.js'
 import { getEditResult } from './edit-result.js'
 import { getMeasuredItems } from './measurement-result.js'
@@ -85,8 +92,8 @@ const sumItems = (items: AiFoodItem[], memory: MemoryFoodContext[]) =>
 		{ kcal: 0, protein: 0 },
 	)
 
-const toActualDecision = (decision: FoodParseDecision): ActualDecision => {
-	if (decision.kind !== 'log') return decision.kind
+const toActualDecision = (decision: FoodParseDecision, calls: CallFacts): ActualDecision => {
+	if (decision.kind !== 'log') return calls.dayCards.length > 0 ? 'day_card' : decision.kind
 	return decision.clarifications.length > 0 ? 'clarify' : 'log'
 }
 
@@ -136,6 +143,7 @@ const failedResult = (
 	replyText: null,
 	edits: null,
 	measurements: [],
+	calls: EMPTY_CALL_FACTS,
 	wasRetried: attempts > 1,
 	validationErrors,
 	mixedScriptWords: [],
@@ -186,11 +194,12 @@ export const runCase = async (
 				const replyText = getReplyText(result.decision)
 				const items = getLoggedItems(result.decision)
 				const totals = items.length > 0 ? sumItems(items, memory) : null
+				const calls = getCallFacts(rawCalls, context.measurements.today)
 				return {
 					...base,
 					...usage,
 					attempts: attempt,
-					decision: toActualDecision(result.decision),
+					decision: toActualDecision(result.decision, calls),
 					error: null,
 					kcal: totals?.kcal ?? null,
 					protein: totals?.protein ?? null,
@@ -198,6 +207,7 @@ export const runCase = async (
 					replyText,
 					edits: getEditResult(result.decision, context),
 					measurements: getMeasuredItems(result.decision, context.measurements.today),
+					calls,
 					items: items.map((item) =>
 						toLoggedItem(
 							item,

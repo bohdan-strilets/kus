@@ -11,7 +11,8 @@ import type { EvalPhoto } from './photo.js'
 
 /**
  * `log` = logged without a question; `clarify` = logged and asked; `log_or_clarify` = either is
- * fine; `edit` = only changed what was logged before (edit tools + reply), nothing new logged.
+ * fine; `edit` = only changed what was logged before (edit tools + reply), nothing new logged;
+ * `day_card` = showed a day's card (show_day) instead of answering in words.
  */
 export const expectedDecisionSchema = z.enum([
 	'log',
@@ -21,6 +22,7 @@ export const expectedDecisionSchema = z.enum([
 	'not_food',
 	'photo_unusable',
 	'reply',
+	'day_card',
 ])
 
 export type ExpectedDecision = z.infer<typeof expectedDecisionSchema>
@@ -78,6 +80,13 @@ export const expectedMeasurementSchema = z.object({
 	confirmedJump: z.boolean().optional(),
 })
 
+/** One delete_measurement the answer must contain. */
+export const expectedDeletedMeasurementSchema = z.object({
+	kind: measurementKindSchema,
+	date: z.iso.date(),
+})
+
+export type ExpectedDeletedMeasurement = z.infer<typeof expectedDeletedMeasurementSchema>
 export type ExpectedMeasurement = z.infer<typeof expectedMeasurementSchema>
 export type ExpectedEdits = z.infer<typeof expectedEditsSchema>
 export type ResolutionKind = z.infer<typeof resolutionKindSchema>
@@ -112,6 +121,16 @@ export const evalCaseSchema = z
 				.optional(),
 			/** For clarify cases: stems of the items a question is expected about ("печив"). */
 			clarifyAbout: z.array(z.string().min(1)).optional(),
+			/** `YYYY-MM-DD` the log_food call must be for (its top-level date; none = the case's today). */
+			logDate: z.iso.date().optional(),
+			/** Mixed-day messages: the item (name stem) must land on this day. */
+			itemDates: z.array(z.object({ stem: z.string().min(1), date: z.iso.date() })).optional(),
+			/** At most this many items logged (a feast is one item, not a made-up menu). */
+			maxItems: z.int().positive().optional(),
+			/** The day card the answer must show (show_day); a null date of the call counts as the case's today. */
+			dayCard: z.object({ date: z.iso.date() }).optional(),
+			/** Exactly these delete_measurement calls; `[]` = none. */
+			deletedMeasurements: z.array(expectedDeletedMeasurementSchema).optional(),
 			/** Every logged item must carry one of these sources (a label photo → LABEL, a plate → ESTIMATE). */
 			sources: z.array(foodSourceSchema).min(1).optional(),
 		}),

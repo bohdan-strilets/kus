@@ -1,7 +1,7 @@
 import type { ClarifyKind, MeasurementKind } from '@kus/shared'
 
 export type ActualDecision =
-	'log' | 'clarify' | 'edit' | 'not_food' | 'photo_unusable' | 'reply' | 'error'
+	'log' | 'clarify' | 'edit' | 'not_food' | 'photo_unusable' | 'reply' | 'day_card' | 'error'
 
 export interface ValidationAttempt {
 	attempt: number
@@ -9,6 +9,18 @@ export interface ValidationAttempt {
 	callNames: string[]
 	/** parseToolCalls error texts (code-generated, cut to 200 chars; no user message content). */
 	errors: string[]
+}
+
+/** What the raw tool calls say about days; the newer tools are matched by name, not by shared types. */
+export interface CallFacts {
+	/** The day of the first log_food (null date = today); null when nothing was logged. */
+	logDate: string | null
+	/** Per logged item: its own day, else the call's, else today. */
+	itemDates: { name: string; date: string }[]
+	/** Every show_day call, its day resolved. */
+	dayCards: { date: string }[]
+	/** Every delete_measurement call, its day resolved. */
+	deletedMeasurements: { kind: MeasurementKind; date: string }[]
 }
 
 export interface CaseResult {
@@ -29,6 +41,8 @@ export interface CaseResult {
 	edits: EditResult | null
 	/** What log_measurement recorded (the day resolved); empty when nothing was. */
 	measurements: MeasuredItem[]
+	/** Days named by log_food, show_day and delete_measurement. */
+	calls: CallFacts
 	costUsd: number
 	latencyMs: number
 	inputTokens: number
@@ -120,6 +134,8 @@ export interface ModelSummary {
 	edits: RateStats
 	/** Cases with expected measurements whose recorded set matched exactly (none expected = none recorded). */
 	measurements: RateStats
+	/** Cases with expected log/item/card/deleted days or item count whose calls all matched. */
+	details: RateStats
 	/** Cases with expected sources whose every logged item carries one of them (labels → LABEL). */
 	sources: RateStats
 	decisions: RateStats & { byExpected: Record<string, RateStats> }

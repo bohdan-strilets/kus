@@ -1,12 +1,19 @@
 import { FOOD_CATEGORIES } from '@kus/shared'
 import { describe, expect, it } from 'vitest'
 
-import { type EvalCase, type ExpectedMeasurement, REPO_CASES } from './cases/index.js'
+import {
+	type EvalCase,
+	type ExpectedMeasurement,
+	PENDING_CASES,
+	REPO_CASES,
+} from './cases/index.js'
+import { EMPTY_CALL_FACTS } from './call-facts.js'
 import type { CaseResult } from './eval.types.js'
 import {
 	countCategoryMatches,
 	countMealMatches,
 	getErrorPct,
+	isCallDetailsCorrect,
 	isDecisionCorrect,
 	isEditsCorrect,
 	isMeasurementsCorrect,
@@ -26,6 +33,7 @@ const result = (overrides: Partial<CaseResult>): CaseResult => ({
 	replyText: null,
 	edits: null,
 	measurements: [],
+	calls: EMPTY_CALL_FACTS,
 	costUsd: 0.001,
 	latencyMs: 1000,
 	inputTokens: 3000,
@@ -167,12 +175,78 @@ describe('repo cases', () => {
 		const decisions = new Set(REPO_CASES.map((item) => item.expect.decision))
 		expect([...decisions].sort()).toEqual([
 			'clarify',
+			'day_card',
 			'edit',
 			'log',
 			'log_or_clarify',
 			'not_food',
 			'reply',
 		])
+	})
+})
+
+describe('isCallDetailsCorrect', () => {
+	const calls = {
+		logDate: '2026-10-06',
+		itemDates: [
+			{ name: 'Піца', date: '2026-10-06' },
+			{ name: 'Омлет', date: '2026-10-07' },
+		],
+		dayCards: [{ date: '2026-10-06' }],
+		deletedMeasurements: [{ kind: 'WEIGHT' as const, date: '2026-10-06' }],
+	}
+
+	it('passes when nothing about days is expected', () => {
+		expect(isCallDetailsCorrect(evalCase({ decision: 'log' }), result({}))).toBe(true)
+	})
+
+	it('judges the log day, the item days and the item count', () => {
+		const withCalls = result({ calls })
+		expect(
+			isCallDetailsCorrect(evalCase({ decision: 'log', logDate: '2026-10-06' }), withCalls),
+		).toBe(true)
+		expect(
+			isCallDetailsCorrect(evalCase({ decision: 'log', logDate: '2026-10-07' }), withCalls),
+		).toBe(false)
+		const itemDates = [
+			{ stem: 'піц', date: '2026-10-06' },
+			{ stem: 'омлет', date: '2026-10-07' },
+		]
+		expect(isCallDetailsCorrect(evalCase({ decision: 'log', itemDates }), withCalls)).toBe(true)
+		expect(
+			isCallDetailsCorrect(
+				evalCase({ decision: 'log', itemDates: [{ stem: 'омлет', date: '2026-10-06' }] }),
+				withCalls,
+			),
+		).toBe(false)
+		expect(isCallDetailsCorrect(evalCase({ decision: 'log', maxItems: 1 }), withCalls)).toBe(true)
+		const logged = result({ items: [{} as never, {} as never] })
+		expect(isCallDetailsCorrect(evalCase({ decision: 'log', maxItems: 1 }), logged)).toBe(false)
+	})
+
+	it('wants exactly one day card of the expected day', () => {
+		const expectCard = evalCase({ decision: 'day_card', dayCard: { date: '2026-10-06' } })
+		expect(isCallDetailsCorrect(expectCard, result({ calls }))).toBe(true)
+		expect(isCallDetailsCorrect(expectCard, result({}))).toBe(false)
+	})
+
+	it('wants exactly the expected deleted measurements, [] meaning none', () => {
+		const deleted = evalCase({
+			decision: 'reply',
+			deletedMeasurements: [{ kind: 'WEIGHT', date: '2026-10-06' }],
+		})
+		expect(isCallDetailsCorrect(deleted, result({ calls }))).toBe(true)
+		expect(isCallDetailsCorrect(deleted, result({}))).toBe(false)
+		const none = evalCase({ decision: 'reply', deletedMeasurements: [] })
+		expect(isCallDetailsCorrect(none, result({}))).toBe(true)
+		expect(isCallDetailsCorrect(none, result({ calls }))).toBe(false)
+	})
+})
+
+describe('pending cases', () => {
+	it('stay out of the repo set and keep unique ids', () => {
+		const repoIds = new Set(REPO_CASES.map((item) => item.id))
+		expect(PENDING_CASES.filter((item) => repoIds.has(item.id))).toEqual([])
 	})
 })
 

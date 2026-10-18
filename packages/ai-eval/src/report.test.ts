@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import type { EvalCase } from './cases/index.js'
+import { EMPTY_CALL_FACTS } from './call-facts.js'
 import type { CaseResult } from './eval.types.js'
 import { formatMisses, formatMixedScript, formatValidationRetries } from './report.js'
 
@@ -19,6 +20,7 @@ const result = (overrides: Partial<CaseResult>): CaseResult => ({
 	replyText: null,
 	edits: null,
 	measurements: [],
+	calls: EMPTY_CALL_FACTS,
 	costUsd: 0,
 	latencyMs: 0,
 	inputTokens: 0,

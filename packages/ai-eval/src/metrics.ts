@@ -1,4 +1,4 @@
-import { EVAL_TODAY } from './cases/case-builders.js'
+import { getCaseToday } from './cases/case-builders.js'
 import type { EvalCase, ExpectedEdits, ExpectedMeasurement, ExpectedValue } from './cases/index.js'
 import type {
 	ActualDecision,
@@ -107,8 +107,36 @@ export const isCaseMeasurementsCorrect = (evalCase: EvalCase, result: CaseResult
 	isMeasurementsCorrect(
 		evalCase.expect.measurements,
 		result.measurements,
-		evalCase.context?.measurements?.today ?? EVAL_TODAY,
+		getCaseToday(evalCase.context),
 	)
+
+const hasCallDetails = ({ expect }: EvalCase): boolean =>
+	expect.logDate !== undefined ||
+	expect.itemDates !== undefined ||
+	expect.maxItems !== undefined ||
+	expect.dayCard !== undefined ||
+	expect.deletedMeasurements !== undefined
+
+/** The days the calls named (log, items, day card, deleted measurements) and the item count, as expected. */
+export const isCallDetailsCorrect = (evalCase: EvalCase, result: CaseResult): boolean => {
+	const { logDate, itemDates, maxItems, dayCard, deletedMeasurements } = evalCase.expect
+	const { calls } = result
+	const isLogDayRight = logDate === undefined || calls.logDate === logDate
+	const areItemDaysRight = (itemDates ?? []).every(({ stem, date }) =>
+		calls.itemDates.some((item) => item.name.toLowerCase().includes(stem) && item.date === date),
+	)
+	const isCountRight = maxItems === undefined || result.items.length <= maxItems
+	const isCardRight =
+		dayCard === undefined ||
+		(calls.dayCards.length === 1 && calls.dayCards.every(({ date }) => date === dayCard.date))
+	const areDeletedRight =
+		deletedMeasurements === undefined ||
+		(deletedMeasurements.length === calls.deletedMeasurements.length &&
+			deletedMeasurements.every((want) =>
+				calls.deletedMeasurements.some((got) => got.kind === want.kind && got.date === want.date),
+			))
+	return isLogDayRight && areItemDaysRight && isCountRight && isCardRight && areDeletedRight
+}
 
 /** Every logged item carries an allowed source; nothing logged is a miss too (a label must be read). */
 export const isSourcesCorrect = (expected: string[], items: LoggedItem[]): boolean =>
@@ -240,6 +268,13 @@ export const summarize = (model: string, pairs: Pair[]): ModelSummary => {
 					evalCase.expect.measurements !== undefined && isCaseMeasurementsCorrect(evalCase, result),
 			).length,
 			total: pairs.filter(({ evalCase }) => evalCase.expect.measurements !== undefined).length,
+		},
+		details: {
+			correct: pairs.filter(
+				({ evalCase, result }) =>
+					hasCallDetails(evalCase) && isCallDetailsCorrect(evalCase, result),
+			).length,
+			total: pairs.filter(({ evalCase }) => hasCallDetails(evalCase)).length,
 		},
 		sources: {
 			correct: pairs.filter(

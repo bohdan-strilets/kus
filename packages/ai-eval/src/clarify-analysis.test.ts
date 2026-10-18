@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import type { EvalCase } from './cases/index.js'
+import { EMPTY_CALL_FACTS } from './call-facts.js'
 import { explainMissedClarify, isDecisionCorrectWithMemory } from './clarify-analysis.js'
 import type { CaseResult, ClarifyCall, LoggedItem } from './eval.types.js'
 
@@ -47,6 +48,7 @@ const result = (overrides: Partial<CaseResult>): CaseResult => ({
 	replyText: null,
 	edits: null,
 	measurements: [],
+	calls: EMPTY_CALL_FACTS,
 	costUsd: 0,
 	latencyMs: 0,
 	inputTokens: 0,

@@ -189,6 +189,31 @@ export const RANGE_CASES: EvalCase[] = [
 		reference: '250 ml × 45 kcal per 100 ml (USDA)',
 	},
 	{
+		id: 'juice-no-volume',
+		text: 'апельсиновий сік',
+		expect: {
+			decision: 'clarify',
+			kcal: range(100, 125),
+			clarifyAbout: ['сік'],
+		},
+		reference:
+			'No volume: a glass 250 ml (~112 kcal) vs a small pack vs a litre — logged as a glass, the volume is asked (45 kcal per 100 ml, USDA)',
+	},
+	{
+		id: 'juice-volume-given',
+		text: 'пляшка 0,5 л яблучного соку',
+		expect: { decision: 'log', kcal: range(210, 250), categories: ['juice'] },
+		reference:
+			'500 ml × 42–48 kcal per 100 ml (USDA apple juice 46): the volume is given, no question',
+	},
+	{
+		id: 'smoothie-no-volume',
+		text: 'смузі банан-полуниця',
+		expect: { decision: 'clarify' },
+		reference:
+			'A smoothie of unknown volume: 250 ml vs 400 ml+ differ by far more than 80 kcal → asks, logs a best guess',
+	},
+	{
 		id: 'grilled-chicken-thigh',
 		text: 'курка гриль, одне стегно',
 		expect: { decision: 'log', kcal: range(200, 400), categories: ['poultry'] },

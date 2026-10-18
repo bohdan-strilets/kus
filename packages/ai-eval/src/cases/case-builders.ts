@@ -1,4 +1,9 @@
-import type { FoodCategory, LoggableMealType, TodayEntryContext } from '@kus/shared'
+import type {
+	FoodCategory,
+	FoodParseContext,
+	LoggableMealType,
+	TodayEntryContext,
+} from '@kus/shared'
 
 import type { ExpectedValue } from './case.types.js'
 
@@ -44,3 +49,19 @@ export const entry = (
 	source: 'ESTIMATE',
 	isEdited: macros.isEdited ?? false,
 })
+
+const LOCAL_DAY = /^(\d{4}-\d{2}-\d{2})\b/
+
+/** The case's today: the context's local day, else the eval clock. */
+export const getCaseToday = (context: { measurements?: { today: string } } | undefined): string =>
+	context?.measurements?.today ?? EVAL_TODAY
+
+/**
+ * Another clock for a case ('2026-10-08 00:40, Thursday'): sets `localTime` and the measurements'
+ * `today` together, so the two never disagree about the day.
+ */
+export const atClock = (localTime: string): Partial<FoodParseContext> => {
+	const today = LOCAL_DAY.exec(localTime)?.[1]
+	if (!today) throw new Error(`localTime must start with YYYY-MM-DD: ${localTime}`)
+	return { localTime, measurements: { today, weights: [], waist: null, targetWeightKg: null } }
+}

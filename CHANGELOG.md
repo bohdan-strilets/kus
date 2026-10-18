@@ -6,6 +6,39 @@ All notable changes to Kusik are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.6.1] — 2026-10-18
+
+Fixes from a week of real use. No database migration and no new environment variables; the API and the web app both change. The model context format changed (prompt version `2026-10-17.1`, the prompt text itself is unchanged); the full eval of 135 cases gave decisions 135/135, categories 104/105 and no failures.
+
+### Added
+
+- Scroll-to-end button in the chat: a 44 px primary round button with a chevron that fades in once the feed is scrolled up by more than the compact-header distance, returns the feed to its end with one tap and does not take focus from the field; label "До останніх повідомлень" ([f36eca7])
+- Night greeting "Привіт" between 23:00 and 04:59 in the user's timezone ([5bf3732])
+- Eval cases for the edited-entries context: "day closed" and "thanks, that's all" must reply without logging, "one more apple" must log only the apple ([aba8bb2])
+
+### Changed
+
+- Greeting hour bounds are 5 / 12 / 18 / 23 in named constants; the night used to read "Добрий вечір" ([5bf3732])
+- The chat scrolls to its end when the field gets focus, when an already focused field is pressed and when a "weight" or "waist" chip is tapped: a `scrollToEndRequest` counter in the composer store replaces the one-shot focus transition ([7d2fa46])
+- Model context: user turns in the history start with `[logged: e1, e2]` (a bare `[logged]` when the entries fell out of the window) and an entry changed after logging is marked "(changed after logging)", so the model sees what is already recorded ([6ed57e3])
+- Test runs are spent once per stage: new section 8.1 in `CLAUDE.md`, the `verify` skill and the agent descriptions follow it; `apps/api` runs an explicit spec list instead of `vitest related` ([cc6e91e], [768e4ec])
+- `progressQueryOptions` is no longer exported from the `entities/progress` barrel; a test that only compared a label with its literal is gone ([241c5ec])
+- Prisma 7.10.1 closes the `deepmerge-ts` advisory; `pnpm audit --prod` reports nothing ([bc186c9])
+
+### Fixed
+
+- After an edit made by hand the next message made the model log the same food again with the old numbers from the chat text: the history now says which entries a turn logged and the day list says which were changed ([6ed57e3], [aba8bb2])
+- Composer buttons, quick chips and the scroll-to-end button need only one tap with the keyboard open: the field keeps focus through `onMouseDown` only, never `onPointerDown`, because `preventDefault` on `pointerdown` makes WebKit swallow `mousedown`, `mouseup` and `click` on a touch tap ([989980e], [d41e73b])
+- The date at the top, "Сьогодні" and "Прогрес" follow midnight and the return of the PWA from the background: one shared clock (a timer aligned to the minute plus `visibilitychange`, `pageshow` and `focus`) replaces a timer per consumer, and the "Прогрес" query key carries the day ([57f7e90], [265fa7f])
+- The app shell re-reads the visual viewport on `visibilitychange` (only when visible), `pageshow`, `focus` and `orientationchange`, so a height left by the keyboard cannot stay after returning to the app ([d924d0b])
+- Kilograms lost between two chat weights are no longer lost when a weight from "Мої дані" sits between them: the thresholds are counted from the last weight recorded in the chat, every step of the chain to the new record is checked, and a step over 3 kg moves the base and is never paid; nothing is announced from the profile itself ([3e1d1f1])
+
+### Known limitations
+
+- "Сьогодні" with all entries in a single meal and "Прогрес" reported as not scrolling on iPhone were not reproduced in Playwright WebKit; no structural change was made and the case stays under observation until a screenshot and the conditions (PWA or Safari tab, iOS version) are known
+- A correction of up to 3 kg in "Мої дані" cannot be told from weight loss and is paid on the next chat weight, as it would be in the chat; a weight added to the chat for an earlier date, below a fresher weight from the profile, announces nothing
+- Taps and the keyboard were checked in Playwright WebKit with touch emulation, not on a real iPhone
+
 ## [0.6.0] — 2026-10-17
 
 > **Deploy note:** the release needs new Railway variables, and the API does not start in production without them: `STORAGE_PROVIDER=s3`, `S3_ENDPOINT`, `S3_REGION`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_BUCKET`, `STORAGE_KEY_PREFIX`, `PHOTOS_PER_MESSAGE_MAX=1`, `PHOTO_DAILY_UPLOAD_LIMIT`, `AI_DAILY_PHOTO_LIMIT`, `PHOTO_ORPHAN_TTL_HOURS`. The migration `20261015120000_add_stored_files` drops `message_attachments.storage_key` and raises, changing nothing, if any row still has it set. Take a `pg_dump` first (`docs/deploy.md`).
@@ -219,7 +252,23 @@ Design sync with `design/` v0.5.2. Web only: no API, shared-package or migration
 
 ## 0.2.0 / 0.1.0 — see tags
 
-[Unreleased]: https://github.com/bohdan-strilets/kus/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/bohdan-strilets/kus/compare/v0.6.1...HEAD
+[0.6.1]: https://github.com/bohdan-strilets/kus/compare/v0.6.0...v0.6.1
+[bc186c9]: https://github.com/bohdan-strilets/kus/commit/bc186c928fea4990147b90a3c95683b6e694f564
+[6ed57e3]: https://github.com/bohdan-strilets/kus/commit/6ed57e3c7802ba52f8b5ac9484dd86508b6f1f1f
+[aba8bb2]: https://github.com/bohdan-strilets/kus/commit/aba8bb2d3d70550e70ef951df9083dee4af84bd7
+[989980e]: https://github.com/bohdan-strilets/kus/commit/989980eed703d0a3bc3751348bfb428160cb8e8e
+[57f7e90]: https://github.com/bohdan-strilets/kus/commit/57f7e90f05efa579b4cc7aa5159b89afb4e8fadd
+[265fa7f]: https://github.com/bohdan-strilets/kus/commit/265fa7f95fe51b8764721d0dc898c2ce9e8029e9
+[5bf3732]: https://github.com/bohdan-strilets/kus/commit/5bf3732de00b8fee6ce1050281410d8ed061c7a9
+[7d2fa46]: https://github.com/bohdan-strilets/kus/commit/7d2fa46b1a0533517bf303c15b1687880faa1e22
+[f36eca7]: https://github.com/bohdan-strilets/kus/commit/f36eca7b7b17007be7183af2d04739ff7d2bec5f
+[cc6e91e]: https://github.com/bohdan-strilets/kus/commit/cc6e91e27450058dd74e081bbd110b9d25bf40f3
+[3e1d1f1]: https://github.com/bohdan-strilets/kus/commit/3e1d1f18fe52dae0147b3b02b26a4e29f08a3b94
+[768e4ec]: https://github.com/bohdan-strilets/kus/commit/768e4ecdaa657a061c901842da1ca53af909b835
+[d924d0b]: https://github.com/bohdan-strilets/kus/commit/d924d0bc683cb06c21086d1e6fefb3f3dfb4d5f5
+[d41e73b]: https://github.com/bohdan-strilets/kus/commit/d41e73bfeb4dd1d97659ff1ffcc280993262d8f2
+[241c5ec]: https://github.com/bohdan-strilets/kus/commit/241c5ec8b315917c063964aa81e95e8f8c76b557
 [0.6.0]: https://github.com/bohdan-strilets/kus/compare/v0.5.3...v0.6.0
 [e3e8f77]: https://github.com/bohdan-strilets/kus/commit/e3e8f778460e737d14a5606ecd53efcc7f307085
 [ab3aec5]: https://github.com/bohdan-strilets/kus/commit/ab3aec5b4a1d4a6a3e5b9a4bacfbe307cc75a15c

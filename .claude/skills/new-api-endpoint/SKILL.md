@@ -49,4 +49,4 @@ dto/
 - [ ] схеми в shared, контракт `{ data }`, коди помилок з перекладом
 - [ ] module/controller/service/repository/dto; cross-module лише через сервіси
 - [ ] userId-ізоляція й throttler перевірені тестом
-- [ ] unit + e2e зелені: `vitest run` нових/змінених тест-файлів і `vitest related` зачеплених; `pnpm lint && pnpm typecheck` на коміт; повний `pnpm test` — наприкінці етапу (CLAUDE.md, 8.1); звіт за `/verify`
+- [ ] unit + e2e зелені: `vitest run` нових/змінених тест-файлів і явного списку спеків зачеплених модулів та e2e цього endpoint-а (для api без `vitest related`); `pnpm lint && pnpm typecheck` на коміт; повний `pnpm test` — наприкінці етапу (CLAUDE.md, 8.1); звіт за `/verify`

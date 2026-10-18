@@ -7,7 +7,7 @@ description: Самоперевірка після завершення зада
 
 Мета — щоб користувач отримав робочий результат, а не «має працювати». Проходь лише ті розділи, яких торкалася задача, але розділи 1 і 5 — завжди.
 
-Економія тестів — CLAUDE.md, розділ 8.1: тут лише targeted і related прогони в зачеплених пакетах. Повний `pnpm test` — не тут, а наприкінці етапу перед `security-audit` full.
+Економія тестів — CLAUDE.md, розділ 8.1: тут лише targeted прогони в зачеплених пакетах (web/shared — `vitest related`, api — явний список спеків). Повний `pnpm test` — не тут, а наприкінці етапу перед `security-audit` full.
 
 Правило: пункт вважається перевіреним, лише якщо ти реально запустив команду чи відкрив сторінку й побачив результат. Інакше в звіті — «не перевірено» з причиною.
 
@@ -18,7 +18,8 @@ description: Самоперевірка після завершення зада
 ```bash
 pnpm exec eslint <змінені файли>                       # lint
 pnpm --filter <pkg> typecheck                          # для кожного зачепленого пакета
-pnpm --filter <pkg> exec vitest related --run <змінені файли>
+pnpm --filter web exec vitest related --run <змінені файли>      # web / shared
+pnpm --filter api exec vitest run <unit-спеки модулів> <e2e-спеки потоків>   # api: явний список, без related
 ```
 
 Якщо зачеплено `packages/shared` — спершу `pnpm --filter @kus/shared build`. Нові чи змінені тест-файли запускай окремо: `pnpm --filter <pkg> exec vitest run <файли>`.
@@ -94,7 +95,7 @@ pnpm --filter <pkg> exec vitest related --run <змінені файли>
 |---|---|
 | eslint <файли> | ✅ / ❌ <перший рядок помилки> |
 | typecheck <pkg> | ✅ / ❌ |
-| vitest related <pkg> | ✅ N passed / ❌ |
+| тести <pkg> (related для web/shared; для api — перелік файлів) | ✅ N passed / ❌ |
 | <ендпоінт або екран> | ✅ <що саме перевірив> |
 | Скриншот | <шлях або опис> |
 

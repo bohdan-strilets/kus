@@ -40,4 +40,4 @@ pnpm --filter api prisma migrate dev --name <коротко-що-змінило�
 
 - [ ] міграція створена й переглянута; enum синхронізовані
 - [ ] repository фільтрує `userId` / `deletedAt`
-- [ ] `docs/database.md` оновлено; зелені нові/змінені тести (`pnpm --filter api exec vitest run <spec і e2e файли>`) та зачеплені репозиторії/сервіси (`pnpm --filter api exec vitest related --run <змінені файли>`); повний `pnpm test` — наприкінці етапу (CLAUDE.md, 8.1); звіт за `/verify`
+- [ ] `docs/database.md` оновлено; зелені нові/змінені тести (`pnpm --filter api exec vitest run <spec і e2e файли>`) та явний список спеків зачеплених репозиторіїв/сервісів і e2e потоків (без `vitest related` для api); повний `pnpm test` — наприкінці етапу (CLAUDE.md, 8.1); звіт за `/verify`

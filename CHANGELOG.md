@@ -36,6 +36,7 @@ Food and measurements for other days, corrections of measurements, a day card in
 ### Fixed
 
 - A day card for a day older than the logging window answered 500; it is read-only and now only the upper bound (not later than tomorrow) is checked ([3a43f5e])
+- A day card of kind "today" taken on a previous day opened today instead of its own day; the link now follows the date of the snapshot ([5aee591])
 - The week strip, the selected empty day and an `?date=` beyond tomorrow; the day card shows "з N ккал" in the ring when over the goal and no time for meals of other days; an apostrophe in "П'ятниця" is ASCII ([4523f4e])
 
 ### Database
@@ -303,6 +304,7 @@ Design sync with `design/` v0.5.2. Web only: no API, shared-package or migration
 
 [Unreleased]: https://github.com/bohdan-strilets/kus/compare/v0.6.2...HEAD
 [0.6.2]: https://github.com/bohdan-strilets/kus/compare/v0.6.1...v0.6.2
+[5aee591]: https://github.com/bohdan-strilets/kus/commit/5aee591eb2d538bf490fa5253854d4c4bf1dad5e
 [e68200d]: https://github.com/bohdan-strilets/kus/commit/e68200d7dcc1e90a7bbb31a1a285d1ad3cde1245
 [68f22ff]: https://github.com/bohdan-strilets/kus/commit/68f22ffd7cf1a1d8a1691625ee33ecc9dc21f43f
 [c137946]: https://github.com/bohdan-strilets/kus/commit/c137946de9696bcbb55d5a2b85b9e8f2cb77d64f

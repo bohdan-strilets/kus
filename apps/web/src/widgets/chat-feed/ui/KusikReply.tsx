@@ -67,6 +67,7 @@ export const KusikReply = ({ message, isLatest, today, photoStatus }: KusikReply
 			<MealCard
 				key={meal.id}
 				meal={meal}
+				today={today}
 				clarifications={message.clarifications}
 				placement={placement}
 				isLatestReply={isLatest}

@@ -6,3 +6,4 @@ export {
 	shiftLocalDate,
 	toCalendarDate,
 } from './local-date'
+export { type DayRelation, getDayRelation } from './get-day-relation'

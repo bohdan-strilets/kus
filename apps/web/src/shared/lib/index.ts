@@ -1,6 +1,8 @@
 export { cn } from './cn'
 export {
+	type DayRelation,
 	fromCalendarDate,
+	getDayRelation,
 	getLocalDateString,
 	getLocalHour,
 	shiftLocalDate,

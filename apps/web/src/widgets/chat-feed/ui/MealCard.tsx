@@ -18,11 +18,14 @@ import { useEditEntryStore } from '@/features/edit-entry'
 import { formatTime } from '@/shared/lib'
 
 import type { ClarificationPlacement } from '../lib/get-clarification-placement'
+import { getDayBadgeLabel } from '../lib/get-day-label'
 import { getClarifyHint } from '../lib/get-clarify-hint'
 import { getMealTotalNote } from '../lib/get-meal-total-note'
 
 interface MealCardProps {
 	meal: LoggedMeal
+	/** `YYYY-MM-DD` in the user's timezone: a meal of another day gets the date plate and no time. */
+	today: string
 	/** Every question of the reply; each sits under its last entry across all the reply's meals. */
 	clarifications: readonly ClarificationResponse[]
 	/** Per question, over the whole reply (a day may link entries of several meals). */
@@ -45,6 +48,7 @@ const getOpenIds = (clarifications: readonly ClarificationResponse[]): ReadonlyS
 
 export const MealCard = ({
 	meal,
+	today,
 	clarifications,
 	placement,
 	isLatestReply,
@@ -65,6 +69,8 @@ export const MealCard = ({
 		setOpenedIds(isLatestReply ? getOpenIds(clarifications) : new Set())
 	}
 
+	const dayLabel = getDayBadgeLabel(meal.localDate, today, t)
+
 	const findClarification = (entryId: string): ClarificationResponse | undefined =>
 		clarifications.find((item) => item.entryIds.includes(entryId))
 	const getLastEntryId = (clarification: ClarificationResponse): string | undefined =>
@@ -75,7 +81,8 @@ export const MealCard = ({
 	return (
 		<EntryCard
 			mealLabel={t(getMealLabelKey(meal.type))}
-			time={formatTime(new Date(meal.eatenAt))}
+			time={dayLabel === null ? formatTime(new Date(meal.eatenAt)) : undefined}
+			dayLabel={dayLabel ?? undefined}
 			kcal={meal.totals.kcal}
 			macros={meal.totals}
 			hasTail={hasTail}

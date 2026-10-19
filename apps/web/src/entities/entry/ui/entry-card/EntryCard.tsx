@@ -10,8 +10,10 @@ import type { MacroAmounts } from '../../model/entry.types'
 export interface EntryCardProps {
 	/** «Сніданок» */
 	mealLabel: string
-	/** «08:40» */
-	time: string
+	/** «08:40»; none on a card of another day — the plate over it names the day instead. */
+	time?: string
+	/** «Вчора, 17.10» — a plate over the header when the meal is not about today. */
+	dayLabel?: string
 	kcal: number
 	macros: MacroAmounts
 	/** EntryItem lines and an open ClarifyCard between them. */
@@ -39,6 +41,7 @@ const CHANGE_COUNT_MS = 300
 export const EntryCard = ({
 	mealLabel,
 	time,
+	dayLabel,
 	kcal,
 	macros,
 	children,
@@ -69,12 +72,24 @@ export const EntryCard = ({
 					hasTail ? 'rounded-bubble-ai rounded-bl-tail' : 'rounded-card',
 				)}
 			>
-				<header className="flex items-center justify-between px-3.5 pt-3 pb-1.5">
+				{dayLabel && (
+					<div className="flex px-3.5 pt-3">
+						<Badge variant="date">{dayLabel}</Badge>
+					</div>
+				)}
+				<header
+					className={cn(
+						'flex items-center justify-between px-3.5 pb-1.5',
+						dayLabel ? 'pt-2' : 'pt-3',
+					)}
+				>
 					<Text as="span" variant="cardTitle">
 						{mealLabel}{' '}
-						<Text as="span" variant="cardTitle" weight="medium" tone="muted">
-							· {time}
-						</Text>
+						{time && (
+							<Text as="span" variant="cardTitle" weight="medium" tone="muted">
+								· {time}
+							</Text>
+						)}
 					</Text>
 					<Badge variant="kcal">
 						<span ref={kcalRef}>{formatKcal(kcal)}</span>

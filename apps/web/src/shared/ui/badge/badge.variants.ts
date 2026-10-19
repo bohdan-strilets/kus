@@ -9,6 +9,8 @@ export const badgeVariants = cva('inline-flex shrink-0 items-center', {
 			notice: 'size-2.25 rounded-full bg-notice ring-2 ring-white',
 			/** «logged» check: 30px success circle (interactive/motion.html size, docs colour) */
 			success: 'size-7.5 justify-center rounded-full bg-success text-white',
+			/** «Вчора, 17.10» over a meal card that is not about today: secondary, radius 10, 12/700 (chat-other-dates) */
+			date: 'gap-1.25 rounded-badge bg-secondary py-1 pr-2.25 pl-1.75 text-small font-bold text-muted-strong',
 			/** «Не надіслано» under a failed message: 12/600 danger with an icon (chat-error) */
 			failed: 'gap-1 text-small text-danger',
 		},

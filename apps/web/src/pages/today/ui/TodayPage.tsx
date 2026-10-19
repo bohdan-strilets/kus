@@ -13,6 +13,7 @@ import { fromCalendarDate, toCalendarDate } from '@/shared/lib'
 import { DecorBackdrop, Skeleton, InlineError } from '@/shared/ui'
 
 import { getDayTitle } from '../lib/get-day-title'
+import { getEmptyKind } from '../lib/get-empty-kind'
 import { getWeekDays, getWeekStart } from '../lib/get-week-days'
 import { useDayNavigation } from '../model/use-day-navigation'
 import { DayContent } from './DayContent'
@@ -38,12 +39,12 @@ const TodayScreen = ({ userId, timeZone }: { userId: string; timeZone: string })
 	const weekQuery = useQuery(
 		daysRangeQueryOptions({ from: getWeekStart(navigation.windowEnd), to: navigation.windowEnd }),
 	)
-	const weekDays = weekQuery.data ? getWeekDays(navigation.windowEnd, weekQuery.data) : null
+	const weekDays = weekQuery.data ? getWeekDays(navigation.windowEnd, weekQuery.data, today) : null
 	// the current week without any food (the first days) is today-empty: no strip, as in the mockup;
 	// a past week keeps it, so its days stay reachable
 	const hasWeek =
 		weekDays !== null &&
-		(navigation.windowEnd !== today || weekDays.some((day) => day.status !== 'empty'))
+		(navigation.windowEnd < today || weekDays.some((day) => day.status !== 'empty'))
 	const isToday = navigation.selected === today
 	const isEmptyDay = dayQuery.data?.meals.length === 0
 
@@ -76,14 +77,15 @@ const TodayScreen = ({ userId, timeZone }: { userId: string; timeZone: string })
 				)}
 				<DayContent
 					query={dayQuery}
-					isToday={isToday}
+					localDate={navigation.selected}
+					today={today}
 					celebration={isToday ? { userId, today } : undefined}
 					onGoalClick={() => {
 						setIsGoalOpen(true)
 					}}
 					onEmptyAction={() => {
-						if (isToday) void navigate(ROUTES.chat, { replace: true })
-						else navigation.select(today)
+						if (getEmptyKind(navigation.selected, today) === 'old') navigation.select(today)
+						else void navigate(ROUTES.chat, { replace: true })
 					}}
 				/>
 			</div>

@@ -1,8 +1,14 @@
 import type { TFunction } from 'i18next'
 
-import { formatWeekdayLong, shiftLocalDate, toCalendarDate } from '@/shared/lib'
+import { formatWeekdayLong, getDayRelation, toCalendarDate } from '@/shared/lib'
 
-/** «Сьогодні», «Вчора», else the weekday — the date itself is the line above the title. */
+const TITLE_KEYS = {
+	today: 'today.title.today',
+	yesterday: 'today.title.yesterday',
+	tomorrow: 'todayAhead.title',
+} as const
+
+/** «Сьогодні», «Вчора», «Завтра», else the weekday — the date itself is the line above the title. */
 export const getDayTitle = ({
 	localDate,
 	today,
@@ -12,7 +18,7 @@ export const getDayTitle = ({
 	today: string
 	t: TFunction
 }): string => {
-	if (localDate === today) return t('today.title.today')
-	if (localDate === shiftLocalDate(today, -1)) return t('today.title.yesterday')
-	return formatWeekdayLong(toCalendarDate(localDate))
+	const relation = getDayRelation(localDate, today)
+	if (relation === 'other') return formatWeekdayLong(toCalendarDate(localDate))
+	return t(TITLE_KEYS[relation])
 }

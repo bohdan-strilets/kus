@@ -6,6 +6,7 @@ import { DayStatsCard, getDayStats, getGaugeState, SupportCard } from '@/entitie
 import { formatInteger } from '@/shared/lib'
 import { Hamster, Skeleton, InlineError } from '@/shared/ui'
 
+import { getEmptyKind } from '../lib/get-empty-kind'
 import { getSupportKey } from '../lib/get-support-key'
 import { MealsList } from './MealsList'
 import { TodayEmpty } from './TodayEmpty'
@@ -15,18 +16,21 @@ const SKELETON_ROWS = 3
 
 interface DayContentProps {
 	query: UseQueryResult<DayResponse>
-	isToday: boolean
+	/** The day on screen, `YYYY-MM-DD`. */
+	localDate: string
+	today: string
 	/** Only for today: the day goal closing celebrates in the card's ring. */
 	celebration?: { userId: string; today: string }
 	onGoalClick: () => void
-	/** The empty state's action: the chat today, back to today for a past day. */
+	/** The empty state's action: the chat, or back to today for a day food can no longer be added to. */
 	onEmptyAction: () => void
 }
 
 /** The chosen day on «Сьогодні»: its card, meals and a word of support — or why there is nothing. */
 export const DayContent = ({
 	query,
-	isToday,
+	localDate,
+	today,
 	celebration,
 	onGoalClick,
 	onEmptyAction,
@@ -47,11 +51,19 @@ export const DayContent = ({
 		return <InlineError message={t('today.loadError')} onRetry={() => void query.refetch()} />
 	}
 	if (query.data.meals.length === 0) {
-		return <TodayEmpty isToday={isToday} onAction={onEmptyAction} />
+		return (
+			<TodayEmpty
+				kind={getEmptyKind(localDate, today)}
+				localDate={localDate}
+				onAction={onEmptyAction}
+			/>
+		)
 	}
 
 	const { eaten, goal, macros } = getDayStats(query.data)
 	const gauge = getGaugeState(eaten, goal ?? 0)
+	// a plan for tomorrow: no celebration, no support card
+	const isPlanned = localDate > today
 	return (
 		<div className="flex flex-col gap-2.5">
 			<DayStatsCard
@@ -59,10 +71,11 @@ export const DayContent = ({
 				goal={goal}
 				macros={macros}
 				celebration={celebration}
+				isPlanned={isPlanned}
 				goalAction={{ label: t(goal === null ? 'goal.set' : 'goal.change'), onClick: onGoalClick }}
 			/>
-			<MealsList meals={query.data.meals} />
-			{gauge.status === 'over' && (
+			<MealsList meals={query.data.meals} isPlanned={isPlanned} />
+			{gauge.status === 'over' && !isPlanned && (
 				<SupportCard
 					message={t(getSupportKey(gauge.over), { over: formatInteger(gauge.over) })}
 					avatar={<Hamster mood="support" size={SUPPORT_HAMSTER_SIZE} />}

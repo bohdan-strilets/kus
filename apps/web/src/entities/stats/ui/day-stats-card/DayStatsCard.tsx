@@ -20,6 +20,8 @@ export interface DayStatsCardProps {
 	goalAction?: { label: string; onClick: () => void }
 	/** Given for today's card: closing the day goal lights the ring up. */
 	celebration?: GoalCelebrationFrameProps['celebration']
+	/** Tomorrow's plan: the left number reads «заплановано», not «з'їдено». */
+	isPlanned?: boolean
 }
 
 const STAT_CLASS = 'flex w-17.5 flex-col items-center'
@@ -46,6 +48,7 @@ export const DayStatsCard = ({
 	macros,
 	goalAction,
 	celebration,
+	isPlanned = false,
 }: DayStatsCardProps) => {
 	const { t } = useTranslation()
 	const goalStat = (
@@ -57,7 +60,10 @@ export const DayStatsCard = ({
 			<div className="flex items-end justify-between">
 				<div className={STAT_CLASS}>
 					{goal !== null && (
-						<SideStatContent value={formatInteger(eaten)} label={t('gauge.eaten')} />
+						<SideStatContent
+							value={formatInteger(eaten)}
+							label={t(isPlanned ? 'todayAhead.planned' : 'gauge.eaten')}
+						/>
 					)}
 				</div>
 				<GoalCelebrationFrame celebration={celebration} className="shrink-0">

@@ -6,16 +6,21 @@ import { getDayTitle } from './get-day-title'
 import { getMealSummary } from './get-meal-summary'
 import { getSupportKey } from './get-support-key'
 import { getWeekDays, getWeekStart } from './get-week-days'
+import { getEmptyKind } from './get-empty-kind'
 import { resolveSelectedDate } from './resolve-selected-date'
 
 const t = i18n.t.bind(i18n)
 
 describe('getWeekDays', () => {
 	it('lists the seven days that end on the window end, with their statuses', () => {
-		const week = getWeekDays('2026-10-05', [
-			{ localDate: '2026-09-30', kcal: 2600, goalKcal: 2200, status: 'over' },
-			{ localDate: '2026-10-05', kcal: 1370, goalKcal: 2200, status: 'normal' },
-		])
+		const week = getWeekDays(
+			'2026-10-05',
+			[
+				{ localDate: '2026-09-30', kcal: 2600, goalKcal: 2200, status: 'over' },
+				{ localDate: '2026-10-05', kcal: 1370, goalKcal: 2200, status: 'normal' },
+			],
+			'2026-10-05',
+		)
 		expect(getWeekStart('2026-10-05')).toBe('2026-09-29')
 		expect(week.map((day) => day.date.getDate())).toEqual([29, 30, 1, 2, 3, 4, 5])
 		expect(week.map((day) => day.status)).toEqual([
@@ -34,6 +39,7 @@ describe('getDayTitle', () => {
 	it('names today and yesterday, other days by the weekday', () => {
 		expect(getDayTitle({ localDate: '2026-10-05', today: '2026-10-05', t })).toBe('Сьогодні')
 		expect(getDayTitle({ localDate: '2026-10-04', today: '2026-10-05', t })).toBe('Вчора')
+		expect(getDayTitle({ localDate: '2026-10-06', today: '2026-10-05', t })).toBe('Завтра')
 		expect(getDayTitle({ localDate: '2026-10-01', today: '2026-10-05', t })).toBe('Четвер')
 	})
 })
@@ -56,7 +62,41 @@ describe('resolveSelectedDate', () => {
 		expect(resolveSelectedDate('2026-10-01', '2026-10-05')).toBe('2026-10-01')
 		expect(resolveSelectedDate(null, '2026-10-05')).toBe('2026-10-05')
 		expect(resolveSelectedDate('2026-02-31', '2026-10-05')).toBe('2026-10-05')
-		expect(resolveSelectedDate('2026-10-09', '2026-10-05')).toBe('2026-10-05')
+		expect(resolveSelectedDate('2026-10-06', '2026-10-05')).toBe('2026-10-06')
+		expect(resolveSelectedDate('2026-10-07', '2026-10-05')).toBe('2026-10-05')
 		expect(resolveSelectedDate('yesterday', '2026-10-05')).toBe('2026-10-05')
+	})
+})
+
+describe('getWeekDays ahead', () => {
+	it('marks the days after today and calls a tomorrow with food planned', () => {
+		const week = getWeekDays(
+			'2026-10-06',
+			[
+				{ localDate: '2026-10-05', kcal: 1370, goalKcal: 2200, status: 'normal' },
+				{ localDate: '2026-10-06', kcal: 525, goalKcal: 2200, status: 'normal' },
+			],
+			'2026-10-05',
+		)
+		expect(week.map((day) => day.date.getDate())).toEqual([30, 1, 2, 3, 4, 5, 6])
+		expect(week.at(-2)).toMatchObject({ status: 'normal', isUpcoming: false })
+		expect(week.at(-1)).toMatchObject({ status: 'planned', isUpcoming: true })
+	})
+
+	it('keeps an empty tomorrow empty', () => {
+		const week = getWeekDays('2026-10-06', [], '2026-10-05')
+		expect(week.at(-1)).toMatchObject({ status: 'empty', isUpcoming: true })
+	})
+})
+
+describe('getEmptyKind', () => {
+	it.each([
+		['2026-10-05', 'today'],
+		['2026-10-06', 'tomorrow'],
+		['2026-10-04', 'recent'],
+		['2026-10-02', 'recent'],
+		['2026-10-01', 'old'],
+	])('puts %s against 2026-10-05 as %s', (localDate, kind) => {
+		expect(getEmptyKind(localDate, '2026-10-05')).toBe(kind)
 	})
 })

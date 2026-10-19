@@ -18,6 +18,8 @@ import { getMealSummary } from '../lib/get-meal-summary'
 interface MealSectionProps {
 	meal: LoggedMeal
 	isExpanded: boolean
+	/** Tomorrow's plan: the row has no time. */
+	isPlanned?: boolean
 	onToggle: () => void
 	onEditEntry: (entryId: string) => void
 }
@@ -26,7 +28,13 @@ interface MealSectionProps {
  * A meal on «Сьогодні»: the docs MealRow as a header (its summary only while folded), under it
  * the food lines of the chat card and the meal's «Б · В · Ж». A tap on a line opens the edit sheet.
  */
-export const MealSection = ({ meal, isExpanded, onToggle, onEditEntry }: MealSectionProps) => {
+export const MealSection = ({
+	meal,
+	isExpanded,
+	isPlanned = false,
+	onToggle,
+	onEditEntry,
+}: MealSectionProps) => {
 	const { t } = useTranslation()
 	const bodyId = useId()
 	// MotionConfig reducedMotion only skips transforms; a height animation has to be skipped here
@@ -36,7 +44,7 @@ export const MealSection = ({ meal, isExpanded, onToggle, onEditEntry }: MealSec
 		<Surface variant="frosted" radius="bubble" shadow="none" className="flex flex-col">
 			<MealRow
 				mealLabel={t(getMealLabelKey(meal.type))}
-				time={formatTime(new Date(meal.eatenAt))}
+				time={isPlanned ? undefined : formatTime(new Date(meal.eatenAt))}
 				summary={isExpanded ? undefined : getMealSummary(meal.entries)}
 				kcal={meal.totals.kcal}
 				category={getMealCategory(meal.entries)}

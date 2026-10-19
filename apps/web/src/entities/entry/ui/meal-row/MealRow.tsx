@@ -6,8 +6,8 @@ import { type FoodCategory, FoodIcon, Icon, ICON_SIZE, Text } from '@/shared/ui'
 export interface MealRowProps {
 	/** «Сніданок» */
 	mealLabel: string
-	/** «08:40» */
-	time: string
+	/** «08:40»; left out for a planned day (no time yet). */
+	time?: string
 	/** «Яйця, гречка, кава з молоком»; left out when the entries show under the row. */
 	summary?: string
 	kcal: number
@@ -45,10 +45,13 @@ export const MealRow = ({
 			<FoodIcon category={category} size="meal" />
 			<span className="flex min-w-0 flex-1 flex-col gap-px">
 				<Text as="span" weight="bold">
-					{mealLabel}{' '}
-					<Text as="span" variant="small" weight="medium" tone="muted">
-						{time}
-					</Text>
+					{mealLabel}
+					{time && (
+						<Text as="span" variant="small" weight="medium" tone="muted">
+							{' '}
+							{time}
+						</Text>
+					)}
 				</Text>
 				{summary && (
 					<Text as="span" variant="small" weight="regular" tone="muted" className="truncate">

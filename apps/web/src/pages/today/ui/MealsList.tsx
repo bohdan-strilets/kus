@@ -6,7 +6,14 @@ import { useCollapsedMealsStore } from '../model/collapsed-meals-store'
 import { MealSection } from './MealSection'
 
 /** The day's meals in their course (the API orders them), each open on its lines unless folded. */
-export const MealsList = ({ meals }: { meals: readonly LoggedMeal[] }) => {
+export const MealsList = ({
+	meals,
+	isPlanned = false,
+}: {
+	meals: readonly LoggedMeal[]
+	/** Tomorrow: a plan has no meal time. */
+	isPlanned?: boolean
+}) => {
 	const collapsedIds = useCollapsedMealsStore((state) => state.collapsedIds)
 	const toggle = useCollapsedMealsStore((state) => state.toggle)
 	const openEditor = useEditEntryStore((state) => state.open)
@@ -18,6 +25,7 @@ export const MealsList = ({ meals }: { meals: readonly LoggedMeal[] }) => {
 					<MealSection
 						meal={meal}
 						isExpanded={!collapsedIds[meal.id]}
+						isPlanned={isPlanned}
 						onToggle={() => {
 							toggle(meal.id)
 						}}

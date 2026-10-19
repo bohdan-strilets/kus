@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { cn, formatDayHeading, formatWeekdayShort, PRESS } from '@/shared/lib'
 import { Text } from '@/shared/ui'
 
-import type { DayStatus, WeekDay } from './week-strip.types'
+import type { WeekDay, WeekDayStatus } from './week-strip.types'
 
 export interface WeekStripProps {
 	days: readonly WeekDay[]
@@ -16,12 +16,25 @@ const STATUS_LABEL_KEY = {
 	normal: 'week.dayNormal',
 	over: 'week.dayOver',
 	empty: 'week.dayEmpty',
+	planned: 'todayAhead.dayPlanned',
 } as const
 
-const DOT_CLASS: Record<DayStatus, string> = {
+/** A day after today is never «без записів»: nothing is expected of it yet. */
+const UPCOMING_EMPTY_LABEL_KEY = 'todayAhead.dayUpcomingEmpty'
+
+const DOT_CLASS: Record<WeekDayStatus, string> = {
 	normal: 'bg-success',
 	over: 'bg-over',
 	empty: 'bg-transparent',
+	planned: 'border border-success',
+}
+
+const getNumberTone = (
+	isSelected: boolean,
+	isUpcoming: boolean,
+): 'onDark' | 'mutedStrong' | 'ink' => {
+	if (isSelected) return 'onDark'
+	return isUpcoming ? 'mutedStrong' : 'ink'
 }
 
 const isSameDay = (a: Date, b: Date): boolean => a.toDateString() === b.toDateString()
@@ -40,14 +53,19 @@ export const WeekStrip = ({ days, selectedDate, onSelect }: WeekStripProps) => {
 			aria-label={t('week.label')}
 			className="grid grid-cols-7 gap-1 rounded-bubble-ai bg-surface/70 p-2"
 		>
-			{days.map(({ date, status }) => {
+			{days.map(({ date, status, isUpcoming = false }) => {
 				const isSelected = isSameDay(date, selectedDate)
 				return (
 					<motion.button
 						key={date.toISOString()}
 						type="button"
 						aria-current={isSelected ? 'date' : undefined}
-						aria-label={t(STATUS_LABEL_KEY[status], { day: formatDayHeading(date) })}
+						aria-label={t(
+							isUpcoming && status === 'empty'
+								? UPCOMING_EMPTY_LABEL_KEY
+								: STATUS_LABEL_KEY[status],
+							{ day: formatDayHeading(date) },
+						)}
 						onClick={() => {
 							onSelect(date)
 						}}
@@ -55,6 +73,7 @@ export const WeekStrip = ({ days, selectedDate, onSelect }: WeekStripProps) => {
 						className={cn(
 							'flex min-h-tap cursor-pointer flex-col items-center gap-1 rounded-tile-sm py-1.5',
 							isSelected ? 'bg-ink text-white' : 'text-ink',
+							isUpcoming && !isSelected && 'border border-handle',
 						)}
 					>
 						<Text
@@ -66,7 +85,7 @@ export const WeekStrip = ({ days, selectedDate, onSelect }: WeekStripProps) => {
 						>
 							{formatWeekdayShort(date)}
 						</Text>
-						<Text as="span" weight="bold" tone={isSelected ? 'onDark' : 'ink'} isTabular>
+						<Text as="span" weight="bold" tone={getNumberTone(isSelected, isUpcoming)} isTabular>
 							{date.getDate()}
 						</Text>
 						<span

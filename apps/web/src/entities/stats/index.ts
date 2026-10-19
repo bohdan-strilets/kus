@@ -35,5 +35,5 @@ export {
 export { MacroTile, type MacroTileProps } from './ui/macro-tile/MacroTile'
 export { MacroTiles, type MacroTilesProps } from './ui/macro-tiles/MacroTiles'
 export { SupportCard, type SupportCardProps } from './ui/support-card/SupportCard'
-export type { DayStatus, WeekDay } from './ui/week-strip/week-strip.types'
+export type { DayStatus, WeekDay, WeekDayStatus } from './ui/week-strip/week-strip.types'
 export { WeekStrip, type WeekStripProps } from './ui/week-strip/WeekStrip'

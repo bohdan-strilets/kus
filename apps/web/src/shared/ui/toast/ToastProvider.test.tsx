@@ -56,4 +56,19 @@ describe('ToastProvider', () => {
 
 		expect(onClick).toHaveBeenCalledTimes(1)
 	})
+
+	it('renders the action as a tap-sized button without underline', async () => {
+		render(
+			<ToastProvider>
+				<Trigger onClick={vi.fn()} />
+			</ToastProvider>,
+		)
+
+		fireEvent.click(screen.getByText('show'))
+		const action = await screen.findByRole('button', { name: 'Повернути' })
+
+		expect(action.tagName).toBe('BUTTON')
+		expect(action.classList.contains('min-h-tap')).toBe(true)
+		expect(action.classList.contains('underline')).toBe(false)
+	})
 })

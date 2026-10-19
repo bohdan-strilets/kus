@@ -5,14 +5,13 @@ import { useTranslation } from 'react-i18next'
 
 import { TRANSITION } from '@/shared/lib'
 
-import { Button } from '../button'
 import { MAX_VISIBLE_TOASTS, TOAST_DURATION_MS, TOAST_ENTER_OFFSET_PX } from './toast.constants'
 import { type ToastApi, ToastContext } from './toast.context'
 import type { ToastItem } from './toast.types'
 
 /**
  * No mockup exists for toasts; agreed minimal look: a surface card, radius 18, shadow-chip,
- * 14/600, above the bottom nav, no icons. Radix Toast gives the live region, swipe and hotkey.
+ * 15/600, text action 15/700, above the bottom nav, no icons. Radix Toast gives the live region, swipe and hotkey.
  */
 export const ToastProvider = ({ children }: { children: ReactNode }) => {
 	const { t } = useTranslation()
@@ -60,14 +59,18 @@ export const ToastProvider = ({ children }: { children: ReactNode }) => {
 								exit={{ opacity: 0, transition: TRANSITION.exit }}
 								className="pointer-events-auto flex items-center justify-between gap-3 rounded-chip bg-surface px-4 py-3 shadow-chip"
 							>
-								<RadixToast.Description className="text-card-title font-semibold text-ink">
+								<RadixToast.Description className="text-body font-semibold text-ink">
 									{toast.message}
 								</RadixToast.Description>
 								{toast.action && (
 									<RadixToast.Action asChild altText={toast.action.label}>
-										<Button variant="secondary" size="sm" onClick={toast.action.onClick}>
+										<button
+											type="button"
+											className="min-h-tap shrink-0 cursor-pointer text-body font-bold text-primary"
+											onClick={toast.action.onClick}
+										>
 											{toast.action.label}
-										</Button>
+										</button>
 									</RadixToast.Action>
 								)}
 							</motion.li>

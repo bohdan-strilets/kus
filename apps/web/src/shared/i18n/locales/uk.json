@@ -747,8 +747,8 @@
 		}
 	},
 	"editEntry": {
-		"subtitle": "{{meal}} · {{time}}",
-		"pick": "{{time}} · обери, що змінити",
+		"subtitle": "{{meal}} · {{when}}",
+		"pick": "{{when}} · обери, що змінити",
 		"amountGrams": "Вага, г",
 		"amountMl": "Об'єм, мл",
 		"unitGrams": "г",

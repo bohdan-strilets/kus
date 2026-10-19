@@ -2,12 +2,28 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { getMealLabelKey } from '@/entities/entry'
-import { formatTime } from '@/shared/lib'
+import { useSessionUser } from '@/entities/session'
+import {
+	formatDayHeading,
+	formatTime,
+	getLocalDateString,
+	toCalendarDate,
+	useLocalDate,
+} from '@/shared/lib'
 import { BaseBottomSheet } from '@/shared/ui'
 
 import { type EditEntryTarget, useEditEntryStore } from '../model/edit-entry-store'
 import { EditEntryForm } from './EditEntryForm'
 import { EntryPicker } from './EntryPicker'
+
+const DEFAULT_TIME_ZONE = 'UTC'
+
+/** Today's entry shows its time; an older one its day, since the time alone would not say which. */
+const getWhenLabel = (eatenAt: string, timeZone: string, today: string): string => {
+	const eaten = new Date(eatenAt)
+	const localDate = getLocalDateString(eaten, timeZone)
+	return localDate === today ? formatTime(eaten) : formatDayHeading(toCalendarDate(localDate))
+}
 
 /**
  * docs Sheet «Редагування запису», rendered once per page and opened through useEditEntryStore:
@@ -27,7 +43,9 @@ export const EditEntrySheet = () => {
 		? (shown.meal.entries.find((item) => item.id === shown.entryId) ?? null)
 		: null
 	const mealLabel = shown ? t(getMealLabelKey(shown.meal.type)) : ''
-	const time = shown ? formatTime(new Date(shown.meal.eatenAt)) : ''
+	const timeZone = useSessionUser()?.timezone ?? DEFAULT_TIME_ZONE
+	const today = useLocalDate(timeZone)
+	const when = shown ? getWhenLabel(shown.meal.eatenAt, timeZone, today) : ''
 
 	return (
 		<BaseBottomSheet
@@ -37,7 +55,7 @@ export const EditEntrySheet = () => {
 			}}
 			title={entry ? entry.name : mealLabel}
 			description={
-				entry ? t('editEntry.subtitle', { meal: mealLabel, time }) : t('editEntry.pick', { time })
+				entry ? t('editEntry.subtitle', { meal: mealLabel, when }) : t('editEntry.pick', { when })
 			}
 		>
 			{shown &&

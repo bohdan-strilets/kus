@@ -5,7 +5,7 @@ import { Link } from 'react-router'
 import { getMealLabelKey } from '@/entities/entry'
 import { CalorieGauge, getDayStats, MacroTiles } from '@/entities/stats'
 import { ROUTES } from '@/shared/config'
-import { cn, formatInteger, formatSignedInteger, formatTime } from '@/shared/lib'
+import { cn, formatInteger, formatSignedInteger, formatTime, getDayRelation } from '@/shared/lib'
 import { Surface, Text } from '@/shared/ui'
 
 import { getDayCardTitle } from '../lib/get-day-label'
@@ -30,6 +30,8 @@ export const DayCard = ({ card, today, note, hasTail = true }: DayCardProps) => 
 	const { kind, localDate, asOf, totals, goal, remainingKcal, meals } = card
 	const stats = getDayStats({ totals, goal })
 	const isOver = remainingKcal !== null && remainingKcal < 0
+	// The link follows the snapshot's date, not its kind: a «today» card from yesterday opens yesterday.
+	const isSnapshotToday = getDayRelation(localDate, today) === 'today'
 	const aside =
 		kind === 'today' && asOf !== null
 			? t('chat.dayCard.asOf', { time: formatTime(new Date(asOf)) })
@@ -100,11 +102,11 @@ export const DayCard = ({ card, today, note, hasTail = true }: DayCardProps) => 
 			)}
 			{note && <Text>{note}</Text>}
 			<Link
-				to={kind === 'today' ? ROUTES.today : `${ROUTES.today}?date=${localDate}`}
+				to={isSnapshotToday ? ROUTES.today : `${ROUTES.today}?date=${localDate}`}
 				replace
 				className="inline-flex min-h-tap items-center self-start rounded-chip text-card-title font-bold text-primary"
 			>
-				{t(kind === 'today' ? 'chat.dayCard.openToday' : 'chat.dayCard.openDay')}
+				{t(isSnapshotToday ? 'chat.dayCard.openToday' : 'chat.dayCard.openDay')}
 			</Link>
 		</Surface>
 	)

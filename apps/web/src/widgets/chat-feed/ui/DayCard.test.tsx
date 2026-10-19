@@ -83,6 +83,23 @@ describe('DayCard', () => {
 		)
 	})
 
+	it('today snapshot taken yesterday: the link follows the snapshot date, not the kind', () => {
+		renderCard(createCard({ kind: 'today', localDate: '2026-10-17' }))
+
+		expect(screen.queryByRole('link', { name: 'Відкрити «Сьогодні»' })).toBeNull()
+		expect(screen.getByRole('link', { name: 'Відкрити день' }).getAttribute('href')).toBe(
+			'/app/today?date=2026-10-17',
+		)
+	})
+
+	it('today snapshot of the current day: the link has no date', () => {
+		renderCard(createCard({ kind: 'today', localDate: TODAY }))
+
+		expect(screen.getByRole('link', { name: 'Відкрити «Сьогодні»' }).getAttribute('href')).toBe(
+			'/app/today',
+		)
+	})
+
 	it('planned: «Завтра» with «заплановано»', () => {
 		renderCard(createCard({ kind: 'planned', localDate: '2026-10-19', asOf: null }))
 

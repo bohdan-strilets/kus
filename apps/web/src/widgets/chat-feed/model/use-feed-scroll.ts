@@ -132,9 +132,10 @@ export const useFeedScroll = ({
 	}, [scrollToEndRequest])
 
 	// The full header floats over the feed and the content is padded by its height. When that height
-	// changes (skeleton -> card) with the full header up and the user not at the end, the content
-	// moves by the delta: shift the scroll by the same amount so what they read stays in place. Only
-	// a real height change writes scrollTop; swapping the headers never does (it stops iOS inertia).
+	// changes (skeleton -> card) and the user is not at the end, the content moves by the delta: shift
+	// the scroll by the same amount so what they read stays in place. isCompact is the scroll state
+	// (a header shrunk by typing still shifts the content, so the shift still applies). Only a real
+	// height change writes scrollTop; swapping the headers never does (it stops iOS inertia).
 	const lastHeaderHeight = useRef(fullHeaderHeight)
 	useLayoutEffect(() => {
 		const element = scrollRef.current

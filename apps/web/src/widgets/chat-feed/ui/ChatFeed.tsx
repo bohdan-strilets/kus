@@ -147,7 +147,6 @@ export const ChatFeed = ({
 		<div className="relative flex min-h-0 flex-1 flex-col">
 			<div
 				ref={scrollRef}
-				data-testid="chat-feed-scroller"
 				style={
 					{ '--feed-top': `${fadeTop}px`, '--feed-header': `${headerHeight}px` } as CSSProperties
 				}

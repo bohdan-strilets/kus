@@ -66,7 +66,7 @@ export const ToastProvider = ({ children }: { children: ReactNode }) => {
 									<RadixToast.Action asChild altText={toast.action.label}>
 										<button
 											type="button"
-											className="min-h-tap shrink-0 cursor-pointer text-body font-bold text-primary"
+											className="min-h-tap min-w-tap shrink-0 cursor-pointer text-body font-bold text-primary"
 											onClick={toast.action.onClick}
 										>
 											{toast.action.label}

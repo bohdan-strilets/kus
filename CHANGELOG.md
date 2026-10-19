@@ -6,6 +6,24 @@ All notable changes to Kusik are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.6.3] — 2026-10-19
+
+Polish after the 0.6.2 review: the chat header no longer jumps, the edit sheet and the toast follow the design. Web only: no migrations, no new environment variables, no change to the API or to the prompt.
+
+### Changed
+
+- The sheet for editing a meal of another day shows the date ("Понеділок, 19 жовтня") instead of the time, in the subtitle and in the picker; today's meals keep the time ([a3cfd34])
+- The toast text is 15/600 and the action is a plain primary 15/700 button, 44 px tall, without an underline ([ab9379b], [7caa0ce])
+- The chat header is `absolute` over the feed and the feed is masked below it (`--feed-top`, `@property`), so swapping the full and the compact header no longer relayouts the feed: in a browser run the header was never missing and the reference message moved 0 px on a swipe, on "До останніх" and on focusing the field (it was about 110 ms without a header and a 148.8 px jump); `HEADER_SWAP` moved to `shared/lib/motion` and the settle timer of `use-feed-scroll` is gone ([42addba])
+
+### Removed
+
+- The unused `RecipeTip` component and the `recipe.dinnerTip` key ([733a814])
+
+### Design
+
+- Answers after the 0.6.2 review are imported ([bbd52a3])
+
 ## [0.6.2] — 2026-10-19
 
 Food and measurements for other days, corrections of measurements, a day card in the chat and prompt version `2026-10-18.1`. Two database migrations (each is one nullable `ADD COLUMN`) and no new environment variables; the API and the web app both change. The full eval of 168 cases gave decisions 167/168 (the one miss was a case that forbade any digit in a reply that now names the date; the case was fixed and passed on its own), the 33 new cases 33/33 (11/31 on the previous prompt), no failures.
@@ -302,7 +320,14 @@ Design sync with `design/` v0.5.2. Web only: no API, shared-package or migration
 
 ## 0.2.0 / 0.1.0 — see tags
 
-[Unreleased]: https://github.com/bohdan-strilets/kus/compare/v0.6.2...HEAD
+[Unreleased]: https://github.com/bohdan-strilets/kus/compare/v0.6.3...HEAD
+[0.6.3]: https://github.com/bohdan-strilets/kus/compare/v0.6.2...v0.6.3
+[a3cfd34]: https://github.com/bohdan-strilets/kus/commit/a3cfd34f69256c9c73a49e24e01269319bf75f1f
+[ab9379b]: https://github.com/bohdan-strilets/kus/commit/ab9379b87eaad0616bdd29787592f45d97be6583
+[7caa0ce]: https://github.com/bohdan-strilets/kus/commit/7caa0ce6d161f3d3745b9d8293833a035aaa3089
+[42addba]: https://github.com/bohdan-strilets/kus/commit/42addba78c2bfd2eb7c3368c1f8282fd8384c91f
+[733a814]: https://github.com/bohdan-strilets/kus/commit/733a814ebfb7851743ecc89862a954c57a390785
+[bbd52a3]: https://github.com/bohdan-strilets/kus/commit/bbd52a3f77172ef5d855a972ce8e6290ab613b4c
 [0.6.2]: https://github.com/bohdan-strilets/kus/compare/v0.6.1...v0.6.2
 [5aee591]: https://github.com/bohdan-strilets/kus/commit/5aee591eb2d538bf490fa5253854d4c4bf1dad5e
 [e68200d]: https://github.com/bohdan-strilets/kus/commit/e68200d7dcc1e90a7bbb31a1a285d1ad3cde1245

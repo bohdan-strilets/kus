@@ -12,9 +12,32 @@
 	}
 }
 
-/* The chat feed fades out under the header instead of a hard cut (mockups/chat-compact.html: 36px) */
+/* Height of the chat header in its current mode; the feed scroller sets it (ChatFeed). Registered so
+   the change between modes animates with the header's crossfade; without @property it is instant */
+@property --feed-top {
+	syntax: '<length>';
+	inherits: true;
+	initial-value: 0px;
+}
+
+/* The chat feed is hidden under the floating header and fades in below it instead of a hard cut
+   (mockups/chat-compact.html: 36px) */
 @utility mask-fade-top {
-	mask-image: linear-gradient(to bottom, transparent 0, black --spacing(9));
+	mask-image: linear-gradient(
+		to bottom,
+		transparent var(--feed-top),
+		black calc(var(--feed-top) + --spacing(9))
+	);
+	transition: --feed-top var(--duration-base) var(--ease-out);
+
+	@media (prefers-reduced-motion: reduce) {
+		transition: none;
+	}
+}
+
+/* The feed content starts below the full header (--feed-header, its measured height) */
+@utility pt-feed-header {
+	padding-top: calc(var(--feed-header) + --spacing(3.5));
 }
 
 /* Under the floating tab bar: 20 px above the screen edge (mockups), or the home indicator if that

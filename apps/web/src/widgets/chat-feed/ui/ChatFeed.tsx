@@ -1,6 +1,6 @@
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { motion } from 'motion/react'
-import { useEffect, useMemo, useRef } from 'react'
+import { type CSSProperties, useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { messagesQueryOptions } from '@/entities/message'
@@ -28,6 +28,10 @@ export interface ChatFeedProps {
 	onCompactChange: (isCompact: boolean) => void
 	/** Grows when the feed should show the newest message above the keyboard (see useFeedScroll). */
 	scrollToEndRequest: number
+	/** The last measured height of the full header: the content starts below it. */
+	headerHeight: number
+	/** The header's height in its current mode: the feed is masked out above it. */
+	fadeTop: number
 }
 
 /** Start loading the older page this far before the top edge comes into view. */
@@ -44,6 +48,8 @@ export const ChatFeed = ({
 	today,
 	onCompactChange,
 	scrollToEndRequest,
+	headerHeight,
+	fadeTop,
 }: ChatFeedProps) => {
 	const { t } = useTranslation()
 	const query = useInfiniteQuery(messagesQueryOptions)
@@ -84,6 +90,7 @@ export const ChatFeed = ({
 		items,
 		onCompactChange,
 		scrollToEndRequest,
+		fullHeaderHeight: headerHeight,
 	})
 	const latestReplyKey = items.findLast((item) => item.kind === 'kusik')?.key
 
@@ -140,13 +147,17 @@ export const ChatFeed = ({
 		<div className="relative flex min-h-0 flex-1 flex-col">
 			<div
 				ref={scrollRef}
+				data-testid="chat-feed-scroller"
+				style={
+					{ '--feed-top': `${fadeTop}px`, '--feed-header': `${headerHeight}px` } as CSSProperties
+				}
 				className="scrollbar-none min-h-0 flex-1 overflow-y-auto overscroll-contain mask-fade-top"
 			>
 				<div
 					ref={contentRef}
 					role="log"
 					aria-label={t('chat.feedLabel')}
-					className="flex min-h-full flex-col justify-end gap-4 px-gutter pt-3.5 pb-2.5"
+					className="flex min-h-full flex-col justify-end gap-4 px-gutter pt-feed-header pb-2.5"
 				>
 					<div ref={topRef} aria-hidden="true" />
 					{isFetchingNextPage && (

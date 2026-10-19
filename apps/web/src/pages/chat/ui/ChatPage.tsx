@@ -1,4 +1,5 @@
 import { MESSAGE_TEXT_MAX_LENGTH } from '@kus/shared'
+import { useState } from 'react'
 
 import { useLocalToday } from '@/entities/day'
 import { useSessionUser } from '@/entities/session'
@@ -16,7 +17,11 @@ import {
 } from '@/features/send-message'
 import { FEATURES } from '@/shared/config'
 import { ChatFeed } from '@/widgets/chat-feed'
-import { ChatHeader } from '@/widgets/chat-header'
+import {
+	ChatHeader,
+	COMPACT_HEADER_HEIGHT_PX,
+	DEFAULT_FULL_HEADER_HEIGHT_PX,
+} from '@/widgets/chat-header'
 
 import { useChatHeaderMode } from '../model/use-chat-header-mode'
 
@@ -36,6 +41,9 @@ export const ChatPage = () => {
 const ChatScreen = ({ addressee, timeZone }: { addressee: Addressee; timeZone: string }) => {
 	const today = useLocalToday(timeZone)
 	const header = useChatHeaderMode()
+	const isHeaderCompact = header.mode !== 'full'
+	// the full header's height varies (skeleton, error, link): the last measured one is kept
+	const [fullHeaderHeight, setFullHeaderHeight] = useState(DEFAULT_FULL_HEADER_HEIGHT_PX)
 	// survives a switch of tabs and a reload of the PWA; claimed per user with the session
 	const text = useComposerDraftStore((state) => state.text)
 	const setText = useComposerDraftStore((state) => state.setText)
@@ -59,13 +67,15 @@ const ChatScreen = ({ addressee, timeZone }: { addressee: Addressee; timeZone: s
 	})
 
 	return (
-		<div className="flex min-h-0 flex-1 flex-col">
+		<div className="relative flex min-h-0 flex-1 flex-col">
 			<ChatHeader
 				addressee={addressee}
 				timeZone={timeZone}
 				today={today}
-				isCompact={header.mode !== 'full'}
+				isCompact={isHeaderCompact}
 				onExpand={header.mode === 'focused' ? header.expand : undefined}
+				fullHeight={fullHeaderHeight}
+				onFullHeightChange={setFullHeaderHeight}
 			/>
 			<ChatFeed
 				addressee={addressee}
@@ -73,6 +83,8 @@ const ChatScreen = ({ addressee, timeZone }: { addressee: Addressee; timeZone: s
 				today={today}
 				onCompactChange={header.onScrolledUpChange}
 				scrollToEndRequest={scrollToEndRequest}
+				headerHeight={fullHeaderHeight}
+				fadeTop={isHeaderCompact ? COMPACT_HEADER_HEIGHT_PX : fullHeaderHeight}
 			/>
 			<div className="px-gutter pb-2.5">
 				<QuickChips isShown={hasQuickChips} />

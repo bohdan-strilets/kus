@@ -24,6 +24,7 @@ const Harness = () => {
 		items,
 		onCompactChange: () => undefined,
 		scrollToEndRequest: 0,
+		fullHeaderHeight: 0,
 	})
 	return (
 		<div data-testid="container" ref={scrollRef}>

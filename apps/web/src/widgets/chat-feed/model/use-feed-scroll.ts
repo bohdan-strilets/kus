@@ -7,13 +7,10 @@ import type { FeedItem } from './feed.types'
 const BOTTOM_SLACK_PX = 24
 /**
  * The header collapses once the user scrolls this far up from the newest message, and opens again
- * near the end. The swap no longer shifts the distance: `scrollTop -= delta` below compensates the
- * header's height change, so the gap only has to leave air for the settle re-check.
+ * near the end. The gap is a hysteresis, so the header does not flicker around one threshold.
  */
 const COMPACT_FROM_PX = 200
 const EXPAND_UNDER_PX = BOTTOM_SLACK_PX
-/** The header's exit + enter (base 200 ms each, AnimatePresence mode="wait") and a little air. */
-const HEADER_SWAP_SETTLE_MS = 500
 /**
  * iOS Safari can stop a native smooth scroll short when photos load under it: once it should have
  * finished (~300 ms), whatever is left to the end is scrolled instantly.
@@ -38,6 +35,8 @@ interface FeedScrollOptions {
 	 * tapped): jump to the end and stay there while the keyboard opens.
 	 */
 	scrollToEndRequest: number
+	/** Measured height of the full header, which the feed content is padded by. */
+	fullHeaderHeight: number
 }
 
 interface FeedScroll {
@@ -65,6 +64,7 @@ export const useFeedScroll = ({
 	items,
 	onCompactChange,
 	scrollToEndRequest,
+	fullHeaderHeight,
 }: FeedScrollOptions): FeedScroll => {
 	const scrollRef = useRef<HTMLDivElement>(null)
 	const contentRef = useRef<HTMLDivElement>(null)
@@ -131,13 +131,23 @@ export const useFeedScroll = ({
 		setIsScrolledUp(false)
 	}, [scrollToEndRequest])
 
+	// The full header floats over the feed and the content is padded by its height. When that height
+	// changes (skeleton -> card) with the full header up and the user not at the end, the content
+	// moves by the delta: shift the scroll by the same amount so what they read stays in place. Only
+	// a real height change writes scrollTop; swapping the headers never does (it stops iOS inertia).
+	const lastHeaderHeight = useRef(fullHeaderHeight)
+	useLayoutEffect(() => {
+		const element = scrollRef.current
+		const delta = fullHeaderHeight - lastHeaderHeight.current
+		lastHeaderHeight.current = fullHeaderHeight
+		if (!element || delta === 0 || isCompact.current || isAtBottom.current) return
+		element.scrollTop += delta
+	}, [fullHeaderHeight])
+
 	useEffect(() => {
 		const element = scrollRef.current
 		const content = contentRef.current
 		if (!element || !content) return
-
-		let settleTimer: ReturnType<typeof setTimeout> | undefined
-		let isSettling = false
 
 		const updateScrolledUp = (): void => {
 			setIsScrolledUp(getDistanceFromBottom(element) > COMPACT_FROM_PX)
@@ -150,18 +160,11 @@ export const useFeedScroll = ({
 			if (nextCompact === isCompact.current) return
 			isCompact.current = nextCompact
 			onCompactChangeRef.current(nextCompact)
-			// the swap resizes the feed and moves the scroll by itself, often without a scroll event
-			// (at the end there is nowhere to scroll): judge again once the new header is in place
-			isSettling = true
-			settleTimer = setTimeout(() => {
-				isSettling = false
-				updateCompact()
-			}, HEADER_SWAP_SETTLE_MS)
 		}
 		const handleScroll = (): void => {
 			isAtBottom.current = getDistanceFromBottom(element) <= BOTTOM_SLACK_PX
 			updateScrolledUp()
-			if (!isSettling) updateCompact()
+			updateCompact()
 		}
 		let lastClientHeight = element.clientHeight
 		const keepBottom = (entries: readonly ResizeObserverEntry[]): void => {
@@ -170,8 +173,8 @@ export const useFeedScroll = ({
 				const clientHeight = element.clientHeight
 				const delta = clientHeight - lastClientHeight
 				lastClientHeight = clientHeight
-				// the header changes height when it collapses: the composer below stays put, so a user
-				// scrolled up keeps the same distance to the bottom instead of drifting
+				// the keyboard or the composer resizes the feed: its bottom edge stays put for the user,
+				// so one scrolled up keeps the same distance to it instead of drifting
 				if (!isAtBottom.current) element.scrollTop -= delta
 			}
 			if (isAtBottom.current) element.scrollTop = element.scrollHeight
@@ -186,7 +189,6 @@ export const useFeedScroll = ({
 		element.addEventListener('touchstart', clearSafetyTimer, { passive: true })
 		element.addEventListener('wheel', clearSafetyTimer, { passive: true })
 		return () => {
-			clearTimeout(settleTimer)
 			observer.disconnect()
 			element.removeEventListener('scroll', handleScroll)
 			element.removeEventListener('touchstart', clearSafetyTimer)

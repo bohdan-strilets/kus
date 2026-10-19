@@ -68,3 +68,11 @@ export const achievementPopVariants: Variants = {
 		transition: { duration: ACHIEVEMENT_POP_S, ease: EASE.spring, times: [0, 0.6, 1] },
 	},
 }
+
+/** The chat header swaps (full ↔ compact) by opacity + a small shift, base; both headers crossfade. */
+export const HEADER_SWAP = {
+	initial: { opacity: 0, y: -6 },
+	animate: { opacity: 1, y: 0 },
+	exit: { opacity: 0, y: -6 },
+	transition: TRANSITION.base,
+}

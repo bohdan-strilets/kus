@@ -21,6 +21,7 @@ export {
 	achievementPopVariants,
 	bubbleVariants,
 	expandVariants,
+	HEADER_SWAP,
 	HOP_KEYFRAMES,
 	HOP_TRANSITION,
 	popInVariants,

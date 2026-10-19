@@ -42,6 +42,7 @@ export {
 	EASE,
 	expandVariants,
 	fillArc,
+	HEADER_SWAP,
 	HOP_KEYFRAMES,
 	HOP_TRANSITION,
 	isReducedMotion,

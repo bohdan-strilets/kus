@@ -10,6 +10,9 @@ const INITIAL_CLIENT_HEIGHT = 500
 const HEADER_DELTA_PX = 115
 const FAR_FROM_BOTTOM_PX = 500
 const NEAR_BOTTOM_PX = 10
+const MID_DISTANCE_PX = 100
+const HEADER_HEIGHT_PX = 219
+const HEADER_HEIGHT_GROWTH_PX = 40
 
 type ObserverCallback = (entries: { target: Element }[]) => void
 
@@ -43,11 +46,22 @@ interface Metrics {
 
 const metrics: Metrics = { scrollHeight: 0, clientHeight: 0, scrollTop: 0 }
 
-const Harness = ({ scrollToEndRequest = 0 }: { scrollToEndRequest?: number }) => {
+interface HarnessProps {
+	scrollToEndRequest?: number
+	fullHeaderHeight?: number
+	onCompactChange?: (isCompact: boolean) => void
+}
+
+const Harness = ({
+	scrollToEndRequest = 0,
+	fullHeaderHeight = HEADER_HEIGHT_PX,
+	onCompactChange = () => undefined,
+}: HarnessProps) => {
 	const { scrollRef, contentRef, isScrolledUp } = useFeedScroll({
 		items,
-		onCompactChange: () => undefined,
+		onCompactChange,
 		scrollToEndRequest,
+		fullHeaderHeight,
 	})
 	return (
 		<div data-testid="container" ref={scrollRef}>
@@ -80,9 +94,14 @@ const defineMetrics = (): void => {
 const distanceFromBottom = (): number =>
 	metrics.scrollHeight - metrics.scrollTop - metrics.clientHeight
 
-const renderFeed = () => {
-	const view = render(<Harness />)
+const renderFeed = (onCompactChange?: (isCompact: boolean) => void) => {
+	const view = render(<Harness onCompactChange={onCompactChange} />)
 	return {
+		setHeaderHeight: (fullHeaderHeight: number): void => {
+			view.rerender(
+				<Harness fullHeaderHeight={fullHeaderHeight} onCompactChange={onCompactChange} />,
+			)
+		},
 		container: view.getByTestId('container'),
 		content: view.getByTestId('content'),
 		request: (scrollToEndRequest: number): void => {
@@ -168,6 +187,70 @@ describe('useFeedScroll', () => {
 		resize(content)
 
 		expect(metrics.scrollTop).toBe(before)
+	})
+})
+
+describe('useFeedScroll full header height', () => {
+	it('moves the scroll by the delta when the full header grows while scrolled up', () => {
+		const { container, setHeaderHeight } = renderFeed()
+		scrollTo(container, MID_DISTANCE_PX)
+		const before = metrics.scrollTop
+
+		setHeaderHeight(HEADER_HEIGHT_PX + HEADER_HEIGHT_GROWTH_PX)
+
+		expect(metrics.scrollTop).toBe(before + HEADER_HEIGHT_GROWTH_PX)
+	})
+
+	it('moves the scroll back when the full header shrinks while scrolled up', () => {
+		const { container, setHeaderHeight } = renderFeed()
+		scrollTo(container, MID_DISTANCE_PX)
+		const before = metrics.scrollTop
+
+		setHeaderHeight(HEADER_HEIGHT_PX - HEADER_HEIGHT_GROWTH_PX)
+
+		expect(metrics.scrollTop).toBe(before - HEADER_HEIGHT_GROWTH_PX)
+	})
+
+	it('does not touch the scroll at the bottom', () => {
+		const { setHeaderHeight } = renderFeed()
+		const before = metrics.scrollTop
+
+		setHeaderHeight(HEADER_HEIGHT_PX + HEADER_HEIGHT_GROWTH_PX)
+
+		expect(metrics.scrollTop).toBe(before)
+	})
+
+	it('does not touch the scroll while the compact header is up', () => {
+		const onCompactChange = vi.fn()
+		const { container, setHeaderHeight } = renderFeed(onCompactChange)
+		scrollTo(container, FAR_FROM_BOTTOM_PX)
+		expect(onCompactChange).toHaveBeenCalledWith(true)
+		const before = metrics.scrollTop
+
+		setHeaderHeight(HEADER_HEIGHT_PX + HEADER_HEIGHT_GROWTH_PX)
+
+		expect(metrics.scrollTop).toBe(before)
+	})
+})
+
+describe('useFeedScroll compact header', () => {
+	it('asks for the compact header at once when scrolled far up', () => {
+		const onCompactChange = vi.fn()
+		const { container } = renderFeed(onCompactChange)
+
+		scrollTo(container, FAR_FROM_BOTTOM_PX)
+
+		expect(onCompactChange).toHaveBeenCalledExactlyOnceWith(true)
+	})
+
+	it('asks for the full header again near the end', () => {
+		const onCompactChange = vi.fn()
+		const { container } = renderFeed(onCompactChange)
+		scrollTo(container, FAR_FROM_BOTTOM_PX)
+
+		scrollTo(container, 0)
+
+		expect(onCompactChange).toHaveBeenLastCalledWith(false)
 	})
 })
 

@@ -25,6 +25,8 @@ export interface CalorieGaugeProps {
 	 * so it does not move the header ring's last shown value.
 	 */
 	revealKey?: string
+	/** compact only: «з 2 200 ккал» under the number even over the goal, when the excess is told next to the ring. */
+	hasGoalCaptionWhenOver?: boolean
 }
 
 const CLOSED_ICON_SIZE = 30
@@ -34,7 +36,13 @@ const CLOSED_ICON_SIZE = 30
  * under — what's left (large) or eaten «з 2 200 ккал» (compact); closed — a check and «ціль дня
  * закрита»; over — «+180» in `over`, never red, no sound; the over arc stops at +50 %.
  */
-export const CalorieGauge = ({ eaten, goal, size = 'large', revealKey }: CalorieGaugeProps) => {
+export const CalorieGauge = ({
+	eaten,
+	goal,
+	size = 'large',
+	revealKey,
+	hasGoalCaptionWhenOver = false,
+}: CalorieGaugeProps) => {
 	const { t } = useTranslation()
 	const state = getGaugeState(eaten, goal ?? 0)
 	const memoryKey = revealKey ?? `calorie-gauge:${size}`
@@ -98,12 +106,12 @@ export const CalorieGauge = ({ eaten, goal, size = 'large', revealKey }: Calorie
 						{t('gauge.left')}
 					</Text>
 				)}
-				{!isLarge && state.status === 'over' && (
+				{!isLarge && state.status === 'over' && !hasGoalCaptionWhenOver && (
 					<Text as="span" variant="small" weight="bold" tone="overInk">
 						{t('gauge.overShort', { over: formatSignedInteger(state.over) })}
 					</Text>
 				)}
-				{!isLarge && state.status !== 'over' && (
+				{!isLarge && (state.status !== 'over' || hasGoalCaptionWhenOver) && (
 					<Text as="span" variant="small" weight="regular" tone="muted">
 						{t('gauge.ofGoal', { goal: formatInteger(goal) })}
 					</Text>

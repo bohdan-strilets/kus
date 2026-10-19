@@ -25,4 +25,20 @@ describe('WeekStrip upcoming days', () => {
 		expect(screen.getByRole('button', { name: /— нічого не записано$/ })).toBeTruthy()
 		expect(screen.queryByRole('button', { name: /без записів/ })).toBeNull()
 	})
+
+	it('the chosen empty day has no dot, the chosen planned one a ring', () => {
+		const { container, rerender } = renderWithProviders(
+			<WeekStrip days={DAYS} selectedDate={new Date(2026, 9, 20)} onSelect={() => undefined} />,
+		)
+		const getSelectedDot = (): Element | null =>
+			container.querySelector('[aria-current="date"] span:last-child')
+
+		expect(getSelectedDot()?.className).toContain('bg-transparent')
+		expect(getSelectedDot()?.className).not.toContain('bg-white')
+
+		rerender(
+			<WeekStrip days={DAYS} selectedDate={new Date(2026, 9, 19)} onSelect={() => undefined} />,
+		)
+		expect(getSelectedDot()?.className).toContain('border-white')
+	})
 })

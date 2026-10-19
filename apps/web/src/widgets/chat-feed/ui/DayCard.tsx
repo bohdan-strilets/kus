@@ -54,6 +54,7 @@ export const DayCard = ({ card, today, note, hasTail = true }: DayCardProps) => 
 					eaten={stats.eaten}
 					goal={stats.goal}
 					size="compact"
+					hasGoalCaptionWhenOver
 					revealKey={`day-card:${localDate}:${asOf ?? ''}`}
 				/>
 				{remainingKcal !== null && (
@@ -83,7 +84,7 @@ export const DayCard = ({ card, today, note, hasTail = true }: DayCardProps) => 
 						>
 							<Text as="span" variant="cardTitle" weight="semibold">
 								{t(getMealLabelKey(meal.type))}
-								{meal.eatenAt !== null && (
+								{kind === 'today' && meal.eatenAt !== null && (
 									<Text as="span" variant="small" weight="medium" tone="muted">
 										{' '}
 										{formatTime(new Date(meal.eatenAt))}

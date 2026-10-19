@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router'
 
 import { shiftLocalDate } from '@/shared/lib'
@@ -30,7 +30,15 @@ export const useDayNavigation = (today: string): DayNavigation => {
 	const lastDate = getLastViewableDate(today)
 	const selected = resolveSelectedDate(params.get(DATE_PARAM), today)
 
+	const rawDate = params.get(DATE_PARAM)
 	const [pastWindowEnd, setPastWindowEnd] = useState<string | null>(null)
+
+	// a link past tomorrow (or a typo) lands on today and the URL says so, without a history entry
+	useEffect(() => {
+		if (rawDate !== null && rawDate !== selected) {
+			setParams({}, { replace: true })
+		}
+	}, [rawDate, selected, setParams])
 
 	const windowEnd = pastWindowEnd ?? lastDate
 	// a day picked from outside the strip (a link, back) brings its week along (adjusted in render)

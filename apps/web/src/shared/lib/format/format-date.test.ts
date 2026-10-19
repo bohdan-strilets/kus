@@ -6,6 +6,7 @@ import {
 	formatDayMonthShort,
 	formatShortDate,
 	formatTime,
+	formatWeekdayLong,
 	formatWeekdayShort,
 } from './format-date'
 
@@ -21,6 +22,15 @@ describe('formatTime', () => {
 describe('formatDayHeading', () => {
 	it('writes the weekday with a capital and the month in the genitive', () => {
 		expect(formatDayHeading(SEED_DAY)).toBe('Понеділок, 5 жовтня')
+	})
+})
+
+describe('apostrophe', () => {
+	it("is ASCII in «П'ятниця», not U+02BC", () => {
+		const friday = new Date(2026, 9, 23)
+		expect(formatWeekdayLong(friday)).toBe("П'ятниця")
+		expect(formatDayHeading(friday)).toBe("П'ятниця, 23 жовтня")
+		expect(formatDayHeading(friday)).not.toContain('ʼ')
 	})
 })
 

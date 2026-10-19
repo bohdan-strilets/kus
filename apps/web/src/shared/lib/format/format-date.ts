@@ -1,7 +1,10 @@
 import { INTL_LOCALE as LOCALE } from './locale'
 
+/** Intl spells the Ukrainian apostrophe as U+02BC («Пʼятниця»); the app uses the ASCII one. */
+const normalizeApostrophe = (text: string): string => text.replaceAll('ʼ', "'")
+
 const capitalize = (text: string): string =>
-	text.charAt(0).toLocaleUpperCase(LOCALE) + text.slice(1)
+	normalizeApostrophe(text.charAt(0).toLocaleUpperCase(LOCALE) + text.slice(1))
 
 /** «08:40» — meal and message times. */
 export const formatTime = (date: Date): string =>
@@ -21,7 +24,7 @@ export const formatWeekdayShort = (date: Date): string =>
 
 /** «5 вересня» — a date inside a sentence, no weekday and no capital. */
 export const formatDayMonth = (date: Date): string =>
-	date.toLocaleDateString(LOCALE, { day: 'numeric', month: 'long' })
+	normalizeApostrophe(date.toLocaleDateString(LOCALE, { day: 'numeric', month: 'long' }))
 
 /** «08.11» — compact day.month; `timeZone` picks the day in the user's zone, not the device's. */
 export const formatShortDate = (date: Date, timeZone?: string): string => {

@@ -2,6 +2,8 @@
 import { act, cleanup } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { useLocation, useNavigationType } from 'react-router'
+
 import { useLocalToday } from '@/entities/day'
 import { renderHookWithProviders } from '@/shared/testing'
 
@@ -90,6 +92,21 @@ describe('useDayNavigation ahead', () => {
 		expect(renderNavigation('/?date=2026-10-14').result.current.selected).toBe(
 			TODAY_BEFORE_MIDNIGHT,
 		)
+	})
+
+	it('replaces a date past tomorrow in the URL with today, without a history entry', () => {
+		const { result } = renderHookWithProviders(
+			() => ({
+				navigation: useScreenNavigation(),
+				location: useLocation(),
+				navigationType: useNavigationType(),
+			}),
+			{ route: '/?date=2026-10-20' },
+		)
+
+		expect(result.current.navigation.selected).toBe(TODAY_BEFORE_MIDNIGHT)
+		expect(result.current.location.search).toBe('')
+		expect(result.current.navigationType).toBe('REPLACE')
 	})
 
 	it('shows the current week from the week before it and lands on today, not tomorrow', () => {

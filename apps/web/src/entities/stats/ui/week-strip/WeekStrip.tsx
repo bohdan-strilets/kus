@@ -29,6 +29,14 @@ const DOT_CLASS: Record<WeekDayStatus, string> = {
 	planned: 'border border-success',
 }
 
+/** The chosen day's dot sits on ink: white, a white ring for a plan, none for a day without a record. */
+const SELECTED_DOT_CLASS: Record<WeekDayStatus, string> = {
+	normal: 'bg-white',
+	over: 'bg-white',
+	empty: 'bg-transparent',
+	planned: 'border border-white',
+}
+
 const getNumberTone = (
 	isSelected: boolean,
 	isUpcoming: boolean,
@@ -89,7 +97,10 @@ export const WeekStrip = ({ days, selectedDate, onSelect }: WeekStripProps) => {
 							{date.getDate()}
 						</Text>
 						<span
-							className={cn('size-1.5 rounded-full', isSelected ? 'bg-white' : DOT_CLASS[status])}
+							className={cn(
+								'size-1.5 rounded-full',
+								isSelected ? SELECTED_DOT_CLASS[status] : DOT_CLASS[status],
+							)}
 						/>
 					</motion.button>
 				)

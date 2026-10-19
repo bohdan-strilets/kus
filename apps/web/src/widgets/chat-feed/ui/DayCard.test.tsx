@@ -46,6 +46,7 @@ describe('DayCard', () => {
 		expect(screen.getByText('830')).toBeTruthy()
 		expect(screen.getByText('ккал лишилось')).toBeTruthy()
 		expect(screen.getByText('Сніданок')).toBeTruthy()
+		expect(screen.getByText(/^\d{2}:\d{2}$/)).toBeTruthy()
 		expect(screen.getByText('370')).toBeTruthy()
 		expect(screen.getByText('Вечері ще немає.')).toBeTruthy()
 		expect(screen.getByRole('link', { name: 'Відкрити «Сьогодні»' }).getAttribute('href')).toBe(
@@ -59,7 +60,8 @@ describe('DayCard', () => {
 		)
 
 		expect(screen.getByText('+180')).toBeTruthy()
-		expect(screen.getByText('ккал понад ціль')).toBeTruthy()
+		expect(screen.getAllByText('ккал понад ціль')).toHaveLength(1)
+		expect(screen.getByText(/^з 2\s200 ккал$/)).toBeTruthy()
 		expect(screen.queryByText('ккал лишилось')).toBeNull()
 	})
 
@@ -75,6 +77,7 @@ describe('DayCard', () => {
 
 		expect(screen.getByText('Вчора, 17.10')).toBeTruthy()
 		expect(screen.getByText('весь день')).toBeTruthy()
+		expect(screen.queryByText(/^\d{2}:\d{2}$/)).toBeNull()
 		expect(screen.getByRole('link', { name: 'Відкрити день' }).getAttribute('href')).toBe(
 			'/app/today?date=2026-10-17',
 		)
@@ -85,6 +88,7 @@ describe('DayCard', () => {
 
 		expect(screen.getByText('Завтра, 19.10')).toBeTruthy()
 		expect(screen.getByText('заплановано')).toBeTruthy()
+		expect(screen.queryByText(/^\d{2}:\d{2}$/)).toBeNull()
 	})
 })
 

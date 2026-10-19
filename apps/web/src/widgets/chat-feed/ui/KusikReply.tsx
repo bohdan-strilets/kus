@@ -9,6 +9,7 @@ import { getClarificationPlacement } from '../lib/get-clarification-placement'
 import type { FeedPhotoStatus } from '../model/feed.types'
 import { useAchievementFace } from '../model/use-achievement-face'
 import { AchievementCard } from './AchievementCard'
+import { DayCard } from './DayCard'
 import { MealCard } from './MealCard'
 import { MeasurementCard } from './MeasurementCard'
 
@@ -104,6 +105,15 @@ export const KusikReply = ({ message, isLatest, today, photoStatus }: KusikReply
 					</div>
 				)}
 			</div>
+		)
+	}
+
+	// a day snapshot (show_day): Kusik's one sentence sits inside the card, as in chat-day-card.html
+	if (message.dayCard) {
+		return (
+			<KusikRow kind={kind}>
+				<DayCard card={message.dayCard} today={today} note={message.content || undefined} />
+			</KusikRow>
 		)
 	}
 

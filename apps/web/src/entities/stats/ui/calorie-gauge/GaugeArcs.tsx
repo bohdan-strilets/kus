@@ -14,6 +14,8 @@ import { GAUGE_GEOMETRY, type GaugeSize, OVER_UNDERLAY_EXTRA } from './calorie-g
 interface GaugeArcsProps {
 	size: GaugeSize
 	state: GaugeState
+	/** Names the ring across mounts for useRevealedValue. */
+	revealKey: string
 }
 
 /**
@@ -22,14 +24,14 @@ interface GaugeArcsProps {
  * Only the first show per session and a changed value animate — then from the previous arc, not
  * from 0; a plain return to the tab draws the final state at once (useRevealedValue).
  */
-export const GaugeArcs = ({ size, state }: GaugeArcsProps) => {
+export const GaugeArcs = ({ size, state, revealKey }: GaugeArcsProps) => {
 	const { width, height, path, stroke } = GAUGE_GEOMETRY[size]
 	const fillRef = useRef<SVGPathElement>(null)
 	const underlayRef = useRef<SVGPathElement>(null)
 	const overRef = useRef<SVGPathElement>(null)
 	const isOver = state.overRatio > 0
-	const fill = useRevealedValue(`calorie-gauge:${size}:fill`, state.fillRatio)
-	const over = useRevealedValue(`calorie-gauge:${size}:over`, state.overRatio)
+	const fill = useRevealedValue(`${revealKey}:fill`, state.fillRatio)
+	const over = useRevealedValue(`${revealKey}:over`, state.overRatio)
 
 	// layout effect: the dasharray is set before paint, so the arc never flashes full
 	useLayoutEffect(() => {

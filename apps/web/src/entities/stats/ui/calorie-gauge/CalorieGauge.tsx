@@ -20,6 +20,11 @@ export interface CalorieGaugeProps {
 	goal: number | null
 	/** compact — chat header; large — «Сьогодні». */
 	size?: GaugeSize
+	/**
+	 * Names this ring in the «already shown» memory. A snapshot (a day card in the chat) gets its own,
+	 * so it does not move the header ring's last shown value.
+	 */
+	revealKey?: string
 }
 
 const CLOSED_ICON_SIZE = 30
@@ -29,15 +34,16 @@ const CLOSED_ICON_SIZE = 30
  * under — what's left (large) or eaten «з 2 200 ккал» (compact); closed — a check and «ціль дня
  * закрита»; over — «+180» in `over`, never red, no sound; the over arc stops at +50 %.
  */
-export const CalorieGauge = ({ eaten, goal, size = 'large' }: CalorieGaugeProps) => {
+export const CalorieGauge = ({ eaten, goal, size = 'large', revealKey }: CalorieGaugeProps) => {
 	const { t } = useTranslation()
 	const state = getGaugeState(eaten, goal ?? 0)
+	const memoryKey = revealKey ?? `calorie-gauge:${size}`
 	const { frameClass } = GAUGE_GEOMETRY[size]
 	const isLarge = size === 'large'
 	const hasGoal = goal !== null
 	const centreNumber = isLarge && hasGoal ? state.remaining : eaten
 	// the same number as last time is set at once; a new one counts from the previous (motion.md)
-	const number = useRevealedValue(`calorie-gauge:${size}:number`, centreNumber)
+	const number = useRevealedValue(`${memoryKey}:number`, centreNumber)
 	const countRef = useCountUp<HTMLSpanElement>(centreNumber, {
 		durationMs: RING_FILL_MS,
 		from: number.from,
@@ -116,7 +122,7 @@ export const CalorieGauge = ({ eaten, goal, size = 'large' }: CalorieGaugeProps)
 			}
 			className={cn('relative shrink-0', frameClass)}
 		>
-			<GaugeArcs size={size} state={state} />
+			<GaugeArcs size={size} state={state} revealKey={memoryKey} />
 			<div
 				aria-hidden="true"
 				className={cn(

@@ -9,8 +9,16 @@ export interface DayStats {
 	macros: MacroProgressSet
 }
 
-/** What the gauges need from GET /days/:localDate; the numbers are the backend's sums. */
-export const getDayStats = ({ totals, goal }: Pick<DayResponse, 'totals' | 'goal'>): DayStats => ({
+type MacroTotals = Pick<DayResponse['totals'], 'kcal' | 'protein' | 'carbs' | 'fat'>
+
+/** What the gauges need from GET /days/:localDate or a chat day card; the numbers are the backend's sums. */
+export const getDayStats = ({
+	totals,
+	goal,
+}: {
+	totals: MacroTotals
+	goal: MacroTotals | null
+}): DayStats => ({
 	eaten: totals.kcal,
 	goal: goal?.kcal ?? null,
 	macros: {

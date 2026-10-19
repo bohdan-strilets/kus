@@ -810,7 +810,6 @@
 	},
 	"recipe": {
 		"nutrition": "{{kcal}} ккал · {{protein}} г білка",
-		"dinnerTip": "Порада: {{name}} · {{kcal}}",
 		"addToMeal": "Додати в «{{meal}}»"
 	},
 	"composer": {

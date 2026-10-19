@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { getMealCategory, MealRow } from '@/entities/entry'
-import { RecipeTip } from '@/entities/recipe'
 import { DayStatsCard, type MacroProgressSet, SupportCard, WeekStrip } from '@/entities/stats'
 
 import {
@@ -12,7 +11,6 @@ import {
 	SEED_MEALS,
 	SEED_OVER_EATEN_KCAL,
 	SEED_OVER_MACROS,
-	SEED_RECIPE,
 	SEED_TODAY,
 	SEED_WEEK,
 } from '../../../model/seed'
@@ -73,11 +71,6 @@ export const TodayPreviews = () => {
 				<TodayTop eaten={SEED_EATEN_KCAL} macros={SEED_MACROS} />
 				<div className="mt-2.5 flex flex-col gap-2 px-gutter">
 					<DayMeals />
-					<RecipeTip
-						mealLabel={t('meal.dinner')}
-						recipeName={t('devUi.seed.recipeNameLower')}
-						kcal={SEED_RECIPE.kcal}
-					/>
 				</div>
 			</PreviewFrame>
 

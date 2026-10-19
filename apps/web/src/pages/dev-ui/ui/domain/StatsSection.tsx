@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { getMealCategory, MealRow } from '@/entities/entry'
-import { RecipeTip } from '@/entities/recipe'
 import {
 	CalorieGauge,
 	CompactDayBar,
@@ -22,7 +21,6 @@ import {
 	SEED_MEALS,
 	SEED_OVER_EATEN_KCAL,
 	SEED_OVER_MACROS,
-	SEED_RECIPE,
 	SEED_TODAY,
 	SEED_WEEK,
 } from '../../model/seed'
@@ -83,11 +81,6 @@ export const StatsSection = () => {
 					summary={t('devUi.seed.unknownFood')}
 					kcal={SEED_MEALS.snack.kcal}
 					category={getMealCategory([{ category: null, kcal: SEED_MEALS.snack.kcal }])}
-				/>
-				<RecipeTip
-					mealLabel={t('meal.dinner')}
-					recipeName={t('devUi.seed.recipeNameLower')}
-					kcal={SEED_RECIPE.kcal}
 				/>
 				<SupportCard message={t('devUi.seed.supportMessage')} />
 				<Text variant="caption" tone="muted">

@@ -6,6 +6,55 @@ All notable changes to Kusik are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.6.2] — 2026-10-19
+
+Food and measurements for other days, corrections of measurements, a day card in the chat and prompt version `2026-10-18.1`. Two database migrations (each is one nullable `ADD COLUMN`) and no new environment variables; the API and the web app both change. The full eval of 168 cases gave decisions 167/168 (the one miss was a case that forbade any digit in a reply that now names the date; the case was fixed and passed on its own), the 33 new cases 33/33 (11/31 on the previous prompt), no failures.
+
+### Added
+
+- Food for other days: from three days back to tomorrow. `log_food` takes a `date` for the call and for each item; the backend groups a message into meals by (day, meal type), picks the meal type by the clock of the turn when the words name none, and sets `eatenAt` to the typical hour of that meal on that day (only tomorrow's meals are deliberately in the future). The turn clock comes from `Message.createdAt`, so a resend after midnight keeps the day the user saw ([e68200d], [68f22ff])
+- The model context lists `Days` (today − 3 … tomorrow, with the kcal of each day), `Recent measurements` (seven days) and the entries of other days logged today, so those can be corrected in the chat; a window of days is checked by the parser and again by the backend ([e68200d], [68f22ff])
+- A date badge ("Вчора, 17.10", "На завтра, 19.10", "Пт, 16.10") instead of the time on meal cards of other days ([c137946])
+- Measurements can be edited, deleted and restored: `PATCH /measurements/:id`, `DELETE /measurements/:id`, `POST /measurements/:id/restore`, soft delete (`deletedAt`), source `EDIT`; on the chat card a "Редагувати" button opens the same sheet as "Мої дані" with "Зберегти" and "Видалити замір", a "· змінено" mark and an undo toast; a deleted value stays in the chat as "Замір … видалено." ([223059e], [8340250])
+- The model can remove a listed measurement (`delete_measurement`) and fix one up to seven days back when its value is in the context ([e68200d], [68f22ff])
+- The weight start on "Прогрес": "Старт 85,0 кг · 28 серп" and "від старту −2,6 кг"; the start is the earliest weight that is not deleted ([223059e], [8340250])
+- The day card in the chat: the `show_day` tool answers "покажи, що є на зараз", "скільки вже набралось?", "а що було вчора?" with a ring, the remainder, protein / carbs / fat, meals and a link to "Сьогодні" with `?date=`; the numbers are counted by the backend and stored as a snapshot in `messages.day_card` ([e68200d], [8e13750], [8338d4c], [3a43f5e])
+- "Сьогодні" shows tomorrow: the week strip ends tomorrow, a planned day reads "заплановано", and the empty days have their own states ([e706eb0])
+- Prompt `2026-10-18.1`: sections "Other days" and "Day card"; juice, nectar and smoothie without a volume ask about the volume; a feast without a list of dishes is one estimated item of about 2 000 kcal and a named amount is used as is; 33 eval cases for dates, the day card, juice and feasts ([31bab4d], [9c633e2])
+- The scroll-to-end button scrolls smoothly on a tap and stays instant for focus, the chips and reduced motion ([da5daf4])
+
+### Changed
+
+- The user's bubble is `primary-soft` with `ink` text and no shadow; the reply about a lost connection is a plain white bubble ([d8b0dbf], [89aa239])
+- A new weight or waist goes up to three days back (it was seven) and never to tomorrow; a value of an earlier day is only fixed or removed when it is listed in the context ([e68200d], [68f22ff])
+- A kilogram milestone is announced only when the newest weight belongs to the current message and comes from the chat; weights from the profile, edits and back-dated entries stay in the chain without being announced ([8333c27])
+- The text of `STORAGE_UNAVAILABLE`: "Не вдалося зберегти фото. Спробуй трохи пізніше або напиши текстом." ([04045d5])
+- `limitDecimals` lives in `shared/lib` ([188b462])
+- Design mockups for 0.6.2 are imported ([517c286])
+- Eval cost per request is 11.5 % higher (16 048 input tokens against 12 533, p50 2.1 s against 2.0 s) because of the longer prompt, two new tools and the `Days` line ([31bab4d])
+
+### Fixed
+
+- A day card for a day older than the logging window answered 500; it is read-only and now only the upper bound (not later than tomorrow) is checked ([3a43f5e])
+- The week strip, the selected empty day and an `?date=` beyond tomorrow; the day card shows "з N ккал" in the ring when over the goal and no time for meals of other days; an apostrophe in "П'ятниця" is ASCII ([4523f4e])
+
+### Database
+
+- `20261018172455_measurement_soft_delete`: `ALTER TABLE "measurements" ADD COLUMN "deleted_at" TIMESTAMPTZ`
+- `20261018190000_message_day_card`: `ALTER TABLE "messages" ADD COLUMN "day_card" JSONB`
+
+### Tests
+
+- The food streak with entries for tomorrow and for days back is covered: tomorrow is outside the counted range, a back-dated day closes a gap and can reach a threshold ([a027035])
+
+### Known limitations
+
+- The prompt rules "a weigh-in reply has no numbers" and "a reply about another day names the date" contradict each other; the case `weight-yesterday` now forbids only the weight value, the prompt is unchanged
+- A back-dated entry can close a gap in the food streak and pay a milestone: two empty days filled afterwards give "3 дні поспіль"
+- A meal of a past day without a named type follows the clock of the turn ("позавчора піца" written at 23:00 becomes dinner)
+- Six retries against one in the previous full eval, and two answers without a tool call in 174 requests; to be watched after the deploy
+- The edit sheet of a meal of another day still shows the time, and several design questions are open (the planned-day remainder, the week strip on an empty tomorrow, the evening tip); taps and scrolling were checked in Playwright, not on a real iPhone
+
 ## [0.6.1] — 2026-10-18
 
 Fixes from a week of real use. No database migration and no new environment variables; the API and the web app both change. The model context format changed (prompt version `2026-10-17.1`, the prompt text itself is unchanged); the full eval of 135 cases gave decisions 135/135, categories 104/105 and no failures.
@@ -252,7 +301,28 @@ Design sync with `design/` v0.5.2. Web only: no API, shared-package or migration
 
 ## 0.2.0 / 0.1.0 — see tags
 
-[Unreleased]: https://github.com/bohdan-strilets/kus/compare/v0.6.1...HEAD
+[Unreleased]: https://github.com/bohdan-strilets/kus/compare/v0.6.2...HEAD
+[0.6.2]: https://github.com/bohdan-strilets/kus/compare/v0.6.1...v0.6.2
+[e68200d]: https://github.com/bohdan-strilets/kus/commit/e68200d7dcc1e90a7bbb31a1a285d1ad3cde1245
+[68f22ff]: https://github.com/bohdan-strilets/kus/commit/68f22ffd7cf1a1d8a1691625ee33ecc9dc21f43f
+[c137946]: https://github.com/bohdan-strilets/kus/commit/c137946de9696bcbb55d5a2b85b9e8f2cb77d64f
+[223059e]: https://github.com/bohdan-strilets/kus/commit/223059eb4642dce10a6014522511b6470fb120a7
+[8340250]: https://github.com/bohdan-strilets/kus/commit/8340250e6171cddb5d85cc439a5c2338507e26e0
+[8e13750]: https://github.com/bohdan-strilets/kus/commit/8e13750eece2ad9e6f7c34cc9622dc9d7d5cbf32
+[8338d4c]: https://github.com/bohdan-strilets/kus/commit/8338d4ce86380239182f47f462dbcbea1a978cb1
+[3a43f5e]: https://github.com/bohdan-strilets/kus/commit/3a43f5e30fed05318cc86fc2befb81d1ab8a5373
+[e706eb0]: https://github.com/bohdan-strilets/kus/commit/e706eb0ce043e33a12b0a77a48e8b89838d754cf
+[31bab4d]: https://github.com/bohdan-strilets/kus/commit/31bab4dcabdde53ea831f8524db8896255c0414c
+[9c633e2]: https://github.com/bohdan-strilets/kus/commit/9c633e287e2a300ce2a60a806f8816314b04d00b
+[da5daf4]: https://github.com/bohdan-strilets/kus/commit/da5daf4f182f45d6ee962edf233c92e7ab33324e
+[d8b0dbf]: https://github.com/bohdan-strilets/kus/commit/d8b0dbf1191030f623f4ebcb9110e7cf564b3e75
+[89aa239]: https://github.com/bohdan-strilets/kus/commit/89aa239ae7457e91703c017474a62aab1ff0ef81
+[8333c27]: https://github.com/bohdan-strilets/kus/commit/8333c27a6579cc0a196845220175e094d98e6c6c
+[04045d5]: https://github.com/bohdan-strilets/kus/commit/04045d5a2a93378495b63e6f1d6f3d3f54eb99ac
+[188b462]: https://github.com/bohdan-strilets/kus/commit/188b462054f0a8fd9ed33a930a4bb717aaedc2ba
+[517c286]: https://github.com/bohdan-strilets/kus/commit/517c286d720a2deff86f616f452bc8596863f49d
+[4523f4e]: https://github.com/bohdan-strilets/kus/commit/4523f4e0a78125479e7117095f28e0e8755f2e2a
+[a027035]: https://github.com/bohdan-strilets/kus/commit/a02703503d427fef3dca76a424945ce75cff9173
 [0.6.1]: https://github.com/bohdan-strilets/kus/compare/v0.6.0...v0.6.1
 [bc186c9]: https://github.com/bohdan-strilets/kus/commit/bc186c928fea4990147b90a3c95683b6e694f564
 [6ed57e3]: https://github.com/bohdan-strilets/kus/commit/6ed57e3c7802ba52f8b5ac9484dd86508b6f1f1f

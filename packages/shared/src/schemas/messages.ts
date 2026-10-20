@@ -12,8 +12,10 @@ import {
 	messageRoleSchema,
 	messageStatusSchema,
 } from './enums.js'
+import { dayVerdictSchema } from './day-verdict.js'
 import { measurementCardSchema } from './measurements.js'
 import { PHOTOS_PER_MESSAGE_LIMIT } from './photo-limits.js'
+import { statsCardSchema } from './stats-card.js'
 
 export const MESSAGE_TEXT_MAX_LENGTH = 2000
 export const MESSAGES_PAGE_DEFAULT_LIMIT = 30
@@ -196,6 +198,13 @@ export const dayCardSchema = z.object({
 			kcal: z.number(),
 		}),
 	),
+	/**
+	 * How the day went against the goal; absent in snapshots written before 0.7.0 and for a planned
+	 * day. The old kinds stay as they are — this is a separate field.
+	 */
+	verdict: dayVerdictSchema.optional(),
+	/** The card answers close_day (the user closed the day), not a plain look at it. */
+	isClosing: z.boolean().optional(),
 })
 
 export type DayCard = z.infer<typeof dayCardSchema>
@@ -229,6 +238,8 @@ export const chatMessageSchema = z.object({
 	achievements: z.array(achievementResponseSchema),
 	/** Replies to show_day only: the day snapshot. null elsewhere and in payloads of older servers. */
 	dayCard: dayCardSchema.nullable().default(null),
+	/** Replies to show_stats only: the week or month snapshot. null elsewhere, absent in payloads of older servers. */
+	statsCard: statsCardSchema.nullable().optional(),
 })
 
 export type ChatMessage = z.infer<typeof chatMessageSchema>

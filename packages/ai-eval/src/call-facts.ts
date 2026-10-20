@@ -1,4 +1,4 @@
-import { measurementKindSchema, type RawToolCall } from '@kus/shared'
+import { measurementKindSchema, type RawToolCall, statsPeriodSchema } from '@kus/shared'
 import { z } from 'zod'
 
 import type { CallFacts } from './eval.types.js'
@@ -13,12 +13,19 @@ const logFoodFactsSchema = z.object({
 })
 const showDayFactsSchema = z.object({ date: optionalDate })
 const deleteMeasurementFactsSchema = z.object({ kind: measurementKindSchema, date: optionalDate })
+const closeDayFactsSchema = z.object({
+	date: optionalDate,
+	estimatedTotalKcal: z.number().nullable().optional(),
+})
+const showStatsFactsSchema = z.object({ period: statsPeriodSchema, endDate: optionalDate })
 
 export const EMPTY_CALL_FACTS: CallFacts = {
 	logDate: null,
 	itemDates: [],
 	dayCards: [],
 	deletedMeasurements: [],
+	closeDays: [],
+	statsCards: [],
 }
 
 const parseArguments = (text: string): unknown => {
@@ -37,6 +44,8 @@ export const getCallFacts = (rawCalls: RawToolCall[], today: string): CallFacts 
 		itemDates: [],
 		dayCards: [],
 		deletedMeasurements: [],
+		closeDays: [],
+		statsCards: [],
 	}
 	for (const call of rawCalls) {
 		const args = parseArguments(call.arguments)
@@ -56,6 +65,21 @@ export const getCallFacts = (rawCalls: RawToolCall[], today: string): CallFacts 
 			const parsed = deleteMeasurementFactsSchema.safeParse(args)
 			if (parsed.success) {
 				facts.deletedMeasurements.push({ kind: parsed.data.kind, date: parsed.data.date ?? today })
+			}
+		}
+		if (call.name === 'close_day') {
+			const parsed = closeDayFactsSchema.safeParse(args)
+			if (parsed.success) {
+				facts.closeDays.push({
+					date: parsed.data.date ?? today,
+					estimatedTotalKcal: parsed.data.estimatedTotalKcal ?? null,
+				})
+			}
+		}
+		if (call.name === 'show_stats') {
+			const parsed = showStatsFactsSchema.safeParse(args)
+			if (parsed.success) {
+				facts.statsCards.push({ period: parsed.data.period, endDate: parsed.data.endDate ?? null })
 			}
 		}
 	}

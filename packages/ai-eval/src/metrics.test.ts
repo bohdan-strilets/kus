@@ -88,6 +88,13 @@ describe('isDecisionCorrect', () => {
 		expect(isDecisionCorrect(remaining, 'reply', 'Ще трохи')).toBe(false)
 	})
 
+	it('requires every replyMatches pattern to match', () => {
+		const dated = evalCase({ decision: 'reply', replyMatches: ['\\d{2}\\.\\d{2}'] })
+		expect(isDecisionCorrect(dated, 'reply', 'Записано за 06.10')).toBe(true)
+		expect(isDecisionCorrect(dated, 'reply', 'Записано за вчора')).toBe(false)
+		expect(isDecisionCorrect(dated, 'reply', null)).toBe(false)
+	})
+
 	it('accepts any of replyIncludesAny, case-insensitively', () => {
 		const asks = evalCase({ decision: 'reply', replyIncludesAny: ['перевір', 'підтверд'] })
 		expect(isDecisionCorrect(asks, 'reply', 'Перевір, будь ласка, число')).toBe(true)
@@ -135,6 +142,7 @@ describe('summarize', () => {
 			protein: 16,
 			source,
 			memoryRef: null,
+			copyRef: null,
 			assumption: null,
 		})
 		const summary = summarize('m', [
@@ -175,12 +183,14 @@ describe('repo cases', () => {
 		const decisions = new Set(REPO_CASES.map((item) => item.expect.decision))
 		expect([...decisions].sort()).toEqual([
 			'clarify',
+			'close_day',
 			'day_card',
 			'edit',
 			'log',
 			'log_or_clarify',
 			'not_food',
 			'reply',
+			'stats',
 		])
 	})
 })
@@ -194,6 +204,8 @@ describe('isCallDetailsCorrect', () => {
 		],
 		dayCards: [{ date: '2026-10-06' }],
 		deletedMeasurements: [{ kind: 'WEIGHT' as const, date: '2026-10-06' }],
+		closeDays: [{ date: '2026-10-06', estimatedTotalKcal: 4000 }],
+		statsCards: [{ period: 'week' as const, endDate: null }],
 	}
 
 	it('passes when nothing about days is expected', () => {
@@ -240,6 +252,43 @@ describe('isCallDetailsCorrect', () => {
 		const none = evalCase({ decision: 'reply', deletedMeasurements: [] })
 		expect(isCallDetailsCorrect(none, result({}))).toBe(true)
 		expect(isCallDetailsCorrect(none, result({ calls }))).toBe(false)
+	})
+})
+
+describe('isCallDetailsCorrect: close_day, stats, copies', () => {
+	const calls = {
+		logDate: null,
+		itemDates: [],
+		dayCards: [],
+		deletedMeasurements: [],
+		closeDays: [{ date: '2026-10-06', estimatedTotalKcal: 4000 }],
+		statsCards: [{ period: 'week' as const, endDate: null }],
+	}
+	const copy = (copyRef: string | null) =>
+		({ name: 'Суп', copyRef, memoryRef: null }) as unknown as CaseResult['items'][number]
+
+	it('wants exactly one close_day of the expected day and total', () => {
+		const want = (estimatedTotalKcal: number | null, date = '2026-10-06') =>
+			evalCase({ decision: 'close_day', closeDay: { date, estimatedTotalKcal } })
+		expect(isCallDetailsCorrect(want(4000), result({ calls }))).toBe(true)
+		expect(isCallDetailsCorrect(want(null), result({ calls }))).toBe(false)
+		expect(isCallDetailsCorrect(want(4000, '2026-10-07'), result({ calls }))).toBe(false)
+		expect(isCallDetailsCorrect(want(4000), result({}))).toBe(false)
+	})
+
+	it('wants exactly one stats card of the expected period', () => {
+		const want = (period: 'week' | 'month') => evalCase({ decision: 'stats', stats: { period } })
+		expect(isCallDetailsCorrect(want('week'), result({ calls }))).toBe(true)
+		expect(isCallDetailsCorrect(want('month'), result({ calls }))).toBe(false)
+	})
+
+	it('compares the set of copied refs, [] meaning none', () => {
+		const want = (copyRefs: string[]) => evalCase({ decision: 'log', copyRefs })
+		const items = [copy('y2'), copy('y3'), copy(null)]
+		expect(isCallDetailsCorrect(want(['y2', 'y3']), result({ items }))).toBe(true)
+		expect(isCallDetailsCorrect(want(['y2']), result({ items }))).toBe(false)
+		expect(isCallDetailsCorrect(want([]), result({ items: [copy(null)] }))).toBe(true)
+		expect(isCallDetailsCorrect(want([]), result({ items }))).toBe(false)
 	})
 })
 
@@ -365,6 +414,7 @@ describe('countMealMatches', () => {
 		protein: 5,
 		source: 'ESTIMATE',
 		memoryRef: null,
+		copyRef: null,
 		assumption: null,
 	})
 

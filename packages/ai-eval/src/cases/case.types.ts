@@ -1,9 +1,11 @@
 import {
+	COPY_REF_PATTERN,
 	foodCategorySchema,
 	type FoodParseContext,
 	foodSourceSchema,
 	loggableMealTypeSchema,
 	measurementKindSchema,
+	statsPeriodSchema,
 } from '@kus/shared'
 import { z } from 'zod'
 
@@ -12,7 +14,8 @@ import type { EvalPhoto } from './photo.js'
 /**
  * `log` = logged without a question; `clarify` = logged and asked; `log_or_clarify` = either is
  * fine; `edit` = only changed what was logged before (edit tools + reply), nothing new logged;
- * `day_card` = showed a day's card (show_day) instead of answering in words.
+ * `day_card` = showed a day's card (show_day) instead of answering in words;
+ * `close_day` / `stats` = closed the day or showed the stats card, nothing logged next to it.
  */
 export const expectedDecisionSchema = z.enum([
 	'log',
@@ -23,6 +26,8 @@ export const expectedDecisionSchema = z.enum([
 	'photo_unusable',
 	'reply',
 	'day_card',
+	'close_day',
+	'stats',
 ])
 
 export type ExpectedDecision = z.infer<typeof expectedDecisionSchema>
@@ -109,6 +114,8 @@ export const evalCaseSchema = z
 			replyIncludes: z.array(z.string()).optional(),
 			/** Lower-case substrings; the answer must contain at least one of them. */
 			replyIncludesAny: z.array(z.string()).optional(),
+			/** Regular expressions (source strings) the answer must all match; "\\d{2}\\.\\d{2}" = a dd.mm date. */
+			replyMatches: z.array(z.string().min(1)).optional(),
 			/** Lower-case stems the answer must not contain — claims of a change that didn't happen ("змінив"). */
 			replyExcludes: z.array(z.string()).optional(),
 			edits: expectedEditsSchema.optional(),
@@ -129,6 +136,14 @@ export const evalCaseSchema = z
 			maxItems: z.int().positive().optional(),
 			/** The day card the answer must show (show_day); a null date of the call counts as the case's today. */
 			dayCard: z.object({ date: z.iso.date() }).optional(),
+			/** The close_day call (a null date counts as the case's today); the verdict is the backend's. */
+			closeDay: z
+				.object({ date: z.iso.date(), estimatedTotalKcal: z.number().positive().nullable() })
+				.optional(),
+			/** The show_stats call: its period (and its end day, when given). */
+			stats: z.object({ period: statsPeriodSchema, endDate: z.iso.date().optional() }).optional(),
+			/** Exactly these earlier-entry refs (y1, h1) are copied by the logged items; [] = none copied. */
+			copyRefs: z.array(z.string().regex(COPY_REF_PATTERN)).optional(),
 			/** Exactly these delete_measurement calls; `[]` = none. */
 			deletedMeasurements: z.array(expectedDeletedMeasurementSchema).optional(),
 			/** Every logged item must carry one of these sources (a label photo → LABEL, a plate → ESTIMATE). */

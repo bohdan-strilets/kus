@@ -32,6 +32,7 @@ const item = (memoryRef: string | null): LoggedItem => ({
 	protein: 2.7,
 	source: memoryRef ? 'MEMORY' : 'ESTIMATE',
 	memoryRef,
+	copyRef: null,
 	assumption: null,
 })
 

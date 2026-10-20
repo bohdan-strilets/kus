@@ -74,3 +74,14 @@ export class TurnDateOutOfRangeException extends AppException {
 		super({ status: HttpStatus.INTERNAL_SERVER_ERROR, errorCode: ErrorCodes.INTERNAL_ERROR })
 	}
 }
+
+/**
+ * A copyRef whose entry is gone (deleted since the context was built): the model's own numbers are
+ * never stored for it. The turn rolls back, the message is FAILED and the client offers a resend
+ * with a fresh context.
+ */
+export class TurnCopySourceMissingException extends AppException {
+	constructor() {
+		super({ status: HttpStatus.CONFLICT, errorCode: ErrorCodes.TURN_COPY_SOURCE_MISSING })
+	}
+}

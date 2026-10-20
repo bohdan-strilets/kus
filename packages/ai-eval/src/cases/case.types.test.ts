@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 
 import { evalCaseSchema } from './case.types.js'
+import { HISTORY_CARD_CASES } from './history-cards.cases.js'
+import { REPO_CASES } from './index.js'
 
 const base = { id: 'c', expect: { decision: 'log' }, reference: 'r' }
 
@@ -57,5 +59,34 @@ describe('evalCaseSchema day expectations', () => {
 			expect: { decision: 'log', logDate: '06.10.2026' },
 		})
 		expect(result.success).toBe(false)
+	})
+})
+
+describe('history card cases', () => {
+	it('are valid cases with unique ids across the repo set', () => {
+		for (const item of HISTORY_CARD_CASES) expect(evalCaseSchema.safeParse(item).success).toBe(true)
+		const ids = REPO_CASES.map(({ id }) => id)
+		expect(new Set(ids).size).toBe(ids.length)
+	})
+
+	it('accepts the close_day, stats and copyRefs expectations', () => {
+		const parsed = evalCaseSchema.parse({
+			...base,
+			text: 'x',
+			expect: {
+				decision: 'close_day',
+				closeDay: { date: '2026-10-06', estimatedTotalKcal: 4000 },
+				stats: { period: 'week' },
+				copyRefs: ['y1', 'h2'],
+			},
+		})
+		expect(parsed.expect.copyRefs).toEqual(['y1', 'h2'])
+		expect(
+			evalCaseSchema.safeParse({
+				...base,
+				text: 'x',
+				expect: { decision: 'log', copyRefs: ['m1'] },
+			}).success,
+		).toBe(false)
 	})
 })

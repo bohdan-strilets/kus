@@ -2,6 +2,7 @@ import type { EvalCase } from './case.types.js'
 import { CATEGORY_CASES } from './category.cases.js'
 import { DATE_CASES } from './date.cases.js'
 import { DAY_CARD_CASES } from './day-card.cases.js'
+import { HISTORY_CARD_CASES } from './history-cards.cases.js'
 import { DAY_CASES } from './day.cases.js'
 import { DECISION_CASES } from './decision.cases.js'
 import { EDIT_CASES } from './edit.cases.js'
@@ -33,6 +34,7 @@ export const REPO_CASES: EvalCase[] = [
 	...MEASUREMENT_CASES,
 	...DATE_CASES,
 	...DAY_CARD_CASES,
+	...HISTORY_CARD_CASES,
 ]
 
 /** Written, but need a context the contract doesn't have yet; not run until it does. None now. */

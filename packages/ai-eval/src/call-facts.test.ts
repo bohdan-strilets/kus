@@ -53,6 +53,26 @@ describe('getCallFacts', () => {
 		expect(facts.deletedMeasurements).toEqual([{ kind: 'WEIGHT', date: '2026-10-06' }])
 	})
 
+	it('reads close_day (null day = today, null total) and show_stats', () => {
+		const facts = getCallFacts(
+			[
+				call('close_day', { date: null, estimatedTotalKcal: null }),
+				call('close_day', { date: '2026-10-06', estimatedTotalKcal: 4000 }),
+				call('show_stats', { period: 'week', endDate: null }),
+				call('show_stats', { period: 'month', endDate: '2026-10-06' }),
+			],
+			TODAY,
+		)
+		expect(facts.closeDays).toEqual([
+			{ date: TODAY, estimatedTotalKcal: null },
+			{ date: '2026-10-06', estimatedTotalKcal: 4000 },
+		])
+		expect(facts.statsCards).toEqual([
+			{ period: 'week', endDate: null },
+			{ period: 'month', endDate: '2026-10-06' },
+		])
+	})
+
 	it('skips broken arguments', () => {
 		const facts = getCallFacts([{ name: 'show_day', arguments: '{oops' }], TODAY)
 		expect(facts.dayCards).toEqual([])

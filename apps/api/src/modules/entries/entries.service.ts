@@ -8,7 +8,7 @@ import {
 } from '@kus/shared'
 
 import { formatDbDate } from '../../common/time'
-import type { Prisma } from '../../generated/prisma/client'
+import type { FoodEntry, Prisma } from '../../generated/prisma/client'
 import {
 	roundNutrition,
 	sumEntries,
@@ -168,8 +168,9 @@ export class EntriesService {
 	async getDayMeals(
 		userId: string,
 		localDate: Date,
+		tx?: Prisma.TransactionClient,
 	): Promise<{ meals: LoggedMeal[]; totals: NutritionTotals }> {
-		const meals = await this.findDayMealsInOrder(userId, localDate)
+		const meals = await this.findDayMealsInOrder(userId, localDate, tx)
 		return {
 			meals: meals.map(toDayMeal),
 			totals: sumEntries(meals.flatMap((meal) => meal.entries)),
@@ -204,9 +205,37 @@ export class EntriesService {
 		}
 	}
 
+	/** The user's own active entries by id; anything else (another user's, deleted) is simply missing. */
+	findActiveEntriesByIds(
+		userId: string,
+		ids: string[],
+		tx?: Prisma.TransactionClient,
+	): Promise<FoodEntry[]> {
+		if (ids.length === 0) return Promise.resolve([])
+		return this.entriesRepository.findActiveEntries({ userId, ids }, tx)
+	}
+
+	/** Active entries of one day, oldest first (the candidates of a «як вчора» message). */
+	findDayEntries(userId: string, localDate: Date, take: number): Promise<EntryWithMealType[]> {
+		return this.entriesRepository.findActiveDayEntriesWithMeal({ userId, localDate, take })
+	}
+
+	/** Active entries of a range, newest first; the caller narrows them down (by the food's name). */
+	findRecentEntries(
+		userId: string,
+		range: { from: Date; to: Date },
+		take: number,
+	): Promise<EntryWithMealType[]> {
+		return this.entriesRepository.findActiveRangeEntriesWithMeal({ userId, ...range, take })
+	}
+
 	/** Non-empty meals by the day's course: a whole day logged at once shares one eatenAt. */
-	private async findDayMealsInOrder(userId: string, localDate: Date): Promise<MealWithEntries[]> {
-		const meals = await this.entriesRepository.findDayMeals({ userId, localDate })
+	private async findDayMealsInOrder(
+		userId: string,
+		localDate: Date,
+		tx?: Prisma.TransactionClient,
+	): Promise<MealWithEntries[]> {
+		const meals = await this.entriesRepository.findDayMeals({ userId, localDate }, tx)
 		return meals
 			.filter((meal) => meal.entries.length > 0)
 			.sort((a, b) => getMealRank(a.type) - getMealRank(b.type))

@@ -1,7 +1,7 @@
-import { DAY_OVER_GOAL_RATIO } from '@kus/shared'
+import { DAY_ON_GOAL_FROM_RATIO, DAY_OVER_GOAL_RATIO } from '@kus/shared'
 
 /** design/docs/components.md → CalorieRing: the 97–103 % band counts as «goal closed». */
-const CLOSED_FROM = 0.97
+const CLOSED_FROM = DAY_ON_GOAL_FROM_RATIO
 const CLOSED_TO = DAY_OVER_GOAL_RATIO
 /** The second, over-goal turn stops growing at +50 % (half the arc) — then only the number talks. */
 const MAX_OVER_RATIO = 0.5

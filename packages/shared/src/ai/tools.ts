@@ -9,6 +9,8 @@ import {
 	MIN_ENTRY_GRAMS,
 	refineFoodEntry,
 } from '../schemas/food-entry.js'
+import { statsPeriodSchema } from '../schemas/stats-card.js'
+import { MAX_ESTIMATED_DAY_KCAL } from './close-day.js'
 import { CATEGORY_DESCRIPTION } from './category-description.js'
 import {
 	correctEntryInputSchema,
@@ -16,6 +18,7 @@ import {
 	resolveClarificationInputSchema,
 	restoreEntryInputSchema,
 } from './edit-tools.js'
+import { COPY_REF_PATTERN } from './history-context.js'
 
 export const AI_TOOL_NAMES = {
 	logFood: 'log_food',
@@ -29,6 +32,8 @@ export const AI_TOOL_NAMES = {
 	notFood: 'not_food',
 	photoUnusable: 'photo_unusable',
 	showDay: 'show_day',
+	closeDay: 'close_day',
+	showStats: 'show_stats',
 	reply: 'reply',
 } as const
 
@@ -81,6 +86,14 @@ export const aiFoodItemSchema = foodEntryBaseSchema
 		memoryRef: foodEntryBaseSchema.shape.memoryRef.describe(
 			'Ref of the saved food used ("m1"), only when source is MEMORY; else null',
 		),
+		copyRef: z
+			.string()
+			.regex(COPY_REF_PATTERN)
+			.nullable()
+			.default(null)
+			.describe(
+				'Ref of an entry from "Earlier entries" ("y1" yesterday, "h1" older) when the user says the food is the same as then; the backend copies its values and scales them to grams. Else null; never together with memoryRef',
+			),
 		mealType: loggableMealTypeSchema
 			.nullable()
 			.default(null)
@@ -93,7 +106,11 @@ export const aiFoodItemSchema = foodEntryBaseSchema
 			.default(null)
 			.describe('Day of this item when one message has food of different days; else null'),
 	})
-	.superRefine(refineFoodEntry)
+	// a copyRef item takes its numbers from the copied entry on the backend; the model's own
+	// macros are never stored, so only the bounds are checked (the parser rejects an unknown ref)
+	.superRefine((item, context) => {
+		refineFoodEntry(item, context, { isMacrosCheckSkipped: item.copyRef !== null })
+	})
 
 export type AiFoodItem = z.infer<typeof aiFoodItemSchema>
 
@@ -260,6 +277,42 @@ export const showDayInputSchema = z.object({
 
 export type ShowDayInput = z.infer<typeof showDayInputSchema>
 
+export const closeDayInputSchema = z.object({
+	date: z.iso
+		.date()
+		.nullable()
+		.default(null)
+		.describe('YYYY-MM-DD from "Days" of the day to close; null for today. Never tomorrow'),
+	estimatedTotalKcal: z
+		.number()
+		.positive()
+		.max(MAX_ESTIMATED_DAY_KCAL)
+		.nullable()
+		.default(null)
+		.describe(
+			'Total kcal of the whole day, only when the user named it ("закрий вчора десь на 4000"); else null. Never calculate or subtract: the backend logs the missing difference',
+		),
+	reply: replyTextSchema.describe(
+		'One short sentence in the language of the user next to the card. No totals, no verdict words — the card shows them; a date as dd.mm is fine.',
+	),
+})
+
+export type CloseDayInput = z.infer<typeof closeDayInputSchema>
+
+export const showStatsInputSchema = z.object({
+	period: statsPeriodSchema.describe('week: 7 days, month: 30 days, both ending on endDate'),
+	endDate: z.iso
+		.date()
+		.nullable()
+		.default(null)
+		.describe('YYYY-MM-DD the period ends on, never later than today; null for today'),
+	reply: replyTextSchema.describe(
+		'One short sentence in the language of the user next to the card. No numbers — the card shows them.',
+	),
+})
+
+export type ShowStatsInput = z.infer<typeof showStatsInputSchema>
+
 export const AI_TOOL_SCHEMAS: Record<AiToolName, z.ZodType> = {
 	log_food: logFoodInputSchema,
 	log_measurement: logMeasurementInputSchema,
@@ -272,6 +325,8 @@ export const AI_TOOL_SCHEMAS: Record<AiToolName, z.ZodType> = {
 	not_food: notFoodInputSchema,
 	photo_unusable: photoUnusableInputSchema,
 	show_day: showDayInputSchema,
+	close_day: closeDayInputSchema,
+	show_stats: showStatsInputSchema,
 	reply: replyInputSchema,
 }
 
@@ -284,6 +339,10 @@ const AI_TOOL_DESCRIPTIONS: Record<AiToolName, string> = {
 		'Remove a wrong weight or waist value listed in the context, by kind and date. Goes with one reply.',
 	show_day:
 		'Show the card of a day: what is logged so far, totals, meals. date null for today; any earlier day or tomorrow. Nothing is logged. reply — one short sentence next to the card.',
+	close_day:
+		'The user closes the day ("день закрито", "закрий день"): show the card of the day with how it went against the goal. date null for today, up to 3 days back, never tomorrow. estimatedTotalKcal only when the user gave the total of the whole day; only the backend may add the missing part as «Без деталей». reply — one short sentence next to the card.',
+	show_stats:
+		'Show the summary of a week or a month: average kcal and protein, days within the goal, weight change. Counted by the backend; today is included if anything is logged for it. Nothing is logged. reply — one short sentence next to the card.',
 	clarify:
 		'Ask about logged items only when the answer changes their kcal a lot (by 80+ kcal and 15%+), or with kind "rename" which real food a strange name was (no kcal threshold). Call together with log_food, at most 2 per message.',
 	correct_entry:

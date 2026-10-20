@@ -7,6 +7,7 @@ import {
 	type OpenClarificationContext,
 	type TodayEntryContext,
 } from './edit-context.js'
+import { type EarlierEntryContext, formatEarlierEntries } from './history-context.js'
 import type { MeasurementPoint } from './measurements.js'
 import { SYSTEM_PROMPT } from './prompt.js'
 
@@ -127,6 +128,8 @@ export interface FoodParseContext {
 	days?: DayContext[]
 	measurements: MeasurementsContext
 	memory: MemoryFoodContext[]
+	/** Only for a message that points back («як вчора»); no section when omitted or empty. */
+	earlier?: EarlierEntryContext[]
 	/** Oldest first. */
 	history: HistoryTurn[]
 }
@@ -254,6 +257,7 @@ export const formatContext = (context: FoodParseContext): string => {
 		formatMeasurements(context.measurements),
 		...formatRecentMeasurements(context.measurements.recent ?? []),
 		memory,
+		...formatEarlierEntries(context.earlier ?? []),
 	].join('\n')
 }
 

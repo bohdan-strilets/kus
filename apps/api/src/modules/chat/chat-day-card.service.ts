@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common'
-import { DAY_CARD_VERSION, type DayCard, type DayCardKind } from '@kus/shared'
+import { DAY_CARD_VERSION, type DayCard, type DayCardKind, getDayVerdict } from '@kus/shared'
 
+import type { Prisma } from '../../generated/prisma/client'
 import { EntriesService } from '../entries/entries.service'
 import { GoalsService } from '../goals/goals.service'
 
@@ -11,6 +12,10 @@ interface BuildDayCardParams {
 	/** `YYYY-MM-DD` of the user's today. */
 	today: string
 	now: Date
+	/** The card closes the day (close_day), not just shows it. */
+	isClosing?: boolean
+	/** The turn's transaction, when the day was changed in it and the card must see that. */
+	tx?: Prisma.TransactionClient
 }
 
 // `YYYY-MM-DD` strings sort like the days they name
@@ -19,7 +24,7 @@ const getKind = (localDate: string, today: string): DayCardKind => {
 	return localDate < today ? 'past' : 'planned'
 }
 
-/** The snapshot behind the day card of show_day: every number counted here, none taken from the model. */
+/** The snapshot behind the day card of show_day and close_day: every number counted here, none taken from the model. */
 @Injectable()
 export class ChatDayCardService {
 	constructor(
@@ -28,15 +33,25 @@ export class ChatDayCardService {
 	) {}
 
 	/** null for a day without entries: there is nothing to show, the reply stays text. */
-	async build({ userId, localDate, today, now }: BuildDayCardParams): Promise<DayCard | null> {
+	async build({
+		userId,
+		localDate,
+		today,
+		now,
+		isClosing = false,
+		tx,
+	}: BuildDayCardParams): Promise<DayCard | null> {
 		const dbDate = new Date(`${localDate}T00:00:00Z`)
 		const [{ meals, totals }, goal] = await Promise.all([
-			this.entriesService.getDayMeals(userId, dbDate),
+			tx
+				? this.entriesService.getDayMeals(userId, dbDate, tx)
+				: this.entriesService.getDayMeals(userId, dbDate),
 			this.goalsService.getGoalForDate(userId, dbDate),
 		])
 		if (meals.length === 0) return null
 
 		const kind = getKind(localDate, today)
+		const entryCount = meals.reduce((count, meal) => count + meal.entries.length, 0)
 		return {
 			version: DAY_CARD_VERSION,
 			localDate,
@@ -52,6 +67,13 @@ export class ChatDayCardService {
 				eatenAt,
 				kcal: mealTotals.kcal,
 			})),
+			// a planned day has nothing to be judged against yet
+			...(kind === 'planned'
+				? {}
+				: {
+						verdict: getDayVerdict({ kcal: totals.kcal, entryCount, goalKcal: goal?.kcal ?? null }),
+					}),
+			...(isClosing ? { isClosing } : {}),
 		}
 	}
 }

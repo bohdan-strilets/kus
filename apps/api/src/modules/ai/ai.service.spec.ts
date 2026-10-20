@@ -68,6 +68,7 @@ describe('AiService.parseFood', () => {
 				status: 'SUCCEEDED',
 				purpose: 'PARSE_FOOD',
 				inputTokens: 3000,
+				cachedInputTokens: 0,
 				outputTokens: 300,
 				costUsd: 0.003,
 				errorCode: null,
@@ -76,6 +77,22 @@ describe('AiService.parseFood', () => {
 		expect(repository.addDailyCost).toHaveBeenCalledWith(
 			expect.objectContaining({ costUsd: 0.003 }),
 		)
+	})
+
+	it('records the cached prompt tokens, and null when the provider does not report them', async () => {
+		const reported = createCompletion([logFoodCall()])
+		reported.usage.prompt_tokens_details = { cached_tokens: 2500 }
+		const silent = createCompletion([logFoodCall()])
+		Reflect.deleteProperty(silent.usage, 'prompt_tokens_details')
+		fake.respond(reported, silent)
+
+		await service.parseFood(params)
+		await service.parseFood(params)
+
+		expect(repository.createRun.mock.calls.map(([run]) => run.cachedInputTokens)).toEqual([
+			2500,
+			null,
+		])
 	})
 
 	it('sends deterministic, private requests with tools and a cacheable prompt', async () => {
@@ -146,7 +163,12 @@ describe('AiService.parseFood', () => {
 
 		await expect(service.parseFood(params)).rejects.toBeInstanceOf(AiUnavailableException)
 		expect(repository.createRun).toHaveBeenCalledWith(
-			expect.objectContaining({ status: 'FAILED', errorCode: 'NETWORK', costUsd: 0 }),
+			expect.objectContaining({
+				status: 'FAILED',
+				errorCode: 'NETWORK',
+				costUsd: 0,
+				cachedInputTokens: null,
+			}),
 		)
 	})
 

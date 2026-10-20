@@ -8,9 +8,12 @@ import { MeasurementsModule } from '../measurements/measurements.module'
 import { MemoryModule } from '../memory/memory.module'
 import { PhotosModule } from '../photos/photos.module'
 import { ProfileModule } from '../profile/profile.module'
+import { ProgressModule } from '../progress/progress.module'
 import { UsersModule } from '../users/users.module'
 import { ChatContextService } from './chat-context.service'
+import { ChatCloseDayService } from './chat-close-day.service'
 import { ChatDayCardService } from './chat-day-card.service'
+import { ChatEarlierService } from './chat-earlier.service'
 import { ChatEditsService } from './chat-edits.service'
 import { ChatFeedService } from './chat-feed.service'
 import { ChatGreetingsService } from './chat-greetings.service'
@@ -36,6 +39,7 @@ import { ClarificationsService } from './clarifications.service'
 		MemoryModule,
 		PhotosModule,
 		ProfileModule,
+		ProgressModule,
 		UsersModule,
 	],
 	controllers: [ChatController, ClarificationsController],
@@ -43,8 +47,10 @@ import { ClarificationsService } from './clarifications.service'
 		ChatService,
 		ChatFeedService,
 		ChatGreetingsService,
+		ChatCloseDayService,
 		ChatContextService,
 		ChatDayCardService,
+		ChatEarlierService,
 		ChatEditsService,
 		ChatMeasurementCardsService,
 		ChatPhotosService,

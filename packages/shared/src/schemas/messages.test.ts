@@ -216,3 +216,78 @@ describe('chatMessageSchema dayCard', () => {
 		}
 	})
 })
+
+describe('chatMessageSchema 0.7.0 fields', () => {
+	const base = {
+		id: clientMessageId,
+		role: 'ASSISTANT',
+		content: 'Ось тиждень',
+		status: 'COMPLETED',
+		clientMessageId: null,
+		replyToId: clientMessageId,
+		createdAt: '2026-10-19T10:00:00.000Z',
+		photo: null,
+		meals: [],
+		clarifications: [],
+		measurements: [],
+		achievements: [],
+	}
+	const macros = { kcal: 1800, protein: 120, fat: 60, carbs: 200 }
+	const oldDayCard = {
+		version: 1,
+		localDate: '2026-10-17',
+		kind: 'past',
+		asOf: null,
+		totals: macros,
+		goal: macros,
+		remainingKcal: 0,
+		meals: [],
+	}
+	const statsCard = {
+		version: 1,
+		period: 'week',
+		from: '2026-10-12',
+		to: '2026-10-18',
+		loggedDays: 6,
+		daysInNorm: 4,
+		avgKcal: 1850.5,
+		avgProteinG: 110,
+		goalKcal: 2000,
+		weightChangeKg: -0.4,
+	}
+
+	it('reads a day card stored before verdict and isClosing existed', () => {
+		const card = chatMessageSchema.parse({ ...base, dayCard: oldDayCard }).dayCard
+		expect(card?.verdict).toBeUndefined()
+		expect(card?.isClosing).toBeUndefined()
+	})
+
+	it('takes the verdict and isClosing, and rejects an unknown verdict', () => {
+		const closed = { ...oldDayCard, verdict: 'far_under', isClosing: true }
+		expect(chatMessageSchema.parse({ ...base, dayCard: closed }).dayCard).toEqual(closed)
+		expect(
+			chatMessageSchema.safeParse({ ...base, dayCard: { ...oldDayCard, verdict: 'great' } })
+				.success,
+		).toBe(false)
+	})
+
+	it('takes null, no field at all, and a snapshot', () => {
+		expect(chatMessageSchema.parse(base).statsCard).toBeUndefined()
+		expect(chatMessageSchema.parse({ ...base, statsCard: null }).statsCard).toBeNull()
+		expect(chatMessageSchema.parse({ ...base, statsCard }).statsCard).toEqual(statsCard)
+		expect(
+			chatMessageSchema.parse({
+				...base,
+				statsCard: { ...statsCard, avgKcal: null, avgProteinG: null, weightChangeKg: null },
+			}).statsCard?.avgKcal,
+		).toBeNull()
+	})
+
+	it('rejects a statsCard of another period or version', () => {
+		for (const bad of [{ period: 'year' }, { version: 2 }, { to: '19.10.2026' }]) {
+			expect(
+				chatMessageSchema.safeParse({ ...base, statsCard: { ...statsCard, ...bad } }).success,
+			).toBe(false)
+		}
+	})
+})

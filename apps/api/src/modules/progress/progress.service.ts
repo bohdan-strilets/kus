@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common'
 import {
-	getDayStatus,
 	getIsGoalReached,
 	type ProgressResponse,
 	type ProgressWaist,
@@ -30,7 +29,9 @@ import {
 } from './progress.constants'
 import {
 	averageOrNull,
+	buildStatusDays,
 	getIsWeekendProteinLow,
+	getLoggedDays,
 	getWeekPaceKg,
 	hasWeightDirection,
 } from './progress.utils'
@@ -174,16 +175,14 @@ export class ProgressService {
 			today,
 		)
 		const goalByDay = await this.goalsService.getGoalKcalByDay(userId, weekDates)
-		const days = weekDates.map((localDate) => {
-			const { kcal, proteinG, entryCount } = totalsByDay.get(localDate) ?? {
-				kcal: 0,
-				proteinG: 0,
-				entryCount: 0,
-			}
-			const goalKcal = goalByDay.get(localDate) ?? null
-			return { localDate, kcal, proteinG, status: getDayStatus({ kcal, entryCount, goalKcal }) }
-		})
-		const logged = days.filter((day) => day.status !== 'empty')
+		const statusDays = buildStatusDays({ dates: weekDates, totalsByDay, goalByDay })
+		const days = statusDays.map(({ localDate, kcal, proteinG, status }) => ({
+			localDate,
+			kcal,
+			proteinG,
+			status,
+		}))
+		const logged = getLoggedDays(statusDays)
 		return {
 			days,
 			goalKcal: goalByDay.get(today) ?? null,

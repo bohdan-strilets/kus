@@ -12,7 +12,7 @@ const toMeal = (type: string, kcal: number) => ({
 	eatenAt: '2026-10-17T11:00:00.000Z',
 	totals: { kcal, protein: 0, fat: 0, carbs: 0, fiber: 0 },
 	mealTotalKcal: null,
-	entries: [],
+	entries: [{ id: `entry-${type}` }],
 })
 
 const GOAL = { kcal: 2000, protein: 120, fat: 70, carbs: 220 }
@@ -27,8 +27,8 @@ const createService = ({
 	})
 	const getGoalForDate = vi.fn().mockResolvedValue(goal)
 	const service = new ChatDayCardService({ getDayMeals } as never, { getGoalForDate } as never)
-	const build = (localDate: string) =>
-		service.build({ userId: 'u1', localDate, today: TODAY, now: NOW })
+	const build = (localDate: string, extra: Partial<Parameters<typeof service.build>[0]> = {}) =>
+		service.build({ userId: 'u1', localDate, today: TODAY, now: NOW, ...extra })
 	return { build, getDayMeals, getGoalForDate }
 }
 
@@ -46,6 +46,7 @@ describe('ChatDayCardService.build', () => {
 			totals: { kcal: 1100, protein: 60, fat: 40, carbs: 130 },
 			goal: GOAL,
 			remainingKcal: 900,
+			verdict: 'far_under',
 			meals: [
 				{ type: 'BREAKFAST', eatenAt: '2026-10-17T11:00:00.000Z', kcal: 400 },
 				{ type: 'DINNER', eatenAt: '2026-10-17T11:00:00.000Z', kcal: 700 },
@@ -81,6 +82,40 @@ describe('ChatDayCardService.build', () => {
 		const { build } = createService({ goal: null })
 
 		expect(await build('2026-10-17')).toMatchObject({ goal: null, remainingKcal: null })
+	})
+
+	it('judges the day against the goal with the shared thresholds', async () => {
+		const goal = (kcal: number) => createService({ goal: { ...GOAL, kcal } })
+
+		// 1100 kcal eaten
+		expect(await goal(1100).build('2026-10-17')).toMatchObject({ verdict: 'on_goal' })
+		expect(await goal(1400).build('2026-10-17')).toMatchObject({ verdict: 'under' })
+		expect(await goal(1000).build('2026-10-17')).toMatchObject({ verdict: 'over' })
+		expect(await createService({ goal: null }).build('2026-10-17')).toMatchObject({
+			verdict: 'no_goal',
+		})
+	})
+
+	it('gives a planned day no verdict', async () => {
+		const { build } = createService()
+
+		expect(await build('2026-10-19')).not.toHaveProperty('verdict')
+	})
+
+	it('marks a closing card only when asked', async () => {
+		const { build } = createService()
+
+		expect(await build('2026-10-17')).not.toHaveProperty('isClosing')
+		expect(await build('2026-10-17', { isClosing: true })).toMatchObject({ isClosing: true })
+	})
+
+	it('reads the day inside the given transaction', async () => {
+		const { build, getDayMeals } = createService()
+		const tx = {} as never
+
+		await build('2026-10-17', { tx })
+
+		expect(getDayMeals).toHaveBeenCalledWith('u1', new Date('2026-10-17T00:00:00Z'), tx)
 	})
 
 	it('returns null for a day without entries', async () => {

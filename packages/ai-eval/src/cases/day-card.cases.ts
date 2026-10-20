@@ -4,7 +4,7 @@ import { buildDays, entry, EVAL_TODAY } from './case-builders.js'
 import type { EvalCase } from './case.types.js'
 
 /** Breakfast and lunch are logged: 895 kcal. */
-const DAY_TWO_MEALS: EvalCase['context'] = {
+export const DAY_TWO_MEALS: EvalCase['context'] = {
 	dayTotals: { kcal: 895, protein: 45, fat: 30, carbs: 112 },
 	meals: [
 		{ type: 'BREAKFAST', kcal: 420 },

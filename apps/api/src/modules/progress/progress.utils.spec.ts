@@ -3,7 +3,10 @@ import { describe, expect, it } from 'vitest'
 import type { MeasurementValue } from '../measurements/measurements.mapper'
 import {
 	averageOrNull,
+	buildStatusDays,
+	getDaysInNorm,
 	getIsWeekendProteinLow,
+	getLoggedDays,
 	getWeekPaceKg,
 	type ProteinDay,
 } from './progress.utils'
@@ -100,5 +103,25 @@ describe('averageOrNull', () => {
 	it('rounds to a whole number and is null for no values', () => {
 		expect(averageOrNull([2420, 1970])).toBe(2195)
 		expect(averageOrNull([])).toBeNull()
+	})
+})
+
+describe('day statuses', () => {
+	const totalsByDay = new Map([
+		['2026-10-05', { kcal: 2060, proteinG: 90, entryCount: 3 }],
+		['2026-10-06', { kcal: 2061, proteinG: 90, entryCount: 3 }],
+		['2026-10-07', { kcal: 300, proteinG: 10, entryCount: 1 }],
+	])
+	const dates = ['2026-10-05', '2026-10-06', '2026-10-07', '2026-10-08']
+	const goalByDay = new Map<string, number | null>(dates.map((date) => [date, 2000]))
+	const days = buildStatusDays({ dates, totalsByDay, goalByDay })
+
+	it('marks over only above 103 % and leaves empty days empty', () => {
+		expect(days.map((day) => day.status)).toEqual(['normal', 'over', 'normal', 'empty'])
+	})
+
+	it('counts logged days and days in the norm without the empty and over ones', () => {
+		expect(getLoggedDays(days)).toHaveLength(3)
+		expect(getDaysInNorm(days)).toBe(2)
 	})
 })

@@ -53,6 +53,8 @@ export const ErrorCodes = {
 	MESSAGE_IN_PROGRESS: 'MESSAGE_IN_PROGRESS',
 	/** A clientMessageId was resent with a different text. */
 	CLIENT_MESSAGE_ID_REUSED: 'CLIENT_MESSAGE_ID_REUSED',
+	/** An earlier entry the message copies was deleted while the model answered; the message is FAILED and can be resent. */
+	TURN_COPY_SOURCE_MISSING: 'TURN_COPY_SOURCE_MISSING',
 	CLARIFICATION_NOT_FOUND: 'CLARIFICATION_NOT_FOUND',
 	/** Answered already, by another tap or in words in the chat. */
 	CLARIFICATION_ALREADY_ANSWERED: 'CLARIFICATION_ALREADY_ANSWERED',

@@ -169,7 +169,7 @@ export class ChatService {
 				hasPhoto: photo !== undefined,
 			})
 			const memory = await this.memoryService.findRelevantFoods(userId, params.text ?? '')
-			const { context, refIds } = await this.chatContext.buildContext({
+			const { context, refIds, copyRefIds } = await this.chatContext.buildContext({
 				...params,
 				memory: memory.context,
 			})
@@ -194,7 +194,11 @@ export class ChatService {
 					? { mimeType: photo.mimeType, base64: photo.bytes.toString('base64') }
 					: undefined,
 			})
-			const edited = await this.chatTurn.saveDecision(params, decision, { memory, refIds })
+			const edited = await this.chatTurn.saveDecision(params, decision, {
+				memory,
+				refIds,
+				copyRefIds,
+			})
 			this.logger.log(`Chat turn ${decision.kind} user=${userId} message=${message.id}`)
 			return edited
 		} catch (error) {

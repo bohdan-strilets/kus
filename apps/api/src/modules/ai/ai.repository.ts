@@ -14,6 +14,8 @@ export interface CreateAiRunData {
 	purpose: AiRunPurpose
 	model: string
 	inputTokens: number
+	/** null = the provider did not report it. */
+	cachedInputTokens: number | null
 	outputTokens: number
 	costUsd: number
 	durationMs: number

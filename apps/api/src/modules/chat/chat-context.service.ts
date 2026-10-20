@@ -24,9 +24,11 @@ import { GoalsService } from '../goals/goals.service'
 import { MeasurementsService } from '../measurements/measurements.service'
 import { ProfileService } from '../profile/profile.service'
 import { ChatRepository, type MessageWithAttachments } from './chat.repository'
+import { ChatEarlierService } from './chat-earlier.service'
 import { ClarificationsRepository } from './clarifications.repository'
 import { buildDaysContext } from './days-context'
 import { buildEditContext, type EditRefIds } from './edit-context'
+import type { CopyRefIds } from './history-context'
 import { toHistoryTurns } from './history-turns'
 
 export interface DayOverview {
@@ -39,6 +41,8 @@ interface BuildContextParams {
 	userId: string
 	timezone: string
 	message: MessageWithAttachments
+	/** The words of the user's message; photo-only has none. */
+	text?: string
 	now: Date
 	localDate: Date
 	memory: MemoryFoodContext[]
@@ -72,6 +76,7 @@ export class ChatContextService {
 	constructor(
 		private readonly chatRepository: ChatRepository,
 		private readonly clarificationsRepository: ClarificationsRepository,
+		private readonly chatEarlier: ChatEarlierService,
 		private readonly entriesService: EntriesService,
 		private readonly goalsService: GoalsService,
 		private readonly measurementsService: MeasurementsService,
@@ -153,32 +158,39 @@ export class ChatContextService {
 		}
 	}
 
-	/** The model input and the ref → id map its edit tools are checked against. */
+	/** The model input and the ref → id maps its edit and copy tools are checked against. */
 	async buildContext({
 		userId,
 		timezone,
 		message,
+		text = '',
 		now,
 		localDate,
 		memory,
-	}: BuildContextParams): Promise<{ context: FoodParseContext; refIds: EditRefIds }> {
+	}: BuildContextParams): Promise<{
+		context: FoodParseContext
+		refIds: EditRefIds
+		copyRefIds: CopyRefIds
+	}> {
 		const today = formatDbDate(localDate)
-		const [{ summary, goal, totals }, history, editable, measurements, days] = await Promise.all([
-			this.getDayOverview(userId, localDate),
-			this.chatRepository.findHistory({
-				userId,
-				beforeId: message.id,
-				limit: HISTORY_MAX_MESSAGES,
-			}),
-			// entries of other days written today stay editable in the chat
-			this.entriesService.getEditableEntries(userId, localDate, {
-				from: toDbDate(shiftDate(today, -ENTRY_BACKDATE_MAX_DAYS)),
-				to: toDbDate(shiftDate(today, ENTRY_AHEAD_MAX_DAYS)),
-				createdSince: getZonedMoment(localDate, 0, timezone),
-			}),
-			this.getMeasurementsContext(userId, localDate),
-			this.getDaysContext(userId, today),
-		])
+		const [{ summary, goal, totals }, history, editable, measurements, days, earlier] =
+			await Promise.all([
+				this.getDayOverview(userId, localDate),
+				this.chatRepository.findHistory({
+					userId,
+					beforeId: message.id,
+					limit: HISTORY_MAX_MESSAGES,
+				}),
+				// entries of other days written today stay editable in the chat
+				this.entriesService.getEditableEntries(userId, localDate, {
+					from: toDbDate(shiftDate(today, -ENTRY_BACKDATE_MAX_DAYS)),
+					to: toDbDate(shiftDate(today, ENTRY_AHEAD_MAX_DAYS)),
+					createdSince: getZonedMoment(localDate, 0, timezone),
+				}),
+				this.getMeasurementsContext(userId, localDate),
+				this.getDaysContext(userId, today),
+				this.chatEarlier.getContext({ userId, text, today }),
+			])
 		const clarifications = await this.clarificationsRepository.findOpenClarifications({
 			userId,
 			entryIds: editable.active.map((entry) => entry.id),
@@ -215,11 +227,14 @@ export class ChatContextService {
 				days,
 				measurements,
 				memory,
+				// no section at all unless the message points back
+				...(earlier.earlier.length > 0 ? { earlier: earlier.earlier } : {}),
 				history: history
 					.reverse()
 					.flatMap((turn) => toHistoryTurns(turn, refByEntryId, entryIdsBySourceMessageId)),
 			},
 			refIds,
+			copyRefIds: earlier.copyRefIds,
 		}
 	}
 }

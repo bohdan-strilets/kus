@@ -455,10 +455,12 @@ model Message {
   replyToId       String?       @map("reply_to_id") @db.Uuid
   // assistant reply to show_day: the day card as it was when written (a snapshot, never refreshed)
   dayCard         Json?         @map("day_card")
+  // assistant reply to show_stats: the week or month card as it was when written (a snapshot, never refreshed)
+  statsCard       Json?         @map("stats_card")
   createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz
   updatedAt       DateTime      @updatedAt @map("updated_at") @db.Timestamptz
 
-  user               User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   replyTo            Message?            @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
   replies            Message[]           @relation("MessageReplies")
   attachments        MessageAttachment[]
@@ -524,19 +526,21 @@ model StoredFile {
 }
 
 model AiRun {
-  id           String       @id @default(uuid(7)) @db.Uuid
-  userId       String       @map("user_id") @db.Uuid
+  id                String       @id @default(uuid(7)) @db.Uuid
+  userId            String       @map("user_id") @db.Uuid
   // optional: not every model call belongs to a message; SetNull keeps cost accounting
-  messageId    String?      @map("message_id") @db.Uuid
-  purpose      AiRunPurpose
-  model        String
-  inputTokens  Int          @default(0) @map("input_tokens")
-  outputTokens Int          @default(0) @map("output_tokens")
-  costUsd      Decimal      @default(0) @map("cost_usd") @db.Decimal(12, 8)
-  durationMs   Int?         @map("duration_ms")
-  status       AiRunStatus
-  errorCode    String?      @map("error_code")
-  createdAt    DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  messageId         String?      @map("message_id") @db.Uuid
+  purpose           AiRunPurpose
+  model             String
+  inputTokens       Int          @default(0) @map("input_tokens")
+  // null = the provider did not say (and every run before this column): not the same as 0 cached
+  cachedInputTokens Int?         @map("cached_input_tokens")
+  outputTokens      Int          @default(0) @map("output_tokens")
+  costUsd           Decimal      @default(0) @map("cost_usd") @db.Decimal(12, 8)
+  durationMs        Int?         @map("duration_ms")
+  status            AiRunStatus
+  errorCode         String?      @map("error_code")
+  createdAt         DateTime     @default(now()) @map("created_at") @db.Timestamptz
 
   user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   message   Message?     @relation(fields: [messageId], references: [id], onDelete: SetNull)

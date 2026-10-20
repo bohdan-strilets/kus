@@ -10,6 +10,8 @@ import { distributeOptionValues, type EntryValues, roundNutrition } from './opti
 /** Refs given to the model in this request; anything else is invented or out of reach. */
 export interface ParseRefs extends MeasurementRefs {
 	memoryRefs: ReadonlySet<string>
+	/** `y1…` / `h1…` of the «Earlier entries» section; none when omitted. */
+	copyRefs?: ReadonlySet<string>
 	entries: ReadonlyMap<string, TodayEntryContext>
 	deletedEntryRefs: ReadonlySet<string>
 	clarifications: ReadonlyMap<string, FoodParseContext['openClarifications'][number]>
@@ -17,6 +19,7 @@ export interface ParseRefs extends MeasurementRefs {
 
 export const getParseRefs = (context: FoodParseContext): ParseRefs => ({
 	memoryRefs: new Set(context.memory.map((food) => food.ref)),
+	copyRefs: new Set((context.earlier ?? []).map((entry) => entry.ref)),
 	entries: new Map(context.entries.map((entry) => [entry.ref, entry])),
 	deletedEntryRefs: new Set(context.deletedEntries.map((entry) => entry.ref)),
 	clarifications: new Map(context.openClarifications.map((item) => [item.ref, item])),

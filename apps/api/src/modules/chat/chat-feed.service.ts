@@ -8,6 +8,7 @@ import {
 	type ListMessagesQuery,
 	type LoggedMeal,
 	type MeasurementCard,
+	type StatsCard,
 } from '@kus/shared'
 import { z } from 'zod'
 
@@ -24,6 +25,7 @@ import {
 import { ChatRepository, type MessageWithAttachments } from './chat.repository'
 import { readStoredDayCard } from './day-card'
 import { decodeMessageCursor, encodeMessageCursor } from './message-cursor'
+import { readStoredStatsCard } from './stats-card'
 
 // only what the chat shows, so rows stored before options carried macros still read
 const storedOptionsSchema = z.array(clarifyOptionViewSchema)
@@ -51,11 +53,13 @@ interface ChatMessageExtras {
 	achievements: Map<string, AchievementResponse[]>
 	/** By the assistant reply that holds them. */
 	dayCards: Map<string, DayCard>
+	/** By the assistant reply that holds them. */
+	statsCards: Map<string, StatsCard>
 }
 
 const toChatMessage = (
 	message: MessageWithAttachments,
-	{ meals, clarifications, measurements, achievements, dayCards }: ChatMessageExtras,
+	{ meals, clarifications, measurements, achievements, dayCards, statsCards }: ChatMessageExtras,
 ): ChatMessage => {
 	const isAssistant = message.role === MessageRole.ASSISTANT
 	const [attachment] = message.attachments
@@ -85,6 +89,7 @@ const toChatMessage = (
 			isAssistant && message.replyToId ? (measurements.get(message.replyToId) ?? []) : [],
 		achievements: isAssistant ? (achievements.get(message.id) ?? []) : [],
 		dayCard: dayCards.get(message.id) ?? null,
+		statsCard: statsCards.get(message.id) ?? null,
 	}
 }
 
@@ -119,8 +124,16 @@ export class ChatFeedService {
 			),
 		])
 		const dayCards = this.readDayCards(replies)
+		const statsCards = this.readStatsCards(replies)
 		return messages.map((message) =>
-			toChatMessage(message, { meals, clarifications, measurements, achievements, dayCards }),
+			toChatMessage(message, {
+				meals,
+				clarifications,
+				measurements,
+				achievements,
+				dayCards,
+				statsCards,
+			}),
 		)
 	}
 
@@ -133,6 +146,17 @@ export class ChatFeedService {
 			if (card) dayCards.set(id, card)
 		}
 		return dayCards
+	}
+
+	/** Same for the week and month snapshots. */
+	private readStatsCards(replies: MessageWithAttachments[]): Map<string, StatsCard> {
+		const statsCards = new Map<string, StatsCard>()
+		for (const { id, statsCard } of replies) {
+			const { card, isUnreadable } = readStoredStatsCard(statsCard)
+			if (isUnreadable) this.logger.warn(`Unreadable stats card message=${id}`)
+			if (card) statsCards.set(id, card)
+		}
+		return statsCards
 	}
 
 	/** Newest first; `nextCursor` points at the next, older page. */

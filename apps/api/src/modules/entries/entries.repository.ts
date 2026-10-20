@@ -104,9 +104,9 @@ export class EntriesRepository {
 
 	findActiveEntries(
 		{ userId, ids }: { userId: string; ids: string[] },
-		tx: Prisma.TransactionClient,
+		tx?: Prisma.TransactionClient,
 	): Promise<FoodEntry[]> {
-		return tx.foodEntry.findMany({
+		return (tx ?? this.prisma).foodEntry.findMany({
 			where: { id: { in: ids }, userId, deletedAt: null },
 			orderBy: { createdAt: 'asc' },
 		})
@@ -167,6 +167,48 @@ export class EntriesRepository {
 			include: { meal: { select: { type: true, localDate: true } } },
 			// the id keeps e1…eN stable among the entries of one message
 			orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+		})
+	}
+
+	/** Active entries of one day's active meals, oldest first: what «як вчора» can point at. */
+	findActiveDayEntriesWithMeal({
+		userId,
+		localDate,
+		take,
+	}: {
+		userId: string
+		localDate: Date
+		take: number
+	}): Promise<EntryWithMealType[]> {
+		return this.prisma.foodEntry.findMany({
+			where: { userId, deletedAt: null, meal: { deletedAt: null, localDate } },
+			include: { meal: { select: { type: true, localDate: true } } },
+			orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+			take,
+		})
+	}
+
+	/** Active entries of active meals in [from, to], newest first, at most `take`. */
+	findActiveRangeEntriesWithMeal({
+		userId,
+		from,
+		to,
+		take,
+	}: {
+		userId: string
+		from: Date
+		to: Date
+		take: number
+	}): Promise<EntryWithMealType[]> {
+		return this.prisma.foodEntry.findMany({
+			where: {
+				userId,
+				deletedAt: null,
+				meal: { deletedAt: null, localDate: { gte: from, lte: to } },
+			},
+			include: { meal: { select: { type: true, localDate: true } } },
+			orderBy: [{ meal: { localDate: 'desc' } }, { createdAt: 'desc' }, { id: 'desc' }],
+			take,
 		})
 	}
 

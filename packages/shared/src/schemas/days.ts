@@ -1,5 +1,6 @@
 import { z } from 'zod'
 
+import { DAY_OVER_GOAL_RATIO } from './day-verdict.js'
 import { loggedMealSchema, nutritionTotalsSchema } from './messages.js'
 
 /** `:localDate` of GET /days/:localDate — the user's calendar day. */
@@ -49,12 +50,6 @@ export const daysRangeQuerySchema = z
 	})
 
 export type DaysRangeQuery = z.infer<typeof daysRangeQuerySchema>
-
-/**
- * Above this share of the goal a day is over it — the gauge's «over» and the strip's over dot
- * (design: the 97–103 % band counts as the goal closed).
- */
-export const DAY_OVER_GOAL_RATIO = 1.03
 
 /** empty — nothing logged; normal — logged and not over the goal (or no goal); over — over it. */
 export const dayStatusSchema = z.enum(['empty', 'normal', 'over'])

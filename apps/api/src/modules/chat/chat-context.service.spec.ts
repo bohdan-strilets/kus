@@ -57,6 +57,7 @@ const createService = ({
 	const service = new ChatContextService(
 		{ findHistory: vi.fn().mockResolvedValue(history) } as never,
 		{ findOpenClarifications: vi.fn().mockResolvedValue([]) } as never,
+		{ getContext: vi.fn().mockResolvedValue({ earlier: [], copyRefIds: new Map() }) } as never,
 		{
 			getDaySummary: vi.fn().mockResolvedValue({ totals: {}, meals: [] }),
 			getEditableEntries,

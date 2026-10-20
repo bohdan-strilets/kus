@@ -81,11 +81,15 @@ export const isMacrosConsistent = (entry: MacrosCheckInput): boolean => {
 }
 
 /** Cross-field checks shared by every schema built on `foodEntryBaseSchema`. */
-export const refineFoodEntry = (entry: FoodEntryBase, context: z.RefinementCtx): void => {
+export const refineFoodEntry = (
+	entry: FoodEntryBase,
+	context: z.RefinementCtx,
+	{ isMacrosCheckSkipped = false }: { isMacrosCheckSkipped?: boolean } = {},
+): void => {
 	if (entry.kcal / entry.grams > MAX_KCAL_PER_GRAM) {
 		context.addIssue({ code: 'custom', path: ['kcal'], message: 'KCAL_DENSITY_TOO_HIGH' })
 	}
-	if (!isMacrosConsistent(entry)) {
+	if (!isMacrosCheckSkipped && !isMacrosConsistent(entry)) {
 		context.addIssue({ code: 'custom', path: ['kcal'], message: 'MACROS_KCAL_MISMATCH' })
 	}
 }

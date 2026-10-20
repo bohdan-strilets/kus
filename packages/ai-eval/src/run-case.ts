@@ -4,6 +4,7 @@ import {
 	type AiRequestMessage,
 	buildFoodParseMessages,
 	buildRetryMessages,
+	type EarlierEntryContext,
 	type FoodParseContext,
 	type FoodParseDecision,
 	getParseRefs,
@@ -52,11 +53,21 @@ const toValidationAttempt = (
 	errors: errors.map((text) => text.slice(0, MAX_VALIDATION_ERROR_LENGTH)),
 })
 
-/** Per item: a memory item's numbers come from the saved food, scaled by grams — as the backend does. */
+interface ItemSources {
+	memory: MemoryFoodContext[]
+	earlier: EarlierEntryContext[]
+}
+
+/**
+ * Per item: a memory item's numbers come from the saved food, scaled by grams; a copy takes the
+ * earlier entry's kcal (the model's own number is ignored) — as the backend does.
+ */
 const getItemTotals = (
 	item: AiFoodItem,
-	memory: MemoryFoodContext[],
+	{ memory, earlier }: ItemSources,
 ): { kcal: number; protein: number } => {
+	const copied = earlier.find((entry) => entry.ref === item.copyRef)
+	if (copied) return { kcal: copied.kcal, protein: item.protein }
 	const food = memory.find((saved) => saved.ref === item.memoryRef)
 	if (!food) return { kcal: item.kcal, protein: item.protein }
 	const factor = item.grams / GRAMS_PER_100
@@ -65,23 +76,24 @@ const getItemTotals = (
 
 const toLoggedItem = (
 	item: AiFoodItem,
-	memory: MemoryFoodContext[],
+	sources: ItemSources,
 	messageMealType: string | null,
 ): LoggedItem => ({
 	name: item.name,
 	mealType: item.mealType ?? messageMealType,
 	grams: item.grams,
 	quantity: item.quantity,
-	...getItemTotals(item, memory),
+	...getItemTotals(item, sources),
 	source: item.source,
 	memoryRef: item.memoryRef,
+	copyRef: item.copyRef,
 	assumption: item.assumption,
 })
 
-const sumItems = (items: AiFoodItem[], memory: MemoryFoodContext[]) =>
+const sumItems = (items: AiFoodItem[], sources: ItemSources) =>
 	items.reduce(
 		(sum, item) => {
-			const totals = getItemTotals(item, memory)
+			const totals = getItemTotals(item, sources)
 			return { kcal: sum.kcal + totals.kcal, protein: sum.protein + totals.protein }
 		},
 		{ kcal: 0, protein: 0 },
@@ -106,6 +118,8 @@ const getReplyText = (decision: FoodParseDecision): string => {
 		case 'edit':
 		case 'reply':
 		case 'day':
+		case 'close_day':
+		case 'stats':
 			return decision.text
 	}
 }
@@ -151,7 +165,7 @@ export const runCase = async (
 	options: EvalModelOptions,
 ): Promise<CaseResult> => {
 	const context = withDayContext({ ...BASE_CONTEXT, ...evalCase.context })
-	const { memory } = context
+	const sources: ItemSources = { memory: context.memory, earlier: context.earlier ?? [] }
 	const refs = getParseRefs(context)
 	let messages: AiRequestMessage[] = buildFoodParseMessages(context, evalCase.text, evalCase.photo)
 	const hasImage = evalCase.photo !== undefined
@@ -190,7 +204,7 @@ export const runCase = async (
 			if (result.ok) {
 				const replyText = getReplyText(result.decision)
 				const items = getLoggedItems(result.decision)
-				const totals = items.length > 0 ? sumItems(items, memory) : null
+				const totals = items.length > 0 ? sumItems(items, sources) : null
 				const calls = getCallFacts(rawCalls, context.measurements.today)
 				return {
 					...base,
@@ -208,7 +222,7 @@ export const runCase = async (
 					items: items.map((item) =>
 						toLoggedItem(
 							item,
-							memory,
+							sources,
 							result.decision.kind === 'log' ? result.decision.log.mealType : null,
 						),
 					),

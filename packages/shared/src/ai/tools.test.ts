@@ -20,6 +20,8 @@ describe('getAiFunctionTools', () => {
 			'not_food',
 			'photo_unusable',
 			'show_day',
+			'close_day',
+			'show_stats',
 			'reply',
 		])
 	})

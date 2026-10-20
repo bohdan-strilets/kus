@@ -1,3 +1,5 @@
+import { type DayStatus, getDayStatus } from '@kus/shared'
+
 import { GoalType } from '../../generated/prisma/client'
 import type { MeasurementValue } from '../measurements/measurements.mapper'
 import { findWeekAgo, getDayDistance, subtractTenths } from '../measurements/measurements.utils'
@@ -59,3 +61,54 @@ export const getWeekPaceKg = ({
 
 export const hasWeightDirection = (goalType: GoalType | null): goalType is 'LOSE' | 'GAIN' =>
 	goalType === GoalType.LOSE || goalType === GoalType.GAIN
+
+export interface DayTotalsValue {
+	kcal: number
+	proteinG: number
+	entryCount: number
+}
+
+export interface StatusDay {
+	localDate: string
+	kcal: number
+	proteinG: number
+	goalKcal: number | null
+	status: DayStatus
+}
+
+/**
+ * Every date of the range with its status against the goal in force that day. One rule for the
+ * «Прогрес» week and the stats card, so the two never count days differently.
+ */
+export const buildStatusDays = ({
+	dates,
+	totalsByDay,
+	goalByDay,
+}: {
+	dates: string[]
+	totalsByDay: Map<string, DayTotalsValue>
+	goalByDay: Map<string, number | null>
+}): StatusDay[] =>
+	dates.map((localDate) => {
+		const { kcal, proteinG, entryCount } = totalsByDay.get(localDate) ?? {
+			kcal: 0,
+			proteinG: 0,
+			entryCount: 0,
+		}
+		const goalKcal = goalByDay.get(localDate) ?? null
+		return {
+			localDate,
+			kcal,
+			proteinG,
+			goalKcal,
+			status: getDayStatus({ kcal, entryCount, goalKcal }),
+		}
+	})
+
+/** Days with something logged: the ones the averages and the norm count cover. */
+export const getLoggedDays = (days: StatusDay[]): StatusDay[] =>
+	days.filter((day) => day.status !== 'empty')
+
+/** In the norm = logged and not over the goal (no goal counts as in the norm). */
+export const getDaysInNorm = (days: StatusDay[]): number =>
+	days.filter((day) => day.status === 'normal').length

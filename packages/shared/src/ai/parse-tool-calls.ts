@@ -8,6 +8,8 @@ import {
 	type AiToolName,
 	type ClarifyInput,
 	clarifyInputSchema,
+	type CloseDayInput,
+	closeDayInputSchema,
 	type DeleteMeasurementInput,
 	deleteMeasurementInputSchema,
 	type LogFoodInput,
@@ -23,8 +25,15 @@ import {
 	replyInputSchema,
 	type ShowDayInput,
 	showDayInputSchema,
+	type ShowStatsInput,
+	showStatsInputSchema,
 } from './tools.js'
-import { getFoodDateErrors, getShowDayErrors } from './date-errors.js'
+import {
+	getCloseDayErrors,
+	getFoodDateErrors,
+	getShowDayErrors,
+	getShowStatsErrors,
+} from './date-errors.js'
 import {
 	type ClarificationResult,
 	filterClarifications,
@@ -74,7 +83,9 @@ export interface ParsedToolCall {
 
 /**
  * `log` may also change earlier entries; `edit` only changes them and answers with `text`.
- * Weight and waist (logged or deleted) ride along with `log` and `reply`; `day` shows the card of a day.
+ * Weight and waist (logged or deleted) ride along with `log` and `reply`; `day` shows the card of a day,
+ * `close_day` the same card as the day's close (it may first log the gap up to the user's own total),
+ * `stats` the card of a week or a month.
  */
 export type FoodParseDecision =
 	| {
@@ -96,6 +107,8 @@ export type FoodParseDecision =
 	  }
 	/** `date` null = today. */
 	| { kind: 'day'; date: string | null; text: string }
+	| { kind: 'close_day'; date: string | null; estimatedTotalKcal: number | null; text: string }
+	| { kind: 'stats'; period: ShowStatsInput['period']; endDate: string | null; text: string }
 
 export type FoodParseResult =
 	| { ok: true; decision: FoodParseDecision; calls: ParsedToolCall[] }
@@ -114,6 +127,8 @@ type ValidatedCall =
 	| { name: typeof AI_TOOL_NAMES.logMeasurement; data: LogMeasurementInput }
 	| { name: typeof AI_TOOL_NAMES.deleteMeasurement; data: DeleteMeasurementInput }
 	| { name: typeof AI_TOOL_NAMES.showDay; data: ShowDayInput }
+	| { name: typeof AI_TOOL_NAMES.closeDay; data: CloseDayInput }
+	| { name: typeof AI_TOOL_NAMES.showStats; data: ShowStatsInput }
 	| { name: typeof AI_TOOL_NAMES.clarify; data: ClarifyInput }
 	| { name: typeof AI_TOOL_NAMES.correctEntry; data: CorrectEntryInput }
 	| { name: typeof AI_TOOL_NAMES.deleteEntry; data: DeleteEntryInput }
@@ -146,6 +161,10 @@ const parseInput = (name: AiToolName, value: unknown): InputParse => {
 			}))
 		case AI_TOOL_NAMES.showDay:
 			return toInputParse(showDayInputSchema.safeParse(value), (data) => ({ name, data }))
+		case AI_TOOL_NAMES.closeDay:
+			return toInputParse(closeDayInputSchema.safeParse(value), (data) => ({ name, data }))
+		case AI_TOOL_NAMES.showStats:
+			return toInputParse(showStatsInputSchema.safeParse(value), (data) => ({ name, data }))
 		case AI_TOOL_NAMES.clarify:
 			return toInputParse(clarifyInputSchema.safeParse(value), (data) => ({ name, data }))
 		case AI_TOOL_NAMES.correctEntry:
@@ -246,15 +265,23 @@ const validateCall = (raw: RawToolCall): ValidatedRawCall => {
 	}
 }
 
+const EMPTY_REFS: ReadonlySet<string> = new Set()
+
 const checkLogReferences = (
 	log: LogFoodInput,
 	clarifications: ClarifyInput[],
-	{ memoryRefs }: ParseRefs,
+	{ memoryRefs, copyRefs = EMPTY_REFS }: ParseRefs,
 ): string[] => {
 	const errors: string[] = []
 	log.items.forEach((item, index) => {
 		if (item.memoryRef !== null && !memoryRefs.has(item.memoryRef)) {
 			errors.push(`log_food: items.${index}.memoryRef "${item.memoryRef}" is not in the context`)
+		}
+		if (item.copyRef !== null && !copyRefs.has(item.copyRef)) {
+			errors.push(`log_food: items.${index}.copyRef "${item.copyRef}" is not in "Earlier entries"`)
+		}
+		if (item.copyRef !== null && item.memoryRef !== null) {
+			errors.push(`log_food: items.${index} has both copyRef and memoryRef — use one`)
 		}
 		if (item.source === 'MEMORY' && item.memoryRef === null) {
 			errors.push(`log_food: items.${index} has source MEMORY but no memoryRef`)
@@ -279,9 +306,11 @@ const checkLogReferences = (
 }
 
 const ONE_DECISION_ERROR =
-	'call log_food (with clarify and edit tools if needed), or edit tools (correct_entry, delete_entry, restore_entry, resolve_clarification) with exactly one reply, or exactly one of not_food, photo_unusable, show_day or reply'
+	'call log_food (with clarify and edit tools if needed), or edit tools (correct_entry, delete_entry, restore_entry, resolve_clarification) with exactly one reply, or exactly one of not_food, photo_unusable, show_day, close_day, show_stats or reply'
 const SHOW_DAY_ALONE_ERROR =
 	'show_day is the whole answer — not with log_food, reply, clarify, measurement or edit tools'
+const CARD_ALONE_ERROR =
+	'close_day and show_stats are the whole answer — not with log_food, reply, clarify, measurement or edit tools'
 const NO_PHOTO_ERROR =
 	'photo_unusable: this message has no photo — answer with reply (or not_food) instead'
 
@@ -349,6 +378,8 @@ const decide = (
 		call.name === AI_TOOL_NAMES.deleteMeasurement ? [call.data] : [],
 	)
 	const shows = valid.flatMap((call) => (call.name === AI_TOOL_NAMES.showDay ? [call.data] : []))
+	const closes = valid.flatMap((call) => (call.name === AI_TOOL_NAMES.closeDay ? [call.data] : []))
+	const stats = valid.flatMap((call) => (call.name === AI_TOOL_NAMES.showStats ? [call.data] : []))
 	const edits = collectEdits(valid)
 	const isEditing = hasEdits(edits)
 	const [log] = logs
@@ -356,9 +387,18 @@ const decide = (
 	const [photoUnusable] = unusable
 	const [reply] = replies
 	const [show] = shows
+	const [close] = closes
+	const [statsCall] = stats
 
 	// log_food speaks for the whole turn, an edit-only turn speaks through reply
-	const answers = logs.length + notFood.length + unusable.length + replies.length + shows.length
+	const answers =
+		logs.length +
+		notFood.length +
+		unusable.length +
+		replies.length +
+		shows.length +
+		closes.length +
+		stats.length
 	if (answers !== 1 || ((rejected || photoUnusable) && isEditing))
 		return { decision: null, errors: [ONE_DECISION_ERROR] }
 	if (show) {
@@ -368,6 +408,35 @@ const decide = (
 		const errors = getShowDayErrors(show.date, refs.today)
 		if (errors.length > 0) return { decision: null, errors }
 		return { decision: { kind: 'day', date: show.date, text: show.reply }, errors: [] }
+	}
+	if (close || statsCall) {
+		const isAlone = !isEditing && measurements.length === 0 && deletions.length === 0
+		if (!isAlone || clarifications.length > 0) return { decision: null, errors: [CARD_ALONE_ERROR] }
+		if (close) {
+			const errors = getCloseDayErrors(close.date, refs.today)
+			if (errors.length > 0) return { decision: null, errors }
+			return {
+				decision: {
+					kind: 'close_day',
+					date: close.date,
+					estimatedTotalKcal: close.estimatedTotalKcal,
+					text: close.reply,
+				},
+				errors: [],
+			}
+		}
+		if (!statsCall) return { decision: null, errors: [ONE_DECISION_ERROR] }
+		const errors = getShowStatsErrors(statsCall.endDate, refs.today)
+		if (errors.length > 0) return { decision: null, errors }
+		return {
+			decision: {
+				kind: 'stats',
+				period: statsCall.period,
+				endDate: statsCall.endDate,
+				text: statsCall.reply,
+			},
+			errors: [],
+		}
 	}
 	if (photoUnusable && !hasImage) return { decision: null, errors: [NO_PHOTO_ERROR] }
 	const hasMeasurements = measurements.length > 0

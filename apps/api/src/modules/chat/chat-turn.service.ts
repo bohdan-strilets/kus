@@ -9,23 +9,37 @@ import {
 	getDayOffset,
 	type LogFoodInput,
 	type LogMeasurementInput,
+	STATS_EMPTY_REPLY,
+	type StatsCard,
 } from '@kus/shared'
 
 import { formatDbDate, getLocalHour } from '../../common/time'
-import { AttachmentStatus, MeasurementKind, type Prisma } from '../../generated/prisma/client'
+import {
+	AttachmentStatus,
+	type FoodEntry,
+	MeasurementKind,
+	type Prisma,
+} from '../../generated/prisma/client'
 import { PrismaService } from '../../prisma'
 import { AchievementsService } from '../achievements/achievements.service'
 import { EntriesService } from '../entries/entries.service'
 import type { LogEntriesParams, MealEntryInput, NewFoodEntry } from '../entries/entries.types'
 import { MemoryService, type RelevantFoods } from '../memory/memory.service'
+import { ProgressStatsService } from '../progress/progress-stats.service'
+import { ChatCloseDayService } from './chat-close-day.service'
 import { ChatDayCardService } from './chat-day-card.service'
 import { ChatEditsService, type EditedMessages, NO_EDITED_MESSAGES } from './chat-edits.service'
-import { MessageInProgressException, TurnDateOutOfRangeException } from './chat.exceptions'
+import {
+	MessageInProgressException,
+	TurnCopySourceMissingException,
+	TurnDateOutOfRangeException,
+} from './chat.exceptions'
 import { ChatTurnMeasurementsService } from './chat-turn-measurements.service'
 import { ChatRepository, type MessageWithAttachments } from './chat.repository'
 import type { PhotoPayload } from '../../common/photo'
 import { ClarificationsRepository } from './clarifications.repository'
 import type { EditRefIds } from './edit-context'
+import type { CopyRefIds } from './history-context'
 import { getMealEatenAtForDay, getMealTypeByHour } from '../entries/meal-type'
 
 export interface TurnParams {
@@ -52,6 +66,8 @@ const getReplyText = (decision: FoodParseDecision): string => {
 			return decision.log.reply
 		case 'edit':
 		case 'day':
+		case 'close_day':
+		case 'stats':
 			return decision.text
 		case 'not_food':
 		case 'photo_unusable':
@@ -62,6 +78,28 @@ const getReplyText = (decision: FoodParseDecision): string => {
 }
 
 const getMealKey = (day: string, mealType: string): string => `${day}|${mealType}`
+
+/** The earlier entry's values for a portion of `grams`: scaled by the backend, its provenance kept. */
+const copyEntryValues = (
+	entry: FoodEntry,
+	grams: number,
+): Pick<
+	NewFoodEntry,
+	'kcal' | 'protein' | 'fat' | 'carbs' | 'fiber' | 'category' | 'source' | 'confidence' | 'myFoodId'
+> => {
+	const factor = grams / entry.grams
+	return {
+		kcal: entry.kcal * factor,
+		protein: entry.proteinG * factor,
+		fat: entry.fatG * factor,
+		carbs: entry.carbsG * factor,
+		fiber: entry.fiberG === null ? null : entry.fiberG * factor,
+		category: entry.category,
+		source: entry.source,
+		confidence: entry.confidence,
+		myFoodId: entry.myFoodId,
+	}
+}
 
 const toDbDate = (date: string): Date => new Date(`${date}T00:00:00Z`)
 
@@ -80,18 +118,33 @@ export class ChatTurnService {
 		private readonly turnMeasurements: ChatTurnMeasurementsService,
 		private readonly achievementsService: AchievementsService,
 		private readonly dayCards: ChatDayCardService,
+		private readonly closeDays: ChatCloseDayService,
+		private readonly progressStats: ProgressStatsService,
 	) {}
 
 	async saveDecision(
 		{ userId, timezone, message, photo, now, localDate }: TurnParams,
 		decision: FoodParseDecision,
-		{ memory, refIds }: { memory: RelevantFoods; refIds: EditRefIds },
+		{
+			memory,
+			refIds,
+			copyRefIds,
+		}: { memory: RelevantFoods; refIds: EditRefIds; copyRefIds: CopyRefIds },
 	): Promise<TurnResult> {
 		// the numbers of the card are counted before the turn is written; a card is a snapshot anyway
 		const dayCard = await this.buildDayCard({ userId, message, now, localDate }, decision)
+		const statsCard = await this.buildStatsCard({ userId, localDate }, decision)
 		return this.prisma.$transaction(async (tx) => {
 			const reply = await this.chatRepository.completeTurn(
-				{ userId, userMessageId: message.id, replyText: getReplyText(decision), dayCard },
+				{
+					userId,
+					userMessageId: message.id,
+					// nothing logged in the period: the model's text would talk about a card that is not there
+					replyText:
+						decision.kind === 'stats' && !statsCard ? STATS_EMPTY_REPLY : getReplyText(decision),
+					dayCard,
+					statsCard,
+				},
 				tx,
 			)
 			// a resend of a stale turn finished it meanwhile; roll back instead of logging food twice
@@ -129,6 +182,13 @@ export class ChatTurnService {
 				)
 				return { ...NO_EDITED_MESSAGES, replacedMeasurementMessageIds: replaced }
 			}
+			if (decision.kind === 'close_day') {
+				return this.saveClosedDay(
+					{ userId, timezone, message, now, localDate },
+					{ decision, replyId: reply.id },
+					tx,
+				)
+			}
 			if (decision.kind !== 'log' && decision.kind !== 'edit') {
 				return { ...NO_EDITED_MESSAGES, replacedMeasurementMessageIds: [] }
 			}
@@ -154,10 +214,17 @@ export class ChatTurnService {
 				return { ...edited, replacedMeasurementMessageIds: [] }
 			}
 
+			const copies = await this.loadCopySources(
+				{ userId, messageId: message.id },
+				decision.log,
+				copyRefIds,
+				tx,
+			)
 			const { entries, getEatenAt } = this.planEntries({
 				params: { userId, timezone, message, now, localDate },
 				log: decision.log,
 				memory,
+				copies,
 				isFromPhoto: photo !== undefined,
 			})
 			const { entryIds } = await this.entriesService.logEntries(
@@ -228,6 +295,100 @@ export class ChatTurnService {
 		return (await this.dayCards.build({ userId, localDate: day, today, now })) ?? undefined
 	}
 
+	/** show_stats only; undefined when nothing was logged in the period (the reply becomes STATS_EMPTY_REPLY). */
+	private async buildStatsCard(
+		{ userId, localDate }: Pick<TurnParams, 'userId' | 'localDate'>,
+		decision: FoodParseDecision,
+	): Promise<StatsCard | undefined> {
+		if (decision.kind !== 'stats') return undefined
+		const card = await this.progressStats.build({
+			userId,
+			period: decision.period,
+			endDate: decision.endDate,
+			today: formatDbDate(localDate),
+		})
+		return card ?? undefined
+	}
+
+	/** close_day: the gap up to the user's total is logged, then the card is written onto the reply. */
+	private async saveClosedDay(
+		{
+			userId,
+			timezone,
+			message,
+			now,
+			localDate,
+		}: Pick<TurnParams, 'userId' | 'timezone' | 'message' | 'now' | 'localDate'>,
+		{
+			decision,
+			replyId,
+		}: { decision: Extract<FoodParseDecision, { kind: 'close_day' }>; replyId: string },
+		tx: Prisma.TransactionClient,
+	): Promise<TurnResult> {
+		const { dayCard, isLogged } = await this.closeDays.close(
+			{
+				userId,
+				messageId: message.id,
+				date: decision.date,
+				estimatedTotalKcal: decision.estimatedTotalKcal,
+				localDate,
+				timezone,
+				now,
+			},
+			tx,
+		)
+		if (dayCard) await this.chatRepository.setDayCard({ userId, id: replyId, dayCard }, tx)
+		if (isLogged) {
+			await this.achievementsService.recordForTurn(
+				{
+					userId,
+					timezone,
+					now,
+					replyMessageId: replyId,
+					userMessageId: message.id,
+					isFoodChanged: true,
+					isWeightLogged: false,
+				},
+				tx,
+			)
+		}
+		// earlier cards of the meal it joined grew: they get a new «разом» line
+		return {
+			...NO_EDITED_MESSAGES,
+			sourceMessageIds: isLogged ? [message.id] : [],
+			replacedMeasurementMessageIds: [],
+		}
+	}
+
+	/**
+	 * The entries a copyRef points at, read again by id and userId inside the turn: a ref is only a
+	 * pointer into the context, never trusted for the values. A deleted entry is simply missing.
+	 */
+	private async loadCopySources(
+		{ userId, messageId }: { userId: string; messageId: string },
+		log: LogFoodInput,
+		copyRefIds: CopyRefIds,
+		tx: Prisma.TransactionClient,
+	): Promise<Map<string, FoodEntry>> {
+		const refs = [...new Set(log.items.flatMap((item) => item.copyRef ?? []))]
+		const ids = refs.flatMap((ref) => copyRefIds.get(ref) ?? [])
+		const entries = await this.entriesService.findActiveEntriesByIds(userId, ids, tx)
+		const byId = new Map(entries.map((entry) => [entry.id, entry]))
+		const copies = new Map(
+			refs.flatMap((ref) => {
+				const entry = byId.get(copyRefIds.get(ref) ?? '')
+				return entry ? [[ref, entry] as const] : []
+			}),
+		)
+		if (copies.size < refs.length) {
+			this.logger.warn(
+				`Copy source missing user=${userId} message=${messageId} refs=${refs.length} found=${copies.size}`,
+			)
+			throw new TurnCopySourceMissingException()
+		}
+		return copies
+	}
+
 	/** Food is logged only in the window; the parser rejects other days, so a miss is a bug and stops the turn. */
 	private assertLoggableDay({
 		day,
@@ -275,11 +436,13 @@ export class ChatTurnService {
 		params: { userId, timezone, message, now, localDate },
 		log,
 		memory,
+		copies,
 		isFromPhoto,
 	}: {
 		params: Pick<TurnParams, 'userId' | 'timezone' | 'message' | 'now' | 'localDate'>
 		log: LogFoodInput
 		memory: RelevantFoods
+		copies: ReadonlyMap<string, FoodEntry>
 		isFromPhoto: boolean
 	}): { entries: MealEntryInput[]; getEatenAt: LogEntriesParams['getEatenAt'] } {
 		const today = formatDbDate(localDate)
@@ -293,7 +456,7 @@ export class ChatTurnService {
 			return {
 				mealType: namedType ?? clockMealType,
 				localDate: toDbDate(day),
-				entry: this.toNewEntry(item, memory, isFromPhoto),
+				entry: this.toNewEntry(item, { memory, copies }, isFromPhoto),
 			}
 		})
 		return {
@@ -309,13 +472,18 @@ export class ChatTurnService {
 		}
 	}
 
-	/** A memory item takes its numbers from the saved food, scaled by the backend. */
-	// mealType, date and memoryRef aren't FoodEntry columns: left in the spread, Prisma would reject them
+	/**
+	 * A memory item takes its numbers from the saved food, a copy item from the earlier entry, both
+	 * scaled by the backend. A copyRef always has its entry here (loadCopySources throws otherwise).
+	 */
+	// mealType, date, memoryRef and copyRef aren't FoodEntry columns: left in the spread, Prisma would reject them
 	private toNewEntry(
-		{ memoryRef, mealType: _mealType, date: _date, ...item }: AiFoodItem,
-		memory: RelevantFoods,
+		{ memoryRef, copyRef, mealType: _mealType, date: _date, ...item }: AiFoodItem,
+		{ memory, copies }: { memory: RelevantFoods; copies: ReadonlyMap<string, FoodEntry> },
 		fromPhoto: boolean,
 	): NewFoodEntry {
+		const copied = copyRef === null ? undefined : copies.get(copyRef)
+		if (copied) return { ...item, fromPhoto, ...copyEntryValues(copied, item.grams) }
 		const food = memoryRef === null ? undefined : memory.byRef.get(memoryRef)
 		if (!food) return { ...item, myFoodId: null, fromPhoto }
 		return {

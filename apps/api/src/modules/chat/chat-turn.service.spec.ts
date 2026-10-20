@@ -1,7 +1,8 @@
 import { Logger } from '@nestjs/common'
+import { STATS_EMPTY_REPLY } from '@kus/shared'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { TurnDateOutOfRangeException } from './chat.exceptions'
+import { TurnCopySourceMissingException, TurnDateOutOfRangeException } from './chat.exceptions'
 import { ChatTurnService } from './chat-turn.service'
 
 beforeEach(() => {
@@ -27,6 +28,7 @@ const toItem = (name: string, overrides: Record<string, unknown> = {}) => ({
 	confidence: 0.8,
 	assumption: null,
 	memoryRef: null,
+	copyRef: null,
 	mealType: null,
 	date: null,
 	...overrides,
@@ -47,19 +49,26 @@ const createService = () => {
 	const remove = vi.fn().mockResolvedValue([])
 	const record = vi.fn().mockResolvedValue([])
 	const build = vi.fn().mockResolvedValue(null)
+	const close = vi.fn().mockResolvedValue({ dayCard: null, isLogged: false })
+	const buildStats = vi.fn().mockResolvedValue(null)
 	const completeTurn = vi.fn().mockResolvedValue({ id: 'reply-1' })
+	const setDayCard = vi.fn().mockResolvedValue(undefined)
+	const findActiveEntriesByIds = vi.fn().mockResolvedValue([])
+	const recordForTurn = vi.fn()
 	const service = new ChatTurnService(
 		{ $transaction: (callback: (tx: unknown) => unknown) => callback({}) } as never,
-		{ completeTurn } as never,
+		{ completeTurn, setDayCard } as never,
 		{ createClarification: vi.fn() } as never,
 		{ applyEdits: vi.fn().mockResolvedValue({ sourceMessageIds: [], replyIds: [] }) } as never,
-		{ logEntries } as never,
+		{ logEntries, findActiveEntriesByIds } as never,
 		{ markUsed: vi.fn() } as never,
 		{ remove, record } as never,
-		{ recordForTurn: vi.fn() } as never,
+		{ recordForTurn } as never,
 		{ build } as never,
+		{ close } as never,
+		{ build: buildStats } as never,
 	)
-	const save = (decision: never) =>
+	const save = (decision: never, copyRefIds: Map<string, string> = new Map()) =>
 		service.saveDecision(
 			{
 				userId: 'u1',
@@ -69,9 +78,21 @@ const createService = () => {
 				localDate: TODAY,
 			},
 			decision,
-			{ memory: { byRef: new Map(), context: [] }, refIds: {} } as never,
+			{ memory: { byRef: new Map(), context: [] }, refIds: {}, copyRefIds } as never,
 		)
-	return { save, logEntries, remove, record, build, completeTurn }
+	return {
+		save,
+		logEntries,
+		remove,
+		record,
+		build,
+		completeTurn,
+		close,
+		buildStats,
+		setDayCard,
+		findActiveEntriesByIds,
+		recordForTurn,
+	}
 }
 
 const getLogged = (logEntries: ReturnType<typeof vi.fn>) => {
@@ -303,5 +324,182 @@ describe('ChatTurnService.saveDecision show_day', () => {
 		await save({ kind: 'not_food', reply: 'ні' } as never)
 
 		expect(build).not.toHaveBeenCalled()
+	})
+})
+
+describe('ChatTurnService.saveDecision close_day', () => {
+	const toCloseDecision = (date: string | null, estimatedTotalKcal: number | null) =>
+		({ kind: 'close_day', date, estimatedTotalKcal, text: 'Готово' }) as never
+	const CARD = { version: 1, localDate: '2026-10-18', isClosing: true }
+
+	it('closes the day inside the turn and writes its card onto the reply', async () => {
+		const { save, close, setDayCard, logEntries } = createService()
+		close.mockResolvedValue({ dayCard: CARD, isLogged: false })
+
+		const result = await save(toCloseDecision('2026-10-17', 1800))
+
+		expect(close).toHaveBeenCalledWith(
+			expect.objectContaining({
+				userId: 'u1',
+				messageId: 'm1',
+				date: '2026-10-17',
+				estimatedTotalKcal: 1800,
+				localDate: TODAY,
+			}),
+			expect.anything(),
+		)
+		expect(setDayCard).toHaveBeenCalledWith(
+			{ userId: 'u1', id: 'reply-1', dayCard: CARD },
+			expect.anything(),
+		)
+		expect(logEntries).not.toHaveBeenCalled()
+		expect(result.sourceMessageIds).toEqual([])
+	})
+
+	it('keeps only the text for an empty day', async () => {
+		const { save, setDayCard } = createService()
+
+		await save(toCloseDecision(null, null))
+
+		expect(setDayCard).not.toHaveBeenCalled()
+	})
+
+	it('counts a logged gap as a food change and refreshes the cards of its meal', async () => {
+		const { save, close, recordForTurn } = createService()
+		close.mockResolvedValue({ dayCard: CARD, isLogged: true })
+
+		const result = await save(toCloseDecision(null, 1800))
+
+		expect(recordForTurn).toHaveBeenCalledWith(
+			expect.objectContaining({ isFoodChanged: true, isWeightLogged: false }),
+			expect.anything(),
+		)
+		expect(result.sourceMessageIds).toEqual(['m1'])
+	})
+})
+
+describe('ChatTurnService.saveDecision show_stats', () => {
+	const toStatsDecision = (endDate: string | null) =>
+		({ kind: 'stats', period: 'week', endDate, text: 'Ось тиждень' }) as never
+
+	it('stores the card counted for the user today with the reply', async () => {
+		const { save, buildStats, completeTurn } = createService()
+		const card = { version: 1, period: 'week' }
+		buildStats.mockResolvedValue(card)
+
+		await save(toStatsDecision('2026-10-10'))
+
+		expect(buildStats).toHaveBeenCalledWith({
+			userId: 'u1',
+			period: 'week',
+			endDate: '2026-10-10',
+			today: '2026-10-18',
+		})
+		expect(completeTurn).toHaveBeenCalledWith(
+			expect.objectContaining({ replyText: 'Ось тиждень', statsCard: card }),
+			expect.anything(),
+		)
+	})
+
+	it('stores no card and the fixed text instead of the model one when nothing was logged', async () => {
+		const { save, completeTurn } = createService()
+
+		await save(toStatsDecision(null))
+
+		const params: unknown = completeTurn.mock.calls[0]?.[0]
+		expect((params as { statsCard?: unknown }).statsCard).toBeUndefined()
+		expect(params).toMatchObject({ replyText: STATS_EMPTY_REPLY })
+	})
+})
+
+describe('ChatTurnService.saveDecision copyRef', () => {
+	const EARLIER = {
+		id: 'entry-y1',
+		name: 'Гречка варена',
+		grams: 200,
+		kcal: 240,
+		proteinG: 8,
+		fatG: 2,
+		carbsG: 46,
+		fiberG: 6,
+		category: 'grains',
+		source: 'LABEL',
+		confidence: 0.9,
+		myFoodId: 'food-1',
+	}
+
+	it('copies the earlier values scaled by the new grams, with category, source and food link', async () => {
+		const { save, logEntries, findActiveEntriesByIds } = createService()
+		findActiveEntriesByIds.mockResolvedValue([EARLIER])
+
+		await save(
+			toLogDecision([
+				toItem('Гречка', { copyRef: 'y1', grams: 100, kcal: 999, source: 'ESTIMATE' }),
+			]),
+			new Map([['y1', 'entry-y1']]),
+		)
+
+		expect(findActiveEntriesByIds).toHaveBeenCalledWith('u1', ['entry-y1'], expect.anything())
+		const entry = getLogged(logEntries).entries[0]?.entry
+		expect(entry).toMatchObject({
+			grams: 100,
+			kcal: 120,
+			protein: 4,
+			fat: 1,
+			carbs: 23,
+			fiber: 3,
+			category: 'grains',
+			source: 'LABEL',
+			confidence: 0.9,
+			myFoodId: 'food-1',
+		})
+		expect(entry).not.toHaveProperty('copyRef')
+	})
+
+	it('reads only the refs of this request and only the ids the context mapped', async () => {
+		const { save, findActiveEntriesByIds } = createService()
+
+		findActiveEntriesByIds.mockResolvedValue([EARLIER])
+		await expect(
+			save(
+				toLogDecision([toItem('a', { copyRef: 'y1' }), toItem('b', { copyRef: 'y9' })]),
+				new Map([['y1', 'entry-y1']]),
+			),
+		).rejects.toBeInstanceOf(TurnCopySourceMissingException)
+
+		expect(findActiveEntriesByIds).toHaveBeenCalledWith('u1', ['entry-y1'], expect.anything())
+	})
+
+	it('stops the turn instead of storing the model numbers when the entry is gone', async () => {
+		const { save, logEntries } = createService()
+
+		await expect(
+			save(
+				toLogDecision([toItem('a', { copyRef: 'y1', kcal: 100 })]),
+				new Map([['y1', 'deleted-entry']]),
+			),
+		).rejects.toMatchObject({
+			status: 409,
+			errorCode: 'TURN_COPY_SOURCE_MISSING',
+		})
+
+		expect(logEntries).not.toHaveBeenCalled()
+	})
+
+	it('stops the turn when only one of two copy sources is still there', async () => {
+		const { save, logEntries, findActiveEntriesByIds } = createService()
+		findActiveEntriesByIds.mockResolvedValue([EARLIER])
+
+		await expect(
+			save(
+				toLogDecision([toItem('a', { copyRef: 'y1' }), toItem('b', { copyRef: 'y2' })]),
+				new Map([
+					['y1', 'entry-y1'],
+					['y2', 'deleted-entry'],
+				]),
+			),
+		).rejects.toBeInstanceOf(TurnCopySourceMissingException)
+
+		expect(logEntries).not.toHaveBeenCalled()
 	})
 })

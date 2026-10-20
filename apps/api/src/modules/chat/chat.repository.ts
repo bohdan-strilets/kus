@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common'
-import type { DayCard } from '@kus/shared'
+import type { DayCard, StatsCard } from '@kus/shared'
 
 import {
 	AttachmentStatus,
@@ -176,7 +176,14 @@ export class ChatRepository {
 			userMessageId,
 			replyText,
 			dayCard,
-		}: { userId: string; userMessageId: string; replyText: string; dayCard?: DayCard },
+			statsCard,
+		}: {
+			userId: string
+			userMessageId: string
+			replyText: string
+			dayCard?: DayCard
+			statsCard?: StatsCard
+		},
 		tx: Prisma.TransactionClient,
 	): Promise<Message | null> {
 		const { count } = await tx.message.updateMany({
@@ -192,8 +199,17 @@ export class ChatRepository {
 				status: MessageStatus.COMPLETED,
 				replyToId: userMessageId,
 				...(dayCard ? { dayCard } : {}),
+				...(statsCard ? { statsCard } : {}),
 			},
 		})
+	}
+
+	/** The card of a reply written in this same turn, once the day it shows has been changed. */
+	async setDayCard(
+		{ userId, id, dayCard }: { userId: string; id: string; dayCard: DayCard },
+		tx: Prisma.TransactionClient,
+	): Promise<void> {
+		await tx.message.updateMany({ where: { id, userId }, data: { dayCard } })
 	}
 
 	/** Kusik's own message, not a reply to a user turn (the greeting after account-restore). */

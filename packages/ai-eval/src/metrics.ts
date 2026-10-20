@@ -38,8 +38,10 @@ export const isDecisionCorrect = (
 	const mustInclude = evalCase.expect.replyIncludes ?? []
 	const mustIncludeAny = evalCase.expect.replyIncludesAny ?? []
 	const mustExclude = evalCase.expect.replyExcludes ?? []
+	const mustMatch = evalCase.expect.replyMatches ?? []
 	return (
 		mustInclude.every((part) => (replyText ?? '').includes(part)) &&
+		mustMatch.every((pattern) => new RegExp(pattern).test(replyText ?? '')) &&
 		(mustIncludeAny.length === 0 || mustIncludeAny.some((part) => text.includes(part))) &&
 		mustExclude.every((stem) => !text.includes(stem))
 	)
@@ -115,11 +117,15 @@ const hasCallDetails = ({ expect }: EvalCase): boolean =>
 	expect.itemDates !== undefined ||
 	expect.maxItems !== undefined ||
 	expect.dayCard !== undefined ||
+	expect.closeDay !== undefined ||
+	expect.stats !== undefined ||
+	expect.copyRefs !== undefined ||
 	expect.deletedMeasurements !== undefined
 
 /** The days the calls named (log, items, day card, deleted measurements) and the item count, as expected. */
 export const isCallDetailsCorrect = (evalCase: EvalCase, result: CaseResult): boolean => {
-	const { logDate, itemDates, maxItems, dayCard, deletedMeasurements } = evalCase.expect
+	const { logDate, itemDates, maxItems, dayCard, deletedMeasurements, closeDay, stats, copyRefs } =
+		evalCase.expect
 	const { calls } = result
 	const isLogDayRight = logDate === undefined || calls.logDate === logDate
 	const areItemDaysRight = (itemDates ?? []).every(({ stem, date }) =>
@@ -135,7 +141,37 @@ export const isCallDetailsCorrect = (evalCase: EvalCase, result: CaseResult): bo
 			deletedMeasurements.every((want) =>
 				calls.deletedMeasurements.some((got) => got.kind === want.kind && got.date === want.date),
 			))
-	return isLogDayRight && areItemDaysRight && isCountRight && isCardRight && areDeletedRight
+	const isCloseRight =
+		closeDay === undefined ||
+		(calls.closeDays.length === 1 &&
+			calls.closeDays.every(
+				(got) =>
+					got.date === closeDay.date && got.estimatedTotalKcal === closeDay.estimatedTotalKcal,
+			))
+	const isStatsRight =
+		stats === undefined ||
+		(calls.statsCards.length === 1 &&
+			calls.statsCards.every(
+				(got) =>
+					got.period === stats.period &&
+					(stats.endDate === undefined || got.endDate === stats.endDate),
+			))
+	const areCopiesRight =
+		copyRefs === undefined ||
+		isSameSet(
+			copyRefs,
+			result.items.flatMap((item) => (item.copyRef === null ? [] : [item.copyRef])),
+		)
+	return (
+		isLogDayRight &&
+		areItemDaysRight &&
+		isCountRight &&
+		isCardRight &&
+		areDeletedRight &&
+		isCloseRight &&
+		isStatsRight &&
+		areCopiesRight
+	)
 }
 
 /** Every logged item carries an allowed source; nothing logged is a miss too (a label must be read). */

@@ -1,7 +1,16 @@
-import type { ClarifyKind, MeasurementKind } from '@kus/shared'
+import type { ClarifyKind, MeasurementKind, StatsPeriod } from '@kus/shared'
 
 export type ActualDecision =
-	'log' | 'clarify' | 'edit' | 'not_food' | 'photo_unusable' | 'reply' | 'day_card' | 'error'
+	| 'log'
+	| 'clarify'
+	| 'edit'
+	| 'not_food'
+	| 'photo_unusable'
+	| 'reply'
+	| 'day_card'
+	| 'close_day'
+	| 'stats'
+	| 'error'
 
 export interface ValidationAttempt {
 	attempt: number
@@ -21,6 +30,10 @@ export interface CallFacts {
 	dayCards: { date: string }[]
 	/** Every delete_measurement call, its day resolved. */
 	deletedMeasurements: { kind: MeasurementKind; date: string }[]
+	/** Every close_day call, its day resolved; null total = the user named none. */
+	closeDays: { date: string; estimatedTotalKcal: number | null }[]
+	/** Every show_stats call; null end = today. */
+	statsCards: { period: StatsPeriod; endDate: string | null }[]
 }
 
 export interface CaseResult {
@@ -104,6 +117,8 @@ export interface LoggedItem {
 	protein: number
 	source: string
 	memoryRef: string | null
+	/** Ref of the earlier entry the item copies (y1, h1); null = not a copy. */
+	copyRef: string | null
 	assumption: string | null
 }
 

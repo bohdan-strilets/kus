@@ -4,8 +4,29 @@
 import { atClock, buildDays, EVAL_TODAY, range } from './case-builders.js'
 import type { EvalCase } from './case.types.js'
 
-const ASKS_WHEN = ['коли', 'який день', 'який саме день']
-const NOT_LOGGED = ['записав', 'додав']
+// Matched as lowercase substrings: phrasings of «which day was it».
+const ASKS_WHEN = [
+	'коли',
+	'який день',
+	'який саме день',
+	'який це був день',
+	'який саме це був день',
+	'в який день',
+	'у який день',
+	'котрий день',
+]
+// Claims that a record was created. A bare «записав» would also hit «нічого не записав», so only
+// the forms with a target (or the passive with a target) count.
+const NOT_LOGGED = [
+	'записав у',
+	'додав у',
+	'записав на',
+	'додав на',
+	'записано у',
+	'записано на',
+	'додано у',
+	'додано на',
+]
 
 export const DATE_CASES: EvalCase[] = [
 	{

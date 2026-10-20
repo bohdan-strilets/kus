@@ -3,7 +3,7 @@
 // a duplicate. Built after a live test: «зміни порцію на 600 г» logged a second borshch.
 import type { FoodParseContext } from '@kus/shared'
 
-import { entry, range } from './case-builders.js'
+import { entry, EVAL_TODAY, range } from './case-builders.js'
 import type { EvalCase } from './case.types.js'
 
 const BANANA = entry('e1', 'Банан', 'BREAKFAST', 120, 107, 'banana', {
@@ -289,8 +289,9 @@ export const EDIT_CASES: EvalCase[] = [
 		id: 'no-relog-day-closed',
 		text: 'день закрито',
 		context: DAY_AFTER_LOGGED_TURN,
-		expect: { decision: 'reply', replyExcludes: RELOG_CLAIMS },
-		reference: 'A logged turn in the history is not a new meal: reply, log nothing again',
+		expect: { decision: 'close_day', closeDay: { date: EVAL_TODAY, estimatedTotalKcal: null } },
+		reference:
+			'«День закрито» after a logged turn → close_day for today with a null total; eggs and bread are not logged again (a log_food next to it turns the decision into «log»)',
 	},
 	{
 		id: 'no-relog-thanks',

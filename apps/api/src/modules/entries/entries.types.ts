@@ -19,6 +19,10 @@ export interface NewFoodEntry {
 	myFoodId: string | null
 	/** The entry was read from a photo; `source` keeps saying how exact the numbers are. */
 	fromPhoto: boolean
+	/** The meal's day of the entry this one was copied from (a copyRef); absent = not a copy. */
+	copiedFromDate?: Date
+	/** The «Без деталей» estimate of a closed day; only closing a day sets it. */
+	isUndetailed?: boolean
 }
 
 export interface MealEntryInput {

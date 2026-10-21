@@ -110,6 +110,10 @@ export const foodEntryResponseSchema = z.object({
 	confidence: z.number(),
 	assumption: z.string().nullable(),
 	isEdited: z.boolean(),
+	/** `YYYY-MM-DD` of the entry this one was copied from («як вчора»); null for anything else. */
+	copiedFromDate: z.iso.date().nullable().default(null),
+	/** The «Без деталей» estimate written by closing a day. */
+	isUndetailed: z.boolean().default(false),
 })
 
 export type FoodEntryResponse = z.infer<typeof foodEntryResponseSchema>
@@ -163,6 +167,8 @@ export const chatMessagePhotoSchema = z.object({
 
 export type ChatMessagePhoto = z.infer<typeof chatMessagePhotoSchema>
 
+// Raising it breaks dayCard parsing in an old web: ship in two deploys, first a web that
+// understands both versions, then the api.
 export const DAY_CARD_VERSION = 1
 
 export const dayCardKindSchema = z.enum(['today', 'past', 'planned'])
@@ -196,6 +202,8 @@ export const dayCardSchema = z.object({
 			type: mealTypeSchema,
 			eatenAt: z.iso.datetime().nullable(),
 			kcal: z.number(),
+			/** The meal holds the «Без деталей» estimate of a closed day. */
+			hasUndetailed: z.boolean().default(false),
 		}),
 	),
 	/**
@@ -238,8 +246,8 @@ export const chatMessageSchema = z.object({
 	achievements: z.array(achievementResponseSchema),
 	/** Replies to show_day only: the day snapshot. null elsewhere and in payloads of older servers. */
 	dayCard: dayCardSchema.nullable().default(null),
-	/** Replies to show_stats only: the week or month snapshot. null elsewhere, absent in payloads of older servers. */
-	statsCard: statsCardSchema.nullable().optional(),
+	/** Replies to show_stats only: the week or month snapshot. null elsewhere and in payloads of older servers. */
+	statsCard: statsCardSchema.nullable().default(null),
 })
 
 export type ChatMessage = z.infer<typeof chatMessageSchema>

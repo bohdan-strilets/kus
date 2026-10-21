@@ -113,7 +113,8 @@ describe('closing a day, week stats and copying earlier entries (e2e, real DB, f
 			kcal = 150,
 			name = 'Суп',
 			deletedAt = null,
-		}: { kcal?: number; name?: string; deletedAt?: Date | null } = {},
+			isUndetailed = false,
+		}: { kcal?: number; name?: string; deletedAt?: Date | null; isUndetailed?: boolean } = {},
 	) => {
 		const meal = await prisma.meal.create({
 			data: {
@@ -137,6 +138,7 @@ describe('closing a day, week stats and copying earlier entries (e2e, real DB, f
 				source: 'LABEL',
 				confidence: 0.9,
 				deletedAt,
+				isUndetailed,
 			},
 		})
 	}
@@ -185,6 +187,12 @@ describe('closing a day, week stats and copying earlier entries (e2e, real DB, f
 				sourceMessageId: data.userMessage.id,
 			})
 			expect(gap[0]?.meal.type).toBe('SNACK')
+			expect(gap[0]).toMatchObject({ isUndetailed: true, copiedFromDate: null })
+			const estimate = data.assistantMessage.dayCard?.meals.find(({ type }) => type === 'SNACK')
+			expect(estimate?.hasUndetailed).toBe(true)
+			expect(
+				data.assistantMessage.dayCard?.meals.filter(({ hasUndetailed }) => hasUndetailed),
+			).toHaveLength(1)
 			const stored = await prisma.message.findFirstOrThrow({
 				where: { id: data.assistantMessage.id },
 			})
@@ -277,7 +285,16 @@ describe('closing a day, week stats and copying earlier entries (e2e, real DB, f
 				avgKcal: 1600,
 				goalKcal: 2000,
 				weightChangeKg: null,
+				proteinGoalG: 140,
+				weightStartKg: null,
+				weightEndKg: null,
 			})
+			expect(data.assistantMessage.statsCard?.days).toEqual([
+				{ date: dayOffset(owner, -4), kcal: 1700, verdict: 'under' },
+				{ date: dayOffset(owner, -3), kcal: 2500, verdict: 'over' },
+				{ date: dayOffset(owner, -1), kcal: 1900, verdict: 'under' },
+				{ date: dayOffset(owner, 0), kcal: 300, verdict: 'far_under' },
+			])
 			expect(data.userMessage.statsCard).toBeNull()
 			expect(data.assistantMessage.dayCard).toBeNull()
 			const feed = listResponseSchema.parse((await owner.agent.get(MESSAGES_URL).expect(200)).body)
@@ -381,6 +398,27 @@ describe('closing a day, week stats and copying earlier entries (e2e, real DB, f
 				category: 'soup',
 				source: 'LABEL',
 				confidence: 0.9,
+				copiedFromDate: dayOffset(owner, -1),
+				isUndetailed: false,
+			})
+			const stored = await prisma.foodEntry.findFirstOrThrow({
+				where: { sourceMessageId: data.userMessage.id },
+			})
+			expect(stored.copiedFromDate).toEqual(toDbDate(dayOffset(owner, -1)))
+		})
+
+		it('does not make a copy of an estimate an estimate, and names the day of the source', async () => {
+			await start()
+			const owner = await registerUser('owner@kus.app')
+			await seedEntry(owner, dayOffset(owner, -1), { kcal: 150, isUndetailed: true })
+			fake.respond(createCompletion([logCopy('y1')]))
+
+			const response = await send(owner, 'те саме, що вчора').expect(201)
+
+			const { data } = sendResponseSchema.parse(response.body)
+			expect(data.assistantMessage.meals[0]?.entries[0]).toMatchObject({
+				copiedFromDate: dayOffset(owner, -1),
+				isUndetailed: false,
 			})
 		})
 
@@ -521,7 +559,10 @@ describe('closing a day, week stats and copying earlier entries (e2e, real DB, f
 			expect(firstRequestText()).toMatch(/h1 .*Гречка/)
 			expect(firstRequestText()).not.toContain('Окрошка літня')
 			const { data } = sendResponseSchema.parse(response.body)
-			expect(data.assistantMessage.meals[0]?.entries[0]).toMatchObject({ kcal: 150 })
+			expect(data.assistantMessage.meals[0]?.entries[0]).toMatchObject({
+				kcal: 150,
+				copiedFromDate: dayOffset(owner, -10),
+			})
 		})
 	})
 })

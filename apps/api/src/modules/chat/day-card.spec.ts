@@ -15,7 +15,16 @@ const CARD = {
 
 describe('readStoredDayCard', () => {
 	it('reads a valid snapshot', () => {
-		expect(readStoredDayCard(CARD)).toEqual({ card: CARD, isUnreadable: false })
+		const meals = [
+			{ type: 'LUNCH', eatenAt: '2026-10-17T11:00:00.000Z', kcal: 1100, hasUndetailed: true },
+		]
+		const card = { ...CARD, meals }
+		expect(readStoredDayCard(card)).toEqual({ card, isUnreadable: false })
+	})
+
+	it('reads an older snapshot without hasUndetailed as having none', () => {
+		const expected = { ...CARD, meals: [{ ...CARD.meals[0], hasUndetailed: false }] }
+		expect(readStoredDayCard(CARD)).toEqual({ card: expected, isUnreadable: false })
 	})
 
 	it('reads a missing value as no card, without complaint', () => {

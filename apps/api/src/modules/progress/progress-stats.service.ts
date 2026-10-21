@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common'
 import {
+	getDayVerdict,
 	shiftDate,
 	STATS_CARD_VERSION,
 	STATS_PERIOD_DAYS,
@@ -44,9 +45,10 @@ export class ProgressStatsService {
 		const from = shiftDate(to, -(STATS_PERIOD_DAYS[period] - 1))
 		const days = listDays(from, to)
 
-		const [totalsByDay, goalByDay, weights] = await Promise.all([
+		const [totalsByDay, goalByDay, lastGoal, weights] = await Promise.all([
 			this.entriesService.getDaysTotals(userId, { from: toDbDate(from), to: toDbDate(to) }),
 			this.goalsService.getGoalKcalByDay(userId, days),
+			this.goalsService.getGoalForDate(userId, toDbDate(to)),
 			this.measurementsService.findInRange({
 				userId,
 				kind: MeasurementKind.WEIGHT,
@@ -58,8 +60,8 @@ export class ProgressStatsService {
 		const logged = getLoggedDays(statusDays)
 		if (logged.length === 0) return null
 
-		const firstWeight = weights.at(0)
-		const lastWeight = weights.at(-1)
+		const firstWeight = weights.length > 1 ? weights.at(0) : undefined
+		const lastWeight = weights.length > 1 ? weights.at(-1) : undefined
 		return {
 			version: STATS_CARD_VERSION,
 			period,
@@ -71,9 +73,19 @@ export class ProgressStatsService {
 			avgProteinG: averageOrNull(logged.map((day) => day.proteinG)),
 			goalKcal: goalByDay.get(to) ?? null,
 			weightChangeKg:
-				firstWeight && lastWeight && weights.length > 1
-					? subtractTenths(lastWeight.value, firstWeight.value)
-					: null,
+				firstWeight && lastWeight ? subtractTenths(lastWeight.value, firstWeight.value) : null,
+			proteinGoalG: lastGoal?.protein ?? null,
+			weightStartKg: firstWeight?.value ?? null,
+			weightEndKg: lastWeight?.value ?? null,
+			days: logged.map(({ localDate, kcal, goalKcal }) => ({
+				date: localDate,
+				kcal,
+				verdict: getDayVerdict({
+					kcal,
+					entryCount: totalsByDay.get(localDate)?.entryCount ?? 0,
+					goalKcal,
+				}),
+			})),
 		}
 	}
 }

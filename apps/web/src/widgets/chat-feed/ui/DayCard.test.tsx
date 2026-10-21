@@ -18,8 +18,8 @@ const createCard = (overrides: Partial<DayCardData> = {}): DayCardData => ({
 	goal: { kcal: 2200, protein: 140, fat: 80, carbs: 230 },
 	remainingKcal: 830,
 	meals: [
-		{ type: 'BREAKFAST', eatenAt: '2026-10-18T06:40:00.000Z', kcal: 370 },
-		{ type: 'LUNCH', eatenAt: null, kcal: 620 },
+		{ type: 'BREAKFAST', eatenAt: '2026-10-18T06:40:00.000Z', kcal: 370, hasUndetailed: false },
+		{ type: 'LUNCH', eatenAt: null, kcal: 620, hasUndetailed: false },
 	],
 	...overrides,
 })

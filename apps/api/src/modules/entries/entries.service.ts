@@ -8,7 +8,7 @@ import {
 } from '@kus/shared'
 
 import { formatDbDate } from '../../common/time'
-import type { FoodEntry, Prisma } from '../../generated/prisma/client'
+import type { Prisma } from '../../generated/prisma/client'
 import {
 	roundNutrition,
 	sumEntries,
@@ -210,7 +210,7 @@ export class EntriesService {
 		userId: string,
 		ids: string[],
 		tx?: Prisma.TransactionClient,
-	): Promise<FoodEntry[]> {
+	): Promise<EntryWithMealType[]> {
 		if (ids.length === 0) return Promise.resolve([])
 		return this.entriesRepository.findActiveEntries({ userId, ids }, tx)
 	}

@@ -426,7 +426,24 @@ describe('ChatTurnService.saveDecision copyRef', () => {
 		source: 'LABEL',
 		confidence: 0.9,
 		myFoodId: 'food-1',
+		isUndetailed: true,
+		meal: { type: 'DINNER', localDate: new Date('2026-10-17T00:00:00Z') },
 	}
+
+	it('remembers the day of the entry it was copied from, and does not inherit the estimate flag', async () => {
+		const { save, logEntries, findActiveEntriesByIds } = createService()
+		findActiveEntriesByIds.mockResolvedValue([EARLIER])
+
+		await save(
+			toLogDecision([toItem('Гречка', { copyRef: 'y1', grams: 100 }), toItem('Яблуко')]),
+			new Map([['y1', 'entry-y1']]),
+		)
+
+		const [copy, plain] = getLogged(logEntries).entries.map(({ entry }) => entry)
+		expect(copy).toMatchObject({ copiedFromDate: new Date('2026-10-17T00:00:00Z') })
+		expect(copy).not.toHaveProperty('isUndetailed')
+		expect(plain).not.toHaveProperty('copiedFromDate')
+	})
 
 	it('copies the earlier values scaled by the new grams, with category, source and food link', async () => {
 		const { save, logEntries, findActiveEntriesByIds } = createService()

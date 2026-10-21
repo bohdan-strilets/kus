@@ -5,14 +5,14 @@ import { ChatDayCardService } from './chat-day-card.service'
 const NOW = new Date('2026-10-18T12:20:00Z')
 const TODAY = '2026-10-18'
 
-const toMeal = (type: string, kcal: number) => ({
+const toMeal = (type: string, kcal: number, isUndetailed = false) => ({
 	id: `meal-${type}`,
 	type,
 	localDate: TODAY,
 	eatenAt: '2026-10-17T11:00:00.000Z',
 	totals: { kcal, protein: 0, fat: 0, carbs: 0, fiber: 0 },
 	mealTotalKcal: null,
-	entries: [{ id: `entry-${type}` }],
+	entries: [{ id: `entry-${type}`, isUndetailed }],
 })
 
 const GOAL = { kcal: 2000, protein: 120, fat: 70, carbs: 220 }
@@ -48,12 +48,22 @@ describe('ChatDayCardService.build', () => {
 			remainingKcal: 900,
 			verdict: 'far_under',
 			meals: [
-				{ type: 'BREAKFAST', eatenAt: '2026-10-17T11:00:00.000Z', kcal: 400 },
-				{ type: 'DINNER', eatenAt: '2026-10-17T11:00:00.000Z', kcal: 700 },
+				{ type: 'BREAKFAST', eatenAt: '2026-10-17T11:00:00.000Z', kcal: 400, hasUndetailed: false },
+				{ type: 'DINNER', eatenAt: '2026-10-17T11:00:00.000Z', kcal: 700, hasUndetailed: false },
 			],
 		})
 		expect(getDayMeals).toHaveBeenCalledWith('u1', new Date('2026-10-17T00:00:00Z'))
 		expect(getGoalForDate).toHaveBeenCalledWith('u1', new Date('2026-10-17T00:00:00Z'))
+	})
+
+	it('flags the meal that holds the «Без деталей» estimate', async () => {
+		const { build } = createService({
+			meals: [toMeal('BREAKFAST', 400), toMeal('SNACK', 300, true)],
+		})
+
+		const card = await build('2026-10-17')
+
+		expect(card?.meals.map(({ hasUndetailed }) => hasUndetailed)).toEqual([false, true])
 	})
 
 	it('marks today with the moment of the snapshot', async () => {

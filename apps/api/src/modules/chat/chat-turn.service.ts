@@ -14,15 +14,11 @@ import {
 } from '@kus/shared'
 
 import { formatDbDate, getLocalHour } from '../../common/time'
-import {
-	AttachmentStatus,
-	type FoodEntry,
-	MeasurementKind,
-	type Prisma,
-} from '../../generated/prisma/client'
+import { AttachmentStatus, MeasurementKind, type Prisma } from '../../generated/prisma/client'
 import { PrismaService } from '../../prisma'
 import { AchievementsService } from '../achievements/achievements.service'
 import { EntriesService } from '../entries/entries.service'
+import type { EntryWithMealType } from '../entries/entries.repository'
 import type { LogEntriesParams, MealEntryInput, NewFoodEntry } from '../entries/entries.types'
 import { MemoryService, type RelevantFoods } from '../memory/memory.service'
 import { ProgressStatsService } from '../progress/progress-stats.service'
@@ -81,11 +77,20 @@ const getMealKey = (day: string, mealType: string): string => `${day}|${mealType
 
 /** The earlier entry's values for a portion of `grams`: scaled by the backend, its provenance kept. */
 const copyEntryValues = (
-	entry: FoodEntry,
+	entry: EntryWithMealType,
 	grams: number,
 ): Pick<
 	NewFoodEntry,
-	'kcal' | 'protein' | 'fat' | 'carbs' | 'fiber' | 'category' | 'source' | 'confidence' | 'myFoodId'
+	| 'kcal'
+	| 'protein'
+	| 'fat'
+	| 'carbs'
+	| 'fiber'
+	| 'category'
+	| 'source'
+	| 'confidence'
+	| 'myFoodId'
+	| 'copiedFromDate'
 > => {
 	const factor = grams / entry.grams
 	return {
@@ -98,6 +103,7 @@ const copyEntryValues = (
 		source: entry.source,
 		confidence: entry.confidence,
 		myFoodId: entry.myFoodId,
+		copiedFromDate: entry.meal.localDate,
 	}
 }
 
@@ -369,7 +375,7 @@ export class ChatTurnService {
 		log: LogFoodInput,
 		copyRefIds: CopyRefIds,
 		tx: Prisma.TransactionClient,
-	): Promise<Map<string, FoodEntry>> {
+	): Promise<Map<string, EntryWithMealType>> {
 		const refs = [...new Set(log.items.flatMap((item) => item.copyRef ?? []))]
 		const ids = refs.flatMap((ref) => copyRefIds.get(ref) ?? [])
 		const entries = await this.entriesService.findActiveEntriesByIds(userId, ids, tx)
@@ -442,7 +448,7 @@ export class ChatTurnService {
 		params: Pick<TurnParams, 'userId' | 'timezone' | 'message' | 'now' | 'localDate'>
 		log: LogFoodInput
 		memory: RelevantFoods
-		copies: ReadonlyMap<string, FoodEntry>
+		copies: ReadonlyMap<string, EntryWithMealType>
 		isFromPhoto: boolean
 	}): { entries: MealEntryInput[]; getEatenAt: LogEntriesParams['getEatenAt'] } {
 		const today = formatDbDate(localDate)
@@ -479,7 +485,7 @@ export class ChatTurnService {
 	// mealType, date, memoryRef and copyRef aren't FoodEntry columns: left in the spread, Prisma would reject them
 	private toNewEntry(
 		{ memoryRef, copyRef, mealType: _mealType, date: _date, ...item }: AiFoodItem,
-		{ memory, copies }: { memory: RelevantFoods; copies: ReadonlyMap<string, FoodEntry> },
+		{ memory, copies }: { memory: RelevantFoods; copies: ReadonlyMap<string, EntryWithMealType> },
 		fromPhoto: boolean,
 	): NewFoodEntry {
 		const copied = copyRef === null ? undefined : copies.get(copyRef)

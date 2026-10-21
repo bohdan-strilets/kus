@@ -9,23 +9,32 @@ type Days = Record<string, { kcal: number; proteinG: number; entryCount: number 
 const createService = ({
 	days = {},
 	goalKcal = 2000,
+	proteinGoal = 120,
 	weights = [],
-}: { days?: Days; goalKcal?: number | null; weights?: { value: number }[] } = {}) => {
+}: {
+	days?: Days
+	goalKcal?: number | null
+	proteinGoal?: number | null
+	weights?: { value: number }[]
+} = {}) => {
 	const getDaysTotals = vi.fn().mockResolvedValue(new Map(Object.entries(days)))
 	const getGoalKcalByDay = vi
 		.fn()
 		.mockImplementation((_: string, dates: string[]) =>
 			Promise.resolve(new Map(dates.map((date) => [date, goalKcal]))),
 		)
+	const getGoalForDate = vi
+		.fn()
+		.mockResolvedValue(proteinGoal === null ? null : { kcal: goalKcal, protein: proteinGoal })
 	const findInRange = vi.fn().mockResolvedValue(weights)
 	const service = new ProgressStatsService(
 		{ getDaysTotals } as never,
-		{ getGoalKcalByDay } as never,
+		{ getGoalKcalByDay, getGoalForDate } as never,
 		{ findInRange } as never,
 	)
 	const build = (period: 'week' | 'month', endDate: string | null = null) =>
 		service.build({ userId: 'u1', period, endDate, today: TODAY })
-	return { build, getDaysTotals, getGoalKcalByDay, findInRange }
+	return { build, getDaysTotals, getGoalKcalByDay, getGoalForDate, findInRange }
 }
 
 const day = (kcal: number, proteinG = 100) => ({ kcal, proteinG, entryCount: 3 })
@@ -117,6 +126,53 @@ describe('ProgressStatsService.build', () => {
 		const { build } = createService({ days: {} })
 
 		expect(await build('week')).toBeNull()
+	})
+
+	it('reports the protein goal in force on the last day, null without a goal', async () => {
+		const days = { '2026-10-17': day(1800) }
+
+		const { build, getGoalForDate } = createService({ days })
+		expect(await build('week')).toMatchObject({ proteinGoalG: 120 })
+		expect(getGoalForDate).toHaveBeenCalledWith('u1', new Date(`${TODAY}T00:00:00Z`))
+		expect(await createService({ days, proteinGoal: null }).build('week')).toMatchObject({
+			proteinGoalG: null,
+		})
+	})
+
+	it('gives the first and last weight with two or more weigh-ins, null with fewer', async () => {
+		const days = { '2026-10-17': day(1800) }
+
+		expect(
+			await createService({
+				days,
+				weights: [{ value: 82.4 }, { value: 82.1 }, { value: 81.8 }],
+			}).build('week'),
+		).toMatchObject({ weightStartKg: 82.4, weightEndKg: 81.8, weightChangeKg: -0.6 })
+		expect(await createService({ days, weights: [{ value: 82.4 }] }).build('week')).toMatchObject({
+			weightStartKg: null,
+			weightEndKg: null,
+			weightChangeKg: null,
+		})
+		expect(await createService({ days }).build('week')).toMatchObject({
+			weightStartKg: null,
+			weightEndKg: null,
+		})
+	})
+
+	it('lists the logged days oldest first with their verdict against the goal in force', async () => {
+		const { build } = createService({
+			days: { '2026-10-15': day(2000), '2026-10-13': day(2300), '2026-10-17': day(900) },
+		})
+
+		expect((await build('week'))?.days).toEqual([
+			{ date: '2026-10-13', kcal: 2300, verdict: 'over' },
+			{ date: '2026-10-15', kcal: 2000, verdict: 'on_goal' },
+			{ date: '2026-10-17', kcal: 900, verdict: 'far_under' },
+		])
+		expect(
+			(await createService({ days: { '2026-10-17': day(900) }, goalKcal: null }).build('week'))
+				?.days,
+		).toEqual([{ date: '2026-10-17', kcal: 900, verdict: 'no_goal' }])
 	})
 
 	it('reports the weight change from the first to the last weigh-in, null with one', async () => {

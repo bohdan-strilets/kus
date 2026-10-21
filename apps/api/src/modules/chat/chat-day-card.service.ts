@@ -62,10 +62,11 @@ export class ChatDayCardService {
 				? { kcal: goal.kcal, protein: goal.protein, fat: goal.fat, carbs: goal.carbs }
 				: null,
 			remainingKcal: goal ? Math.round(goal.kcal - totals.kcal) : null,
-			meals: meals.map(({ type, eatenAt, totals: mealTotals }) => ({
+			meals: meals.map(({ type, eatenAt, totals: mealTotals, entries }) => ({
 				type,
 				eatenAt,
 				kcal: mealTotals.kcal,
+				hasUndetailed: entries.some((entry) => entry.isUndetailed),
 			})),
 			// a planned day has nothing to be judged against yet
 			...(kind === 'planned'

@@ -83,6 +83,7 @@ describe('ChatCloseDayService.close', () => {
 			category: 'plate',
 			myFoodId: null,
 			fromPhoto: false,
+			isUndetailed: true,
 			quantity: null,
 			fiber: null,
 			assumption: null,

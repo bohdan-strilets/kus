@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
 	chatMessageSchema,
+	foodEntryResponseSchema,
 	PHOTO_MAX_BASE64_LENGTH,
 	PHOTO_AND_PHOTO_IDS_EXCLUSIVE,
 	PHOTO_MAX_BYTES,
@@ -9,6 +10,7 @@ import {
 	TEXT_OR_PHOTO_REQUIRED,
 } from './messages.js'
 import { PHOTOS_PER_MESSAGE_LIMIT } from './photo-limits.js'
+import { STATS_CARD_MIN_LOGGED_DAYS } from './stats-card.js'
 
 const clientMessageId = '0198f0d2-6b1c-7c3e-9a4b-1a2b3c4d5e6f'
 const photo = { mimeType: 'image/jpeg', data: 'AAAA' }
@@ -184,7 +186,9 @@ describe('chatMessageSchema dayCard', () => {
 		totals: macros,
 		goal: { ...macros, kcal: 2000 },
 		remainingKcal: 200,
-		meals: [{ type: 'LUNCH', eatenAt: '2026-10-17T11:00:00.000Z', kcal: 800 }],
+		meals: [
+			{ type: 'LUNCH', eatenAt: '2026-10-17T11:00:00.000Z', kcal: 800, hasUndetailed: false },
+		],
 	}
 
 	it('defaults to null when the payload has no such field', () => {
@@ -255,6 +259,13 @@ describe('chatMessageSchema 0.7.0 fields', () => {
 		goalKcal: 2000,
 		weightChangeKg: -0.4,
 	}
+	const fullStatsCard = {
+		...statsCard,
+		proteinGoalG: 120,
+		weightStartKg: 82.4,
+		weightEndKg: 82,
+		days: [{ date: '2026-10-17', kcal: 1900, verdict: 'on_goal' }],
+	}
 
 	it('reads a day card stored before verdict and isClosing existed', () => {
 		const card = chatMessageSchema.parse({ ...base, dayCard: oldDayCard }).dayCard
@@ -271,16 +282,65 @@ describe('chatMessageSchema 0.7.0 fields', () => {
 		).toBe(false)
 	})
 
-	it('takes null, no field at all, and a snapshot', () => {
-		expect(chatMessageSchema.parse(base).statsCard).toBeUndefined()
+	it('takes null, no field at all (reads as null), and a snapshot', () => {
+		expect(chatMessageSchema.parse(base).statsCard).toBeNull()
 		expect(chatMessageSchema.parse({ ...base, statsCard: null }).statsCard).toBeNull()
-		expect(chatMessageSchema.parse({ ...base, statsCard }).statsCard).toEqual(statsCard)
+		expect(chatMessageSchema.parse({ ...base, statsCard: fullStatsCard }).statsCard).toEqual(
+			fullStatsCard,
+		)
 		expect(
 			chatMessageSchema.parse({
 				...base,
 				statsCard: { ...statsCard, avgKcal: null, avgProteinG: null, weightChangeKg: null },
 			}).statsCard?.avgKcal,
 		).toBeNull()
+	})
+
+	it('reads a stats card stored without the new fields with their defaults', () => {
+		expect(chatMessageSchema.parse({ ...base, statsCard }).statsCard).toEqual({
+			...statsCard,
+			proteinGoalG: null,
+			weightStartKg: null,
+			weightEndKg: null,
+			days: [],
+		})
+	})
+
+	it('reads an old entry and day card meal without copiedFromDate, isUndetailed and hasUndetailed', () => {
+		const entry = {
+			id: clientMessageId,
+			name: 'Гречка',
+			grams: 100,
+			quantity: null,
+			kcal: 120,
+			protein: 4,
+			fat: 1,
+			carbs: 23,
+			fiber: null,
+			category: 'porridge',
+			source: 'LABEL',
+			confidence: 0.9,
+			assumption: null,
+			isEdited: false,
+		}
+		const parsed = foodEntryResponseSchema.parse(entry)
+		expect(parsed.copiedFromDate).toBeNull()
+		expect(parsed.isUndetailed).toBe(false)
+		expect(
+			foodEntryResponseSchema.parse({ ...entry, copiedFromDate: '2026-10-17', isUndetailed: true }),
+		).toMatchObject({ copiedFromDate: '2026-10-17', isUndetailed: true })
+		expect(foodEntryResponseSchema.safeParse({ ...entry, copiedFromDate: '17.10' }).success).toBe(
+			false,
+		)
+		const card = chatMessageSchema.parse({
+			...base,
+			dayCard: { ...oldDayCard, meals: [{ type: 'LUNCH', eatenAt: null, kcal: 1 }] },
+		}).dayCard
+		expect(card?.meals[0]?.hasUndetailed).toBe(false)
+	})
+
+	it('exports the minimum of logged days a stats card needs', () => {
+		expect(STATS_CARD_MIN_LOGGED_DAYS).toBe(3)
 	})
 
 	it('rejects a statsCard of another period or version', () => {

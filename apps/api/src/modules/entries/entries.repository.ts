@@ -105,9 +105,10 @@ export class EntriesRepository {
 	findActiveEntries(
 		{ userId, ids }: { userId: string; ids: string[] },
 		tx?: Prisma.TransactionClient,
-	): Promise<FoodEntry[]> {
+	): Promise<EntryWithMealType[]> {
 		return (tx ?? this.prisma).foodEntry.findMany({
 			where: { id: { in: ids }, userId, deletedAt: null },
+			include: { meal: { select: { type: true, localDate: true } } },
 			orderBy: { createdAt: 'asc' },
 		})
 	}

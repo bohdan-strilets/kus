@@ -94,6 +94,7 @@ export class ChatCloseDayService {
 			assumption: null,
 			myFoodId: null,
 			fromPhoto: false,
+			isUndetailed: true,
 		}
 		await this.entriesService.logEntries(
 			{

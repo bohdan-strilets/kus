@@ -46,6 +46,7 @@ const message = (overrides: Partial<ChatMessage>): ChatMessage => ({
 	measurements: [],
 	achievements: [],
 	dayCard: null,
+	statsCard: null,
 	photo: null,
 	...overrides,
 })

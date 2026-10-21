@@ -47,6 +47,8 @@ export const toFoodEntryResponse = (entry: FoodEntry): FoodEntryResponse => ({
 	confidence: entry.confidence,
 	assumption: entry.assumption,
 	isEdited: entry.isEdited,
+	copiedFromDate: entry.copiedFromDate === null ? null : formatDbDate(entry.copiedFromDate),
+	isUndetailed: entry.isUndetailed,
 })
 
 /** Totals of the `entries` the caller shows; the whole meal's kcal only when it holds more. */

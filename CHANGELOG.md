@@ -6,6 +6,36 @@ All notable changes to Kusik are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.7.0] — 2026-10-21
+
+Summaries and the past: closing the day, a stats card on request and "the same as before" entries; prompt version `2026-10-20.2`. Three database migrations (each only adds nullable or defaulted columns) and no new environment variables; the API and the web app both change. Every new response field has a default, so either deploy order works: a new web app reads an old API and an old web app reads the new API (it ignores the new fields: a closed day looks like a plain day card and a stats answer shows only its text). Before the API deploy, check that `food_entries` has no `copied_from_date` or `is_undetailed` column: the third migration stops on purpose if they exist.
+
+### Added
+
+- Closing the day: the `close_day` tool answers "День закрито" / "закрий день" with the day card, a "День закрито" plate and a verdict on the calorie-ring thresholds (97–103 % in goal, above 103 % over, 60–97 % below, under 60 % only the numbers); the sentence under the verdict is fixed text, not the model's ([2d2a220], [a5d263d])
+- A day total named by the user ("закрий вчора десь на 2500"): the backend adds the missing part as one estimate entry «Без деталей» (snack, confidence 0.3); the model never subtracts ([2d2a220], [31ec5bb])
+- Stats on request: the `show_stats` tool and a card for a week or 30 days (average kcal and protein, days in the norm, weight change, protein goal, weight range, the list of days when fewer than three days are logged), counted by the backend ([2d2a220], [31ec5bb], [a5d263d])
+- "The same as before": `log_food.items[].copyRef` copies the values of an entry from the "Earlier entries" context section (built only when the message points to the past); such items skip the kcal/macros check and take their values from the copied entry, which is read again by id and user inside the turn ([2d2a220])
+- `TURN_COPY_SOURCE_MISSING` (409): the copied entry vanished mid-turn; nothing is saved and the message can be retried ([2d2a220], [a5d263d])
+- Web: the closing day card, the stats card, the "як учора" caption from `copiedFromDate` (over "як завжди", both with the amount), the estimate entry card and compact macro tiles with units ([a5d263d])
+- Database: `messages.stats_card`, `ai_runs.cached_input_tokens` (nullable, so the real cache share on production can be measured), `food_entries.copied_from_date` and `food_entries.is_undetailed` ([2d2a220], [31ec5bb])
+
+### Changed
+
+- The reply to a weigh-in on another day starts with its date as dd.mm and never carries the measured value; this removes the clash between the "Weight and waist" and "Other days" rules ([e010b1b])
+- "Days in the norm" of the stats card uses the same rule as "Прогрес" (not above 103 % of the goal); the calorie-ring thresholds are shared constants ([2d2a220])
+- "на сьогодні все" no longer closes the day ([e010b1b])
+- `show_stats` takes `endDate` up to today; `null` means today ([2d2a220])
+
+### Prompt and eval
+
+- Prompt `2026-10-20.2`: sections "Same as before", "Closing the day" and "Stats"; full eval of 190 cases (168 shared with `2026-10-18.1` and 22 new): decisions 190/190, $0.0065 per request, 18.5k tokens in at 95 % cached; details in `PROMPT_CHANGELOG.md` ([e010b1b], [baeabbf])
+- The ai-eval runner and 22 new cases for closing the day, stats and "same as before"; the expectations of three older cases are fixed ([2d2a220], [baeabbf])
+
+### Design
+
+- The 0.7 mockups are imported: day closed, stats card, as-yesterday, my products, day start, facts, long advice ([a7024a4])
+
 ## [0.6.3] — 2026-10-19
 
 Polish after the 0.6.2 review: the chat header no longer jumps, the edit sheet and the toast follow the design. Web only: no migrations, no new environment variables, no change to the API or to the prompt.
@@ -320,7 +350,14 @@ Design sync with `design/` v0.5.2. Web only: no API, shared-package or migration
 
 ## 0.2.0 / 0.1.0 — see tags
 
-[Unreleased]: https://github.com/bohdan-strilets/kus/compare/v0.6.3...HEAD
+[Unreleased]: https://github.com/bohdan-strilets/kus/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/bohdan-strilets/kus/compare/v0.6.3...v0.7.0
+[a5d263d]: https://github.com/bohdan-strilets/kus/commit/a5d263d8552b60b160e99e60273234b883d110d7
+[31ec5bb]: https://github.com/bohdan-strilets/kus/commit/31ec5bbdb4cd56f130b614d1046a77887d162725
+[e010b1b]: https://github.com/bohdan-strilets/kus/commit/e010b1be9e599a88e9979a9966526a792dd4cba6
+[baeabbf]: https://github.com/bohdan-strilets/kus/commit/baeabbf549a12f1ee326c7e85e1bea8145075d8b
+[2d2a220]: https://github.com/bohdan-strilets/kus/commit/2d2a2200aa5bab50ffc3495a6df68af8aa904309
+[a7024a4]: https://github.com/bohdan-strilets/kus/commit/a7024a418efc9b7caeb638bfb0fe0319c114fcd4
 [0.6.3]: https://github.com/bohdan-strilets/kus/compare/v0.6.2...v0.6.3
 [a3cfd34]: https://github.com/bohdan-strilets/kus/commit/a3cfd34f69256c9c73a49e24e01269319bf75f1f
 [ab9379b]: https://github.com/bohdan-strilets/kus/commit/ab9379b87eaad0616bdd29787592f45d97be6583

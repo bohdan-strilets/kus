@@ -36,7 +36,10 @@ export const statsCardSchema = z.object({
 	to: z.iso.date(),
 	/** Days of the period with something logged; the averages and `daysInNorm` are over them. */
 	loggedDays: z.int().nonnegative(),
-	/** Of `loggedDays`: days that closed on the goal (not over it, not far below it). */
+	/**
+	 * Of `loggedDays`: days not over the goal, as on «Прогрес»; a day far below it (`far_under`) and a
+	 * day without a goal count too.
+	 */
 	daysInNorm: z.int().nonnegative(),
 	avgKcal: z.number().nullable(),
 	avgProteinG: z.number().nullable(),

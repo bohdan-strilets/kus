@@ -21,7 +21,7 @@ const LABEL_KEY = {
 } as const
 
 /**
- * docs MacroTiles / MacroBar. compact (chat): «Білки» 12 + «78/140» 13/800; carbs is «Вугл.».
+ * docs MacroTiles / MacroBar. compact (chat): «Білки» 12 + «78/140» 13/800 («118 г» without a goal); carbs is «Вугл.».
  * bar (today): «Білки» 12/600 + «78 / 140 г» 15/800 and a 5px bar on a white track.
  */
 export const MacroTile = ({ macro, progress, variant = 'bar', index = 0 }: MacroTileProps) => {
@@ -34,8 +34,10 @@ export const MacroTile = ({ macro, progress, variant = 'bar', index = 0 }: Macro
 
 	const renderGoal = () => {
 		if (goal === null) {
-			return isCompact ? null : (
-				<span className={cn('text-small font-medium', ink)}>{t('macro.grams')}</span>
+			return (
+				<span className={cn('font-medium', ink, !isCompact && 'text-small')}>
+					{t('macro.grams')}
+				</span>
 			)
 		}
 		return (

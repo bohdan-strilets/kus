@@ -124,6 +124,13 @@ describe('getSendError', () => {
 		expect(getSendError(http(429, 'DAILY_PHOTO_LIMIT_REACHED')).canRetry).toBe(false)
 	})
 
+	it('offers a retry when the entry to copy was just deleted', () => {
+		expect(getSendError(http(409, 'TURN_COPY_SOURCE_MISSING'))).toEqual({
+			messageKey: 'errors.api.TURN_COPY_SOURCE_MISSING',
+			canRetry: true,
+		})
+	})
+
 	it('falls back to a generic text for anything else', () => {
 		expect(getSendError(http(500, 'INTERNAL_ERROR')).messageKey).toBe('errors.api.SERVER')
 		expect(getSendError(http(422, 'VALIDATION_ERROR')).messageKey).toBe('errors.api.UNKNOWN')

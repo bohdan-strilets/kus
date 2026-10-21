@@ -8,9 +8,10 @@ import { type BadgeVariantProps, badgeVariants } from './badge.variants'
 const SUCCESS_ICON_SIZE = 16
 const FAILED_ICON_SIZE = 14
 const DATE_ICON_SIZE = 14
+const CLOSED_ICON_SIZE = 14
 
 export type BadgeProps = BadgeVariantProps & {
-	/** Text for kcal / date / failed. */
+	/** Text for kcal / date / closed / failed. */
 	children?: ReactNode
 	/** Accessible name for the icon-only variants (notice, success); omit when the context says it. */
 	label?: string
@@ -31,6 +32,9 @@ export const Badge = ({ variant, children, label, className }: BadgeProps) => {
 		<span className={cn(badgeVariants({ variant }), className)} {...a11yProps}>
 			{variant === 'success' && <Icon name="check" size={SUCCESS_ICON_SIZE} />}
 			{variant === 'date' && <Icon name="calendar" size={DATE_ICON_SIZE} />}
+			{(variant === 'closed' || variant === 'closedNeutral') && (
+				<Icon name="check" size={CLOSED_ICON_SIZE} />
+			)}
 			{variant === 'failed' && <Icon name="alert" size={FAILED_ICON_SIZE} />}
 			{!isIconOnly && children}
 		</span>

@@ -1,4 +1,5 @@
 export { type CategorizedEntry, getMealCategory } from './lib/get-meal-category'
+export { getCopiedLabel } from './lib/get-copied-label'
 export { formatEntryAmount, getMealLabelKey, toFoodEntryView } from './lib/to-food-entry-view'
 export type { EntryCaptionState, FoodEntryView, MacroAmounts } from './model/entry.types'
 export {

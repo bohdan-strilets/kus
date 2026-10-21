@@ -72,6 +72,7 @@
 			"CLARIFICATION_ALREADY_ANSWERED": "На це питання вже є відповідь.",
 			"CLARIFICATION_NOT_APPLICABLE": "Цю відповідь уже не застосувати — напиши уточнення в чат.",
 			"ENTRY_CHANGED": "Запис щойно змінився в іншому вікні. Спробуй ще раз.",
+			"TURN_COPY_SOURCE_MISSING": "Запис, який потрібно скопіювати, щойно видалено. Спробуй ще раз.",
 			"ENTRY_NOT_FOUND": "Цього запису вже немає. Онови екран.",
 			"MEASUREMENT_NOT_FOUND": "Цього заміру вже немає. Онови екран.",
 			"PASSWORD_INCORRECT": "Неправильний пароль.",
@@ -549,7 +550,41 @@
 			"wholeDay": "весь день",
 			"planned": "заплановано",
 			"openToday": "Відкрити «Сьогодні»",
-			"openDay": "Відкрити день"
+			"openDay": "Відкрити день",
+			"todayDated": "Сьогодні, {{date}}",
+			"closed": "День закрито",
+			"inGoal": "В цілі",
+			"underGoal": "ккал нижче цілі",
+			"noGoalCaption": "за день · ціль не задана",
+			"approx": "≈ {{kcal}}",
+			"undetailed": "без деталей",
+			"undetailedAt": "{{time}} · без деталей",
+			"verdict": {
+				"onGoal": "Калорії в цілі, білок — {{protein}} г з {{goal}}.",
+				"onGoalEstimate": "Калорії в цілі. Перекус — оцінка, його можна уточнити.",
+				"under": "Білок — {{protein}} г з {{goal}}.",
+				"farUnder": "Якщо щось не записалось — напиши, і я додам до цього дня."
+			}
+		},
+		"statsCard": {
+			"last7": "За 7 днів",
+			"last30": "За 30 днів",
+			"week": "Тиждень {{range}}",
+			"weekRange": "понеділок – неділя",
+			"dateRange": "{{from}} – {{to}}",
+			"avgKcal": "Калорії, середнє",
+			"avgProtein": "Білок, середнє",
+			"goalKcal": "ціль {{goal}}",
+			"daysInNorm": "Днів у нормі",
+			"daysInNormValue": "{{norm}} з {{logged}}",
+			"daysInNormCaption": "днів із записами",
+			"weight": "Вага",
+			"loggedDays": "Днів із записами",
+			"loggedDaysValue": "{{logged}} з {{total}}",
+			"goalProtein": "ціль {{goal}}",
+			"weightFromTo": "{{from}} → {{to}}",
+			"dayLine": "{{weekday}}, {{date}}",
+			"dayKcal": "{{kcal}} ккал"
 		}
 	},
 	"meal": {
@@ -561,10 +596,26 @@
 	},
 	"entry": {
 		"kcal": "{{kcal}} ккал",
+		"kcalApprox": "≈ {{kcal}} ккал",
 		"logged": "Записано",
 		"macroLine": "Б {{protein}} · В {{carbs}} · Ж {{fat}}",
+		"macroLineApprox": "Б ≈ {{protein}} · В ≈ {{carbs}} · Ж ≈ {{fat}}",
+		"estimateCaption": "оцінка",
 		"edit": "Редагувати",
 		"usual": "як завжди",
+		"copied": {
+			"yesterday": "як учора",
+			"date": "як {{date}}",
+			"weekdays": {
+				"mon": "як у понеділок",
+				"tue": "як у вівторок",
+				"wed": "як у середу",
+				"thu": "як у четвер",
+				"fri": "як у п'ятницю",
+				"sat": "як у суботу",
+				"sun": "як у неділю"
+			}
+		},
 		"clarifyingCaption": "{{amount}} · уточнюємо",
 		"remember": "Запам'ятати для {{name}}",
 		"amountGrams": "{{grams}} г",

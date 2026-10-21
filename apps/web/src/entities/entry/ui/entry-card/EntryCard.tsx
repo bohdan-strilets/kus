@@ -27,6 +27,8 @@ export interface EntryCardProps {
 	badge?: ReactNode
 	/** A fresh card: the lines cascade in and the kcal counts up from 0. */
 	isRevealing?: boolean
+	/** The meal holds the «Без деталей» estimate: «≈ 300 ккал» and «Б ≈ 8 · В ≈ 35 · Ж ≈ 14». */
+	isApprox?: boolean
 }
 
 const REVEAL_COUNT_MS = 500
@@ -50,13 +52,15 @@ export const EntryCard = ({
 	footnote,
 	badge,
 	isRevealing = false,
+	isApprox = false,
 }: EntryCardProps) => {
 	const { t } = useTranslation()
 	const shouldReduceMotion = useReducedMotion()
 	// a stable format: a new function would restart the count on every render
 	const formatKcal = useCallback(
-		(value: number) => t('entry.kcal', { kcal: formatInteger(value) }),
-		[t],
+		(value: number) =>
+			t(isApprox ? 'entry.kcalApprox' : 'entry.kcal', { kcal: formatInteger(value) }),
+		[t, isApprox],
 	)
 	const kcalRef = useCountUp<HTMLSpanElement>(kcal, {
 		durationMs: isRevealing ? REVEAL_COUNT_MS : CHANGE_COUNT_MS,
@@ -105,7 +109,7 @@ export const EntryCard = ({
 				</motion.div>
 				<footer className="flex items-center justify-between px-3.5 pt-2 pb-3">
 					<Text as="span" variant="small" weight="regular" tone="muted" isTabular>
-						{t('entry.macroLine', {
+						{t(isApprox ? 'entry.macroLineApprox' : 'entry.macroLine', {
 							protein: formatInteger(macros.protein),
 							carbs: formatInteger(macros.carbs),
 							fat: formatInteger(macros.fat),

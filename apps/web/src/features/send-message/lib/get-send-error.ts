@@ -17,6 +17,7 @@ export type SendErrorKey =
 	| 'errors.api.TOO_MANY_REQUESTS'
 	| 'errors.api.MESSAGE_IN_PROGRESS'
 	| 'errors.api.ENTRY_CHANGED'
+	| 'errors.api.TURN_COPY_SOURCE_MISSING'
 	| 'errors.api.SERVER'
 	| 'errors.api.UNKNOWN'
 
@@ -68,6 +69,8 @@ const RETRIABLE_ERRORS: Partial<Record<string, SendErrorKey>> = {
 	STORAGE_UNAVAILABLE: 'errors.api.STORAGE_UNAVAILABLE',
 	// another tab changed the entry the message was about; the resend sees the new day
 	ENTRY_CHANGED: 'errors.api.ENTRY_CHANGED',
+	// the entry to copy («як учора») was deleted a moment ago; the resend sees the day as it is now
+	TURN_COPY_SOURCE_MISSING: 'errors.api.TURN_COPY_SOURCE_MISSING',
 }
 
 /** What Kusik's «ой» bubble says under a message that didn't go through. */

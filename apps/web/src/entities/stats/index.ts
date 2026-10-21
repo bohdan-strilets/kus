@@ -1,4 +1,9 @@
 export { detectGoalReached } from './lib/detect-goal-reached'
+export {
+	getStatsCardView,
+	type StatsCardDayRow,
+	type StatsCardView,
+} from './lib/get-stats-card-view'
 export { getDayProgress } from './lib/get-day-progress'
 export { type DayStats, getDayStats } from './lib/get-day-stats'
 export { type GaugeState, getGaugeState, type GaugeStatus } from './lib/get-gauge-state'
@@ -34,6 +39,7 @@ export {
 } from './ui/goal-celebration-frame/GoalCelebrationFrame'
 export { MacroTile, type MacroTileProps } from './ui/macro-tile/MacroTile'
 export { MacroTiles, type MacroTilesProps } from './ui/macro-tiles/MacroTiles'
+export { StatsCard, type StatsCardProps } from './ui/stats-card/StatsCard'
 export { SupportCard, type SupportCardProps } from './ui/support-card/SupportCard'
 export type { DayStatus, WeekDay, WeekDayStatus } from './ui/week-strip/week-strip.types'
 export { WeekStrip, type WeekStripProps } from './ui/week-strip/WeekStrip'

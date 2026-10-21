@@ -12,6 +12,12 @@ export const badgeVariants = cva('inline-flex shrink-0 items-center', {
 			/** «Вчора, 17.10» over a meal card that is not about today: secondary, radius 10, 12/700 (chat-other-dates) */
 			date: 'gap-1.25 rounded-badge bg-secondary py-1 pr-2.25 pl-1.75 text-small font-bold text-muted-strong',
 			/** «Не надіслано» under a failed message: 12/600 danger with an icon (chat-error) */
+			/** «День закрито» on the closing day card, the day on goal: success-soft / success-ink, 12/700, radius 10 (chat-day-closed) */
+			closed:
+				'gap-1 rounded-badge bg-success-soft px-2.25 py-1 text-small font-bold text-success-ink',
+			/** the same plate when the day is not on goal: secondary / muted-strong, no praise (chat-day-closed) */
+			closedNeutral:
+				'gap-1 rounded-badge bg-secondary px-2.25 py-1 text-small font-bold text-muted-strong',
 			failed: 'gap-1 text-small text-danger',
 		},
 	},

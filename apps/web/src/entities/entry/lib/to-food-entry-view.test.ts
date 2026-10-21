@@ -139,4 +139,19 @@ describe('entries from the API', () => {
 			toFoodEntryView(edited, { isClarifying: false, answer: 'трішки більше' }, t).amount,
 		).toBe('250 г · змінено')
 	})
+
+	it('marks the «Без деталей» estimate, until the user corrects it', () => {
+		if (!buckwheat) throw new Error('fixture')
+		const estimate = { ...buckwheat, name: 'Без деталей', source: 'ESTIMATE' as const }
+		const plain = { isClarifying: false, answer: null }
+		expect(toFoodEntryView({ ...estimate, isUndetailed: true }, plain, t)).toMatchObject({
+			captionState: 'estimate',
+			isEstimate: true,
+		})
+		// the name alone proves nothing: the flag decides
+		expect(toFoodEntryView(estimate, plain, t).isEstimate).toBeUndefined()
+		expect(
+			toFoodEntryView({ ...estimate, isUndetailed: true, isEdited: true }, plain, t).isEstimate,
+		).toBeUndefined()
+	})
 })

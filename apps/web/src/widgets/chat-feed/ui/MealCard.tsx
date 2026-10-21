@@ -8,6 +8,7 @@ import {
 	EntryCardRow,
 	EntryItem,
 	type FoodEntryView,
+	getCopiedLabel,
 	getMealLabelKey,
 	LoggedBadge,
 	toFoodEntryView,
@@ -70,6 +71,7 @@ export const MealCard = ({
 	}
 
 	const dayLabel = getDayBadgeLabel(meal.localDate, today, t)
+	const isApprox = meal.entries.some((entry) => entry.isUndetailed)
 
 	const findClarification = (entryId: string): ClarificationResponse | undefined =>
 		clarifications.find((item) => item.entryIds.includes(entryId))
@@ -87,6 +89,7 @@ export const MealCard = ({
 			macros={meal.totals}
 			hasTail={hasTail}
 			isRevealing={isFresh}
+			isApprox={isApprox}
 			badge={
 				isFresh ? (
 					<LoggedBadge
@@ -126,6 +129,9 @@ export const MealCard = ({
 					{
 						isClarifying: isExpanded,
 						answer: clarification ? getAnswerLabel(clarification) : null,
+						copiedLabel: entry.copiedFromDate
+							? getCopiedLabel(entry.copiedFromDate, today, t)
+							: null,
 					},
 					t,
 				)

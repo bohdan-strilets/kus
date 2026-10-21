@@ -55,17 +55,30 @@ interface EntryViewOptions {
 	isClarifying: boolean
 	/** The answer of a closed clarification, tapped or in words: «100 г · суха». */
 	answer: string | null
+	/**
+	 * The mark of an entry copied from an earlier day (getCopiedLabel). It wins over «як завжди»
+	 * when both fit, and goes away once the entry is edited.
+	 */
+	copiedLabel?: string | null
 }
 
-/** An API entry as a food line in the chat card. A saved food reads «як завжди». */
+type EntryCaption = Pick<FoodEntryView, 'amount' | 'copiedLabel' | 'isEstimate'> & {
+	captionState: EntryCaptionState
+}
+
+/** An API entry as a food line in the chat card. A saved food reads «як завжди», a copied one «як учора». */
 export const toFoodEntryView = (
 	entry: FoodEntryResponse,
-	{ isClarifying, answer }: EntryViewOptions,
+	{ isClarifying, answer, copiedLabel = null }: EntryViewOptions,
 	t: TFunction,
 ): FoodEntryView => {
 	const amount = formatEntryAmount(entry, t)
-	const getCaption = (): { amount: string; captionState: EntryCaptionState } => {
+	const getCaption = (): EntryCaption => {
 		if (isClarifying) return { amount, captionState: 'clarifying' }
+		// an estimate the user has corrected is their own number, not a guess any more
+		if (entry.isUndetailed && !entry.isEdited) {
+			return { amount, captionState: 'estimate', isEstimate: true }
+		}
 		// a text edit closes the entry's open questions, so «змінено» is always the latest change
 		if (entry.isEdited) {
 			return { amount: t('entry.editedCaption', { amount }), captionState: 'plain' }
@@ -77,6 +90,7 @@ export const toFoodEntryView = (
 				captionState: 'plain',
 			}
 		}
+		if (copiedLabel !== null) return { amount, captionState: 'copied', copiedLabel }
 		if (entry.source === 'MEMORY') return { amount, captionState: 'usual' }
 		return { amount, captionState: 'plain' }
 	}

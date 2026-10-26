@@ -11,3 +11,5 @@ onlyBuiltDependencies:
 
 overrides:
   mysql2: 3.23.1
+  # @nestjs/platform-express 11.x pins multer 2.4.0 exactly (DoS, fixed in 2.5.0); drop this when it moves on
+  '@nestjs/platform-express>multer': 2.5.0

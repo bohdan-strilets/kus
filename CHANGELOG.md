@@ -6,6 +6,29 @@ All notable changes to Kusik are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.7.1] — 2026-10-26
+
+Patch "Progress and measurements": the start shown on the measurement card and on «Прогрес» is the same value everywhere, the waist gets its start row, and a period with one measurement shows a change. No database migrations, no new environment variables, no change to the prompt or the AI tools; the API and the web app both change. New response fields of `/progress` have defaults, so either deploy order works.
+
+### Fixed
+
+- The chat card of a waist measurement said "Від старту −2,0 см" where «Прогрес» said −3,0: the card took the start by the time a value was written, so a value entered a minute later with an earlier date (102 cm on 09.10 after 101 cm on 13.10) did not become the start. The start shown on the card and on «Прогрес» is now the earliest value that is not deleted by its day (then `measuredAt`, then `createdAt`); one `getChangeFromStart` counts "from the start" for both ([1189bb6]). Old cards are not stored, they are counted on every read, so they show the corrected number
+- The achievements keep their base by creation time (`findFirst`), as before; a test pins that a backdated weight does not move it ([1189bb6])
+
+### Added
+
+- «Прогрес» shows the start of the waist like that of the weight: "Старт 102,0 см · 9 жовт" and "від старту −3,0" ([1189bb6], [db41997])
+- A period with exactly one measurement shows the change since the last value before the period ("−3,0 см з 9 жовт") for the weight and the waist, or "За цей період лише один замір" when there is no earlier value; before, such a card had a single point and no badge. `/progress` carries `changeSince` for it ([1189bb6], [db41997])
+
+### Changed
+
+- `progress.weight.start` and `progress.weight.fromStart` are one shared `progress.start` and `progress.fromStart`; `WeightStartRow` became `MeasurementStartRow` for both measurements ([db41997])
+- The docs describe the two starts: the one shown (by day) and the achievements base (by creation time) ([8dd7f10])
+
+### Security
+
+- Dependency updates, `pnpm audit --prod --audit-level high` is clean again (four high denial-of-service advisories): `zod` 4.6.5 → 4.6.7, `openai` 7.30.0 → 7.44.0 (its `undici` 8.11.2 → 8.12.3), `@nestjs/platform-express` 11.2.7 → 11.2.8, `body-parser` 2.3.0 → 2.4.0 (through `express`), `multer` 2.4.0 → 2.5.0 (a scoped `pnpm.overrides` entry, because `@nestjs/platform-express` 11.x pins 2.4.0 exactly). No major jumps. Four moderate/low `fast-uri` advisories remain, all through `prisma` > `@prisma/dev` ([79658af])
+
 ## [0.7.0] — 2026-10-21
 
 Summaries and the past: closing the day, a stats card on request and "the same as before" entries; prompt version `2026-10-20.2`. Three database migrations (each only adds nullable or defaulted columns) and no new environment variables; the API and the web app both change. Every new response field has a default, so either deploy order works: a new web app reads an old API and an old web app reads the new API (it ignores the new fields: a closed day looks like a plain day card and a stats answer shows only its text). Before the API deploy, check that `food_entries` has no `copied_from_date` or `is_undetailed` column: the third migration stops on purpose if they exist.
@@ -350,7 +373,12 @@ Design sync with `design/` v0.5.2. Web only: no API, shared-package or migration
 
 ## 0.2.0 / 0.1.0 — see tags
 
-[Unreleased]: https://github.com/bohdan-strilets/kus/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/bohdan-strilets/kus/compare/v0.7.1...HEAD
+[0.7.1]: https://github.com/bohdan-strilets/kus/compare/v0.7.0...v0.7.1
+[1189bb6]: https://github.com/bohdan-strilets/kus/commit/1189bb6e8fee296c9b094a2bafe27a76689d4ca4
+[db41997]: https://github.com/bohdan-strilets/kus/commit/db419977813032a952ae3df55265b67bc062a51d
+[79658af]: https://github.com/bohdan-strilets/kus/commit/79658af2f38b764e7a3da5de404d47dd927cc814
+[8dd7f10]: https://github.com/bohdan-strilets/kus/commit/8dd7f103f4f3e678e5d3c19cec65b867b67fe139
 [0.7.0]: https://github.com/bohdan-strilets/kus/compare/v0.6.3...v0.7.0
 [a5d263d]: https://github.com/bohdan-strilets/kus/commit/a5d263d8552b60b160e99e60273234b883d110d7
 [31ec5bb]: https://github.com/bohdan-strilets/kus/commit/31ec5bbdb4cd56f130b614d1046a77887d162725

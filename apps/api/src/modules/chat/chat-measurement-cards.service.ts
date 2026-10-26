@@ -70,7 +70,7 @@ export class ChatMeasurementCardsService {
 	): Promise<{ start: MeasurementValue | null; history: MeasurementValue[] }> {
 		const ofKind = rows.filter((row) => row.kind === kind)
 		const [start, history] = await Promise.all([
-			this.measurementsService.findFirst({ userId, kind }),
+			this.measurementsService.findStart({ userId, kind }),
 			this.measurementsService.findInRange({
 				userId,
 				kind,

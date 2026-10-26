@@ -168,6 +168,9 @@ describe('ProgressPage', () => {
 				waist: {
 					current: { value: 94, localDate: '2026-10-12' },
 					changeInRange: -3,
+					changeSince: null,
+					start: null,
+					fromStart: null,
 					points: [
 						{ localDate: '2026-09-20', value: 97 },
 						{ localDate: '2026-10-12', value: 94 },
@@ -185,7 +188,14 @@ describe('ProgressPage', () => {
 	it('says there are no measurements in the period for a waist without points', async () => {
 		showsProgress(
 			makeProgress({
-				waist: { current: { value: 94, localDate: '2026-08-01' }, changeInRange: null, points: [] },
+				waist: {
+					current: { value: 94, localDate: '2026-08-01' },
+					changeInRange: null,
+					changeSince: null,
+					start: null,
+					fromStart: null,
+					points: [],
+				},
 			}),
 		)
 

@@ -97,7 +97,22 @@ export class MeasurementsRepository {
 		})
 	}
 
-	/** The first live row by creation time: a backdated entry doesn't move the start. */
+	/**
+	 * The start as it is SHOWN (chat card, «Прогрес»): the earliest live row by its day, then by
+	 * measuredAt, createdAt last. Not `findFirst`: that one is by creation time and belongs to the
+	 * achievements, which must keep behaving as before. Two different things, don't merge them.
+	 */
+	findStart(
+		{ userId, kind }: { userId: string; kind: MeasurementKind },
+		tx?: Prisma.TransactionClient,
+	): Promise<Measurement | null> {
+		return (tx ?? this.prisma).measurement.findFirst({
+			where: { userId, kind, deletedAt: null },
+			orderBy: [{ localDate: 'asc' }, { measuredAt: 'asc' }, { createdAt: 'asc' }],
+		})
+	}
+
+	/** The first live row by creation time: a backdated entry doesn't move the start (achievements). */
 	findFirst(
 		{ userId, kind }: { userId: string; kind: MeasurementKind },
 		tx?: Prisma.TransactionClient,

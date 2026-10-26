@@ -17,7 +17,10 @@ const createWaist = (
 ): ProgressWaist => ({
 	current: { value: 94, localDate: points.at(-1)?.localDate ?? '2026-08-01' },
 	changeInRange,
+	changeSince: null,
 	points,
+	start: null,
+	fromStart: null,
 })
 
 describe('WaistProgressCard', () => {
@@ -89,5 +92,79 @@ describe('WaistProgressCard', () => {
 		expect(screen.queryByText('см')).toBeNull()
 		expect(screen.queryByRole('img')).toBeNull()
 		expect(container.querySelector('[data-sparkline-end-dot]')).toBeNull()
+	})
+})
+
+describe('WaistProgressCard start row', () => {
+	it('shows the start like the weight does: value, date and the change from it', () => {
+		render(
+			<WaistProgressCard
+				waist={{
+					...createWaist([{ localDate: TODAY, value: 99 }]),
+					start: { value: 102, localDate: '2026-10-09' },
+					fromStart: -3,
+				}}
+				range={7}
+				today={TODAY}
+			/>,
+		)
+
+		expect(screen.getByText('102 см')).toBeTruthy()
+		expect(screen.getByText(/· 9 жовт/)).toBeTruthy()
+		expect(screen.getByText('−3,0 см').className).toContain('text-success-ink')
+	})
+
+	it('has no row without a start', () => {
+		render(
+			<WaistProgressCard
+				waist={createWaist([{ localDate: TODAY, value: 99 }])}
+				range={7}
+				today={TODAY}
+			/>,
+		)
+
+		expect(screen.queryByText('Старт')).toBeNull()
+	})
+})
+
+describe('WaistProgressCard one measurement in the period', () => {
+	const points = [{ localDate: TODAY, value: 99 }]
+
+	it('shows the change since the earlier measurement with its date', () => {
+		render(
+			<WaistProgressCard
+				waist={{ ...createWaist(points), changeSince: { change: -3, sinceDate: '2026-10-09' } }}
+				range={7}
+				today={TODAY}
+			/>,
+		)
+
+		expect(screen.getByText('−3,0 см з 9 жовт')).toBeTruthy()
+		expect(screen.queryByText('За цей період лише один замір')).toBeNull()
+	})
+
+	it('without an earlier measurement says there is only one', () => {
+		render(<WaistProgressCard waist={createWaist(points)} range={7} today={TODAY} />)
+
+		expect(screen.getByText('За цей період лише один замір')).toBeTruthy()
+	})
+
+	it('with two measurements shows the change of the range, no note', () => {
+		render(
+			<WaistProgressCard
+				waist={createWaist(
+					[
+						{ localDate: '2026-09-01', value: 96 },
+						{ localDate: TODAY, value: 94 },
+					],
+					-2,
+				)}
+				range={7}
+				today={TODAY}
+			/>,
+		)
+
+		expect(screen.getByText('−2,0 см')).toBeTruthy()
+		expect(screen.queryByText('За цей період лише один замір')).toBeNull()
 	})
 })

@@ -187,7 +187,8 @@ describe('measurement cards and achievements in chat messages (e2e, real DB, fak
 			})
 		})
 
-		it('measures from the first value ever written, not the earliest date', async () => {
+		// since 0.7.1 the shown start is the earliest day (the 83 below), so its own card has no change
+		it('shows the earliest day as the start, so a backdated first value has no change', async () => {
 			await start()
 			const owner = await registerUser('owner@kus.app')
 			const today = await getToday(owner.userId)
@@ -199,7 +200,7 @@ describe('measurement cards and achievements in chat messages (e2e, real DB, fak
 
 			expect(assistantMessage.measurements[0]).toMatchObject({
 				localDate: backdated,
-				fromStart: -1,
+				fromStart: null,
 			})
 		})
 

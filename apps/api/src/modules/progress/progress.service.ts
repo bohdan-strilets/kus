@@ -14,6 +14,7 @@ import { GoalsService } from '../goals/goals.service'
 import type { MeasurementValue } from '../measurements/measurements.mapper'
 import { MeasurementsService } from '../measurements/measurements.service'
 import {
+	getChangeFromStart,
 	getKgToGoal,
 	subtractTenths,
 	WEEK_CHANGE_MAX_DAYS,
@@ -60,13 +61,15 @@ export class ProgressService {
 		const windowFrom = addDays(today, -(EMPTY_STATE_WINDOW_DAYS - 1))
 		const rangeFrom = addDays(today, -(range - 1))
 
-		const [latestWeight, latestWaist, startWeight, totalsByDay, goal] = await Promise.all([
-			this.measurementsService.findLatest({ userId, kind: MeasurementKind.WEIGHT }),
-			this.measurementsService.findLatest({ userId, kind: MeasurementKind.WAIST }),
-			this.measurementsService.findFirst({ userId, kind: MeasurementKind.WEIGHT }),
-			this.entriesService.getDaysTotals(userId, { from: windowFrom, to: today }),
-			this.profileService.findWeightGoal(userId),
-		])
+		const [latestWeight, latestWaist, startWeight, startWaist, totalsByDay, goal] =
+			await Promise.all([
+				this.measurementsService.findLatest({ userId, kind: MeasurementKind.WEIGHT }),
+				this.measurementsService.findLatest({ userId, kind: MeasurementKind.WAIST }),
+				this.measurementsService.findStart({ userId, kind: MeasurementKind.WEIGHT }),
+				this.measurementsService.findStart({ userId, kind: MeasurementKind.WAIST }),
+				this.entriesService.getDaysTotals(userId, { from: windowFrom, to: today }),
+				this.profileService.findWeightGoal(userId),
+			])
 		// a week-ago weight may predate the window when the latest weigh-in is old
 		const weightHistory = latestWeight
 			? await this.measurementsService.findInRange({
@@ -96,7 +99,8 @@ export class ProgressService {
 			to: formatDbDate(today),
 			isEmpty,
 			weight: latestWeight
-				? this.buildWeight({
+				? await this.buildWeight({
+						userId,
 						latest: latestWeight,
 						start: startWeight,
 						history: weightHistory,
@@ -104,7 +108,16 @@ export class ProgressService {
 						goal,
 					})
 				: null,
-			waist: latestWaist ? this.buildTrend(latestWaist, waistHistory, rangeFrom) : null,
+			waist: latestWaist
+				? await this.buildTrend({
+						userId,
+						kind: MeasurementKind.WAIST,
+						latest: latestWaist,
+						start: startWaist,
+						history: waistHistory,
+						rangeFrom,
+					})
+				: null,
 			week,
 			insight: {
 				weekPaceKg: getWeekPaceKg({ latest: latestWeight, history: weightHistory, today }),
@@ -122,11 +135,21 @@ export class ProgressService {
 		}
 	}
 
-	private buildTrend(
-		latest: MeasurementValue,
-		history: MeasurementValue[],
-		rangeFrom: Date,
-	): ProgressWaist {
+	private async buildTrend({
+		userId,
+		kind,
+		latest,
+		start,
+		history,
+		rangeFrom,
+	}: {
+		userId: string
+		kind: MeasurementKind
+		latest: MeasurementValue
+		start: MeasurementValue | null
+		history: MeasurementValue[]
+		rangeFrom: Date
+	}): Promise<ProgressWaist> {
 		const points = history.filter((row) => row.localDate >= rangeFrom).map(toPoint)
 		const first = points.at(0)
 		const last = points.at(-1)
@@ -134,34 +157,65 @@ export class ProgressService {
 			current: toPoint(latest),
 			changeInRange:
 				first && last && points.length > 1 ? subtractTenths(last.value, first.value) : null,
+			changeSince: await this.buildChangeSince({ userId, kind, points, rangeFrom }),
 			points,
+			start: start ? toPoint(start) : null,
+			fromStart: getChangeFromStart({ current: latest, start }),
 		}
 	}
 
-	private buildWeight({
+	/** One point in the range has no change of its own: compare it with the last value before the range. */
+	private async buildChangeSince({
+		userId,
+		kind,
+		points,
+		rangeFrom,
+	}: {
+		userId: string
+		kind: MeasurementKind
+		points: ProgressWaist['points']
+		rangeFrom: Date
+	}): Promise<ProgressWaist['changeSince']> {
+		const [only] = points
+		if (!only || points.length !== 1) return null
+		const earlier = await this.measurementsService.findBefore({ userId, kind, before: rangeFrom })
+		if (!earlier) return null
+		return {
+			change: subtractTenths(only.value, earlier.value),
+			sinceDate: formatDbDate(earlier.localDate),
+		}
+	}
+
+	private async buildWeight({
+		userId,
 		latest,
 		start,
 		history,
 		rangeFrom,
 		goal,
 	}: {
+		userId: string
 		latest: MeasurementValue
 		start: MeasurementValue | null
 		history: MeasurementValue[]
 		rangeFrom: Date
 		goal: WeightGoal
-	}): ProgressWeight {
+	}): Promise<ProgressWeight> {
 		const { goalType, targetWeightKg } = goal
 		return {
-			...this.buildTrend(latest, history, rangeFrom),
+			...(await this.buildTrend({
+				userId,
+				kind: MeasurementKind.WEIGHT,
+				latest,
+				start,
+				history,
+				rangeFrom,
+			})),
 			target: targetWeightKg,
 			toGoal: hasWeightDirection(goalType)
 				? getKgToGoal({ goalType, current: latest.value, target: targetWeightKg })
 				: null,
 			isGoalReached: getIsGoalReached({ goalType, current: latest.value, target: targetWeightKg }),
-			start: start ? toPoint(start) : null,
-			// the start has nothing to be compared with
-			fromStart: start && start.id !== latest.id ? subtractTenths(latest.value, start.value) : null,
 		}
 	}
 

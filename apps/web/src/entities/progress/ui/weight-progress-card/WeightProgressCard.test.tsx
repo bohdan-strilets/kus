@@ -14,6 +14,7 @@ const TODAY = '2026-09-05'
 const createWeight = (points: ProgressWeight['points']): ProgressWeight => ({
 	current: { value: 82.4, localDate: points.at(-1)?.localDate ?? TODAY },
 	changeInRange: null,
+	changeSince: null,
 	points,
 	target: null,
 	toGoal: null,
@@ -149,5 +150,34 @@ describe('WeightProgressCard start row', () => {
 		expect(screen.getAllByText('82,4 кг').length).toBeGreaterThan(0)
 		expect(screen.queryByText(/від старту/)).toBeNull()
 		expect(screen.getAllByText(/сьогодні/).length).toBeGreaterThan(1)
+	})
+})
+
+describe('WeightProgressCard one weigh-in in the period', () => {
+	const points = [{ localDate: TODAY, value: 82.4 }]
+
+	it('shows the change since the earlier weigh-in with its date', () => {
+		render(
+			<WeightProgressCard
+				weight={{ ...createWeight(points), changeSince: { change: -1.6, sinceDate: '2026-08-28' } }}
+				range={7}
+				today={TODAY}
+			/>,
+		)
+
+		expect(screen.getByText('−1,6 кг з 28 серп')).toBeTruthy()
+		expect(screen.queryByText('За цей період лише один замір')).toBeNull()
+	})
+
+	it('without an earlier weigh-in says there is only one', () => {
+		render(<WeightProgressCard weight={createWeight(points)} range={7} today={TODAY} />)
+
+		expect(screen.getByText('За цей період лише один замір')).toBeTruthy()
+	})
+
+	it('no weigh-ins in the period: no note', () => {
+		render(<WeightProgressCard weight={createWeight([])} range={7} today={TODAY} />)
+
+		expect(screen.queryByText('За цей період лише один замір')).toBeNull()
 	})
 })

@@ -9,6 +9,7 @@ export const makeProgress = (overrides: Partial<ProgressResponse> = {}): Progres
 	weight: {
 		current: { value: 82.4, localDate: '2026-10-12' },
 		changeInRange: -1.6,
+		changeSince: null,
 		points: [
 			{ localDate: '2026-09-13', value: 84 },
 			{ localDate: '2026-09-28', value: 83.2 },

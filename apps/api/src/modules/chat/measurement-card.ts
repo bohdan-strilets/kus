@@ -11,6 +11,7 @@ import type { MeasurementValue } from '../measurements/measurements.mapper'
 import {
 	DAYS_IN_WEEK,
 	findWeekAgo,
+	getChangeFromStart,
 	getKgToGoal,
 	subtractTenths,
 } from '../measurements/measurements.utils'
@@ -47,7 +48,7 @@ const buildChart = (
 
 interface MeasurementCardInput {
 	row: MeasurementValue
-	/** The first value of this kind by creation time. */
+	/** The earliest value of this kind by its day. */
 	start: MeasurementValue | null
 	/** Values of this kind around the card's day (at least `MEASUREMENT_CHART_SPAN_DAYS` back). */
 	history: MeasurementValue[]
@@ -80,8 +81,7 @@ export const buildMeasurementCard = ({
 				? row.measuredAt.toISOString()
 				: null,
 		isDeleted: row.deletedAt !== null,
-		// the first value has nothing to be compared with
-		fromStart: start && start.id !== row.id ? subtractTenths(row.value, start.value) : null,
+		fromStart: getChangeFromStart({ current: row, start }),
 		toGoal: hasDirection
 			? getKgToGoal({ goalType, current: row.value, target: targetWeightKg })
 			: null,

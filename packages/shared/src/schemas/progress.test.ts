@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { progressWeightSchema } from './progress.js'
+import { progressWaistSchema, progressWeightSchema } from './progress.js'
 
 const weight = {
 	current: { value: 82.4, localDate: '2026-10-12' },
@@ -24,5 +24,39 @@ describe('progressWeightSchema', () => {
 		})
 
 		expect(parsed).toMatchObject({ start: { value: 85, localDate: '2026-08-28' }, fromStart: -2.6 })
+	})
+})
+
+describe('progressWaistSchema', () => {
+	const waist = {
+		current: { value: 99, localDate: '2026-10-25' },
+		changeInRange: null,
+		points: [],
+	}
+
+	it('reads an answer of an older API as without a start and a change since', () => {
+		expect(progressWaistSchema.parse(waist)).toMatchObject({
+			start: null,
+			fromStart: null,
+			changeSince: null,
+		})
+		expect(progressWeightSchema.parse({ ...weight, changeInRange: null })).toMatchObject({
+			changeSince: null,
+		})
+	})
+
+	it('keeps the start, the change from it and the change since', () => {
+		const parsed = progressWaistSchema.parse({
+			...waist,
+			start: { value: 102, localDate: '2026-10-09' },
+			fromStart: -3,
+			changeSince: { change: -3, sinceDate: '2026-10-09' },
+		})
+
+		expect(parsed).toMatchObject({
+			start: { value: 102, localDate: '2026-10-09' },
+			fromStart: -3,
+			changeSince: { change: -3, sinceDate: '2026-10-09' },
+		})
 	})
 })

@@ -22,12 +22,33 @@ const progressMeasurementCurrentSchema = z.object({
 	localDate: z.iso.date(),
 })
 
+export const progressChangeSinceSchema = z.object({
+	change: z.number(),
+	/** `YYYY-MM-DD` of the earlier value the change is counted from. */
+	sinceDate: z.iso.date(),
+})
+
+export type ProgressChangeSince = z.infer<typeof progressChangeSinceSchema>
+
 /** Waist, or the common part of weight: the latest value, the change over the range and its points. */
 export const progressWaistSchema = z.object({
 	current: progressMeasurementCurrentSchema,
 	/** Change over the selected range; null with a single point. */
 	changeInRange: z.number().nullable(),
+	/**
+	 * With exactly one point in the range: the change from the latest value before the range (and
+	 * that value's date). null otherwise, and without an earlier value. Absent in answers of an
+	 * older API, read as null.
+	 */
+	changeSince: progressChangeSinceSchema.nullable().default(null),
 	points: z.array(measurementChartPointSchema),
+	/**
+	 * The earliest value that is not deleted, by its day (then measuredAt): a backdated entry becomes
+	 * the start. Absent in answers of an older API, read as null.
+	 */
+	start: progressMeasurementCurrentSchema.nullable().default(null),
+	/** Current minus the start; null without a start, and when the start is the current value. */
+	fromStart: z.number().nullable().default(null),
 })
 
 export type ProgressWaist = z.infer<typeof progressWaistSchema>
@@ -37,13 +58,6 @@ export const progressWeightSchema = progressWaistSchema.extend({
 	/** Kg left in the direction of the goal, never negative (0 once reached); null without a target and for MAINTAIN. */
 	toGoal: z.number().nullable(),
 	isGoalReached: z.boolean().nullable(),
-	/**
-	 * The first weigh-in that is not deleted, by the time it was written (a backdated entry does not
-	 * move it). Absent in answers of an older API, read as null.
-	 */
-	start: progressMeasurementCurrentSchema.nullable().default(null),
-	/** Current minus the start; null without a start, and when the start is the current value. */
-	fromStart: z.number().nullable().default(null),
 })
 
 export type ProgressWeight = z.infer<typeof progressWeightSchema>

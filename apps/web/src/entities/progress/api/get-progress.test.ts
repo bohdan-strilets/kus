@@ -14,13 +14,35 @@ describe('getProgress', () => {
 		const progress = makeProgress()
 		const { weight } = progress
 		if (!weight) throw new Error('the fixture has a weight')
-		const { start: _start, fromStart: _fromStart, ...oldWeight } = weight
+		const { start: _start, fromStart: _fromStart, changeSince: _changeSince, ...oldWeight } = weight
 		mockGet.mockResolvedValue({ data: { data: { ...progress, weight: oldWeight } } })
 
 		const result = await getProgress(30)
 
 		expect(result.weight?.start).toBeNull()
 		expect(result.weight?.fromStart).toBeNull()
+		expect(result.weight?.changeSince).toBeNull()
 		expect(result.weight?.current.value).toBe(82.4)
+	})
+
+	it('reads a waist of an older API without the new fields', async () => {
+		const progress = makeProgress({
+			waist: {
+				current: { value: 94, localDate: '2026-10-12' },
+				changeInRange: null,
+				changeSince: null,
+				start: null,
+				fromStart: null,
+				points: [],
+			},
+		})
+		const { waist } = progress
+		if (!waist) throw new Error('the fixture has a waist')
+		const { changeSince: _a, start: _b, fromStart: _c, ...oldWaist } = waist
+		mockGet.mockResolvedValue({ data: { data: { ...progress, waist: oldWaist } } })
+
+		const result = await getProgress(30)
+
+		expect(result.waist).toMatchObject({ changeSince: null, start: null, fromStart: null })
 	})
 })

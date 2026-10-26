@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest'
 
 import type { MeasurementValue } from './measurements.mapper'
-import { findWeekAgo, getDayDistance, getKgToGoal, subtractTenths } from './measurements.utils'
+import {
+	findWeekAgo,
+	getChangeFromStart,
+	getDayDistance,
+	getKgToGoal,
+	subtractTenths,
+} from './measurements.utils'
 
 const weight = (localDate: string, value = 80): MeasurementValue => ({
 	id: localDate,
@@ -20,6 +26,24 @@ describe('subtractTenths', () => {
 		expect(subtractTenths(83.3, 82.1)).toBe(1.2)
 		expect(subtractTenths(0.3, 0.1)).toBe(0.2)
 		expect(subtractTenths(82, 83.4)).toBe(-1.4)
+	})
+})
+
+describe('getChangeFromStart', () => {
+	it('is the current value minus the start', () => {
+		expect(
+			getChangeFromStart({ current: { id: 'c', value: 99 }, start: { id: 's', value: 102 } }),
+		).toBe(-3)
+	})
+
+	it('is null without a start', () => {
+		expect(getChangeFromStart({ current: { id: 'c', value: 99 }, start: null })).toBeNull()
+	})
+
+	it('is null when the start is the same row', () => {
+		expect(
+			getChangeFromStart({ current: { id: 's', value: 99 }, start: { id: 's', value: 99 } }),
+		).toBeNull()
 	})
 })
 

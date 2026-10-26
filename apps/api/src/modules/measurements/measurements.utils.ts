@@ -17,6 +17,19 @@ export const subtractTenths = (a: number, b: number): number =>
 	(Math.round(a * TENTHS) - Math.round(b * TENTHS)) / TENTHS
 
 /**
+ * «From the start»: `current` minus the start. null when there is no start, and when the start is
+ * the very same row (the first value has nothing to be compared with).
+ */
+export const getChangeFromStart = ({
+	current,
+	start,
+}: {
+	current: Pick<MeasurementValue, 'id' | 'value'>
+	start: Pick<MeasurementValue, 'id' | 'value'> | null
+}): number | null =>
+	start && start.id !== current.id ? subtractTenths(current.value, start.value) : null
+
+/**
  * The value a week change compares with: of the rows 5–9 days before `row`'s day, the nearest
  * to 7 days (a tie takes the later day). null when there is none.
  */

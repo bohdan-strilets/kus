@@ -53,6 +53,15 @@ export class MeasurementsService {
 		return row ? toMeasurementValue(row) : null
 	}
 
+	/** The start for display: the earliest by day, not by creation time (see the repository). */
+	async findStart(
+		query: { userId: string; kind: MeasurementKind },
+		tx?: Prisma.TransactionClient,
+	): Promise<MeasurementValue | null> {
+		const row = await this.measurementsRepository.findStart(query, tx)
+		return row ? toMeasurementValue(row) : null
+	}
+
 	async findFirst(
 		query: { userId: string; kind: MeasurementKind },
 		tx?: Prisma.TransactionClient,

@@ -12,6 +12,7 @@ interface CallArg {
 	where: Record<string, unknown>
 	data: Record<string, unknown>
 	update: Record<string, unknown>
+	orderBy: unknown
 }
 
 const getFirstArg = (mock: Mock): CallArg => {
@@ -54,7 +55,7 @@ describe('MeasurementsRepository', () => {
 		expect(update).not.toHaveProperty('messageId')
 	})
 
-	it.each(['findLatest', 'findFirst', 'findBefore'] as const)(
+	it.each(['findLatest', 'findFirst', 'findStart', 'findBefore'] as const)(
 		'%s skips deleted rows',
 		async (method) => {
 			await repository[method]({
@@ -66,6 +67,19 @@ describe('MeasurementsRepository', () => {
 			expect(getFirstArg(prisma.measurement.findFirst).where.deletedAt).toBeNull()
 		},
 	)
+
+	it('findStart orders by day, then measuredAt, then createdAt; findFirst stays by createdAt', async () => {
+		await repository.findStart({ userId: USER_ID, kind: MeasurementKind.WAIST })
+		await repository.findFirst({ userId: USER_ID, kind: MeasurementKind.WAIST })
+
+		const [start, first] = prisma.measurement.findFirst.mock.calls as unknown[][]
+		expect((start?.[0] as CallArg).orderBy).toEqual([
+			{ localDate: 'asc' },
+			{ measuredAt: 'asc' },
+			{ createdAt: 'asc' },
+		])
+		expect((first?.[0] as CallArg).orderBy).toEqual({ createdAt: 'asc' })
+	})
 
 	it('findByDate skips deleted rows', async () => {
 		await repository.findByDate({

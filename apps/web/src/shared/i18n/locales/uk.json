@@ -677,6 +677,10 @@
 	"progress": {
 		"loadError": "Не вдалося завантажити прогрес.",
 		"noWeighIns": "За цей період зважувань немає",
+		"singleMeasurement": "За цей період лише один замір",
+		"changeSince": "{{change}} з {{date}}",
+		"start": "Старт",
+		"fromStart": "від старту",
 		"discuss": "Обговорити в чаті",
 		"range": {
 			"label": "Період",
@@ -688,9 +692,7 @@
 			"unit": "кг",
 			"target": "ціль {{target}}",
 			"targetLeft": "ціль {{target}} · до цілі {{left}}",
-			"chartLabel": "Вага за {{days}} днів: від {{from}} до {{to}}",
-			"start": "Старт",
-			"fromStart": "від старту"
+			"chartLabel": "Вага за {{days}} днів: від {{from}} до {{to}}"
 		},
 		"weightCta": {
 			"text": "Запиши вагу, і тут з'явиться графік.",

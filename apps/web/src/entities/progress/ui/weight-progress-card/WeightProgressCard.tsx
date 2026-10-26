@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next'
 
 import {
 	formatMeasurement,
-	formatMeasurementDelta,
 	formatMeasurementNumber,
 	formatTargetWeight,
 } from '@/entities/measurement'
@@ -11,7 +10,8 @@ import { formatDayMonthShort, toCalendarDate } from '@/shared/lib'
 import { Sparkline, Surface, Text } from '@/shared/ui'
 
 import type { ProgressRange } from '../../model/progress.types'
-import { WeightStartRow } from './WeightStartRow'
+import { RangeChange } from '../range-change/RangeChange'
+import { MeasurementStartRow } from '../start-row/MeasurementStartRow'
 
 export interface WeightProgressCardProps {
 	weight: ProgressWeight
@@ -27,11 +27,22 @@ export interface WeightProgressCardProps {
  */
 export const WeightProgressCard = ({ weight, range, today }: WeightProgressCardProps) => {
 	const { t } = useTranslation()
-	const { current, changeInRange, points, target, toGoal, isGoalReached, start, fromStart } = weight
+	const {
+		current,
+		changeInRange,
+		changeSince,
+		points,
+		target,
+		toGoal,
+		isGoalReached,
+		start,
+		fromStart,
+	} = weight
 	const first = points[0]
 	const last = points[points.length - 1]
 	const hasPoints = first !== undefined && last !== undefined
 	const hasHistory = points.length > 1
+	const isSingleWithoutBase = points.length === 1 && changeSince === null
 	const chartLabel =
 		hasHistory && first && last
 			? t('progress.weight.chartLabel', {
@@ -74,11 +85,12 @@ export const WeightProgressCard = ({ weight, range, today }: WeightProgressCardP
 					</Text>
 				</div>
 				<div className="flex flex-col items-end gap-1 text-right">
-					{hasHistory && changeInRange !== null && (
-						<span className="rounded-badge bg-success-soft px-2.5 py-1 text-caption font-extrabold text-success-ink tabular-nums">
-							{formatMeasurementDelta(changeInRange, 'WEIGHT', t)}
-						</span>
-					)}
+					<RangeChange
+						kind="WEIGHT"
+						pointCount={points.length}
+						changeInRange={changeInRange}
+						changeSince={changeSince}
+					/>
 					{caption && (
 						<Text as="span" variant="small" weight="regular" tone="muted">
 							{caption}
@@ -104,6 +116,11 @@ export const WeightProgressCard = ({ weight, range, today }: WeightProgressCardP
 						<span>{formatDayMonthShort(toCalendarDate(first.localDate))}</span>
 						{(hasHistory || isLastToday) && <span className="ml-auto">{lastLabel}</span>}
 					</div>
+					{isSingleWithoutBase && (
+						<Text variant="caption" weight="regular" tone="muted">
+							{t('progress.singleMeasurement')}
+						</Text>
+					)}
 				</div>
 			) : (
 				<Text variant="caption" weight="regular" tone="muted">
@@ -111,7 +128,9 @@ export const WeightProgressCard = ({ weight, range, today }: WeightProgressCardP
 				</Text>
 			)}
 
-			{start && <WeightStartRow start={start} fromStart={fromStart} today={today} />}
+			{start && (
+				<MeasurementStartRow kind="WEIGHT" start={start} fromStart={fromStart} today={today} />
+			)}
 		</Surface>
 	)
 }

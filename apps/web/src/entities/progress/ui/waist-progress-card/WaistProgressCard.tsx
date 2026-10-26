@@ -1,15 +1,13 @@
 import type { ProgressWaist } from '@kus/shared'
 import { useTranslation } from 'react-i18next'
 
-import {
-	formatMeasurement,
-	formatMeasurementDelta,
-	formatMeasurementNumber,
-} from '@/entities/measurement'
+import { formatMeasurement, formatMeasurementNumber } from '@/entities/measurement'
 import { formatDayMonthShort, toCalendarDate } from '@/shared/lib'
 import { Sparkline, Surface, Text } from '@/shared/ui'
 
 import type { ProgressRange } from '../../model/progress.types'
+import { RangeChange } from '../range-change/RangeChange'
+import { MeasurementStartRow } from '../start-row/MeasurementStartRow'
 
 export interface WaistProgressCardProps {
 	/** null: there was no measurement ever; the card stays and says how to start. */
@@ -28,10 +26,14 @@ export const WaistProgressCard = ({ waist, range, today }: WaistProgressCardProp
 	const { t } = useTranslation()
 	const current = waist?.current
 	const changeInRange = waist?.changeInRange ?? null
+	const changeSince = waist?.changeSince ?? null
+	const start = waist?.start ?? null
+	const fromStart = waist?.fromStart ?? null
 	const points = waist?.points ?? []
 	const first = points[0]
 	const last = points[points.length - 1]
 	const hasHistory = points.length > 1
+	const isSingleWithoutBase = points.length === 1 && changeSince === null
 	const isLastToday = last?.localDate === today
 	// only read when there is a chart, i.e. at least one point
 	const getChartLabel = (): string => {
@@ -66,11 +68,12 @@ export const WaistProgressCard = ({ waist, range, today }: WaistProgressCardProp
 						)}
 					</Text>
 				</div>
-				{hasHistory && changeInRange !== null && (
-					<span className="rounded-badge bg-success-soft px-2.5 py-1 text-caption font-extrabold text-success-ink tabular-nums">
-						{formatMeasurementDelta(changeInRange, 'WAIST', t)}
-					</span>
-				)}
+				<RangeChange
+					kind="WAIST"
+					pointCount={points.length}
+					changeInRange={changeInRange}
+					changeSince={changeSince}
+				/>
 			</div>
 
 			{first && last ? (
@@ -91,11 +94,20 @@ export const WaistProgressCard = ({ waist, range, today }: WaistProgressCardProp
 							</span>
 						)}
 					</div>
+					{isSingleWithoutBase && (
+						<Text variant="caption" weight="regular" tone="muted">
+							{t('progress.singleMeasurement')}
+						</Text>
+					)}
 				</div>
 			) : (
 				<Text variant="caption" weight="regular" tone="muted">
 					{t(current ? 'progress.waist.empty' : 'progress.waist.never')}
 				</Text>
+			)}
+
+			{start && (
+				<MeasurementStartRow kind="WAIST" start={start} fromStart={fromStart} today={today} />
 			)}
 		</Surface>
 	)

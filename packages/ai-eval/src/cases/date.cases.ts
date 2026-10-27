@@ -133,11 +133,13 @@ export const DATE_CASES: EvalCase[] = [
 		id: 'date-today-regression',
 		text: 'сьогодні на обід тарілка борщу',
 		expect: {
-			decision: 'log',
+			// a plate of soup may get a size question (the prompt allows it); the day and meal may not vary
+			decision: 'log_or_clarify',
 			logDate: '2026-10-07',
 			itemMeals: [{ stem: 'борщ', mealType: 'LUNCH' }],
 		},
-		reference: '«Сьогодні» is today: no date needed (null = 2026-10-07), nothing changes for today',
+		reference:
+			'«Сьогодні» is today: no date needed (null = 2026-10-07), nothing changes for today; size question allowed',
 	},
 	{
 		id: 'date-tomorrow-with-clarify',

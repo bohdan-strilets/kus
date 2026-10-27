@@ -82,8 +82,8 @@ const PORTION_ASKED: Partial<FoodParseContext> = {
 }
 
 const ASKS_A_QUESTION = ['?']
-/** Asks to check or confirm the number — with or without a question mark. */
-const ASKS_TO_CHECK = ['перевір', 'підтверд', 'точно', 'правильн']
+/** Asks to check or confirm the number — with or without a question mark; «точн» = точно / точне / точний. */
+const ASKS_TO_CHECK = ['перевір', 'підтверд', 'точн', 'правильн']
 
 /** A weigh-in reply is a warm sentence without numbers: the card shows them. */
 const NO_DIGITS = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']

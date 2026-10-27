@@ -96,6 +96,12 @@
   --color-decor-peach: #f7c59a;
   --color-decor-mint: #d9efe2;
   --color-crumb: #e58a45;
+  /* Контекстні підказки над полем (0.8, після переходу на Kusik) — тло / текст і іконка, контраст 6,8–8:1 */
+  --color-hint-food-bg: #fde6d3;  --color-hint-food-ink: #7a3a10;
+  --color-hint-measure-bg: #e3f3ea;  --color-hint-measure-ink: #0f5e40;
+  --color-hint-training-bg: #e2f0fb;  --color-hint-training-ink: #2f4a60;
+  --color-hint-advice-bg: #f1e7fa;  --color-hint-advice-ink: #5a3a7a;
+  --color-hint-day-bg: #fff0c2;  --color-hint-day-ink: #5e4508;
   /* Типографіка */
   --text-title: 20px;
   --text-title--line-height: 1.25;

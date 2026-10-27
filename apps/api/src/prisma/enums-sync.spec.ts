@@ -1,5 +1,6 @@
 import {
 	achievementTypeSchema,
+	addressFormSchema,
 	activityLevelSchema,
 	aiRunPurposeSchema,
 	aiRunStatusSchema,
@@ -31,6 +32,7 @@ import * as PrismaEnums from '../generated/prisma/enums'
 // Shared zod enums must match the Prisma schema, or values pass validation and fail on insert
 const ENUM_PAIRS: [string, Record<string, string>, readonly string[]][] = [
 	['Locale', PrismaEnums.Locale, localeSchema.options],
+	['AddressForm', PrismaEnums.AddressForm, addressFormSchema.options],
 	['VerificationTokenType', PrismaEnums.VerificationTokenType, verificationTokenTypeSchema.options],
 	['Sex', PrismaEnums.Sex, sexSchema.options],
 	['ActivityLevel', PrismaEnums.ActivityLevel, activityLevelSchema.options],

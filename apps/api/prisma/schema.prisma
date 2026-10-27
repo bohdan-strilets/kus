@@ -24,6 +24,15 @@ enum Locale {
   @@map("locale")
 }
 
+// How Kusik refers to the user in the past tense and in adjectives (Ukrainian has gendered forms)
+enum AddressForm {
+  MASCULINE
+  FEMININE
+  NEUTRAL
+
+  @@map("address_form")
+}
+
 enum VerificationTokenType {
   EMAIL_VERIFY
   PASSWORD_RESET
@@ -264,6 +273,8 @@ model User {
   name                String?
   // how Kusik greets the user («Богдане», «Бо»); null → the vocative of name, if one is safe
   addressAs           String?   @map("address_as")
+  // gender forms of the words about the user; NEUTRAL avoids them
+  addressForm         AddressForm @default(NEUTRAL) @map("address_form")
   locale              Locale    @default(uk)
   // IANA zone; defines the user's "day" for localDate
   timezone            String    @default("Europe/Warsaw")

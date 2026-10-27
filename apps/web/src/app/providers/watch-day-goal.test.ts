@@ -23,6 +23,7 @@ const user = (id: string): AuthUser => ({
 	email: 'user@example.com',
 	name: null,
 	addressAs: null,
+	addressForm: 'NEUTRAL',
 	locale: 'uk',
 	timezone: TIMEZONE,
 	createdAt: '2026-10-01T10:00:00.000Z',

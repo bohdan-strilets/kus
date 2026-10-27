@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-import { localeSchema } from './enums.js'
+import { addressFormSchema, localeSchema } from './enums.js'
 
 export const PASSWORD_MIN_LENGTH = 10
 /** argon2 hashes the whole input, so an unbounded password is a cheap way to burn server CPU. */
@@ -44,6 +44,8 @@ export const authUserSchema = z.object({
 	name: z.string().nullable(),
 	/** How Kusik greets the user; null → the vocative of name, when it is safe. */
 	addressAs: z.string().nullable(),
+	/** Gender forms of the words about the user; NEUTRAL avoids them. */
+	addressForm: addressFormSchema,
 	locale: localeSchema,
 	timezone: z.string(),
 	createdAt: z.iso.datetime(),

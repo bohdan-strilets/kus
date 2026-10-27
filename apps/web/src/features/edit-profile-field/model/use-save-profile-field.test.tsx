@@ -15,6 +15,7 @@ const profile = {
 	email: 'me@kus.app',
 	name: null,
 	addressAs: null,
+	addressForm: 'NEUTRAL',
 	profile: {
 		sex: 'FEMALE',
 		age: 30,

@@ -11,6 +11,7 @@ const toAuthUser = (user: User): AuthUser => ({
 	email: user.email,
 	name: user.name,
 	addressAs: user.addressAs,
+	addressForm: user.addressForm,
 	locale: user.locale,
 	timezone: user.timezone,
 	createdAt: user.createdAt.toISOString(),
@@ -40,8 +41,8 @@ export class UsersService {
 		return toAuthUser(user)
 	}
 
-	async updateMe(userId: string, { addressAs }: UpdateMeRequest): Promise<AuthUser> {
-		const user = await this.usersRepository.update({ id: userId, data: { addressAs } })
+	async updateMe(userId: string, data: UpdateMeRequest): Promise<AuthUser> {
+		const user = await this.usersRepository.update({ id: userId, data })
 		if (!user) throw new UserNotFoundException()
 		this.logger.log(`Profile updated user=${userId}`)
 		return toAuthUser(user)

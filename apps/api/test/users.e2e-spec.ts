@@ -63,15 +63,42 @@ describe('users/me (e2e, real DB)', () => {
 		expect(userResponse.parse(cleared.body).data.addressAs).toBeNull()
 	})
 
+	it('starts NEUTRAL, sets the address form and keeps addressAs when only the form changes', async () => {
+		await start()
+		const owner = await registerUser('owner@kus.app')
+		const me = await owner.agent.get(ME_URL).expect(200)
+		expect(userResponse.parse(me.body).data.addressForm).toBe('NEUTRAL')
+
+		await owner.agent.patch(ME_URL).send({ addressAs: 'Богдане' }).expect(200)
+		const set = await owner.agent.patch(ME_URL).send({ addressForm: 'FEMININE' }).expect(200)
+
+		expect(userResponse.parse(set.body).data).toMatchObject({
+			addressAs: 'Богдане',
+			addressForm: 'FEMININE',
+		})
+	})
+
+	it('rejects an unknown address form and an empty body', async () => {
+		await start()
+		const owner = await registerUser('owner@kus.app')
+
+		await owner.agent.patch(ME_URL).send({ addressForm: 'ROBOT' }).expect(422)
+		await owner.agent.patch(ME_URL).send({}).expect(422)
+	})
+
 	it('changes only the own user', async () => {
 		await start()
 		const owner = await registerUser('owner@kus.app')
 		const stranger = await registerUser('stranger@kus.app')
 
-		await stranger.agent.patch(ME_URL).send({ addressAs: 'Чужий' }).expect(200)
+		await stranger.agent
+			.patch(ME_URL)
+			.send({ addressAs: 'Чужий', addressForm: 'MASCULINE' })
+			.expect(200)
 
 		const ownerRow = await prisma.user.findUniqueOrThrow({ where: { id: owner.userId } })
 		expect(ownerRow.addressAs).toBeNull()
+		expect(ownerRow.addressForm).toBe('NEUTRAL')
 	})
 
 	it('validates the length and requires auth', async () => {

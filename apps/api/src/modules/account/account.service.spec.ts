@@ -17,6 +17,7 @@ const USER: AuthUser = {
 	email: 'owner@kus.app',
 	name: 'Богдан',
 	addressAs: null,
+	addressForm: 'NEUTRAL',
 	locale: 'uk',
 	timezone: 'Europe/Warsaw',
 	createdAt: '2026-10-01T10:00:00.000Z',

@@ -94,6 +94,7 @@ describe('toPlanProfile', () => {
 		email: 'a@b.co',
 		name: null,
 		addressAs: null,
+		addressForm: 'NEUTRAL',
 		profile: {
 			sex: 'MALE' as const,
 			age: 30,

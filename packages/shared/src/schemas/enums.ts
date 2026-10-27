@@ -5,6 +5,9 @@ import { z } from 'zod'
 export const localeSchema = z.enum(['uk', 'pl', 'en'])
 export type Locale = z.infer<typeof localeSchema>
 
+export const addressFormSchema = z.enum(['MASCULINE', 'FEMININE', 'NEUTRAL'])
+export type AddressForm = z.infer<typeof addressFormSchema>
+
 export const verificationTokenTypeSchema = z.enum(['EMAIL_VERIFY', 'PASSWORD_RESET'])
 export type VerificationTokenType = z.infer<typeof verificationTokenTypeSchema>
 

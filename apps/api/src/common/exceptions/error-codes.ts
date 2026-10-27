@@ -69,6 +69,10 @@ export const ErrorCodes = {
 	/** No measurement with this id for this user (another user's is "not found" too). */
 	MEASUREMENT_NOT_FOUND: 'MEASUREMENT_NOT_FOUND',
 
+	// workouts
+	/** No workout with this id for this user (another user's is "not found" too). */
+	WORKOUT_NOT_FOUND: 'WORKOUT_NOT_FOUND',
+
 	// storage
 	/** The object storage failed or is unreachable (photos); the request can be retried. */
 	STORAGE_UNAVAILABLE: 'STORAGE_UNAVAILABLE',

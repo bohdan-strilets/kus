@@ -7,4 +7,5 @@ export {
 	getLocalHour,
 	getZonedMoment,
 	listDays,
+	toDbDate,
 } from './local-date'

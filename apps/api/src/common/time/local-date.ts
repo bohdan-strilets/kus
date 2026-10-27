@@ -68,6 +68,9 @@ export const getZonedMoment = (localDate: Date, hour: number, timezone: string):
 /** `YYYY-MM-DD` of a @db.Date value read from Prisma. */
 export const formatDbDate = (date: Date): string => date.toISOString().slice(0, 10)
 
+/** The @db.Date value of a `YYYY-MM-DD` day, ready for a Prisma filter. */
+export const toDbDate = (localDate: string): Date => new Date(`${localDate}T00:00:00Z`)
+
 export const addDays = (date: Date, days: number): Date =>
 	new Date(date.getTime() + days * MS_IN_DAY)
 

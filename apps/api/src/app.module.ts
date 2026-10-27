@@ -23,6 +23,7 @@ import { PhotosModule } from './modules/photos/photos.module'
 import { ProgressModule } from './modules/progress/progress.module'
 import { StorageModule } from './modules/storage/storage.module'
 import { UsersModule } from './modules/users/users.module'
+import { WorkoutsModule } from './modules/workouts/workouts.module'
 import { PrismaModule } from './prisma'
 
 /** Per IP for every route; auth routes tighten it with @Throttle. In-memory: the API runs as one instance. */
@@ -48,6 +49,7 @@ const DEFAULT_THROTTLE = { ttl: minutes(1), limit: 100 }
 		DaysModule,
 		FoodEntriesModule,
 		MeasurementEditsModule,
+		WorkoutsModule,
 		ProgressModule,
 		StorageModule,
 		PhotosModule,

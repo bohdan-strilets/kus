@@ -60,11 +60,7 @@ describe('WeightCard', () => {
 	it('joins the numeric sentence and Kusik’s words', () => {
 		renderCard(createCard(), 'Записав вагу на сьогодні.')
 
-		expect(
-			screen.getByText(
-				'Мінус 0,4 кг за тиждень, трохи швидше за план — без поспіху. Записав вагу на сьогодні.',
-			),
-		).toBeTruthy()
+		expect(screen.getByText('Мінус 0,4 кг за тиждень. Записав вагу на сьогодні.')).toBeTruthy()
 	})
 
 	it('links to the progress screen', () => {

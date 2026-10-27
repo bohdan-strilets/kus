@@ -52,16 +52,7 @@ export const WeightCard = ({
 	const last = chart[chart.length - 1]
 	const hasHistory = chart.length > 1
 	const goalTile = getGoalTile(card)
-	// the card does not know which way the plan goes: the week is compared with it only when it moved like the whole path
-	const paceKey = getPaceSentenceKey({
-		kind,
-		weekChange: card.weekChange,
-		planPaceKgPerWeek: card.planPaceKgPerWeek,
-		isAlongPlan:
-			card.fromStart !== null &&
-			card.weekChange !== null &&
-			Math.sign(card.fromStart) === Math.sign(card.weekChange),
-	})
+	const paceKey = getPaceSentenceKey({ kind, weekChange: card.weekChange })
 	const pace =
 		paceKey && card.weekChange !== null
 			? formatPaceSentence(t, paceKey, card.weekChange, kind)

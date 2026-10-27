@@ -1,4 +1,4 @@
-import type { GoalType, ProgressInsight } from '@kus/shared'
+import type { ProgressInsight } from '@kus/shared'
 import type { TFunction } from 'i18next'
 
 import {
@@ -12,22 +12,17 @@ export type InsightPart =
 	| { key: 'progress.insight.overDays'; count: number }
 	| { key: 'progress.insight.weekendProtein' }
 
-const isAlongGoal = (goalType: GoalType | null, weekPaceKg: number): boolean =>
-	(goalType === 'LOSE' && weekPaceKg < 0) || (goalType === 'GAIN' && weekPaceKg > 0)
-
 /**
  * Which short sentences the hamster says, at most three, and only for facts that are there. The
- * sentence texts are i18n templates; the model is not involved and no number is invented. The pace
- * is compared with the plan only when the week moved the way the goal points.
+ * sentence texts are i18n templates; the model is not involved and no number is invented. The week
+ * of weight is a plain fact: no comparison with the plan, no word on how fast it goes (0.8.0).
  */
 export const getInsightKeys = (insight: ProgressInsight): InsightPart[] => {
 	const parts: InsightPart[] = []
-	const { weekPaceKg, planPaceKgPerWeek, goalType } = insight
+	const { weekPaceKg } = insight
 	const paceKey = getPaceSentenceKey({
 		kind: 'WEIGHT',
 		weekChange: weekPaceKg,
-		planPaceKgPerWeek,
-		isAlongPlan: weekPaceKg !== null && isAlongGoal(goalType, weekPaceKg),
 	})
 	if (paceKey !== null && weekPaceKg !== null) {
 		parts.push({ key: paceKey, kg: Math.abs(weekPaceKg) })

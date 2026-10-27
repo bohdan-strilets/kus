@@ -1,7 +1,6 @@
 import type { ProgressInsight } from '@kus/shared'
 import { describe, expect, it } from 'vitest'
 
-import { formatPaceSentence, getPaceSentenceKey } from '@/entities/measurement'
 import { i18n } from '@/shared/i18n'
 
 import { buildInsight, getInsightKeys } from './build-insight'
@@ -26,39 +25,17 @@ describe('getInsightKeys', () => {
 		])
 	})
 
-	it('compares the pace with the plan when the week moves the way the goal points', () => {
-		const lose = (weekPaceKg: number) =>
-			getInsightKeys(facts({ weekPaceKg, planPaceKgPerWeek: 0.5, goalType: 'LOSE' }))[0]?.key
-
-		expect(lose(-0.5)).toBe('measurement.pace.down.onPlan')
-		expect(lose(-0.58)).toBe('measurement.pace.down.onPlan')
-		expect(lose(-0.9)).toBe('measurement.pace.down.faster')
-		expect(lose(-0.2)).toBe('measurement.pace.down.slower')
-	})
-
-	it('compares a gain with the plan of a gain goal', () => {
-		const [part] = getInsightKeys(
-			facts({ weekPaceKg: 0.7, planPaceKgPerWeek: 0.25, goalType: 'GAIN' }),
-		)
-
-		expect(part?.key).toBe('measurement.pace.up.faster')
-	})
-
-	it('keeps the pace plain against the goal, without a plan or without a direction', () => {
+	it('keeps the week of weight a plain fact, never compared with the plan', () => {
 		const key = (insight: Partial<ProgressInsight>) => getInsightKeys(facts(insight))[0]?.key
 
-		expect(key({ weekPaceKg: 0.3, planPaceKgPerWeek: 0.5, goalType: 'LOSE' })).toBe(
-			'measurement.pace.up.plain',
-		)
-		expect(key({ weekPaceKg: -0.3, planPaceKgPerWeek: null, goalType: 'LOSE' })).toBe(
-			'measurement.pace.down.plain',
-		)
-		expect(key({ weekPaceKg: -0.3, planPaceKgPerWeek: 0.5, goalType: 'MAINTAIN' })).toBe(
-			'measurement.pace.down.plain',
-		)
-		expect(key({ weekPaceKg: -0.3, planPaceKgPerWeek: 0.5, goalType: null })).toBe(
-			'measurement.pace.down.plain',
-		)
+		for (const goalType of ['LOSE', 'GAIN', 'MAINTAIN', null] as const) {
+			expect(key({ weekPaceKg: -0.9, planPaceKgPerWeek: 0.5, goalType })).toBe(
+				'measurement.pace.down.plain',
+			)
+			expect(key({ weekPaceKg: 0.7, planPaceKgPerWeek: 0.25, goalType })).toBe(
+				'measurement.pace.up.plain',
+			)
+		}
 	})
 
 	it('calls a week under half a hundred grams steady', () => {
@@ -99,7 +76,7 @@ describe('buildInsight', () => {
 		)
 
 		expect(sentences).toEqual([
-			'Мінус 0,3 кг за тиждень, повільніше за план.',
+			'Мінус 0,3 кг за тиждень.',
 			'За тиждень понад ціль калорій: 2 дні.',
 			'У вихідні білок просідає.',
 		])
@@ -115,55 +92,21 @@ describe('buildInsight', () => {
 		expect(gain).toEqual(['Плюс 0,3 кг за тиждень.'])
 	})
 
-	it('adds «без поспіху» to a pace faster than the plan', () => {
-		const down = buildInsight(
-			facts({ weekPaceKg: -0.9, planPaceKgPerWeek: 0.5, goalType: 'LOSE' }),
-			i18n.t,
-		)
-		const up = buildInsight(
-			facts({ weekPaceKg: 0.9, planPaceKgPerWeek: 0.5, goalType: 'GAIN' }),
-			i18n.t,
-		)
-
-		expect(down).toEqual(['Мінус 0,9 кг за тиждень, швидше за план — без поспіху.'])
-		expect(up).toEqual(['Плюс 0,9 кг за тиждень, швидше за план — без поспіху.'])
-	})
-})
-
-describe('the pace sentence is shared with the chat card', () => {
-	it('adds «трохи швидше» between the plan and a clearly faster week', () => {
-		const [down] = buildInsight(
-			facts({ weekPaceKg: -0.7, planPaceKgPerWeek: 0.5, goalType: 'LOSE' }),
-			i18n.t,
-		)
-
-		expect(down).toBe('Мінус 0,7 кг за тиждень, трохи швидше за план — без поспіху.')
-	})
-
-	it.each([
-		[-0.5, 'LOSE', -2],
-		[-0.7, 'LOSE', -2],
-		[-0.9, 'LOSE', -2],
-		[-0.2, 'LOSE', -2],
-		[0.4, 'GAIN', 2],
-		[0.02, 'LOSE', -2],
-	] as const)(
-		'gives the same sentence as the card for a week of %d kg',
-		(week, goalType, start) => {
-			const key = getPaceSentenceKey({
-				kind: 'WEIGHT',
-				weekChange: week,
-				planPaceKgPerWeek: 0.25,
-				isAlongPlan: Math.sign(start) === Math.sign(week),
-			})
-			const cardSentence = key ? formatPaceSentence(i18n.t, key, week, 'WEIGHT') : null
-
-			const [progressSentence] = buildInsight(
-				facts({ weekPaceKg: week, planPaceKgPerWeek: 0.25, goalType }),
+	it('says nothing about the speed of losing or gaining weight', () => {
+		const sentences = [-0.9, -0.7, -0.5, -0.2, 0.9].flatMap((weekPaceKg) =>
+			buildInsight(
+				facts({ weekPaceKg, planPaceKgPerWeek: 0.5, goalType: weekPaceKg < 0 ? 'LOSE' : 'GAIN' }),
 				i18n.t,
-			)
+			),
+		)
 
-			expect(progressSentence).toBe(cardSentence)
-		},
-	)
+		expect(sentences).toEqual([
+			'Мінус 0,9 кг за тиждень.',
+			'Мінус 0,7 кг за тиждень.',
+			'Мінус 0,5 кг за тиждень.',
+			'Мінус 0,2 кг за тиждень.',
+			'Плюс 0,9 кг за тиждень.',
+		])
+		for (const sentence of sentences) expect(sentence).not.toMatch(/план|швидше|повільніше|поспіх/)
+	})
 })

@@ -10,6 +10,7 @@ import { Button, ConfirmDialog, FoodIcon, Surface, Text } from '@/shared/ui'
 import { getAmountUnit } from '../lib/get-amount-unit'
 import { parseAmount } from '../lib/parse-amount'
 import { getScaledValues } from '../lib/scale-entry'
+import type { EntryChange } from '../model/apply-entry-change'
 import { useEditEntryForm } from '../model/use-edit-entry-form'
 import { AmountStepper } from './AmountStepper'
 import { MealTypeChips } from './MealTypeChips'
@@ -17,7 +18,7 @@ import { MealTypeChips } from './MealTypeChips'
 interface EditEntryFormProps {
 	entry: FoodEntryResponse
 	meal: LoggedMeal
-	onDone: () => void
+	onSettled: (change: EntryChange | null) => void
 }
 
 /**
@@ -25,7 +26,7 @@ interface EditEntryFormProps {
  * 100 г · 110 ккал», the meal chips, the «Разом» card with the live numbers, «Зберегти» and
  * «Видалити» behind a confirmation. Mounted per entry, so the fields start from it.
  */
-export const EditEntryForm = ({ entry, meal, onDone }: EditEntryFormProps) => {
+export const EditEntryForm = ({ entry, meal, onSettled }: EditEntryFormProps) => {
 	const { t } = useTranslation()
 	const gramsId = useId()
 	const errorId = useId()
@@ -35,7 +36,7 @@ export const EditEntryForm = ({ entry, meal, onDone }: EditEntryFormProps) => {
 	const { form, onSubmit, isSaving, remove, isDeleting } = useEditEntryForm({
 		entry,
 		meal,
-		onDone,
+		onSettled,
 	})
 	const grams = useWatch({ control: form.control, name: 'grams' })
 	// the numbers follow the typed weight by density; an unfinished one shows the logged values

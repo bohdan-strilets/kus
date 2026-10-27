@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useLocalToday } from '@/entities/day'
 import { useSessionUser } from '@/entities/session'
 import type { Addressee } from '@/entities/user'
-import { EditEntrySheet } from '@/features/edit-entry'
+import { EditEntrySheet, useEditEntryStore } from '@/features/edit-entry'
 import { EditMeasurementSheet } from '@/features/edit-measurement'
 import {
 	Composer,
@@ -58,6 +58,7 @@ const ChatScreen = ({ addressee, timeZone }: { addressee: Addressee; timeZone: s
 	}
 	const photoDraft = usePhotoDraftStore()
 	const isPhotoBlocked = useIsPhotoBlocked()
+	const isEntrySheetOpen = useEditEntryStore((state) => state.target !== null)
 	const { send } = useSendMessage()
 	const features: Record<keyof typeof FEATURES, boolean> = FEATURES
 	const hasQuickChips = shouldShowQuickChips({
@@ -85,6 +86,7 @@ const ChatScreen = ({ addressee, timeZone }: { addressee: Addressee; timeZone: s
 				scrollToEndRequest={scrollToEndRequest}
 				headerHeight={fullHeaderHeight}
 				fadeTop={isHeaderCompact ? COMPACT_HEADER_HEIGHT_PX : fullHeaderHeight}
+				isCovered={isEntrySheetOpen}
 			/>
 			<div className="px-gutter pb-2.5">
 				<QuickChips isShown={hasQuickChips} />

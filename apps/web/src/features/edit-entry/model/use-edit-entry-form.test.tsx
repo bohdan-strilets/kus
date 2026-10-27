@@ -15,20 +15,20 @@ vi.mock('../api/delete-food-entry', () => ({ deleteFoodEntry: vi.fn() }))
 
 const patchMock = vi.mocked(patchFoodEntry)
 const deleteMock = vi.mocked(deleteFoodEntry)
-const onDone = vi.fn()
+const onSettled = vi.fn()
 
 // only what the hook reads
 const entry = { id: 'entry-1', grams: 100, category: 'MEAT' } as unknown as FoodEntryResponse
 const meal = { type: 'LUNCH' } as unknown as LoggedMeal
 
-const renderForm = () => renderHookWithProviders(() => useEditEntryForm({ entry, meal, onDone }))
+const renderForm = () => renderHookWithProviders(() => useEditEntryForm({ entry, meal, onSettled }))
 
 const isArmed = (): boolean => useGoalCelebrationStore.getState().isArmed()
 
 beforeEach(() => {
 	patchMock.mockReset()
 	deleteMock.mockReset()
-	onDone.mockReset()
+	onSettled.mockReset()
 	useGoalCelebrationStore.setState({ armed: null, pending: null, ownerId: null })
 })
 
@@ -45,7 +45,7 @@ describe('useEditEntryForm', () => {
 		})
 
 		await waitFor(() => {
-			expect(onDone).toHaveBeenCalledTimes(1)
+			expect(onSettled).toHaveBeenCalledTimes(1)
 		})
 		expect(patchMock.mock.calls[0]?.[0]).toEqual({ id: 'entry-1', grams: 250 })
 		expect(isArmed()).toBe(true)
@@ -61,7 +61,7 @@ describe('useEditEntryForm', () => {
 		})
 
 		await waitFor(() => {
-			expect(onDone).toHaveBeenCalledTimes(1)
+			expect(onSettled).toHaveBeenCalledTimes(1)
 		})
 		expect(deleteMock.mock.calls[0]?.[0]).toBe('entry-1')
 		expect(isArmed()).toBe(true)
@@ -105,7 +105,7 @@ describe('useEditEntryForm', () => {
 			await result.current.onSubmit()
 		})
 
-		expect(onDone).toHaveBeenCalledTimes(1)
+		expect(onSettled).toHaveBeenCalledTimes(1)
 		expect(patchMock).not.toHaveBeenCalled()
 		expect(isArmed()).toBe(false)
 	})

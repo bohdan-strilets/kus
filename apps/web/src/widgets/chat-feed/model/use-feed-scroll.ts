@@ -37,6 +37,12 @@ interface FeedScrollOptions {
 	scrollToEndRequest: number
 	/** Measured height of the full header, which the feed content is padded by. */
 	fullHeaderHeight: number
+	/**
+	 * A sheet is over the feed (the entry editor). Whoever was at the end stays there while it is
+	 * open and when it closes, however the cards under it change height: the user cannot scroll then,
+	 * so a scroll event in that time is the layout moving, not a decision.
+	 */
+	isCovered?: boolean
 }
 
 interface FeedScroll {
@@ -65,11 +71,14 @@ export const useFeedScroll = ({
 	onCompactChange,
 	scrollToEndRequest,
 	fullHeaderHeight,
+	isCovered = false,
 }: FeedScrollOptions): FeedScroll => {
 	const scrollRef = useRef<HTMLDivElement>(null)
 	const contentRef = useRef<HTMLDivElement>(null)
 	const snapshot = useRef<Snapshot | null>(null)
 	const isAtBottom = useRef(true)
+	const isCoveredRef = useRef(false)
+	const wasAtBottomWhenCovered = useRef(false)
 	const isCompact = useRef(false)
 	const [isScrolledUp, setIsScrolledUp] = useState(false)
 	const onCompactChangeRef = useRef(onCompactChange)
@@ -121,6 +130,23 @@ export const useFeedScroll = ({
 		snapshot.current = { firstKey, lastKey, scrollHeight: element.scrollHeight }
 	}, [items])
 
+	// the sheet covers the feed: remember whether it was at the end, and pin it there on close
+	useLayoutEffect(() => {
+		const element = scrollRef.current
+		const wasCovered = isCoveredRef.current
+		isCoveredRef.current = isCovered
+		if (isCovered === wasCovered) return
+		if (isCovered) {
+			wasAtBottomWhenCovered.current = isAtBottom.current
+			return
+		}
+		const shouldPin = wasAtBottomWhenCovered.current
+		wasAtBottomWhenCovered.current = false
+		if (!shouldPin || !element) return
+		element.scrollTop = element.scrollHeight
+		isAtBottom.current = true
+	}, [isCovered])
+
 	// the keyboard then shrinks the feed: keepBottom below holds the end while it does
 	useLayoutEffect(() => {
 		const element = scrollRef.current
@@ -163,7 +189,9 @@ export const useFeedScroll = ({
 			onCompactChangeRef.current(nextCompact)
 		}
 		const handleScroll = (): void => {
-			isAtBottom.current = getDistanceFromBottom(element) <= BOTTOM_SLACK_PX
+			if (!isCoveredRef.current) {
+				isAtBottom.current = getDistanceFromBottom(element) <= BOTTOM_SLACK_PX
+			}
 			updateScrolledUp()
 			updateCompact()
 		}

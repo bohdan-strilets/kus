@@ -35,6 +35,7 @@ export const EditEntrySheet = () => {
 	const target = useEditEntryStore((state) => state.target)
 	const selectEntry = useEditEntryStore((state) => state.selectEntry)
 	const close = useEditEntryStore((state) => state.close)
+	const settle = useEditEntryStore((state) => state.settle)
 	// the sheet slides out with its content, so the last target stays until it is gone
 	const [shown, setShown] = useState<EditEntryTarget | null>(target)
 	if (target !== null && target !== shown) setShown(target)
@@ -60,7 +61,7 @@ export const EditEntrySheet = () => {
 		>
 			{shown &&
 				(entry ? (
-					<EditEntryForm key={entry.id} entry={entry} meal={shown.meal} onDone={close} />
+					<EditEntryForm key={entry.id} entry={entry} meal={shown.meal} onSettled={settle} />
 				) : (
 					<EntryPicker meal={shown.meal} onPick={selectEntry} />
 				))}

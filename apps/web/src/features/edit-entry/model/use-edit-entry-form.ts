@@ -11,6 +11,7 @@ import { useGoalCelebrationStore } from '@/entities/stats'
 import { getApiError } from '@/shared/api'
 import { useToast } from '@/shared/ui'
 
+import type { EntryChange } from './apply-entry-change'
 import { deleteFoodEntry } from '../api/delete-food-entry'
 import { patchFoodEntry } from '../api/patch-food-entry'
 import { getAmountUnit } from '../lib/get-amount-unit'
@@ -38,7 +39,8 @@ interface UseEditEntryFormParams {
 	entry: FoodEntryResponse
 	/** The meal the entry is in: its type is the chip the sheet starts on. */
 	meal: LoggedMeal
-	onDone: () => void
+	/** The change for the sheet's picker; null when nothing changed. */
+	onSettled: (change: EntryChange | null) => void
 }
 
 /**
@@ -48,7 +50,7 @@ interface UseEditEntryFormParams {
 export const useEditEntryForm = ({
 	entry,
 	meal,
-	onDone,
+	onSettled,
 }: UseEditEntryFormParams): EditEntryForm => {
 	const { t } = useTranslation()
 	const toast = useToast()
@@ -74,14 +76,19 @@ export const useEditEntryForm = ({
 		toast.show(t(getEditErrorKey(apiError, action)))
 		refresh()
 		// deleted elsewhere meanwhile: there is nothing left to edit
-		if (apiError.kind === 'http' && apiError.errorCode === 'ENTRY_NOT_FOUND') onDone()
+		if (apiError.kind === 'http' && apiError.errorCode === 'ENTRY_NOT_FOUND')
+			onSettled({ kind: 'removed', entryId: entry.id })
 	}
 	const update = useMutation({
 		mutationFn: patchFoodEntry,
-		onSuccess: () => {
+		onSuccess: (updated, variables) => {
 			useGoalCelebrationStore.getState().arm(null)
 			refresh()
-			onDone()
+			// another meal: the entry left this one
+			const isMoved = variables.mealType !== undefined && variables.mealType !== meal.type
+			onSettled(
+				isMoved ? { kind: 'removed', entryId: entry.id } : { kind: 'updated', entry: updated },
+			)
 		},
 		onError: (error) => {
 			handleError(error, 'save')
@@ -92,7 +99,7 @@ export const useEditEntryForm = ({
 		onSuccess: () => {
 			useGoalCelebrationStore.getState().arm(null)
 			refresh()
-			onDone()
+			onSettled({ kind: 'removed', entryId: entry.id })
 		},
 		onError: (error) => {
 			handleError(error, 'delete')
@@ -108,7 +115,7 @@ export const useEditEntryForm = ({
 			}
 			// nothing changed: close without a request
 			if (body.grams === undefined && body.mealType === undefined) {
-				onDone()
+				onSettled(null)
 				return
 			}
 			update.mutate({ id: entry.id, ...body })

@@ -32,6 +32,8 @@ export interface ChatFeedProps {
 	headerHeight: number
 	/** The header's height in its current mode: the feed is masked out above it. */
 	fadeTop: number
+	/** A sheet is open over the feed: whoever was at the end stays there (see useFeedScroll). */
+	isCovered?: boolean
 }
 
 /** Start loading the older page this far before the top edge comes into view. */
@@ -50,6 +52,7 @@ export const ChatFeed = ({
 	scrollToEndRequest,
 	headerHeight,
 	fadeTop,
+	isCovered = false,
 }: ChatFeedProps) => {
 	const { t } = useTranslation()
 	const query = useInfiniteQuery(messagesQueryOptions)
@@ -91,6 +94,7 @@ export const ChatFeed = ({
 		onCompactChange,
 		scrollToEndRequest,
 		fullHeaderHeight: headerHeight,
+		isCovered,
 	})
 	const latestReplyKey = items.findLast((item) => item.kind === 'kusik')?.key
 

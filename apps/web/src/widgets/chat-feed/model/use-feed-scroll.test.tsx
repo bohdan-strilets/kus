@@ -50,18 +50,21 @@ interface HarnessProps {
 	scrollToEndRequest?: number
 	fullHeaderHeight?: number
 	onCompactChange?: (isCompact: boolean) => void
+	isCovered?: boolean
 }
 
 const Harness = ({
 	scrollToEndRequest = 0,
 	fullHeaderHeight = HEADER_HEIGHT_PX,
 	onCompactChange = () => undefined,
+	isCovered = false,
 }: HarnessProps) => {
 	const { scrollRef, contentRef, isScrolledUp } = useFeedScroll({
 		items,
 		onCompactChange,
 		scrollToEndRequest,
 		fullHeaderHeight,
+		isCovered,
 	})
 	return (
 		<div data-testid="container" ref={scrollRef}>
@@ -106,6 +109,9 @@ const renderFeed = (onCompactChange?: (isCompact: boolean) => void) => {
 		content: view.getByTestId('content'),
 		request: (scrollToEndRequest: number): void => {
 			view.rerender(<Harness scrollToEndRequest={scrollToEndRequest} />)
+		},
+		setCovered: (isCovered: boolean): void => {
+			view.rerender(<Harness isCovered={isCovered} />)
 		},
 	}
 }
@@ -357,5 +363,47 @@ describe('useFeedScroll isScrolledUp', () => {
 		resize(content)
 
 		expect(readScrolledUp()).toBe('true')
+	})
+})
+
+describe('useFeedScroll isCovered', () => {
+	const CARD_SHRINK_PX = 46
+	const LAYOUT_DRIFT_PX = 120
+
+	it('stays at the end while a sheet is open, even if the layout moves the scroll under it', () => {
+		const { container, content, setCovered } = renderFeed()
+		setCovered(true)
+
+		// the sheet opening moves the scroll: not a decision of the user
+		metrics.scrollTop -= LAYOUT_DRIFT_PX
+		act(() => {
+			container.dispatchEvent(new Event('scroll'))
+		})
+		metrics.scrollHeight -= CARD_SHRINK_PX
+		resize(content)
+
+		expect(distanceFromBottom()).toBe(0)
+	})
+
+	it('goes to the end when the sheet closes after the user was at the end', () => {
+		const { container, setCovered } = renderFeed()
+		setCovered(true)
+		metrics.scrollTop -= LAYOUT_DRIFT_PX
+		act(() => {
+			container.dispatchEvent(new Event('scroll'))
+		})
+
+		setCovered(false)
+
+		expect(distanceFromBottom()).toBe(0)
+	})
+
+	it('leaves a scrolled-up feed where it is when the sheet closes', () => {
+		const { container, setCovered } = renderFeed()
+		scrollTo(container, FAR_FROM_BOTTOM_PX)
+		setCovered(true)
+		setCovered(false)
+
+		expect(distanceFromBottom()).toBe(FAR_FROM_BOTTOM_PX)
 	})
 })

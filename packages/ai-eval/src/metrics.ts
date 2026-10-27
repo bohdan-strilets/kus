@@ -9,6 +9,7 @@ import type {
 	MeasuredItem,
 	ModelSummary,
 } from './eval.types.js'
+import { detectLanguage } from './reply-checks.js'
 
 /** Floors for the % base, so 0.5 g of protein in an apple doesn't turn 1 g into a 100 % error. */
 export const MIN_BASE = { kcal: 50, protein: 5 } as const
@@ -39,7 +40,9 @@ export const isDecisionCorrect = (
 	const mustIncludeAny = evalCase.expect.replyIncludesAny ?? []
 	const mustExclude = evalCase.expect.replyExcludes ?? []
 	const mustMatch = evalCase.expect.replyMatches ?? []
+	const { replyLang } = evalCase.expect
 	return (
+		(replyLang === undefined || detectLanguage(replyText ?? '') === replyLang) &&
 		mustInclude.every((part) => (replyText ?? '').includes(part)) &&
 		mustMatch.every((pattern) => new RegExp(pattern).test(replyText ?? '')) &&
 		(mustIncludeAny.length === 0 || mustIncludeAny.some((part) => text.includes(part))) &&

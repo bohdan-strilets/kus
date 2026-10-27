@@ -10,7 +10,7 @@ import { EXACT_CASES } from './exact.cases.js'
 import { MEAL_TYPE_CASES } from './meal-type.cases.js'
 import { MEASUREMENT_CASES } from './measurement.cases.js'
 import { MEMORY_OVERRIDE_CASES } from './memory-override.cases.js'
-import { loadPrivateCases } from './private-cases.js'
+import { loadHoldoutCases, loadPrivateCases } from './private-cases.js'
 import { RANGE_CASES } from './range.cases.js'
 
 export type {
@@ -44,3 +44,6 @@ export const loadCases = async (): Promise<EvalCase[]> => [
 	...REPO_CASES,
 	...(await loadPrivateCases()),
 ]
+
+/** Never part of loadCases: the prompt is not tuned on the hold-out set. */
+export { loadHoldoutCases }

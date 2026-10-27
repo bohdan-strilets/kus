@@ -1,4 +1,5 @@
 import type { EvalCase } from './cases/index.js'
+import { isHiddenCaseId } from './cases/private-cases.js'
 import type { CaseResult, ErrorStats, ModelSummary, RateStats } from './eval.types.js'
 import {
 	explainMissedClarify,
@@ -210,8 +211,9 @@ export const formatValidationRetries = (pairs: Pair[]): string =>
 /** Replies with words that mix Cyrillic and Latin letters: count of cases, then case id + words. */
 export const formatMixedScript = (pairs: Pair[]): string => {
 	const flagged = pairs.filter(({ result }) => result.mixedScriptWords.length > 0)
-	const lines = flagged.map(
-		({ evalCase, result }) => `- ${evalCase.id}: ${result.mixedScriptWords.join(', ')}`,
-	)
+	// words of a private or hold-out reply stay out of the terminal
+	const lines = flagged
+		.filter(({ evalCase }) => !isHiddenCaseId(evalCase.id))
+		.map(({ evalCase, result }) => `- ${evalCase.id}: ${result.mixedScriptWords.join(', ')}`)
 	return [`Змішані алфавіти: ${flagged.length} кейсів`, ...lines].join('\n')
 }

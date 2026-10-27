@@ -1,6 +1,7 @@
 // pnpm --filter ai-eval eval [--models a,b] [--estimate] [--max-cost 3] [--concurrency 4] [--only id,id]
 //   [--reasoning minimal|low] (default: FOOD_PARSE_REASONING from shared)
-//   [--set all|repo|private] — private = real cases from data/private (aggregated metrics only)
+//   [--set all|repo|private|holdout] — private = real cases from data/private (aggregated metrics
+//   only); holdout = data/private/*.holdout.json, never in `all`: run once per final prompt version
 //   --max-cost is hard: a case starts only if the spent + in-flight reserves + its reserve fit in it.
 // Reads OPENROUTER_API_KEY and AI_MODEL from apps/api/.env (see package.json). Prints to the terminal;
 // full results (with private case ids) go to results/ — gitignored.
@@ -14,8 +15,8 @@ import {
 	PROMPT_VERSION,
 } from '@kus/shared'
 
-import { type EvalCase, loadCases } from './cases/index.js'
-import { PRIVATE_ID_PREFIX } from './cases/private-cases.js'
+import { type EvalCase, loadCases, loadHoldoutCases } from './cases/index.js'
+import { isHiddenCaseId, PRIVATE_ID_PREFIX } from './cases/private-cases.js'
 import { summarize } from './metrics.js'
 import { estimateCost, fetchPrices, getCaseReserveUsd } from './pricing.js'
 import {
@@ -26,6 +27,7 @@ import {
 	formatSummaryTable,
 	formatValidationRetries,
 } from './report.js'
+import { formatReplyChecks } from './reply-report.js'
 import { type ModelRun, runModel } from './runner.js'
 
 const DEFAULT_MAX_COST_USD = 3
@@ -69,9 +71,11 @@ const getModels = (): string[] => {
 	return models
 }
 
-const CASE_SETS = new Set(['all', 'repo', 'private'])
+const CASE_SETS = new Set(['all', 'repo', 'private', 'holdout'])
+const HOLDOUT_SET = 'holdout'
 
 const isInSet = (evalCase: EvalCase): boolean => {
+	if (args.set === HOLDOUT_SET) return true
 	const isPrivate = evalCase.id.startsWith(PRIVATE_ID_PREFIX)
 	if (args.set === 'private') return isPrivate
 	if (args.set === 'repo') return !isPrivate
@@ -117,7 +121,7 @@ const saveResults = async (runs: ModelRun[]): Promise<string> => {
 
 const main = async (): Promise<void> => {
 	const models = getModels()
-	const cases = filterCases(await loadCases())
+	const cases = filterCases(args.set === HOLDOUT_SET ? await loadHoldoutCases() : await loadCases())
 	if (args.estimate) {
 		await printEstimate(models, cases)
 		return
@@ -161,11 +165,12 @@ const main = async (): Promise<void> => {
 		const retries = formatValidationRetries(run.pairs)
 		if (retries) print(`\nПомилки валідації ${run.model}:\n${retries}`)
 		print(`\n${run.model}: ${formatMixedScript(run.pairs)}`)
+		print(`\nПеревірки reply ${run.model}:\n${formatReplyChecks(run.pairs)}`)
 		if (run.skipped > 0)
 			print(`\n⚠ ${run.model}: пропущено ${run.skipped} кейсів — резерв не вміщується в --max-cost`)
 		if (run.overReserve.length > 0)
 			print(
-				`\n⚠ ${run.model}: дорожче за резерв (${run.overReserve.length}): ${run.overReserve.join(', ')} — перекалібрувати pricing.ts`,
+				`\n⚠ ${run.model}: дорожче за резерв (${run.overReserve.length}): ${run.overReserve.filter((id) => !isHiddenCaseId(id)).join(', ')} — перекалібрувати pricing.ts`,
 			)
 	}
 	print(`\nВитрачено: $${budget.spentUsd.toFixed(4)} з $${budget.maxUsd.toFixed(2)}`)

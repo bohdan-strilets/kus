@@ -1,40 +1,8 @@
 // Which tool the model picks: not_food (claims to have eaten something inedible), reply
 // (conversation), clarify (logged + a question that changes kcal by 80+ and 15 %+).
-import { entry, range } from './case-builders.js'
+import { range } from './case-builders.js'
 import type { EvalCase } from './case.types.js'
-
-/** 1240 eaten of 2000 — the backend gives the model the remainder, the model must not add up. */
-const DAY_WITH_GOAL: EvalCase['context'] = {
-	dayTotals: { kcal: 1240, protein: 70, fat: 45, carbs: 140 },
-	meals: [
-		{ type: 'BREAKFAST', kcal: 420 },
-		{ type: 'LUNCH', kcal: 820 },
-	],
-	entries: [
-		entry('e1', 'Вівсянка на молоці', 'BREAKFAST', 300, 330, 'porridge'),
-		entry('e2', 'Кава з молоком', 'BREAKFAST', 250, 90, 'coffee'),
-		entry('e3', 'Борщ', 'LUNCH', 350, 175, 'borscht'),
-		entry('e4', 'Котлета', 'LUNCH', 120, 300, 'meat'),
-		entry('e5', 'Картопляне пюре', 'LUNCH', 250, 345, 'potatoes'),
-	],
-	goal: { dailyKcal: 2000, protein: 140, fat: 70, carbs: 200, remainingKcal: 760 },
-}
-
-/** Over the goal by 300 kcal. */
-const DAY_OVER_GOAL: EvalCase['context'] = {
-	dayTotals: { kcal: 2300, protein: 100, fat: 90, carbs: 260 },
-	meals: [
-		{ type: 'BREAKFAST', kcal: 600 },
-		{ type: 'LUNCH', kcal: 900 },
-		{ type: 'DINNER', kcal: 800 },
-	],
-	entries: [
-		entry('e1', 'Омлет з сиром', 'BREAKFAST', 250, 600, 'eggs'),
-		entry('e2', 'Паста з куркою', 'LUNCH', 400, 900, 'pasta'),
-		entry('e3', 'Піца', 'DINNER', 300, 800, 'fast_food'),
-	],
-	goal: { dailyKcal: 2000, protein: 140, fat: 70, carbs: 200, remainingKcal: -300 },
-}
+import { DAY_OVER_GOAL, DAY_WITH_GOAL } from './context-presets.js'
 
 /** A feast is one honest estimate; no lecture, no «tomorrow eat less». */
 const NO_LECTURE = ['забагато', 'завтра менше', 'компенс', 'обережн', 'варто']

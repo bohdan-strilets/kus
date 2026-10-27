@@ -9,6 +9,7 @@ import {
 } from '@kus/shared'
 import { z } from 'zod'
 
+import { CONTEXT_PRESET_NAMES } from './context-presets.js'
 import type { EvalPhoto } from './photo.js'
 
 /**
@@ -31,6 +32,11 @@ export const expectedDecisionSchema = z.enum([
 ])
 
 export type ExpectedDecision = z.infer<typeof expectedDecisionSchema>
+
+/** The languages reply-checks.ts tells apart by their letters. */
+export const replyLanguageSchema = z.enum(['uk', 'pl', 'ru'])
+
+export type ReplyLanguage = z.infer<typeof replyLanguageSchema>
 
 /**
  * Exact — labels and weighed plain products; range — home dishes and portions "by eye":
@@ -103,6 +109,8 @@ export const evalCaseSchema = z
 		text: z.string().default(''),
 		/** A photo next to the words: a path relative to data/private/ (.jpg, .png or .webp). */
 		image: z.string().min(1).optional(),
+		/** A JSON case's day state by name (context-presets.ts); without it — an empty day. */
+		contextPreset: z.enum(CONTEXT_PRESET_NAMES).optional(),
 		expect: z.object({
 			decision: expectedDecisionSchema,
 			/** Total kcal of everything logged by the message. */
@@ -118,6 +126,8 @@ export const evalCaseSchema = z
 			replyMatches: z.array(z.string().min(1)).optional(),
 			/** Lower-case stems the answer must not contain — claims of a change that didn't happen ("змінив"). */
 			replyExcludes: z.array(z.string()).optional(),
+			/** The reply's language when the message's letters can't tell it (a Polish text without diacritics). */
+			replyLang: replyLanguageSchema.optional(),
 			edits: expectedEditsSchema.optional(),
 			measurements: z.array(expectedMeasurementSchema).optional(),
 			/** Some kept clarify option renames the item ("Макарони сухі"). */

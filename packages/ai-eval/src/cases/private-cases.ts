@@ -11,12 +11,20 @@ import {
 import { z } from 'zod'
 
 import { type EvalCase, evalCaseSchema, type SavedFood, savedFoodSchema } from './case.types.js'
+import { CONTEXT_PRESETS } from './context-presets.js'
 import { loadEvalPhoto } from './photo.js'
 
 /** Real meals of the owner — gitignored, picked up only when present (CLAUDE.md §9: no personal data in git). */
 export const PRIVATE_CASES_DIR = new URL('../../data/private/', import.meta.url)
 export const PRIVATE_ID_PREFIX = 'private:'
+/** Written by the author and never tuned for: only `--set holdout` runs them, `all` doesn't. */
+export const HOLDOUT_ID_PREFIX = 'holdout:'
+/** Private and hold-out cases may be real words: the terminal shows their counts, not their content. */
+export const isHiddenCaseId = (id: string): boolean =>
+	id.startsWith(PRIVATE_ID_PREFIX) || id.startsWith(HOLDOUT_ID_PREFIX)
+
 const CASES_SUFFIX = '.cases.json'
+const HOLDOUT_SUFFIX = '.holdout.json'
 const FOODS_SUFFIX = '.foods.json'
 
 const readJsonFiles = async <T>(suffix: string, schema: z.ZodType<T[]>): Promise<T[]> => {
@@ -61,19 +69,28 @@ const warn = (message: string): void => {
 `)
 }
 
-export const loadPrivateCases = async (): Promise<EvalCase[]> => {
+const loadJsonCases = async (suffix: string, idPrefix: string): Promise<EvalCase[]> => {
 	const [cases, foods] = await Promise.all([
-		readJsonFiles(CASES_SUFFIX, z.array(evalCaseSchema)),
+		readJsonFiles(suffix, z.array(evalCaseSchema)),
 		readJsonFiles(FOODS_SUFFIX, z.array(savedFoodSchema)),
 	])
 	const dir = fileURLToPath(PRIVATE_CASES_DIR)
 	return Promise.all(
 		cases.map(async (item) => ({
 			...item,
-			id: `${PRIVATE_ID_PREFIX}${item.id}`,
-			context: { memory: toMemoryContext(foods, item.text) },
+			id: `${idPrefix}${item.id}`,
+			context: {
+				...(item.contextPreset === undefined ? {} : CONTEXT_PRESETS[item.contextPreset]),
+				memory: toMemoryContext(foods, item.text),
+			},
 			// the bytes live in memory for the run only; results/ keeps ids and numbers, never the photo
 			photo: item.image === undefined ? undefined : await loadEvalPhoto(dir, item.image, warn),
 		})),
 	)
 }
+
+export const loadPrivateCases = (): Promise<EvalCase[]> =>
+	loadJsonCases(CASES_SUFFIX, PRIVATE_ID_PREFIX)
+
+export const loadHoldoutCases = (): Promise<EvalCase[]> =>
+	loadJsonCases(HOLDOUT_SUFFIX, HOLDOUT_ID_PREFIX)

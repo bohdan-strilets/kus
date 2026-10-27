@@ -6,6 +6,31 @@ All notable changes to Kusik are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.8.0] — 2026-10-27
+
+"Live Kusik": a new prompt (2026-10-27.2) that describes intent instead of stock phrases, the stats card for any period of 2–92 days, and a stricter eval. No database migrations and no new environment variables; the prompt, the AI tool schemas, the API and the web app all change. Old web clients keep working with the new API (see Changed), so either deploy order works.
+
+### Added
+
+- The model understands any language and style (surzhyk, Polish, Russian, typos, voice dictation, emoji, long texts) and answers in the language of the message; it helps for real with advice ("what should I eat for dinner?", food after the gym) instead of refusing, and politely declines requests far from food and training. Safety rules are part of the prompt: no praise or judgement of the weight-loss speed, no body ratings or comparisons, no supplement or medicine doses, no training through pain, eating disorders gently and without numbers ([49de287])
+- `show_stats` takes `days` (2–92) and `endDate` instead of `period` week | month: "за останні 15 днів" gets a 15-day card instead of a refusal. The card payload adds an optional `periodDays` ([49de287])
+- The chat stats card follows the new mockups: the title "15 днів · 12.10–26.10" for any length other than 7 and 30 days, a bar chart (one bar per day up to 31 days, weekly averages from 32 days with the caption "стовпчик — середнє за тиждень"), and "19 з 26 · серед днів із записами" (no caption when every day has entries) ([49de287])
+- Eval: a hard `--max-cost` (a case starts only if its reserve fits) ([bf40d77]); checks on every reply — gendered forms about the user, item names not from the user's words, reply language, repeated openings, output tokens p50/p90; a hold-out set (`*.holdout.json`, `--set holdout`, never part of `all`) and named day presets for JSON cases ([41defa3]); 42 new cases: 28 "other voices", 8 safety and 6 production findings ([bad4a6f])
+- Design for 0.8: workouts, the 5-tab navigation, live texts, hints over the chat and the sport hamster ([8c9bbcb])
+
+### Changed
+
+- The stats card is shown alone: the model's sentence next to it is no longer displayed, like the "День закрито" card ([49de287])
+- Replies may be up to 1000 characters (was 500): a log or a card still gets 1–2 sentences, advice up to about six ([49de287])
+- Date fields of the AI tools are sent to the model as `format: date` without the long ISO regex; the backend validates dates with the same zod schema as before. Together with the new prompt the cached prefix is ~16 770 tokens (was 17 674), a request costs ~20 % less on the shared eval cases ([49de287])
+- The weekly weight change on the chat weight card and on «Прогрес» is a plain fact ("Мінус 0,4 кг за тиждень."), with no comparison to the plan and no words about the speed ([2b2b6a4])
+- Old web clients (0.7.1) get `period` as the nearer of week | month for other lengths and ignore `periodDays`: until the PWA updates, a 15-day card there is titled "За 7 днів" while its dates are correct ([49de287])
+
+### Known
+
+- Gendered forms about the user still appear in 1–5 of 240 eval replies; the metric stays in every eval report, and an "address me as" setting is planned for 0.8.1
+- The chat history sent to the model cuts each message at 500 characters, so a long piece of advice is seen there shortened
+
 ## [0.7.1] — 2026-10-26
 
 Patch "Progress and measurements": the start shown on the measurement card and on «Прогрес» is the same value everywhere, the waist gets its start row, and a period with one measurement shows a change. No database migrations, no new environment variables, no change to the prompt or the AI tools; the API and the web app both change. New response fields of `/progress` have defaults, so either deploy order works.
@@ -373,7 +398,14 @@ Design sync with `design/` v0.5.2. Web only: no API, shared-package or migration
 
 ## 0.2.0 / 0.1.0 — see tags
 
-[Unreleased]: https://github.com/bohdan-strilets/kus/compare/v0.7.1...HEAD
+[Unreleased]: https://github.com/bohdan-strilets/kus/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/bohdan-strilets/kus/compare/v0.7.1...v0.8.0
+[8c9bbcb]: https://github.com/bohdan-strilets/kus/commit/8c9bbcb12f8fc5e15f2c305324f44efcc49657f3
+[bf40d77]: https://github.com/bohdan-strilets/kus/commit/bf40d776168a4c5b376f64e064cf5511eba6ab3a
+[41defa3]: https://github.com/bohdan-strilets/kus/commit/41defa30b14cb9be501b2839b4dcdc5c412d35e4
+[49de287]: https://github.com/bohdan-strilets/kus/commit/49de287b8697499f8ea26f7c96c228f091802642
+[bad4a6f]: https://github.com/bohdan-strilets/kus/commit/bad4a6fca0dd415f5d08735b4105c59d98d5c103
+[2b2b6a4]: https://github.com/bohdan-strilets/kus/commit/2b2b6a4124c7fc818afb4cde3ffbc794329bd216
 [0.7.1]: https://github.com/bohdan-strilets/kus/compare/v0.7.0...v0.7.1
 [1189bb6]: https://github.com/bohdan-strilets/kus/commit/1189bb6e8fee296c9b094a2bafe27a76689d4ca4
 [db41997]: https://github.com/bohdan-strilets/kus/commit/db419977813032a952ae3df55265b67bc062a51d

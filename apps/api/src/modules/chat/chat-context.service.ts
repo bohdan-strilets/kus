@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common'
 import {
+	type AddressForm,
 	type DailyGoal,
 	type DayContext,
 	type DayTotals,
@@ -40,6 +41,7 @@ export interface DayOverview {
 interface BuildContextParams {
 	userId: string
 	timezone: string
+	addressForm?: AddressForm
 	message: MessageWithAttachments
 	/** The words of the user's message; photo-only has none. */
 	text?: string
@@ -162,6 +164,7 @@ export class ChatContextService {
 	async buildContext({
 		userId,
 		timezone,
+		addressForm,
 		message,
 		text = '',
 		now,
@@ -197,10 +200,15 @@ export class ChatContextService {
 			// a few spare: questions whose entries fell out of the context are skipped
 			take: MAX_CONTEXT_OPEN_CLARIFICATIONS * 2,
 		})
+		const valuesBefore = await this.entriesService.getValuesBefore(
+			userId,
+			editable.active.filter((entry) => entry.isEdited).map((entry) => entry.id),
+		)
 		const { refIds, refByEntryId, ...edit } = buildEditContext({
 			active: editable.active,
 			deleted: editable.deleted,
 			clarifications,
+			valuesBefore,
 			today,
 		})
 		// all the day's entries, not only the windowed ones: a turn whose entries lost their refs
@@ -220,6 +228,7 @@ export class ChatContextService {
 		return {
 			context: {
 				localTime: formatLocalTime(now, timezone),
+				...(addressForm ? { addressForm } : {}),
 				dayTotals: summary.totals,
 				meals: summary.meals,
 				...edit,

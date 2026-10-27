@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common'
 import {
 	type DayMealContext,
+	type EntryWasContext,
 	type LoggedMeal,
 	MAX_CONTEXT_DELETED_ENTRIES,
 	MAX_CONTEXT_ENTRIES,
@@ -22,6 +23,7 @@ import {
 	type MealWithEntries,
 } from './entries.repository'
 import { getMealRank } from './entries.constants'
+import { toValuesBefore } from './entry-values-before'
 import type { LogEntriesParams, MealEntryInput, NewFoodEntry } from './entries.types'
 
 const roundEntry = (entry: NewFoodEntry): NewFoodEntry => ({
@@ -203,6 +205,15 @@ export class EntriesService {
 				.map(({ entry }) => entry),
 			sourceMessages: entries.map(({ id, sourceMessageId }) => ({ id, sourceMessageId })),
 		}
+	}
+
+	/** What edited entries held before their changes; an entry with nothing to restore is missing. */
+	async getValuesBefore(
+		userId: string,
+		entryIds: string[],
+	): Promise<ReadonlyMap<string, EntryWasContext>> {
+		if (entryIds.length === 0) return new Map()
+		return toValuesBefore(await this.entriesRepository.findCorrections({ userId, entryIds }))
 	}
 
 	/** The user's own active entries by id; anything else (another user's, deleted) is simply missing. */

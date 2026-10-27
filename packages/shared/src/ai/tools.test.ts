@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest'
 
 import { FOOD_CATEGORIES } from '../schemas/enums.js'
-import { buildFoodParseMessages, type FoodParseContext, selectHistory } from './context.js'
+import {
+	buildFoodParseMessages,
+	type FoodParseContext,
+	HISTORY_MESSAGE_MAX_CHARS,
+	selectHistory,
+} from './context.js'
 import { getAiFunctionTools } from './tools.js'
 
 describe('getAiFunctionTools', () => {
@@ -150,8 +155,8 @@ describe('selectHistory', () => {
 	it('cuts long messages and stops at the token budget', () => {
 		const long = { role: 'user' as const, content: 'x'.repeat(5000) }
 		const selected = selectHistory(Array.from({ length: 6 }, () => long))
-		expect(selected[0]?.content).toHaveLength(500)
-		// 1500 tokens ≈ 6000 chars → 12 cut messages would fit; 6 is the message cap
+		expect(selected[0]?.content).toHaveLength(HISTORY_MESSAGE_MAX_CHARS)
+		// 1500 tokens ≈ 6000 chars → exactly 6 cut messages fit, and 6 is the message cap
 		expect(selected).toHaveLength(6)
 	})
 })

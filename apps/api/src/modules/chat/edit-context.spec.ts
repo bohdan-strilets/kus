@@ -74,3 +74,24 @@ describe('buildEditContext', () => {
 		expect(context.deletedEntries.map(({ ref }) => ref)).toEqual(['e3', 'e4'])
 	})
 })
+
+describe('buildEditContext valuesBefore', () => {
+	it('gives an edited entry the values it held when logged, and nothing to the others', () => {
+		const context = buildEditContext({
+			active: [toEntry('a1', { isEdited: true }), toEntry('a2', { isEdited: true }), toEntry('a3')],
+			deleted: [],
+			clarifications: [],
+			valuesBefore: new Map([
+				['a1', { grams: 150, kcal: 120 }],
+				['a3', { grams: 1 }],
+			]),
+			today: '2026-10-18',
+		})
+
+		expect(context.entries.map((entry) => entry.was)).toEqual([
+			{ grams: 150, kcal: 120 },
+			undefined,
+			undefined,
+		])
+	})
+})

@@ -252,6 +252,21 @@ export class EntriesRepository {
 		return count
 	}
 
+	/** Corrections of the user's entries, oldest first. */
+	findCorrections({
+		userId,
+		entryIds,
+	}: {
+		userId: string
+		entryIds: string[]
+	}): Promise<{ foodEntryId: string; before: Prisma.JsonValue }[]> {
+		return this.prisma.correction.findMany({
+			where: { userId, foodEntryId: { in: entryIds } },
+			select: { foodEntryId: true, before: true },
+			orderBy: { createdAt: 'asc' },
+		})
+	}
+
 	async createCorrections(
 		corrections: {
 			userId: string

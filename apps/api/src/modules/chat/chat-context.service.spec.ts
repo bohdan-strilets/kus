@@ -61,6 +61,7 @@ const createService = ({
 		{
 			getDaySummary: vi.fn().mockResolvedValue({ totals: {}, meals: [] }),
 			getEditableEntries,
+			getValuesBefore: vi.fn().mockResolvedValue(new Map()),
 			getDaysKcal,
 		} as never,
 		{

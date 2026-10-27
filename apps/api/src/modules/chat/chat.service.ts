@@ -54,7 +54,7 @@ export class ChatService {
 	async sendMessage(userId: string, params: SendMessageParams): Promise<SendMessageResponse> {
 		const { clientMessageId, text, photoIds } = params
 		if (photoIds) this.chatPhotos.assertCount(photoIds)
-		const { timezone } = await this.usersService.getMe(userId)
+		const { timezone, addressForm } = await this.usersService.getMe(userId)
 		const existing = await this.chatRepository.findByClientMessageId({ userId, clientMessageId })
 		if (existing) this.assertSameRequest(existing, params)
 
@@ -78,7 +78,7 @@ export class ChatService {
 		const now = existing ? message.createdAt : new Date()
 		const localDate = getLocalDate(now, timezone)
 		const edited = await this.processTurn(
-			{ userId, timezone, message, text, photo, now, localDate },
+			{ userId, timezone, addressForm, message, text, photo, now, localDate },
 			// the daily budget is spent on the day the model is actually called
 			getLocalDate(new Date(), timezone),
 		)

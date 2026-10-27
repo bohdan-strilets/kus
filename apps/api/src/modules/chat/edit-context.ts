@@ -1,6 +1,7 @@
 import {
 	clarifyOptionSchema,
 	type DeletedEntryContext,
+	type EntryWasContext,
 	MAX_CONTEXT_OPEN_CLARIFICATIONS,
 	type OpenClarificationContext,
 	type TodayEntryContext,
@@ -33,6 +34,7 @@ const toEntryContext = (
 	entry: EntryWithMealType,
 	ref: string,
 	today: string,
+	was: EntryWasContext | undefined,
 ): TodayEntryContext => ({
 	ref,
 	name: entry.name,
@@ -50,6 +52,7 @@ const toEntryContext = (
 	category: entry.category,
 	source: entry.source,
 	isEdited: entry.isEdited,
+	...(entry.isEdited && was ? { was } : {}),
 })
 
 /**
@@ -60,11 +63,14 @@ export const buildEditContext = ({
 	active,
 	deleted,
 	clarifications,
+	valuesBefore = new Map(),
 	today,
 }: {
 	active: EntryWithMealType[]
 	deleted: EntryWithMealType[]
 	clarifications: ClarificationWithEntries[]
+	/** What edited entries held before their changes (entry id → values); the model needs them to undo a change. */
+	valuesBefore?: ReadonlyMap<string, EntryWasContext>
 	/** `YYYY-MM-DD` of the user's today. */
 	today: string
 }): EditContext => {
@@ -96,7 +102,9 @@ export const buildEditContext = ({
 		}))
 
 	return {
-		entries: activeRefs.map(({ entry, ref }) => toEntryContext(entry, ref, today)),
+		entries: activeRefs.map(({ entry, ref }) =>
+			toEntryContext(entry, ref, today, valuesBefore.get(entry.id)),
+		),
 		deletedEntries: deletedRefs.map(({ entry, ref }) => ({
 			ref,
 			name: entry.name,

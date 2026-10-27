@@ -1,5 +1,5 @@
 // Builds the model input: static prompt (cacheable) + day/memory context + recent turns + the message.
-import type { FoodCategory, MealType, MeasurementKind } from '../schemas/enums.js'
+import type { AddressForm, FoodCategory, MealType, MeasurementKind } from '../schemas/enums.js'
 import { getWeekday, type LoggableDayLabel } from './dates.js'
 import {
 	type DeletedEntryContext,
@@ -15,11 +15,8 @@ import { SYSTEM_PROMPT } from './prompt.js'
 const CHARS_PER_TOKEN = 4
 export const HISTORY_MAX_TOKENS = 1500
 export const HISTORY_MAX_MESSAGES = 6
-/**
- * Kusik's replies may be up to REPLY_MAX_LENGTH (1000) since 0.8.0, yet history keeps 500: a longer
- * cut changes the model context and needs an eval — planned for 0.8.1 together with the training eval.
- */
-export const HISTORY_MESSAGE_MAX_CHARS = 500
+/** Kusik's replies may be up to REPLY_MAX_LENGTH (1000), so history keeps them whole. */
+export const HISTORY_MESSAGE_MAX_CHARS = 1000
 export const MEMORY_MAX_FOODS = 10
 
 export interface MacroTotals {
@@ -121,6 +118,8 @@ export interface MeasurementsContext {
 export interface FoodParseContext {
 	/** Local wall-clock time of the user, `YYYY-MM-DD HH:mm, Weekday`. */
 	localTime: string
+	/** The gender forms the user chose; the line is always there when it is set. */
+	addressForm?: AddressForm
 	dayTotals: MacroTotals
 	meals: DayMealContext[]
 	/** Today's active entries, oldest first: the newest MAX_CONTEXT_ENTRIES. */
@@ -239,6 +238,15 @@ const formatMemoryFood = (food: MemoryFoodContext): string => {
 	return `${food.ref}: "${food.name}"${aliases} — per 100 g: ${formatMacros(food.per100g)}${piece}${usual}; category ${food.category}`
 }
 
+const ADDRESS_FORM_LABELS: Readonly<Record<AddressForm, string>> = {
+	MASCULINE: 'masculine',
+	FEMININE: 'feminine',
+	NEUTRAL: 'neutral',
+}
+
+const formatAddressForm = (form: AddressForm | undefined): string[] =>
+	form === undefined ? [] : [`Address form: ${ADDRESS_FORM_LABELS[form]}.`]
+
 export const formatContext = (context: FoodParseContext): string => {
 	const meals =
 		context.meals.length === 0
@@ -253,6 +261,7 @@ export const formatContext = (context: FoodParseContext): string => {
 
 	return [
 		`Local time: ${context.localTime}.`,
+		...formatAddressForm(context.addressForm),
 		`Eaten today: ${formatMacros(context.dayTotals)}.`,
 		...meals,
 		...formatEditContext(context),

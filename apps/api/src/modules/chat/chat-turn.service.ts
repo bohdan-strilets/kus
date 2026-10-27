@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common'
 import {
+	type AddressForm,
 	type AiFoodItem,
 	type DayCard,
 	type DeleteMeasurementInput,
@@ -41,6 +42,8 @@ import { getMealEatenAtForDay, getMealTypeByHour } from '../entries/meal-type'
 export interface TurnParams {
 	userId: string
 	timezone: string
+	/** Gender forms of the words about the user, for the model context. */
+	addressForm?: AddressForm
 	message: MessageWithAttachments
 	text?: string
 	photo?: PhotoPayload

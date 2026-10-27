@@ -15,6 +15,10 @@ import { SYSTEM_PROMPT } from './prompt.js'
 const CHARS_PER_TOKEN = 4
 export const HISTORY_MAX_TOKENS = 1500
 export const HISTORY_MAX_MESSAGES = 6
+/**
+ * Kusik's replies may be up to REPLY_MAX_LENGTH (1000) since 0.8.0, yet history keeps 500: a longer
+ * cut changes the model context and needs an eval — planned for 0.8.1 together with the training eval.
+ */
 export const HISTORY_MESSAGE_MAX_CHARS = 500
 export const MEMORY_MAX_FOODS = 10
 

@@ -246,8 +246,11 @@ export const chatMessageSchema = z.object({
 	achievements: z.array(achievementResponseSchema),
 	/** Replies to show_day only: the day snapshot. null elsewhere and in payloads of older servers. */
 	dayCard: dayCardSchema.nullable().default(null),
-	/** Replies to show_stats only: the week or month snapshot. null elsewhere and in payloads of older servers. */
-	statsCard: statsCardSchema.nullable().default(null),
+	/**
+	 * Replies to show_stats only: the period snapshot. null elsewhere, in payloads of older servers
+	 * and when the card cannot be read (the message stays, with its reply text).
+	 */
+	statsCard: statsCardSchema.nullable().default(null).catch(null),
 })
 
 export type ChatMessage = z.infer<typeof chatMessageSchema>

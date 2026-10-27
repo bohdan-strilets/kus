@@ -76,7 +76,7 @@ describe('history card cases', () => {
 			expect: {
 				decision: 'close_day',
 				closeDay: { date: '2026-10-06', estimatedTotalKcal: 4000 },
-				stats: { period: 'week' },
+				stats: { days: 7 },
 				copyRefs: ['y1', 'h2'],
 			},
 		})

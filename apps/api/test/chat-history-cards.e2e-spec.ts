@@ -40,7 +40,7 @@ const closeDay = (date: string | null, estimatedTotalKcal: number | null) => ({
 
 const showStats = (endDate: string | null = null) => ({
 	name: 'show_stats',
-	args: { period: 'week', endDate, reply: 'Ось тиждень' },
+	args: { days: 7, endDate, reply: 'Ось тиждень' },
 })
 
 /** Half of the soup, as the model would write it: consistent numbers that differ from the copy. */
@@ -278,6 +278,7 @@ describe('closing a day, week stats and copying earlier entries (e2e, real DB, f
 			const { data } = sendResponseSchema.parse(response.body)
 			expect(data.assistantMessage.statsCard).toMatchObject({
 				period: 'week',
+				periodDays: 7,
 				from: dayOffset(owner, -6),
 				to: dayOffset(owner, 0),
 				loggedDays: 4,

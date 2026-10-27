@@ -27,14 +27,14 @@ const createCard = (overrides: Partial<StatsCardData> = {}): StatsCardData => ({
 	...overrides,
 })
 
-const renderCard = (card: StatsCardData, note?: string) =>
-	renderWithProviders(<StatsCard card={card} today={TODAY} note={note} />)
+const renderCard = (card: StatsCardData) =>
+	renderWithProviders(<StatsCard card={card} today={TODAY} />)
 
 afterEach(cleanup)
 
 describe('StatsCard', () => {
 	it('30 days: title, dates and the four tiles', () => {
-		renderCard(createCard(), 'Середнє біля цілі.')
+		renderCard(createCard())
 
 		expect(screen.getByText('За 30 днів')).toBeTruthy()
 		expect(screen.getByText('20 вересня – 19 жовтня')).toBeTruthy()
@@ -45,10 +45,9 @@ describe('StatsCard', () => {
 		expect(screen.getByText(/^121\sг$/)).toBeTruthy()
 		expect(screen.getByText('Днів у нормі')).toBeTruthy()
 		expect(screen.getByText('19 з 26')).toBeTruthy()
-		expect(screen.getByText('днів із записами')).toBeTruthy()
+		expect(screen.getByText('серед днів із записами')).toBeTruthy()
 		expect(screen.getByText('Вага')).toBeTruthy()
 		expect(screen.getByText('−1,6 кг')).toBeTruthy()
-		expect(screen.getByText('Середнє біля цілі.')).toBeTruthy()
 	})
 
 	it('30 days: the protein goal under the protein and the weight from → to', () => {
@@ -81,7 +80,7 @@ describe('StatsCard', () => {
 		expect(screen.getByText('понеділок – неділя')).toBeTruthy()
 		expect(screen.getByText('5 з 7')).toBeTruthy()
 		// the caption is the 30-day card's: the week is short enough without it
-		expect(screen.queryByText('днів із записами')).toBeNull()
+		expect(screen.queryByText('серед днів із записами')).toBeNull()
 	})
 
 	it('without weigh-ins there is no weight tile; without a goal no goal caption', () => {
@@ -102,7 +101,6 @@ describe('StatsCard', () => {
 					{ date: '2026-10-19', kcal: 1370, verdict: 'under' },
 				],
 			}),
-			'Для середніх замало.',
 		)
 
 		expect(screen.getByText('Днів із записами')).toBeTruthy()
@@ -115,7 +113,6 @@ describe('StatsCard', () => {
 		expect(screen.queryByText('Білок, середнє')).toBeNull()
 		expect(screen.queryByText('Днів у нормі')).toBeNull()
 		expect(screen.queryByText('Вага')).toBeNull()
-		expect(screen.getByText('Для середніх замало.')).toBeTruthy()
 	})
 
 	it('a snapshot of an older server (no new fields) parses and draws without them', () => {
@@ -139,5 +136,44 @@ describe('StatsCard', () => {
 
 		expect(screen.getByText('2 з 30')).toBeTruthy()
 		expect(container.querySelector('ul')).toBeNull()
+	})
+
+	it('15 days: one-line title, the bars per day with the dates at the ends', () => {
+		const { container } = renderCard(
+			createCard({
+				period: 'week',
+				periodDays: 15,
+				from: '2026-10-05',
+				loggedDays: 12,
+				daysInNorm: 9,
+			}),
+		)
+
+		expect(screen.getByText('15 днів · 05.10–19.10')).toBeTruthy()
+		expect(screen.getByRole('img', { name: 'Калорії по днях' }).children).toHaveLength(15 + 1)
+		expect(screen.getByText('05.10')).toBeTruthy()
+		expect(screen.getByText('19.10')).toBeTruthy()
+		expect(screen.queryByText('стовпчик — середнє за тиждень')).toBeNull()
+		expect(container.querySelector('p')?.textContent).toBe('15 днів · 05.10–19.10')
+	})
+
+	it('7 days: weekday labels under the bars', () => {
+		renderCard(createCard({ period: 'week', from: '2026-10-13', loggedDays: 5 }))
+
+		expect(screen.getByText('Вт')).toBeTruthy()
+		expect(screen.getByText('Пн')).toBeTruthy()
+	})
+
+	it('60 days: weekly bars and their caption', () => {
+		renderCard(createCard({ period: 'month', periodDays: 60, from: '2026-08-21', loggedDays: 41 }))
+
+		expect(screen.getByRole('img', { name: 'Середні калорії по тижнях' })).toBeTruthy()
+		expect(screen.getByText('стовпчик — середнє за тиждень')).toBeTruthy()
+	})
+
+	it('no bars for too little data', () => {
+		renderCard(createCard({ loggedDays: 2 }))
+
+		expect(screen.queryByRole('img')).toBeNull()
 	})
 })

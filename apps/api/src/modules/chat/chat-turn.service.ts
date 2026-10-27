@@ -309,7 +309,7 @@ export class ChatTurnService {
 		if (decision.kind !== 'stats') return undefined
 		const card = await this.progressStats.build({
 			userId,
-			period: decision.period,
+			days: decision.days,
 			endDate: decision.endDate,
 			today: formatDbDate(localDate),
 		})

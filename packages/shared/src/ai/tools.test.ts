@@ -26,6 +26,12 @@ describe('getAiFunctionTools', () => {
 		])
 	})
 
+	it('gives the model date fields as format date without the long ISO pattern', () => {
+		const json = JSON.stringify(tools)
+		expect(json).toContain('"format":"date"')
+		expect(json).not.toMatch(/"pattern":"[^"]*-02-29/)
+	})
+
 	it('describes photo_unusable with its two reasons', () => {
 		const tool = tools.find((item) => item.function.name === 'photo_unusable')
 		const json = JSON.stringify(tool?.function.parameters)

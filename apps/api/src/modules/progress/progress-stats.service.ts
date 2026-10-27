@@ -1,11 +1,10 @@
 import { Injectable } from '@nestjs/common'
 import {
 	getDayVerdict,
+	getStatsPeriodForDays,
 	shiftDate,
 	STATS_CARD_VERSION,
-	STATS_PERIOD_DAYS,
 	type StatsCard,
-	type StatsPeriod,
 } from '@kus/shared'
 
 import { listDays } from '../../common/time'
@@ -18,7 +17,8 @@ import { averageOrNull, buildStatusDays, getDaysInNorm, getLoggedDays } from './
 
 interface BuildStatsCardParams {
 	userId: string
-	period: StatsPeriod
+	/** Length of the period in days (STATS_DAYS_MIN…STATS_DAYS_MAX), ending on `endDate`. */
+	days: number
 	/** `YYYY-MM-DD` the period ends on; null = today. */
 	endDate: string | null
 	/** `YYYY-MM-DD` of the user's today. */
@@ -40,9 +40,14 @@ export class ProgressStatsService {
 	 * Days are counted exactly like on «Прогрес» (see progress.utils): a day counts once anything is
 	 * logged, today included. null when nothing was logged in the period: the reply stays text.
 	 */
-	async build({ userId, period, endDate, today }: BuildStatsCardParams): Promise<StatsCard | null> {
+	async build({
+		userId,
+		days: periodDays,
+		endDate,
+		today,
+	}: BuildStatsCardParams): Promise<StatsCard | null> {
 		const to = endDate === null || endDate > today ? today : endDate
-		const from = shiftDate(to, -(STATS_PERIOD_DAYS[period] - 1))
+		const from = shiftDate(to, -(periodDays - 1))
 		const days = listDays(from, to)
 
 		const [totalsByDay, goalByDay, lastGoal, weights] = await Promise.all([
@@ -64,7 +69,8 @@ export class ProgressStatsService {
 		const lastWeight = weights.length > 1 ? weights.at(-1) : undefined
 		return {
 			version: STATS_CARD_VERSION,
-			period,
+			period: getStatsPeriodForDays(periodDays),
+			periodDays,
 			from,
 			to,
 			loggedDays: logged.length,

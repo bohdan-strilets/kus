@@ -126,11 +126,12 @@ export const KusikReply = ({ message, isLatest, today, photoStatus }: KusikReply
 		)
 	}
 
-	// a period snapshot (show_stats): the sentence sits inside the card too (chat-stats-card.html)
+	// a period snapshot (show_stats): like the closing card, the card alone — the model's words
+	// next to it drifted into templates («Ось твій місяць», «Глянь на картці»), so they are not shown
 	if (message.statsCard) {
 		return (
 			<KusikRow kind={kind}>
-				<StatsCard card={message.statsCard} today={today} note={content || undefined} />
+				<StatsCard card={message.statsCard} today={today} />
 			</KusikRow>
 		)
 	}

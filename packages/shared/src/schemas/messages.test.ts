@@ -10,7 +10,7 @@ import {
 	TEXT_OR_PHOTO_REQUIRED,
 } from './messages.js'
 import { PHOTOS_PER_MESSAGE_LIMIT } from './photo-limits.js'
-import { STATS_CARD_MIN_LOGGED_DAYS } from './stats-card.js'
+import { getStatsPeriodForDays, STATS_CARD_MIN_LOGGED_DAYS } from './stats-card.js'
 
 const clientMessageId = '0198f0d2-6b1c-7c3e-9a4b-1a2b3c4d5e6f'
 const photo = { mimeType: 'image/jpeg', data: 'AAAA' }
@@ -343,11 +343,38 @@ describe('chatMessageSchema 0.7.0 fields', () => {
 		expect(STATS_CARD_MIN_LOGGED_DAYS).toBe(3)
 	})
 
-	it('rejects a statsCard of another period or version', () => {
-		for (const bad of [{ period: 'year' }, { version: 2 }, { to: '19.10.2026' }]) {
-			expect(
-				chatMessageSchema.safeParse({ ...base, statsCard: { ...statsCard, ...bad } }).success,
-			).toBe(false)
+	it('reads a statsCard with periodDays, and one stored without it', () => {
+		const withDays = chatMessageSchema.parse({
+			...base,
+			statsCard: { ...statsCard, periodDays: 15 },
+		})
+		expect(withDays.statsCard?.periodDays).toBe(15)
+		expect(chatMessageSchema.parse({ ...base, statsCard }).statsCard?.periodDays).toBeUndefined()
+	})
+
+	it('keeps week|month for older clients: 7 and 30 as they are, other lengths the nearer', () => {
+		expect([2, 7, 18, 19, 30, 92].map(getStatsPeriodForDays)).toEqual([
+			'week',
+			'week',
+			'week',
+			'month',
+			'month',
+			'month',
+		])
+	})
+
+	it('reads a statsCard of another period, version or a periodDays out of bounds as no card, keeping the message', () => {
+		for (const bad of [
+			{ period: 'year' },
+			{ version: 2 },
+			{ to: '19.10.2026' },
+			{ periodDays: 1 },
+			{ periodDays: 93 },
+		]) {
+			const parsed = chatMessageSchema.safeParse({ ...base, statsCard: { ...statsCard, ...bad } })
+			expect(parsed.success).toBe(true)
+			expect(parsed.data?.statsCard).toBeNull()
+			expect(parsed.data?.content).toBe(base.content)
 		}
 	})
 })

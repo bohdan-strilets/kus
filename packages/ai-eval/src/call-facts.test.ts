@@ -58,8 +58,8 @@ describe('getCallFacts', () => {
 			[
 				call('close_day', { date: null, estimatedTotalKcal: null }),
 				call('close_day', { date: '2026-10-06', estimatedTotalKcal: 4000 }),
-				call('show_stats', { period: 'week', endDate: null }),
-				call('show_stats', { period: 'month', endDate: '2026-10-06' }),
+				call('show_stats', { days: 7, endDate: null }),
+				call('show_stats', { days: 15, endDate: '2026-10-06' }),
 			],
 			TODAY,
 		)
@@ -68,8 +68,8 @@ describe('getCallFacts', () => {
 			{ date: '2026-10-06', estimatedTotalKcal: 4000 },
 		])
 		expect(facts.statsCards).toEqual([
-			{ period: 'week', endDate: null },
-			{ period: 'month', endDate: '2026-10-06' },
+			{ days: 7, endDate: null },
+			{ days: 15, endDate: '2026-10-06' },
 		])
 	})
 

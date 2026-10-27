@@ -147,6 +147,6 @@ describe('AI tool JSON schemas', () => {
 	// schemas; update it only on purpose.
 	it('are unchanged', () => {
 		const hash = createHash('sha256').update(JSON.stringify(getAiFunctionTools())).digest('hex')
-		expect(hash).toBe('528247d5e972bb6a5f9a1d726f1337c57519b8acbf021c3b09b14ddb315df332')
+		expect(hash).toBe('6d032bf8f46bca4f60a43ba124755fa1d2594414697435f1aa55b501904ba66a')
 	})
 })

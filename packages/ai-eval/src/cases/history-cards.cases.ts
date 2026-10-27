@@ -111,7 +111,7 @@ export const HISTORY_CARD_CASES: EvalCase[] = [
 	{
 		id: 'stats-last-week',
 		text: 'Як пройшов минулий тиждень?',
-		expect: { decision: 'stats', stats: { period: 'week', endDate: '2026-10-04' } },
+		expect: { decision: 'stats', stats: { days: 7, endDate: '2026-10-04' } },
 		reference:
 			'Today is Wednesday 2026-10-07 → «last week» ends on Sunday 2026-10-04: show_stats week with that endDate',
 	},
@@ -126,13 +126,13 @@ export const HISTORY_CARD_CASES: EvalCase[] = [
 	{
 		id: 'stats-week',
 		text: 'Підбий підсумок за тиждень',
-		expect: { decision: 'stats', stats: { period: 'week' } },
+		expect: { decision: 'stats', stats: { days: 7 } },
 		reference: 'A summary of the week → show_stats week, numbers are the backend card',
 	},
 	{
 		id: 'stats-month',
 		text: 'Як я харчувався за місяць?',
-		expect: { decision: 'stats', stats: { period: 'month' } },
+		expect: { decision: 'stats', stats: { days: 30 } },
 		reference: 'A question about the month → show_stats month, not a reply with guessed numbers',
 	},
 	{

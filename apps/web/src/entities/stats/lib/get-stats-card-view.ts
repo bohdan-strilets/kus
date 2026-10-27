@@ -14,16 +14,17 @@ const MS_IN_DAY = 24 * 60 * 60 * 1000
 const MONDAY = 1
 const SUNDAY = 0
 const DAYS_IN_WEEK = 7
+const DAYS_IN_MONTH_PERIOD = 30
 
 export interface StatsCardView {
 	title: string
-	/** Exact dates under the title, or «понеділок – неділя» for a whole calendar week. */
+	/** Exact dates under the title, or «понеділок – неділя» for a whole calendar week; empty when the title has the dates. */
 	subtitle: string
 	/** Fewer than STATS_CARD_MIN_LOGGED_DAYS days with entries: no averages. */
 	isSparse: boolean
 	/** Days from the first to the last, both included. */
 	totalDays: number
-	/** Only the 30-day card tells what «19 з 26» counts; the week card is short enough without it. */
+	/** «серед днів із записами» under «19 з 26»: only for a period longer than a week with a day without entries. */
 	hasLoggedDaysCaption: boolean
 	/** «140 г» under the protein average; null without a protein goal. */
 	proteinGoal: string | null
@@ -88,31 +89,40 @@ const isCalendarWeek = (from: string, to: string): boolean =>
 	getTotalDays(from, to) === DAYS_IN_WEEK
 
 /**
- * The heading of a stats card (mockups/chat-stats-card.html): «За 30 днів», «За 7 днів» for a
- * period that ends today, «Тиждень 5–11 жовтня» for a finished Monday–Sunday week. Everything
- * else is told by its dates. `today` is the user's `YYYY-MM-DD`.
+ * The heading of a stats card (mockups/chat-stats-card.html, chat-stats-period.html): «За 30 днів» and
+ * «За 7 днів» with the dates under them, «Тиждень 5–11 жовтня» for a finished Monday–Sunday week;
+ * any other length is one line, «15 днів · 12.10–26.10» (the subtitle is empty). The length is counted
+ * from the dates, so a card stored before `periodDays` reads the same. `today` is the user's `YYYY-MM-DD`.
  */
 export const getStatsCardView = (card: StatsCard, today: string, t: TFunction): StatsCardView => {
-	const { period, from, to, loggedDays } = card
+	const { from, to, loggedDays } = card
 	const range = formatRange(from, to, t)
+	const totalDays = getTotalDays(from, to)
 	const base = {
 		isSparse: loggedDays < STATS_CARD_MIN_LOGGED_DAYS,
-		totalDays: getTotalDays(from, to),
-		hasLoggedDaysCaption: period === 'month',
+		totalDays,
+		hasLoggedDaysCaption: totalDays > DAYS_IN_WEEK && loggedDays < totalDays,
 		proteinGoal: getProteinGoal(card, t),
 		weightRange: getWeightRange(card, t),
 		dayRows: getDayRows(card, t),
 	}
-	if (period === 'month') return { ...base, title: t('chat.statsCard.last30'), subtitle: range }
-	if (to >= today) {
-		return { ...base, title: t('chat.statsCard.last7'), subtitle: range }
-	}
-	if (isCalendarWeek(from, to)) {
+	if (to < today && isCalendarWeek(from, to)) {
 		return {
 			...base,
 			title: t('chat.statsCard.week', { range }),
 			subtitle: t('chat.statsCard.weekRange'),
 		}
 	}
-	return { ...base, title: t('chat.statsCard.last7'), subtitle: range }
+	if (totalDays === DAYS_IN_WEEK || totalDays === DAYS_IN_MONTH_PERIOD) {
+		return { ...base, title: t('chat.statsCard.lastDays', { count: totalDays }), subtitle: range }
+	}
+	return {
+		...base,
+		title: t('chat.statsCard.periodTitle', {
+			count: totalDays,
+			from: formatShortDate(toCalendarDate(from)),
+			to: formatShortDate(toCalendarDate(to)),
+		}),
+		subtitle: '',
+	}
 }

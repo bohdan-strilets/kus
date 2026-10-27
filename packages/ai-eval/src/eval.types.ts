@@ -1,4 +1,4 @@
-import type { ClarifyKind, MeasurementKind, StatsPeriod } from '@kus/shared'
+import type { ClarifyKind, MeasurementKind } from '@kus/shared'
 
 export type ActualDecision =
 	| 'log'
@@ -33,7 +33,7 @@ export interface CallFacts {
 	/** Every close_day call, its day resolved; null total = the user named none. */
 	closeDays: { date: string; estimatedTotalKcal: number | null }[]
 	/** Every show_stats call; null end = today. */
-	statsCards: { period: StatsPeriod; endDate: string | null }[]
+	statsCards: { days: number; endDate: string | null }[]
 }
 
 export interface CaseResult {

@@ -1,4 +1,4 @@
-import { measurementKindSchema, type RawToolCall, statsPeriodSchema } from '@kus/shared'
+import { measurementKindSchema, type RawToolCall, statsDaysSchema } from '@kus/shared'
 import { z } from 'zod'
 
 import type { CallFacts } from './eval.types.js'
@@ -17,7 +17,7 @@ const closeDayFactsSchema = z.object({
 	date: optionalDate,
 	estimatedTotalKcal: z.number().nullable().optional(),
 })
-const showStatsFactsSchema = z.object({ period: statsPeriodSchema, endDate: optionalDate })
+const showStatsFactsSchema = z.object({ days: statsDaysSchema, endDate: optionalDate })
 
 export const EMPTY_CALL_FACTS: CallFacts = {
 	logDate: null,
@@ -79,7 +79,7 @@ export const getCallFacts = (rawCalls: RawToolCall[], today: string): CallFacts 
 		if (call.name === 'show_stats') {
 			const parsed = showStatsFactsSchema.safeParse(args)
 			if (parsed.success) {
-				facts.statsCards.push({ period: parsed.data.period, endDate: parsed.data.endDate ?? null })
+				facts.statsCards.push({ days: parsed.data.days, endDate: parsed.data.endDate ?? null })
 			}
 		}
 	}

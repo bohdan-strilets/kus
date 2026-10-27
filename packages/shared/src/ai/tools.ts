@@ -9,7 +9,7 @@ import {
 	MIN_ENTRY_GRAMS,
 	refineFoodEntry,
 } from '../schemas/food-entry.js'
-import { statsPeriodSchema } from '../schemas/stats-card.js'
+import { STATS_DAYS_MAX, STATS_DAYS_MIN, statsDaysSchema } from '../schemas/stats-card.js'
 import { MAX_ESTIMATED_DAY_KCAL } from './close-day.js'
 import { CATEGORY_DESCRIPTION } from './category-description.js'
 import {
@@ -40,7 +40,7 @@ export const AI_TOOL_NAMES = {
 export type AiToolName = (typeof AI_TOOL_NAMES)[keyof typeof AI_TOOL_NAMES]
 
 export const MAX_ITEMS_PER_MESSAGE = 20
-export const REPLY_MAX_LENGTH = 500
+export const REPLY_MAX_LENGTH = 1000
 export const CLARIFY_OPTIONS = { min: 2, max: 4 } as const
 const MAX_OPTION_KCAL = 20_000
 /** Every item of a message at its maximum weight. */
@@ -56,7 +56,7 @@ export type LoggableMealType = z.infer<typeof loggableMealTypeSchema>
 export const aiFoodItemSchema = foodEntryBaseSchema
 	.extend({
 		name: foodEntryBaseSchema.shape.name.describe(
-			'Short dish or product name in the language of the user, e.g. "Гречка варена"',
+			`The food in the user's own words, in the nominative, spelled correctly, e.g. "Гречка варена"`,
 		),
 		grams: foodEntryBaseSchema.shape.grams.describe(
 			'Edible weight of the whole portion in grams (for drinks: ml ≈ g)',
@@ -130,7 +130,7 @@ export const logFoodInputSchema = z.object({
 			'Only if this message names one meal for the whole message ("на обід") — else null, the clock decides; never from earlier messages or the day so far. Items may name their own',
 		),
 	reply: replyTextSchema.describe(
-		'1–2 short warm sentences for the chat in the language of the user. No totals or day sums — the app shows them',
+		`1–2 short warm sentences for the chat in the language of the user's message, in your own words. No totals or day sums — the app shows them`,
 	),
 })
 
@@ -231,7 +231,9 @@ export const photoUnusableInputSchema = z.object({
 export type PhotoUnusableInput = z.infer<typeof photoUnusableInputSchema>
 
 export const replyInputSchema = z.object({
-	text: replyTextSchema.describe('1–2 short sentences in the language of the user'),
+	text: replyTextSchema.describe(
+		`The answer in the language of the user's message: 1–2 sentences for small talk, up to ~6 when the user asks for advice or an explanation`,
+	),
 })
 
 export type ReplyInput = z.infer<typeof replyInputSchema>
@@ -300,7 +302,9 @@ export const closeDayInputSchema = z.object({
 export type CloseDayInput = z.infer<typeof closeDayInputSchema>
 
 export const showStatsInputSchema = z.object({
-	period: statsPeriodSchema.describe('week: 7 days, month: 30 days, both ending on endDate'),
+	days: statsDaysSchema.describe(
+		`How many days the period covers, ${STATS_DAYS_MIN}–${STATS_DAYS_MAX}, ending on endDate: a week 7, a month 30, "last 15 days" 15`,
+	),
 	endDate: z.iso
 		.date()
 		.nullable()
@@ -341,8 +345,7 @@ const AI_TOOL_DESCRIPTIONS: Record<AiToolName, string> = {
 		'Show the card of a day: what is logged so far, totals, meals. date null for today; any earlier day or tomorrow. Nothing is logged. reply — one short sentence next to the card.',
 	close_day:
 		'The user closes the day ("день закрито", "закрий день"): show the card of the day with how it went against the goal. date null for today, up to 3 days back, never tomorrow. estimatedTotalKcal only when the user gave the total of the whole day; only the backend may add the missing part as «Без деталей». reply — one short sentence next to the card.',
-	show_stats:
-		'Show the summary of a week or a month: average kcal and protein, days within the goal, weight change. Counted by the backend; today is included if anything is logged for it. Nothing is logged. reply — one short sentence next to the card.',
+	show_stats: `Show the summary of any period of ${STATS_DAYS_MIN}–${STATS_DAYS_MAX} days: average kcal and protein, days within the goal, weight change. Counted by the backend; today is included if anything is logged for it. Nothing is logged. reply — one short sentence next to the card.`,
 	clarify:
 		'Ask about logged items only when the answer changes their kcal a lot (by 80+ kcal and 15%+), or with kind "rename" which real food a strange name was (no kcal threshold). Call together with log_food, at most 2 per message.',
 	correct_entry:
@@ -356,7 +359,7 @@ const AI_TOOL_DESCRIPTIONS: Record<AiToolName, string> = {
 	photo_unusable:
 		'Only for a message with a photo: there is no food on it, or the label cannot be read. Nothing is logged. Never for a text-only message.',
 	reply:
-		'Plain conversation: greetings, thanks, questions (including "how much can I still eat today" — answer from the day context). Nothing is logged. Also the chat answer of a message that only changes entries (correct_entry, delete_entry, restore_entry, resolve_clarification).',
+		'Conversation: greetings, small talk, questions about food, training or the day — answer and help for real ("how much can I still eat today" — from the day context). Nothing is logged. Also the chat answer of a message that only changes entries (correct_entry, delete_entry, restore_entry, resolve_clarification).',
 }
 
 /** OpenAI-compatible tool definition, as OpenRouter expects it. */
@@ -365,9 +368,22 @@ export interface AiFunctionTool {
 	function: { name: string; description: string; parameters: Record<string, unknown> }
 }
 
+const DATE_FORMAT = 'date'
+
+/**
+ * A date keeps only `format: date` for the model: the ~240-char ISO regex repeated in every date
+ * field cost ~1k prefix tokens. parseToolCalls still validates the date with the full zod schema.
+ */
+const dropDatePattern = ({ jsonSchema }: { jsonSchema: Record<string, unknown> }): void => {
+	if (jsonSchema.format === DATE_FORMAT) delete jsonSchema.pattern
+}
+
 const toParameters = (schema: z.ZodType): Record<string, unknown> => {
 	// output side: defaulted fields stay required (nullable), which models follow more reliably
-	const { $schema: _schema, ...parameters } = z.toJSONSchema(schema, { target: 'draft-07' })
+	const { $schema: _schema, ...parameters } = z.toJSONSchema(schema, {
+		target: 'draft-07',
+		override: dropDatePattern,
+	})
 	return parameters
 }
 

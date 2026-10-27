@@ -32,8 +32,8 @@ const createService = ({
 		{ getGoalKcalByDay, getGoalForDate } as never,
 		{ findInRange } as never,
 	)
-	const build = (period: 'week' | 'month', endDate: string | null = null) =>
-		service.build({ userId: 'u1', period, endDate, today: TODAY })
+	const build = (days: number, endDate: string | null = null) =>
+		service.build({ userId: 'u1', days, endDate, today: TODAY })
 	return { build, getDaysTotals, getGoalKcalByDay, getGoalForDate, findInRange }
 }
 
@@ -45,7 +45,7 @@ describe('ProgressStatsService.build', () => {
 			days: { '2026-10-18': day(1900) },
 		})
 
-		const card = await build('week')
+		const card = await build(7)
 
 		expect(card).toMatchObject({ period: 'week', from: '2026-10-13', to: TODAY })
 		expect(getDaysTotals).toHaveBeenCalledWith('u1', {
@@ -61,26 +61,43 @@ describe('ProgressStatsService.build', () => {
 	it('covers 30 days for a month', async () => {
 		const { build } = createService({ days: { '2026-10-18': day(1900) } })
 
-		expect(await build('month')).toMatchObject({ from: '2026-09-20', to: TODAY })
+		expect(await build(30)).toMatchObject({
+			period: 'month',
+			periodDays: 30,
+			from: '2026-09-20',
+			to: TODAY,
+		})
+	})
+
+	it('covers any length; period stays week|month (the nearer) for older clients', async () => {
+		const { build } = createService({ days: { '2026-10-18': day(1900) } })
+
+		expect(await build(15)).toMatchObject({
+			period: 'week',
+			periodDays: 15,
+			from: '2026-10-05',
+			to: TODAY,
+		})
+		expect(await build(92)).toMatchObject({ period: 'month', periodDays: 92, from: '2026-07-20' })
 	})
 
 	it('ends on the named day, but never after today', async () => {
 		const { build } = createService({ days: { '2026-10-10': day(1900), '2026-10-18': day(1900) } })
 
-		expect(await build('week', '2026-10-10')).toMatchObject({
+		expect(await build(7, '2026-10-10')).toMatchObject({
 			from: '2026-10-04',
 			to: '2026-10-10',
 		})
-		expect(await build('week', TODAY)).toMatchObject({ to: TODAY })
-		expect(await build('week', '2026-10-25')).toMatchObject({ to: TODAY })
+		expect(await build(7, TODAY)).toMatchObject({ to: TODAY })
+		expect(await build(7, '2026-10-25')).toMatchObject({ to: TODAY })
 	})
 
 	it('counts today like «Прогрес» does: once something is logged', async () => {
 		const { build } = createService({ days: { [TODAY]: day(1900), '2026-10-17': day(1000) } })
 
-		expect(await build('week', TODAY)).toMatchObject({ loggedDays: 2, avgKcal: 1450 })
+		expect(await build(7, TODAY)).toMatchObject({ loggedDays: 2, avgKcal: 1450 })
 		expect(
-			await createService({ days: { '2026-10-17': day(1000) } }).build('week', TODAY),
+			await createService({ days: { '2026-10-17': day(1000) } }).build(7, TODAY),
 		).toMatchObject({
 			loggedDays: 1,
 		})
@@ -95,7 +112,7 @@ describe('ProgressStatsService.build', () => {
 			},
 		})
 
-		expect(await build('week')).toMatchObject({
+		expect(await build(7)).toMatchObject({
 			loggedDays: 3,
 			avgKcal: 1800,
 			avgProteinG: 90,
@@ -113,28 +130,28 @@ describe('ProgressStatsService.build', () => {
 			},
 		})
 
-		expect(await build('week')).toMatchObject({ loggedDays: 4, daysInNorm: 3 })
+		expect(await build(7)).toMatchObject({ loggedDays: 4, daysInNorm: 3 })
 	})
 
 	it('counts a day without a goal as in the norm, like «Прогрес»', async () => {
 		const { build } = createService({ days: { '2026-10-17': day(1800) }, goalKcal: null })
 
-		expect(await build('week')).toMatchObject({ daysInNorm: 1, goalKcal: null, avgKcal: 1800 })
+		expect(await build(7)).toMatchObject({ daysInNorm: 1, goalKcal: null, avgKcal: 1800 })
 	})
 
 	it('is null when nothing was logged in the period', async () => {
 		const { build } = createService({ days: {} })
 
-		expect(await build('week')).toBeNull()
+		expect(await build(7)).toBeNull()
 	})
 
 	it('reports the protein goal in force on the last day, null without a goal', async () => {
 		const days = { '2026-10-17': day(1800) }
 
 		const { build, getGoalForDate } = createService({ days })
-		expect(await build('week')).toMatchObject({ proteinGoalG: 120 })
+		expect(await build(7)).toMatchObject({ proteinGoalG: 120 })
 		expect(getGoalForDate).toHaveBeenCalledWith('u1', new Date(`${TODAY}T00:00:00Z`))
-		expect(await createService({ days, proteinGoal: null }).build('week')).toMatchObject({
+		expect(await createService({ days, proteinGoal: null }).build(7)).toMatchObject({
 			proteinGoalG: null,
 		})
 	})
@@ -146,14 +163,14 @@ describe('ProgressStatsService.build', () => {
 			await createService({
 				days,
 				weights: [{ value: 82.4 }, { value: 82.1 }, { value: 81.8 }],
-			}).build('week'),
+			}).build(7),
 		).toMatchObject({ weightStartKg: 82.4, weightEndKg: 81.8, weightChangeKg: -0.6 })
-		expect(await createService({ days, weights: [{ value: 82.4 }] }).build('week')).toMatchObject({
+		expect(await createService({ days, weights: [{ value: 82.4 }] }).build(7)).toMatchObject({
 			weightStartKg: null,
 			weightEndKg: null,
 			weightChangeKg: null,
 		})
-		expect(await createService({ days }).build('week')).toMatchObject({
+		expect(await createService({ days }).build(7)).toMatchObject({
 			weightStartKg: null,
 			weightEndKg: null,
 		})
@@ -164,14 +181,13 @@ describe('ProgressStatsService.build', () => {
 			days: { '2026-10-15': day(2000), '2026-10-13': day(2300), '2026-10-17': day(900) },
 		})
 
-		expect((await build('week'))?.days).toEqual([
+		expect((await build(7))?.days).toEqual([
 			{ date: '2026-10-13', kcal: 2300, verdict: 'over' },
 			{ date: '2026-10-15', kcal: 2000, verdict: 'on_goal' },
 			{ date: '2026-10-17', kcal: 900, verdict: 'far_under' },
 		])
 		expect(
-			(await createService({ days: { '2026-10-17': day(900) }, goalKcal: null }).build('week'))
-				?.days,
+			(await createService({ days: { '2026-10-17': day(900) }, goalKcal: null }).build(7))?.days,
 		).toEqual([{ date: '2026-10-17', kcal: 900, verdict: 'no_goal' }])
 	})
 
@@ -180,17 +196,17 @@ describe('ProgressStatsService.build', () => {
 
 		expect(
 			await createService({ days, weights: [{ value: 82.4 }, { value: 82.1 }, { value: 81.8 }] })
-				.build('week')
+				.build(7)
 				.then((card) => card?.weightChangeKg),
 		).toBe(-0.6)
 		expect(
 			await createService({ days, weights: [{ value: 82.4 }] })
-				.build('week')
+				.build(7)
 				.then((card) => card?.weightChangeKg),
 		).toBeNull()
 		expect(
 			await createService({ days })
-				.build('week')
+				.build(7)
 				.then((card) => card?.weightChangeKg),
 		).toBeNull()
 	})

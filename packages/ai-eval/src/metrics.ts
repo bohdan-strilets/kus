@@ -156,8 +156,7 @@ export const isCallDetailsCorrect = (evalCase: EvalCase, result: CaseResult): bo
 		(calls.statsCards.length === 1 &&
 			calls.statsCards.every(
 				(got) =>
-					got.period === stats.period &&
-					(stats.endDate === undefined || got.endDate === stats.endDate),
+					got.days === stats.days && (stats.endDate === undefined || got.endDate === stats.endDate),
 			))
 	const areCopiesRight =
 		copyRefs === undefined ||

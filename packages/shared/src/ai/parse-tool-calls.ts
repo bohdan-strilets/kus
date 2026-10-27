@@ -108,7 +108,7 @@ export type FoodParseDecision =
 	/** `date` null = today. */
 	| { kind: 'day'; date: string | null; text: string }
 	| { kind: 'close_day'; date: string | null; estimatedTotalKcal: number | null; text: string }
-	| { kind: 'stats'; period: ShowStatsInput['period']; endDate: string | null; text: string }
+	| { kind: 'stats'; days: ShowStatsInput['days']; endDate: string | null; text: string }
 
 export type FoodParseResult =
 	| { ok: true; decision: FoodParseDecision; calls: ParsedToolCall[] }
@@ -431,7 +431,7 @@ const decide = (
 		return {
 			decision: {
 				kind: 'stats',
-				period: statsCall.period,
+				days: statsCall.days,
 				endDate: statsCall.endDate,
 				text: statsCall.reply,
 			},

@@ -380,7 +380,7 @@ describe('ChatTurnService.saveDecision close_day', () => {
 
 describe('ChatTurnService.saveDecision show_stats', () => {
 	const toStatsDecision = (endDate: string | null) =>
-		({ kind: 'stats', period: 'week', endDate, text: 'Ось тиждень' }) as never
+		({ kind: 'stats', days: 7, endDate, text: 'Ось тиждень' }) as never
 
 	it('stores the card counted for the user today with the reply', async () => {
 		const { save, buildStats, completeTurn } = createService()
@@ -391,7 +391,7 @@ describe('ChatTurnService.saveDecision show_stats', () => {
 
 		expect(buildStats).toHaveBeenCalledWith({
 			userId: 'u1',
-			period: 'week',
+			days: 7,
 			endDate: '2026-10-10',
 			today: '2026-10-18',
 		})

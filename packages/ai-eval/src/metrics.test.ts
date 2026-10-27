@@ -205,7 +205,7 @@ describe('isCallDetailsCorrect', () => {
 		dayCards: [{ date: '2026-10-06' }],
 		deletedMeasurements: [{ kind: 'WEIGHT' as const, date: '2026-10-06' }],
 		closeDays: [{ date: '2026-10-06', estimatedTotalKcal: 4000 }],
-		statsCards: [{ period: 'week' as const, endDate: null }],
+		statsCards: [{ days: 7, endDate: null }],
 	}
 
 	it('passes when nothing about days is expected', () => {
@@ -262,7 +262,7 @@ describe('isCallDetailsCorrect: close_day, stats, copies', () => {
 		dayCards: [],
 		deletedMeasurements: [],
 		closeDays: [{ date: '2026-10-06', estimatedTotalKcal: 4000 }],
-		statsCards: [{ period: 'week' as const, endDate: null }],
+		statsCards: [{ days: 7, endDate: null }],
 	}
 	const copy = (copyRef: string | null) =>
 		({ name: 'Суп', copyRef, memoryRef: null }) as unknown as CaseResult['items'][number]
@@ -276,10 +276,10 @@ describe('isCallDetailsCorrect: close_day, stats, copies', () => {
 		expect(isCallDetailsCorrect(want(4000), result({}))).toBe(false)
 	})
 
-	it('wants exactly one stats card of the expected period', () => {
-		const want = (period: 'week' | 'month') => evalCase({ decision: 'stats', stats: { period } })
-		expect(isCallDetailsCorrect(want('week'), result({ calls }))).toBe(true)
-		expect(isCallDetailsCorrect(want('month'), result({ calls }))).toBe(false)
+	it('wants exactly one stats card of the expected length', () => {
+		const want = (days: number) => evalCase({ decision: 'stats', stats: { days } })
+		expect(isCallDetailsCorrect(want(7), result({ calls }))).toBe(true)
+		expect(isCallDetailsCorrect(want(30), result({ calls }))).toBe(false)
 	})
 
 	it('compares the set of copied refs, [] meaning none', () => {

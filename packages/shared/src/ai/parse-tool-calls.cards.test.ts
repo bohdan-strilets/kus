@@ -38,7 +38,7 @@ const closeDay = (input: Record<string, unknown> = {}): RawToolCall =>
 	call('close_day', { date: null, estimatedTotalKcal: null, reply: 'Готово', ...input })
 
 const showStats = (input: Record<string, unknown> = {}): RawToolCall =>
-	call('show_stats', { period: 'week', endDate: null, reply: 'Ось тиждень', ...input })
+	call('show_stats', { days: 7, endDate: null, reply: 'Ось тиждень', ...input })
 
 const logFood = (items: unknown[]): RawToolCall =>
 	call('log_food', { items, mealType: null, reply: 'Записав!' })
@@ -102,19 +102,33 @@ describe('close_day', () => {
 })
 
 describe('show_stats', () => {
-	it('shows the week or the month', () => {
+	it('shows a period of any length ending on the named day', () => {
 		expect(parseToolCalls([showStats()], refs).ok).toBe(true)
-		const month = parseToolCalls([showStats({ period: 'month', endDate: '2026-10-10' })], refs)
+		const month = parseToolCalls([showStats({ days: 30, endDate: '2026-10-10' })], refs)
 		expect(month.ok && month.decision).toEqual({
 			kind: 'stats',
-			period: 'month',
+			days: 30,
 			endDate: '2026-10-10',
 			text: 'Ось тиждень',
 		})
 	})
 
-	it('rejects an unknown period', () => {
-		expect(errorsOf([showStats({ period: 'year' })])).toContain('period')
+	it('takes days from 2 to 92 and nothing else', () => {
+		for (const days of [2, 15, 92])
+			expect(parseToolCalls([showStats({ days })], refs).ok).toBe(true)
+		for (const days of [1, 0, 93, 7.5, '15']) {
+			expect(errorsOf([showStats({ days })])).toContain('days')
+		}
+		expect(errorsOf([showStats({ days: undefined, period: 'week' })])).toContain('days')
+	})
+
+	it('still rejects a malformed date, though the model sees no date pattern', () => {
+		expect(errorsOf([showStats({ endDate: '2026-02-30' })])).toBe(
+			'show_stats: endDate: Invalid ISO date',
+		)
+		expect(errorsOf([showStats({ endDate: '19.10.2026' })])).toBe(
+			'show_stats: endDate: Invalid ISO date',
+		)
 	})
 
 	it('allows today and earlier days as the last day, rejects the future', () => {

@@ -98,8 +98,32 @@ describe('getStatsCardView', () => {
 		])
 	})
 
-	it('the days caption belongs to the 30-day card only', () => {
-		expect(getStatsCardView(card({ period: 'month' }), TODAY, t).hasLoggedDaysCaption).toBe(true)
+	it('any other length is one line with the dates: 15, 21, 22, 60, 92 days', () => {
+		const view = (days: number, from: string) =>
+			getStatsCardView(card({ period: 'week', periodDays: days, from }), TODAY, t)
+
+		expect(view(15, '2026-10-05').title).toBe('15 днів · 05.10–19.10')
+		expect(view(21, '2026-09-29').title).toBe('21 день · 29.09–19.10')
+		expect(view(22, '2026-09-28').title).toBe('22 дні · 28.09–19.10')
+		expect(view(60, '2026-08-21').title).toBe('60 днів · 21.08–19.10')
+		expect(view(92, '2026-07-20').title).toBe('92 дні · 20.07–19.10')
+		expect(view(15, '2026-10-05').subtitle).toBe('')
+	})
+
+	it('the length is read from the dates without periodDays (a new web, an old card)', () => {
+		expect(getStatsCardView(card({ from: '2026-10-05' }), TODAY, t).title).toBe(
+			'15 днів · 05.10–19.10',
+		)
+	})
+
+	it('the days caption: a period longer than a week with a day without entries', () => {
+		const month = { period: 'month', from: '2026-09-20' } as const
+		expect(
+			getStatsCardView(card({ ...month, loggedDays: 26 }), TODAY, t).hasLoggedDaysCaption,
+		).toBe(true)
+		expect(
+			getStatsCardView(card({ ...month, loggedDays: 30 }), TODAY, t).hasLoggedDaysCaption,
+		).toBe(false)
 		expect(getStatsCardView(card({}), TODAY, t).hasLoggedDaysCaption).toBe(false)
 	})
 

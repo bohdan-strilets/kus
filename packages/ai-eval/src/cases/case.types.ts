@@ -5,7 +5,7 @@ import {
 	foodSourceSchema,
 	loggableMealTypeSchema,
 	measurementKindSchema,
-	statsPeriodSchema,
+	statsDaysSchema,
 } from '@kus/shared'
 import { z } from 'zod'
 
@@ -150,8 +150,8 @@ export const evalCaseSchema = z
 			closeDay: z
 				.object({ date: z.iso.date(), estimatedTotalKcal: z.number().positive().nullable() })
 				.optional(),
-			/** The show_stats call: its period (and its end day, when given). */
-			stats: z.object({ period: statsPeriodSchema, endDate: z.iso.date().optional() }).optional(),
+			/** The show_stats call: its length in days (and its end day, when given). */
+			stats: z.object({ days: statsDaysSchema, endDate: z.iso.date().optional() }).optional(),
 			/** Exactly these earlier-entry refs (y1, h1) are copied by the logged items; [] = none copied. */
 			copyRefs: z.array(z.string().regex(COPY_REF_PATTERN)).optional(),
 			/** Exactly these delete_measurement calls; `[]` = none. */

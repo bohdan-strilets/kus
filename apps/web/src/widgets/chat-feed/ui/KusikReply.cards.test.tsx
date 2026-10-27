@@ -1,5 +1,10 @@
 // @vitest-environment jsdom
-import type { ChatMessage, DayCard, StatsCard as StatsCardData } from '@kus/shared'
+import {
+	type ChatMessage,
+	chatMessageSchema,
+	type DayCard,
+	type StatsCard as StatsCardData,
+} from '@kus/shared'
 import { cleanup, screen } from '@testing-library/react'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 
@@ -151,11 +156,52 @@ describe('KusikReply: close the day', () => {
 })
 
 describe('KusikReply: stats', () => {
-	it('shows the stats card with the sentence inside', () => {
-		renderReply(createReply({ statsCard, content: 'Середнє тримається біля цілі.' }))
+	it('shows the stats card alone, without the model words (like the closing card)', () => {
+		renderReply(createReply({ statsCard, content: 'Ось твій місяць.' }))
 
 		expect(screen.getByText('За 30 днів')).toBeTruthy()
-		expect(screen.getByText('Середнє тримається біля цілі.')).toBeTruthy()
+		expect(screen.queryByText('Ось твій місяць.')).toBeNull()
+	})
+
+	it('without a card the words stay a plain reply', () => {
+		renderReply(createReply({ statsCard: null, content: 'Ось твій місяць.' }))
+
+		expect(screen.getByText('Ось твій місяць.')).toBeTruthy()
+	})
+
+	it('a card of any length shows its own title', () => {
+		renderReply(
+			createReply({
+				statsCard: { ...statsCard, period: 'week', periodDays: 15, from: '2026-10-05' },
+				content: 'Ось 15 днів.',
+			}),
+		)
+
+		expect(screen.getByText(/^15 днів · \d{2}\.\d{2}–\d{2}\.\d{2}$/)).toBeTruthy()
+	})
+
+	it('a card this client cannot read leaves the message as a plain text reply', () => {
+		const message = chatMessageSchema.parse({
+			id: '0199b3a4-0000-7000-8000-000000000011',
+			role: 'ASSISTANT',
+			content: 'Ось твої 15 днів.',
+			status: 'COMPLETED',
+			clientMessageId: null,
+			replyToId: '0199b3a4-0000-7000-8000-000000000001',
+			createdAt: '2026-10-19T10:00:00.000Z',
+			photo: null,
+			meals: [],
+			clarifications: [],
+			measurements: [],
+			achievements: [],
+			statsCard: { ...statsCard, period: 'year' },
+			workoutCard: { version: 1 },
+		})
+
+		renderReply(message)
+
+		expect(message.statsCard).toBeNull()
+		expect(screen.getByText('Ось твої 15 днів.')).toBeTruthy()
 	})
 
 	it('without a card (nothing logged in the period) it is a plain text reply', () => {

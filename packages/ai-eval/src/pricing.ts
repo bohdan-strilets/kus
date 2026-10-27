@@ -1,4 +1,9 @@
-import { type AiReasoningMode, buildFoodParseMessages, createFoodParseRequest } from '@kus/shared'
+import {
+	AI_VALIDATION_RETRY_COUNT,
+	type AiReasoningMode,
+	buildFoodParseMessages,
+	createFoodParseRequest,
+} from '@kus/shared'
 import { z } from 'zod'
 
 import type { EvalCase } from './cases/index.js'
@@ -15,6 +20,8 @@ const OUTPUT_TOKENS_PER_TEXT_CHAR = 6
 const REASONING_TOKENS: Record<AiReasoningMode, number> = { minimal: 800, low: 1600 }
 /** Share of cases expected to need the validation retry (~2× input on those). */
 const RETRY_OVERHEAD = 0.15
+/** The hard budget reserves a case as if every allowed validation retry happens. */
+const MAX_ATTEMPTS_PER_CASE = 1 + AI_VALIDATION_RETRY_COUNT
 
 const modelsSchema = z.object({
 	data: z.array(
@@ -25,6 +32,12 @@ const modelsSchema = z.object({
 	),
 })
 
+/** USD per token, as OpenRouter /models gives it. */
+export interface ModelPrice {
+	prompt: number
+	completion: number
+}
+
 export interface CostEstimate {
 	model: string
 	promptPerMillion: number
@@ -33,7 +46,7 @@ export interface CostEstimate {
 	usdPerRun: number
 }
 
-const fetchPrices = async (): Promise<Map<string, { prompt: number; completion: number }>> => {
+export const fetchPrices = async (): Promise<Map<string, ModelPrice>> => {
 	const response = await fetch(`${OPENROUTER_API_URL}/models`, {
 		signal: AbortSignal.timeout(30_000),
 	})
@@ -53,6 +66,29 @@ const estimateInputTokens = (evalCase: EvalCase): number => {
 	return textTokens + (photo ? getImageTokens(photo.width, photo.height) : 0)
 }
 
+const estimateOutputTokens = (evalCase: EvalCase, reasoning: AiReasoningMode): number =>
+	OUTPUT_TOKENS_BASE +
+	evalCase.text.length * OUTPUT_TOKENS_PER_TEXT_CHAR +
+	REASONING_TOKENS[reasoning]
+
+/**
+ * What the hard --max-cost reserves before each case: the most expensive case of the set,
+ * every attempt included. An expected upper bound, not max_tokens: that one would stop a run
+ * after a handful of cases.
+ */
+export const getCaseReserveUsd = (
+	cases: EvalCase[],
+	price: ModelPrice,
+	reasoning: AiReasoningMode,
+): number => {
+	const costs = cases.map(
+		(evalCase) =>
+			estimateInputTokens(evalCase) * price.prompt +
+			estimateOutputTokens(evalCase, reasoning) * price.completion,
+	)
+	return Math.max(0, ...costs) * MAX_ATTEMPTS_PER_CASE
+}
+
 export const estimateCost = async (
 	models: string[],
 	cases: EvalCase[],
@@ -61,11 +97,7 @@ export const estimateCost = async (
 	const prices = await fetchPrices()
 	const inputTokens = cases.reduce((sum, evalCase) => sum + estimateInputTokens(evalCase), 0)
 	const outputTokens = cases.reduce(
-		(sum, evalCase) =>
-			sum +
-			OUTPUT_TOKENS_BASE +
-			evalCase.text.length * OUTPUT_TOKENS_PER_TEXT_CHAR +
-			REASONING_TOKENS[reasoning],
+		(sum, evalCase) => sum + estimateOutputTokens(evalCase, reasoning),
 		0,
 	)
 	return models.map((model) => {

@@ -1,6 +1,7 @@
 // pnpm --filter ai-eval eval [--models a,b] [--estimate] [--max-cost 3] [--concurrency 4] [--only id,id]
 //   [--reasoning minimal|low] (default: FOOD_PARSE_REASONING from shared)
 //   [--set all|repo|private] — private = real cases from data/private (aggregated metrics only)
+//   --max-cost is hard: a case starts only if the spent + in-flight reserves + its reserve fit in it.
 // Reads OPENROUTER_API_KEY and AI_MODEL from apps/api/.env (see package.json). Prints to the terminal;
 // full results (with private case ids) go to results/ — gitignored.
 import { mkdir, writeFile } from 'node:fs/promises'
@@ -16,7 +17,7 @@ import {
 import { type EvalCase, loadCases } from './cases/index.js'
 import { PRIVATE_ID_PREFIX } from './cases/private-cases.js'
 import { summarize } from './metrics.js'
-import { estimateCost } from './pricing.js'
+import { estimateCost, fetchPrices, getCaseReserveUsd } from './pricing.js'
 import {
 	formatClarifyReport,
 	formatDecisionBreakdown,
@@ -124,14 +125,26 @@ const main = async (): Promise<void> => {
 
 	const apiKey = process.env.OPENROUTER_API_KEY
 	if (!apiKey) throw new Error('OPENROUTER_API_KEY is not set (apps/api/.env)')
-	const budget = { spentUsd: 0, maxUsd: Number(args['max-cost']) }
+	const maxUsd = Number(args['max-cost'])
+	if (!Number.isFinite(maxUsd) || maxUsd <= 0)
+		throw new Error('--max-cost must be a positive number')
+	const budget = { spentUsd: 0, maxUsd, reservedUsd: 0 }
 	const concurrency = Number(args.concurrency)
 	const reasoning = getReasoning()
+	const prices = await fetchPrices()
+	print(
+		`Ліміт --max-cost: $${maxUsd.toFixed(2)} (жорсткий: кейс стартує, лише якщо вміщується його резерв)`,
+	)
 
 	const runs: ModelRun[] = []
 	for (const model of models) {
-		print(`▶ ${model}: ${cases.length} кейсів…`)
-		runs.push(await runModel(cases, { apiKey, model, reasoning, concurrency, budget }))
+		const price = prices.get(model)
+		if (!price) throw new Error(`Model "${model}" is not on OpenRouter`)
+		const caseReserveUsd = getCaseReserveUsd(cases, price, reasoning)
+		print(`▶ ${model}: ${cases.length} кейсів, резерв на кейс $${caseReserveUsd.toFixed(4)}…`)
+		runs.push(
+			await runModel(cases, { apiKey, model, reasoning, concurrency, budget, caseReserveUsd }),
+		)
 	}
 
 	const summaries = runs.map((run) => summarize(run.model, run.pairs))
@@ -149,9 +162,13 @@ const main = async (): Promise<void> => {
 		if (retries) print(`\nПомилки валідації ${run.model}:\n${retries}`)
 		print(`\n${run.model}: ${formatMixedScript(run.pairs)}`)
 		if (run.skipped > 0)
-			print(`\n⚠ ${run.model}: пропущено ${run.skipped} кейсів — вичерпано --max-cost`)
+			print(`\n⚠ ${run.model}: пропущено ${run.skipped} кейсів — резерв не вміщується в --max-cost`)
+		if (run.overReserve.length > 0)
+			print(
+				`\n⚠ ${run.model}: дорожче за резерв (${run.overReserve.length}): ${run.overReserve.join(', ')} — перекалібрувати pricing.ts`,
+			)
 	}
-	print(`\nВитрачено: $${budget.spentUsd.toFixed(4)}`)
+	print(`\nВитрачено: $${budget.spentUsd.toFixed(4)} з $${budget.maxUsd.toFixed(2)}`)
 	print(`Результати: ${await saveResults(runs)}`)
 }
 

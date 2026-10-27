@@ -6,6 +6,7 @@ import {
 	aiRunStatusSchema,
 	attachmentStatusSchema,
 	clarificationStatusSchema,
+	exerciseKindSchema,
 	exerciseSourceSchema,
 	factCategorySchema,
 	factStatusSchema,
@@ -24,6 +25,7 @@ import {
 	storedFileKindSchema,
 	toolCallStatusSchema,
 	verificationTokenTypeSchema,
+	workoutPlaceSchema,
 } from '@kus/shared'
 import { describe, expect, it } from 'vitest'
 
@@ -50,6 +52,8 @@ const ENUM_PAIRS: [string, Record<string, string>, readonly string[]][] = [
 	['MyFoodSource', PrismaEnums.MyFoodSource, myFoodSourceSchema.options],
 	['FactCategory', PrismaEnums.FactCategory, factCategorySchema.options],
 	['FactStatus', PrismaEnums.FactStatus, factStatusSchema.options],
+	['WorkoutPlace', PrismaEnums.WorkoutPlace, workoutPlaceSchema.options],
+	['ExerciseKind', PrismaEnums.ExerciseKind, exerciseKindSchema.options],
 	['ExerciseSource', PrismaEnums.ExerciseSource, exerciseSourceSchema.options],
 	['FoodCategory', PrismaEnums.FoodCategory, foodCategorySchema.options],
 	['MeasurementKind', PrismaEnums.MeasurementKind, measurementKindSchema.options],

@@ -204,6 +204,23 @@ enum FactStatus {
   @@map("fact_status")
 }
 
+enum WorkoutPlace {
+  GYM
+  HOME
+  OUTDOOR
+  OTHER
+
+  @@map("workout_place")
+}
+
+enum ExerciseKind {
+  STRENGTH
+  CARDIO
+  OTHER
+
+  @@map("exercise_kind")
+}
+
 enum ExerciseSource {
   MANUAL
   AI_ESTIMATE
@@ -306,6 +323,9 @@ model User {
   facts              UserFact[]
   dailyUsage         DailyUsage[]
   exerciseEntries    ExerciseEntry[]
+  workouts           Workout[]
+  exercises          Exercise[]
+  exerciseSets       ExerciseSet[]
   storedFiles        StoredFile[]
 
   // the daily purge job scans by purgeAt
@@ -482,6 +502,7 @@ model Message {
   foodEntries        FoodEntry[]
   facts              UserFact[]
   exerciseEntries    ExerciseEntry[]
+  workouts           Workout[]
   measurements       Measurement[]
   achievements       Achievement[]
 
@@ -846,13 +867,65 @@ model DailyUsage {
   @@map("daily_usage")
 }
 
-// After MVP
+// One training session; its exercises are ExerciseEntry rows. Burned calories are only a number the
+// user said or a device showed — never added to the calorie goal.
+model Workout {
+  id              String          @id @default(uuid(7)) @db.Uuid
+  userId          String          @map("user_id") @db.Uuid
+  localDate       DateTime        @map("local_date") @db.Date
+  startedAt       DateTime?       @map("started_at") @db.Timestamptz
+  durationMin     Int?            @map("duration_min")
+  place           WorkoutPlace?
+  kcalBurned      Int?            @map("kcal_burned")
+  kcalSource      ExerciseSource? @map("kcal_source")
+  note            String?
+  sourceMessageId String?         @map("source_message_id") @db.Uuid
+  createdAt       DateTime        @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime        @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt       DateTime?       @map("deleted_at") @db.Timestamptz
+
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sourceMessage Message?        @relation(fields: [sourceMessageId], references: [id], onDelete: SetNull)
+  exercises     ExerciseEntry[]
+
+  @@index([userId, localDate])
+  @@index([sourceMessageId])
+  @@map("workouts")
+}
+
+// The user's own exercise dictionary (like MyFood): «жим», «жим лежачи» and «bench» are one row of progress.
+model Exercise {
+  id             String       @id @default(uuid(7)) @db.Uuid
+  userId         String       @map("user_id") @db.Uuid
+  name           String
+  nameNormalized String       @map("name_normalized")
+  aliases        String[]
+  kind           ExerciseKind
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt      DateTime?    @map("deleted_at") @db.Timestamptz
+
+  user    User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  entries ExerciseEntry[]
+
+  @@unique([userId, nameNormalized], where: raw("deleted_at IS NULL"))
+  @@map("exercises")
+}
+
+// One exercise of a workout (before 0.8.1 this table was an unused «exercise log»; it was empty).
+// performedAt / localDate / source repeat the workout's, so the old columns stay NOT NULL.
 model ExerciseEntry {
   id              String         @id @default(uuid(7)) @db.Uuid
   userId          String         @map("user_id") @db.Uuid
+  workoutId       String?        @map("workout_id") @db.Uuid
+  exerciseId      String?        @map("exercise_id") @db.Uuid
+  // as the user wrote it
   name            String
-  durationMin     Int            @map("duration_min")
-  kcalBurned      Float          @map("kcal_burned")
+  kind            ExerciseKind   @default(OTHER)
+  position        Int            @default(0)
+  durationMin     Int?           @map("duration_min")
+  distanceM       Int?           @map("distance_m")
+  kcalBurned      Float?         @map("kcal_burned")
   source          ExerciseSource
   performedAt     DateTime       @map("performed_at") @db.Timestamptz
   localDate       DateTime       @map("local_date") @db.Date
@@ -861,10 +934,34 @@ model ExerciseEntry {
   updatedAt       DateTime       @updatedAt @map("updated_at") @db.Timestamptz
   deletedAt       DateTime?      @map("deleted_at") @db.Timestamptz
 
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  sourceMessage Message? @relation(fields: [sourceMessageId], references: [id], onDelete: SetNull)
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workout       Workout?      @relation(fields: [workoutId], references: [id], onDelete: Cascade)
+  exercise      Exercise?     @relation(fields: [exerciseId], references: [id], onDelete: SetNull)
+  sourceMessage Message?      @relation(fields: [sourceMessageId], references: [id], onDelete: SetNull)
+  sets          ExerciseSet[]
 
   @@index([userId, localDate])
   @@index([sourceMessageId])
+  @@index([workoutId])
+  @@index([exerciseId])
   @@map("exercise_entries")
+}
+
+// One set (or one cardio interval). userId repeats the owner, so records are found without joins.
+model ExerciseSet {
+  id              String   @id @default(uuid(7)) @db.Uuid
+  userId          String   @map("user_id") @db.Uuid
+  exerciseEntryId String   @map("exercise_entry_id") @db.Uuid
+  position        Int
+  reps            Int?
+  weightKg        Decimal? @map("weight_kg") @db.Decimal(6, 2)
+  durationSec     Int?     @map("duration_sec")
+  distanceM       Int?     @map("distance_m")
+  isWarmup        Boolean  @default(false) @map("is_warmup")
+
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exerciseEntry ExerciseEntry @relation(fields: [exerciseEntryId], references: [id], onDelete: Cascade)
+
+  @@index([userId, exerciseEntryId])
+  @@map("exercise_sets")
 }

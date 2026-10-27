@@ -8,7 +8,7 @@ PostgreSQL + Prisma 7 (адаптер `PrismaPg`). Джерело правди �
 - **Назви** — моделі й поля в коді PascalCase/camelCase, таблиці, колонки й enum-типи в БД — snake_case (`@@map` / `@map`).
 - **Дати** — `timestamptz`. `localDate` (`date`) — календарний день користувача; рахує бекенд з моменту події й `User.timezone` (за замовчуванням `Europe/Warsaw`). Усі «денні» запити йдуть за `localDate`, не за UTC-датою.
 - **Числа** — харчові значення `Float` (г, ккал), гроші — `Decimal(12,8)` у USD.
-- **Soft delete** (`deletedAt`) — `Meal`, `FoodEntry`, `MyFood`, `Recipe`, `UserFact`, `ExerciseEntry`, `Measurement`. Кожен запит до них — з фільтром `deletedAt: null`. Видалення = встановити `deletedAt`, «скасувати» в чаті = повернути `deletedAt = null`. Записи дня фільтруються **і** за `entry.deletedAt: null`, **і** за `meal.deletedAt: null`; видалення прийому ставить `deletedAt` прийому й усім його записам в одній транзакції.
+- **Soft delete** (`deletedAt`) — `Meal`, `FoodEntry`, `MyFood`, `Recipe`, `UserFact`, `Workout`, `Exercise`, `ExerciseEntry`, `Measurement`. Кожен запит до них — з фільтром `deletedAt: null`. Видалення = встановити `deletedAt`, «скасувати» в чаті = повернути `deletedAt = null`. Записи дня фільтруються **і** за `entry.deletedAt: null`, **і** за `meal.deletedAt: null`; видалення прийому ставить `deletedAt` прийому й усім його записам в одній транзакції.
 - **Ізоляція даних** — кожна сутність користувача має `userId` з `onDelete: Cascade`. Чисто дочірні таблиці (`MessageAttachment`, `AiToolCall`, `RecipeIngredient`, `ClarificationEntry`) `userId` не мають — до них ходимо лише через батька, який уже відфільтрований за `userId`.
 - **Чужі id (IDOR)** — БД не гарантує, що зв'язані сутності належать тому самому користувачу (`FoodEntry.mealId`, `myFoodId`, `recipeId`, `Correction.foodEntryId`, `Clarification.messageId` тощо). Тому **кожен id, отриманий від клієнта чи від AI-інструмента**, сервіс перевіряє через `findFirst({ where: { id, userId, deletedAt: null } })` перед тим, як використати чи прив'язати. Кожен такий ендпоінт чи AI-інструмент **обов'язково покривається IDOR-тестом**: другий користувач намагається прочитати, змінити чи прив'язати чужий id → `404`, дані не змінено. Складені FK `(id, userId)` у v0.1 свідомо не робимо — див. [Відкладено](#відкладено).
 - **Видалення акаунта** — жорстке `DELETE` користувача стирає всі його дані каскадом (RODO). Перевірено: після видалення demo-користувача всі таблиці порожні.
@@ -38,6 +38,11 @@ erDiagram
     User ||--o{ UserFact : "has"
     User ||--o{ DailyUsage : "limits"
     User ||--o{ ExerciseEntry : "logs"
+    User ||--o{ Workout : "trains"
+    User ||--o{ Exercise : "names"
+    Workout ||--o{ ExerciseEntry : "consists of"
+    Exercise |o--o{ ExerciseEntry : "is done as"
+    ExerciseEntry ||--o{ ExerciseSet : "has"
 
     Message ||--o{ Message : "replyTo"
     Message ||--o{ MessageAttachment : "photos"
@@ -63,6 +68,7 @@ erDiagram
     Recipe |o--o{ Correction : "applied to"
     Message |o--o{ UserFact : "source"
     Message |o--o{ ExerciseEntry : "source"
+    Message |o--o{ Workout : "source"
 ```
 
 `|o` — необов'язковий зв'язок (`onDelete: SetNull`), `||` — обов'язковий (`onDelete: Cascade`).
@@ -110,7 +116,10 @@ erDiagram
 ### Ліміти й пізніші модулі
 
 - **DailyUsage** — лічильники за **локальний** день користувача (повідомлення, фото, вартість AI) для денних лімітів. Інкремент атомарний: `upsert` + `increment` по `unique(userId, localDate)`. Відомий компроміс: зміна timezone може «скинути» ліміт раніше.
-- **ExerciseEntry** — після MVP: активність, тривалість, спалені ккал, джерело.
+- **Workout** — одне тренування (0.8.1): день, місце (`WorkoutPlace`: GYM / HOME / OUTDOOR / OTHER), тривалість, `kcalBurned` — лише число, яке назвала людина або показав тренажер (`kcalSource`: MANUAL / DEVICE), оцінку моделі не зберігаємо; **спалене ніколи не додається до цілі**. Soft delete, повідомлення-джерело — `sourceMessageId`.
+- **Exercise** — словник вправ користувача (як `MyFood`): `name`, `nameNormalized`, `aliases`, `kind` (`ExerciseKind`: STRENGTH / CARDIO / OTHER). Унікальність `(userId, nameNormalized)` — лише серед не видалених. Склеює «жим», «жим лежачи» й «bench» в один ряд прогресу.
+- **ExerciseEntry** — одна вправа тренування (`workoutId`, `exerciseId?`, `kind`, `position`, `durationMin?`, `distanceM?`); `name` — як написала людина. `performedAt`, `localDate`, `source` повторюють тренування. До 0.8.1 таблиця була порожньою заготовкою — міграція має запобіжник і не запуститься над рядками.
+- **ExerciseSet** — підхід (`reps?`, `weightKg?`, `durationSec?`, `distanceM?`, `isWarmup`); `userId` дублює власника, щоб рекорди рахувались без з'єднань. Рекорди не зберігаються: бекенд рахує їх запитом.
 
 ## Індекси
 
@@ -136,7 +145,10 @@ erDiagram
 | corrections           | `food_entry_id`; `(user_id, created_at)`; `my_food_id`; `recipe_id`                                         |                                                   |
 | user_facts            | `(user_id, status)`                                                                                         | факти в контекст AI                               |
 | daily_usage           | `(user_id, local_date)` UNIQUE                                                                              | ліміти                                            |
-| exercise_entries      | `(user_id, local_date)`                                                                                     |                                                   |
+| exercise_entries      | `(user_id, local_date)`; `source_message_id`; `workout_id`; `exercise_id`                                   | вправи тренування                                 |
+| workouts              | `(user_id, local_date)`; `source_message_id`                                                                | тренування дня й тижня                            |
+| exercises             | partial UNIQUE `(user_id, name_normalized)` WHERE не видалено                                               | словник вправ                                     |
+| exercise_sets         | `(user_id, exercise_entry_id)`                                                                              | підходи, рекорди                                  |
 
 ## Відкладено
 

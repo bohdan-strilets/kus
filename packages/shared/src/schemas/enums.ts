@@ -68,6 +68,12 @@ export type FactCategory = z.infer<typeof factCategorySchema>
 export const factStatusSchema = z.enum(['PROPOSED', 'CONFIRMED', 'REJECTED'])
 export type FactStatus = z.infer<typeof factStatusSchema>
 
+export const workoutPlaceSchema = z.enum(['GYM', 'HOME', 'OUTDOOR', 'OTHER'])
+export type WorkoutPlace = z.infer<typeof workoutPlaceSchema>
+
+export const exerciseKindSchema = z.enum(['STRENGTH', 'CARDIO', 'OTHER'])
+export type ExerciseKind = z.infer<typeof exerciseKindSchema>
+
 export const exerciseSourceSchema = z.enum(['MANUAL', 'AI_ESTIMATE', 'DEVICE'])
 export type ExerciseSource = z.infer<typeof exerciseSourceSchema>
 

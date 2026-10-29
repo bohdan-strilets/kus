@@ -2,6 +2,12 @@
 // under a short ref. The backend keeps the ref → id map of the request (CLAUDE.md §5, IDOR).
 import type { FoodCategory, FoodSource, MealType } from '../schemas/enums.js'
 import type { ClarifyOption } from './tools.js'
+import {
+	type ExerciseContext,
+	formatExercise,
+	formatWorkout,
+	type TodayWorkoutContext,
+} from './workout-context.js'
 
 /** Newest last; older entries of a busy day drop out of the context first. */
 export const MAX_CONTEXT_ENTRIES = 30
@@ -109,14 +115,23 @@ const formatClarification = (clarification: OpenClarificationContext): string =>
 	return `- ${clarification.ref} about ${clarification.entryRefs.join(', ')}: "${clarification.question}" — ${options}`
 }
 
+const WORKOUTS_HEADER =
+	"Today's workouts (refs for delete_entry / restore_entry and log_workout.replaceRef):"
+
 export const formatEditContext = ({
 	entries,
 	deletedEntries,
 	openClarifications,
+	workouts = [],
+	deletedWorkouts = [],
+	exercises = [],
 }: {
 	entries: TodayEntryContext[]
 	deletedEntries: DeletedEntryContext[]
 	openClarifications: OpenClarificationContext[]
+	workouts?: TodayWorkoutContext[]
+	deletedWorkouts?: TodayWorkoutContext[]
+	exercises?: ExerciseContext[]
 }): string[] => {
 	const lines =
 		entries.length === 0
@@ -125,19 +140,27 @@ export const formatEditContext = ({
 					"Today's entries — already logged, current values (refs for correct_entry / delete_entry; only these can be changed):",
 					...entries.map(formatEntry),
 				]
-	if (deletedEntries.length > 0) {
+	if (workouts.length > 0) lines.push(WORKOUTS_HEADER, ...workouts.map(formatWorkout))
+	if (deletedEntries.length > 0 || deletedWorkouts.length > 0) {
 		lines.push(
 			'Deleted today (refs for restore_entry):',
 			...deletedEntries.map(
 				(entry) =>
 					`- ${entry.ref} "${entry.name}": ${round(entry.grams)} g, ${round(entry.kcal)} kcal`,
 			),
+			...deletedWorkouts.map(formatWorkout),
 		)
 	}
 	if (openClarifications.length > 0) {
 		lines.push(
 			'Open questions (refs for resolve_clarification):',
 			...openClarifications.map(formatClarification),
+		)
+	}
+	if (exercises.length > 0) {
+		lines.push(
+			'Exercises (refs for exerciseRef; the last result of each):',
+			...exercises.map(formatExercise),
 		)
 	}
 	return lines

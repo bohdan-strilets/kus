@@ -24,6 +24,7 @@ import { type DaySummary, EntriesService } from '../entries/entries.service'
 import { GoalsService } from '../goals/goals.service'
 import { MeasurementsService } from '../measurements/measurements.service'
 import { ProfileService } from '../profile/profile.service'
+import { type WorkoutRefIds, WorkoutsTurnService } from '../workouts/workouts-turn.service'
 import { ChatRepository, type MessageWithAttachments } from './chat.repository'
 import { ChatEarlierService } from './chat-earlier.service'
 import { ClarificationsRepository } from './clarifications.repository'
@@ -83,6 +84,7 @@ export class ChatContextService {
 		private readonly goalsService: GoalsService,
 		private readonly measurementsService: MeasurementsService,
 		private readonly profileService: ProfileService,
+		private readonly workoutsTurn: WorkoutsTurnService,
 	) {}
 
 	/** Day totals vs goal; the remainder is computed here, never by the model. */
@@ -173,10 +175,11 @@ export class ChatContextService {
 	}: BuildContextParams): Promise<{
 		context: FoodParseContext
 		refIds: EditRefIds
+		workoutRefIds: WorkoutRefIds
 		copyRefIds: CopyRefIds
 	}> {
 		const today = formatDbDate(localDate)
-		const [{ summary, goal, totals }, history, editable, measurements, days, earlier] =
+		const [{ summary, goal, totals }, history, editable, measurements, days, earlier, workouts] =
 			await Promise.all([
 				this.getDayOverview(userId, localDate),
 				this.chatRepository.findHistory({
@@ -193,6 +196,7 @@ export class ChatContextService {
 				this.getMeasurementsContext(userId, localDate),
 				this.getDaysContext(userId, today),
 				this.chatEarlier.getContext({ userId, text, today }),
+				this.workoutsTurn.getContext({ userId, localDate, timezone, text }),
 			])
 		const clarifications = await this.clarificationsRepository.findOpenClarifications({
 			userId,
@@ -232,6 +236,12 @@ export class ChatContextService {
 				dayTotals: summary.totals,
 				meals: summary.meals,
 				...edit,
+				// no section at all unless there is something to say
+				...(workouts.workouts.length > 0 ? { workouts: workouts.workouts } : {}),
+				...(workouts.deletedWorkouts.length > 0
+					? { deletedWorkouts: workouts.deletedWorkouts }
+					: {}),
+				...(workouts.exercises.length > 0 ? { exercises: workouts.exercises } : {}),
 				goal: goalContext,
 				days,
 				measurements,
@@ -243,6 +253,7 @@ export class ChatContextService {
 					.flatMap((turn) => toHistoryTurns(turn, refByEntryId, entryIdsBySourceMessageId)),
 			},
 			refIds,
+			workoutRefIds: workouts.refIds,
 			copyRefIds: earlier.copyRefIds,
 		}
 	}

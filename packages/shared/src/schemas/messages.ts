@@ -16,6 +16,7 @@ import { dayVerdictSchema } from './day-verdict.js'
 import { measurementCardSchema } from './measurements.js'
 import { PHOTOS_PER_MESSAGE_LIMIT } from './photo-limits.js'
 import { statsCardSchema } from './stats-card.js'
+import { workoutResponseSchema } from './workouts.js'
 
 export const MESSAGE_TEXT_MAX_LENGTH = 2000
 export const MESSAGES_PAGE_DEFAULT_LIMIT = 30
@@ -242,6 +243,8 @@ export const chatMessageSchema = z.object({
 	clarifications: z.array(clarificationResponseSchema),
 	/** Assistant replies only: the weight or waist this turn recorded, one card per kind. */
 	measurements: z.array(measurementCardSchema),
+	/** Assistant replies only: the trainings this turn recorded (empty in payloads of older servers). */
+	workouts: z.array(workoutResponseSchema).default([]),
 	/** Assistant replies only: the milestone this turn reached — the highest one per type. */
 	achievements: z.array(achievementResponseSchema),
 	/** Replies to show_day only: the day snapshot. null elsewhere and in payloads of older servers. */

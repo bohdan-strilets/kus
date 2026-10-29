@@ -1,5 +1,6 @@
 import { z } from 'zod'
 
+import { countRangeDays } from './date-range.js'
 import { DAY_OVER_GOAL_RATIO } from './day-verdict.js'
 import { loggedMealSchema, nutritionTotalsSchema } from './messages.js'
 
@@ -33,11 +34,7 @@ export type DayResponse = z.infer<typeof dayResponseSchema>
 /** The week strip asks for 7 days; a month is the most a screen needs at once. */
 export const DAYS_RANGE_MAX_DAYS = 31
 
-const MS_IN_DAY = 24 * 60 * 60 * 1000
-
-/** Days from `from` to `to`, both included. */
-export const countRangeDays = (from: string, to: string): number =>
-	Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / MS_IN_DAY) + 1
+export { countRangeDays }
 
 /** Query of GET /days?from&to — `YYYY-MM-DD`, the user's calendar days. */
 export const daysRangeQuerySchema = z

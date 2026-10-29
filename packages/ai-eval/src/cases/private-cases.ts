@@ -80,6 +80,7 @@ const loadJsonCases = async (suffix: string, idPrefix: string): Promise<EvalCase
 			...item,
 			id: `${idPrefix}${item.id}`,
 			context: {
+				...(item.addressForm === undefined ? {} : { addressForm: item.addressForm }),
 				...(item.contextPreset === undefined ? {} : CONTEXT_PRESETS[item.contextPreset]),
 				memory: toMemoryContext(foods, item.text),
 			},

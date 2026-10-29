@@ -2,7 +2,7 @@
 // After any change here: run `pnpm --filter ai-eval eval` and add a line to PROMPT_CHANGELOG.md.
 import { z } from 'zod'
 
-import { mealTypeSchema, measurementKindSchema } from '../schemas/enums.js'
+import { mealTypeSchema, measurementKindSchema, workoutPlaceSchema } from '../schemas/enums.js'
 import {
 	foodEntryBaseSchema,
 	MAX_ENTRY_GRAMS,
@@ -19,9 +19,18 @@ import {
 	restoreEntryInputSchema,
 } from './edit-tools.js'
 import { COPY_REF_PATTERN } from './history-context.js'
+import { toModelParameters } from './model-schema.js'
+import {
+	MAX_EXERCISES_PER_WORKOUT,
+	MAX_WORKOUT_KCAL,
+	MAX_WORKOUT_MINUTES,
+	WORKOUT_REF_PATTERN,
+	workoutExerciseSchema,
+} from './workout-tools.js'
 
 export const AI_TOOL_NAMES = {
 	logFood: 'log_food',
+	logWorkout: 'log_workout',
 	logMeasurement: 'log_measurement',
 	deleteMeasurement: 'delete_measurement',
 	clarify: 'clarify',
@@ -317,8 +326,41 @@ export const showStatsInputSchema = z.object({
 
 export type ShowStatsInput = z.infer<typeof showStatsInputSchema>
 
+export const logWorkoutInputSchema = z.object({
+	date: z.iso.date().nullable().default(null).describe('From "Days"; null for today'),
+	place: workoutPlaceSchema
+		.nullable()
+		.default(null)
+		.describe('GYM, HOME, OUTDOOR or OTHER if said; else null'),
+	durationMin: z
+		.int()
+		.min(1)
+		.max(MAX_WORKOUT_MINUTES)
+		.nullable()
+		.default(null)
+		.describe('Total minutes if said; else null'),
+	kcalBurned: z
+		.int()
+		.min(1)
+		.max(MAX_WORKOUT_KCAL)
+		.nullable()
+		.default(null)
+		.describe('Only a number the user said; else null'),
+	exercises: z.array(workoutExerciseSchema).min(1).max(MAX_EXERCISES_PER_WORKOUT),
+	replaceRef: z
+		.string()
+		.regex(WORKOUT_REF_PATTERN)
+		.nullable()
+		.default(null)
+		.describe('w-ref from "Today\'s workouts" to replace that whole workout; else null'),
+	reply: replyTextSchema.describe("Short chat reply in the language of the user's message"),
+})
+
+export type LogWorkoutInput = z.infer<typeof logWorkoutInputSchema>
+
 export const AI_TOOL_SCHEMAS: Record<AiToolName, z.ZodType> = {
 	log_food: logFoodInputSchema,
+	log_workout: logWorkoutInputSchema,
 	log_measurement: logMeasurementInputSchema,
 	delete_measurement: deleteMeasurementInputSchema,
 	clarify: clarifyInputSchema,
@@ -335,6 +377,8 @@ export const AI_TOOL_SCHEMAS: Record<AiToolName, z.ZodType> = {
 }
 
 const AI_TOOL_DESCRIPTIONS: Record<AiToolName, string> = {
+	log_workout:
+		'Log a workout or a part of it: strength sets (reps × weight) and cardio (minutes, distance). See "Workouts".',
 	log_food:
 		'Log everything the user says they ate or drank in this message. Always log your best estimate, even when you also ask a clarify question. For today or another day from "Days". Never to fix something already logged.',
 	log_measurement:
@@ -350,8 +394,9 @@ const AI_TOOL_DESCRIPTIONS: Record<AiToolName, string> = {
 		'Ask about logged items only when the answer changes their kcal a lot (by 80+ kcal and 15%+), or with kind "rename" which real food a strange name was (no kcal threshold). Call together with log_food, at most 2 per message.',
 	correct_entry:
 		'Change entries already logged today (by ref): portion weight, values or what the food is. Use instead of logging the food again.',
-	delete_entry: 'Delete entries logged today (by ref) that the user wants removed.',
-	restore_entry: 'Bring back entries deleted today (by ref), e.g. "поверни".',
+	delete_entry:
+		'Delete entries ("e1") or workouts ("w1") logged today that the user wants removed.',
+	restore_entry: 'Bring back entries or workouts deleted today (by ref), e.g. "поверни".',
 	resolve_clarification:
 		'The user answers an open question in words: close it with the option that matches, with values between two options, or (both null) without values — then change the entry with correct_entry.',
 	not_food:
@@ -368,31 +413,12 @@ export interface AiFunctionTool {
 	function: { name: string; description: string; parameters: Record<string, unknown> }
 }
 
-const DATE_FORMAT = 'date'
-
-/**
- * A date keeps only `format: date` for the model: the ~240-char ISO regex repeated in every date
- * field cost ~1k prefix tokens. parseToolCalls still validates the date with the full zod schema.
- */
-const dropDatePattern = ({ jsonSchema }: { jsonSchema: Record<string, unknown> }): void => {
-	if (jsonSchema.format === DATE_FORMAT) delete jsonSchema.pattern
-}
-
-const toParameters = (schema: z.ZodType): Record<string, unknown> => {
-	// output side: defaulted fields stay required (nullable), which models follow more reliably
-	const { $schema: _schema, ...parameters } = z.toJSONSchema(schema, {
-		target: 'draft-07',
-		override: dropDatePattern,
-	})
-	return parameters
-}
-
 export const getAiFunctionTools = (): AiFunctionTool[] =>
 	Object.values(AI_TOOL_NAMES).map((name) => ({
 		type: 'function',
 		function: {
 			name,
 			description: AI_TOOL_DESCRIPTIONS[name],
-			parameters: toParameters(AI_TOOL_SCHEMAS[name]),
+			parameters: toModelParameters(AI_TOOL_SCHEMAS[name]),
 		},
 	}))

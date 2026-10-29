@@ -1,10 +1,14 @@
 import { z } from 'zod'
 
-import { countRangeDays } from './days.js'
+import { countRangeDays } from './date-range.js'
 import { exerciseKindSchema, exerciseSourceSchema, workoutPlaceSchema } from './enums.js'
 
 /** A tab of history reads a quarter at most. */
 export const WORKOUTS_RANGE_MAX_DAYS = 93
+
+export const workoutRecordTypeSchema = z.enum(['WEIGHT', 'DISTANCE'])
+
+export type WorkoutRecordType = z.infer<typeof workoutRecordTypeSchema>
 
 export const workoutSetResponseSchema = z.object({
 	reps: z.number().nullable(),
@@ -25,6 +29,8 @@ export const workoutExerciseResponseSchema = z.object({
 	durationMin: z.number().nullable(),
 	distanceM: z.number().nullable(),
 	sets: z.array(workoutSetResponseSchema),
+	/** WEIGHT: a heavier set than ever before; DISTANCE: a longer one. null: no record (a first result is none). */
+	record: workoutRecordTypeSchema.nullable().default(null),
 })
 
 export type WorkoutExerciseResponse = z.infer<typeof workoutExerciseResponseSchema>
@@ -42,6 +48,8 @@ export const workoutResponseSchema = z.object({
 	place: workoutPlaceSchema.nullable(),
 	kcalBurned: z.number().nullable(),
 	kcalSource: exerciseSourceSchema.nullable(),
+	/** A later message replaced the whole workout («· змінено»). */
+	isEdited: z.boolean().default(false),
 	exercises: z.array(workoutExerciseResponseSchema),
 })
 

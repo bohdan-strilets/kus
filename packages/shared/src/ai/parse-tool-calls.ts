@@ -14,6 +14,8 @@ import {
 	deleteMeasurementInputSchema,
 	type LogFoodInput,
 	type LogMeasurementInput,
+	type LogWorkoutInput,
+	logWorkoutInputSchema,
 	logMeasurementInputSchema,
 	logFoodInputSchema,
 	type NotFoodInput,
@@ -59,7 +61,9 @@ import {
 	getMeasurementErrors,
 	roundMeasurementValue,
 } from './measurements.js'
+import { MAX_WORKOUTS_PER_MESSAGE } from './workout-tools.js'
 import { normalizeFoodName } from './normalize-food-name.js'
+import { getWorkoutErrors } from './workout-errors.js'
 
 /** Hints appended to validation errors so the model can fix them on the retry. */
 const ERROR_HINTS: Record<string, string> = {
@@ -95,7 +99,11 @@ export type FoodParseDecision =
 			edits: EntryEdits
 			measurements: LogMeasurementInput[]
 			measurementDeletions: DeleteMeasurementInput[]
+			/** A training in the same message as the food. */
+			workouts: LogWorkoutInput[]
 	  }
+	/** One or more trainings, no food. */
+	| { kind: 'workout'; workouts: LogWorkoutInput[] }
 	| { kind: 'edit'; edits: EntryEdits; text: string }
 	| { kind: 'not_food'; reply: string }
 	| { kind: 'photo_unusable'; reason: PhotoUnusableReason; reply: string }
@@ -124,6 +132,7 @@ export interface ParseMessageOptions {
 
 type ValidatedCall =
 	| { name: typeof AI_TOOL_NAMES.logFood; data: LogFoodInput }
+	| { name: typeof AI_TOOL_NAMES.logWorkout; data: LogWorkoutInput }
 	| { name: typeof AI_TOOL_NAMES.logMeasurement; data: LogMeasurementInput }
 	| { name: typeof AI_TOOL_NAMES.deleteMeasurement; data: DeleteMeasurementInput }
 	| { name: typeof AI_TOOL_NAMES.showDay; data: ShowDayInput }
@@ -152,6 +161,8 @@ const parseInput = (name: AiToolName, value: unknown): InputParse => {
 	switch (name) {
 		case AI_TOOL_NAMES.logFood:
 			return toInputParse(logFoodInputSchema.safeParse(value), (data) => ({ name, data }))
+		case AI_TOOL_NAMES.logWorkout:
+			return toInputParse(logWorkoutInputSchema.safeParse(value), (data) => ({ name, data }))
 		case AI_TOOL_NAMES.logMeasurement:
 			return toInputParse(logMeasurementInputSchema.safeParse(value), (data) => ({ name, data }))
 		case AI_TOOL_NAMES.deleteMeasurement:
@@ -311,6 +322,9 @@ const SHOW_DAY_ALONE_ERROR =
 	'show_day is the whole answer — not with log_food, reply, clarify, measurement or edit tools'
 const CARD_ALONE_ERROR =
 	'close_day and show_stats are the whole answer — not with log_food, reply, clarify, measurement or edit tools'
+const WORKOUT_ANSWER_ERROR = `log_workout goes alone or with one log_food (each reply covers its own part) — not with reply, not_food, photo_unusable, show_day, close_day, show_stats or measurement tools, and at most ${MAX_WORKOUTS_PER_MESSAGE} per message`
+const WORKOUT_ALONE_ERROR =
+	'log_workout without log_food takes no clarify and no edit tools — fix a workout with its replaceRef, remove one with delete_entry and a reply'
 const NO_PHOTO_ERROR =
 	'photo_unusable: this message has no photo — answer with reply (or not_food) instead'
 
@@ -377,6 +391,9 @@ const decide = (
 	const deletions = valid.flatMap((call) =>
 		call.name === AI_TOOL_NAMES.deleteMeasurement ? [call.data] : [],
 	)
+	const workouts = valid.flatMap((call) =>
+		call.name === AI_TOOL_NAMES.logWorkout ? [call.data] : [],
+	)
 	const shows = valid.flatMap((call) => (call.name === AI_TOOL_NAMES.showDay ? [call.data] : []))
 	const closes = valid.flatMap((call) => (call.name === AI_TOOL_NAMES.closeDay ? [call.data] : []))
 	const stats = valid.flatMap((call) => (call.name === AI_TOOL_NAMES.showStats ? [call.data] : []))
@@ -391,16 +408,23 @@ const decide = (
 	const [statsCall] = stats
 
 	// log_food speaks for the whole turn, an edit-only turn speaks through reply
-	const answers =
-		logs.length +
-		notFood.length +
-		unusable.length +
-		replies.length +
-		shows.length +
-		closes.length +
-		stats.length
-	if (answers !== 1 || ((rejected || photoUnusable) && isEditing))
-		return { decision: null, errors: [ONE_DECISION_ERROR] }
+	const otherAnswers =
+		notFood.length + unusable.length + replies.length + shows.length + closes.length + stats.length
+	const hasWorkouts = workouts.length > 0
+	if (hasWorkouts) {
+		// log_workout answers for its own part, next to log_food at most
+		const isMixed =
+			logs.length > 1 ||
+			otherAnswers > 0 ||
+			workouts.length > MAX_WORKOUTS_PER_MESSAGE ||
+			measurements.length > 0 ||
+			deletions.length > 0
+		if (isMixed) return { decision: null, errors: [WORKOUT_ANSWER_ERROR] }
+	} else {
+		const answers = logs.length + otherAnswers
+		if (answers !== 1 || ((rejected || photoUnusable) && isEditing))
+			return { decision: null, errors: [ONE_DECISION_ERROR] }
+	}
 	if (show) {
 		const isAlone = !isEditing && measurements.length === 0 && deletions.length === 0
 		if (!isAlone || clarifications.length > 0)
@@ -451,8 +475,17 @@ const decide = (
 		...getMeasurementDeletionErrors(deletions, refs),
 		...getMeasurementOverlapErrors(measurements, deletions, refs.today),
 	]
+	if (hasWorkouts && !log) {
+		if (clarifications.length > 0 || isEditing) {
+			return { decision: null, errors: [WORKOUT_ALONE_ERROR] }
+		}
+		const errors = getWorkoutErrors(workouts, refs)
+		if (errors.length > 0) return { decision: null, errors }
+		return { decision: { kind: 'workout', workouts }, errors: [] }
+	}
 	if (log) {
 		const errors = [
+			...getWorkoutErrors(workouts, refs),
 			...checkLogReferences(log, clarifications, refs),
 			...getFoodDateErrors(log, refs.today),
 			...getEditErrors(edits, refs),
@@ -468,6 +501,7 @@ const decide = (
 				edits,
 				measurements,
 				measurementDeletions: deletions,
+				workouts,
 			},
 			errors: [],
 		}

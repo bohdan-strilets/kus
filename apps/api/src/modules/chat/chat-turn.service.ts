@@ -14,6 +14,11 @@ import {
 	type StatsCard,
 } from '@kus/shared'
 
+import {
+	NO_WORKOUT_REFS,
+	type WorkoutRefIds,
+	WorkoutsTurnService,
+} from '../workouts/workouts-turn.service'
 import { formatDbDate, getLocalHour } from '../../common/time'
 import { AttachmentStatus, MeasurementKind, type Prisma } from '../../generated/prisma/client'
 import { PrismaService } from '../../prisma'
@@ -62,7 +67,10 @@ const hasWeight = (measurements: LogMeasurementInput[]): boolean =>
 const getReplyText = (decision: FoodParseDecision): string => {
 	switch (decision.kind) {
 		case 'log':
-			return decision.log.reply
+			// each reply covers its own part: the food, then the workouts
+			return [decision.log.reply, ...decision.workouts.map(({ reply }) => reply)].join(' ')
+		case 'workout':
+			return decision.workouts.map(({ reply }) => reply).join(' ')
 		case 'edit':
 		case 'day':
 		case 'close_day':
@@ -129,6 +137,7 @@ export class ChatTurnService {
 		private readonly dayCards: ChatDayCardService,
 		private readonly closeDays: ChatCloseDayService,
 		private readonly progressStats: ProgressStatsService,
+		private readonly workoutsTurn: WorkoutsTurnService,
 	) {}
 
 	async saveDecision(
@@ -137,8 +146,15 @@ export class ChatTurnService {
 		{
 			memory,
 			refIds,
+			workoutRefIds = NO_WORKOUT_REFS,
 			copyRefIds,
-		}: { memory: RelevantFoods; refIds: EditRefIds; copyRefIds: CopyRefIds },
+		}: {
+			memory: RelevantFoods
+			refIds: EditRefIds
+			/** Omitted where the turn cannot touch workouts. */
+			workoutRefIds?: WorkoutRefIds
+			copyRefIds: CopyRefIds
+		},
 	): Promise<TurnResult> {
 		// the numbers of the card are counted before the turn is written; a card is a snapshot anyway
 		const dayCard = await this.buildDayCard({ userId, message, now, localDate }, decision)
@@ -198,12 +214,26 @@ export class ChatTurnService {
 					tx,
 				)
 			}
+			if (decision.kind === 'workout') {
+				const { sourceMessageIds } = await this.workoutsTurn.logWorkouts(
+					{
+						userId,
+						sourceMessageId: message.id,
+						now,
+						localDate,
+						workouts: decision.workouts,
+						refIds: workoutRefIds,
+					},
+					tx,
+				)
+				return { ...NO_EDITED_MESSAGES, sourceMessageIds, replacedMeasurementMessageIds: [] }
+			}
 			if (decision.kind !== 'log' && decision.kind !== 'edit') {
 				return { ...NO_EDITED_MESSAGES, replacedMeasurementMessageIds: [] }
 			}
 			// earlier entries first: their refs describe the day before this message
 			const edited = await this.chatEdits.applyEdits(
-				{ userId, userMessageId: message.id, edits: decision.edits, refIds },
+				{ userId, userMessageId: message.id, edits: decision.edits, refIds, workoutRefIds },
 				tx,
 			)
 			if (decision.kind === 'edit') {
@@ -256,6 +286,20 @@ export class ChatTurnService {
 					tx,
 				)
 			}
+			const workoutMessages =
+				decision.workouts.length > 0
+					? await this.workoutsTurn.logWorkouts(
+							{
+								userId,
+								sourceMessageId: message.id,
+								now,
+								localDate,
+								workouts: decision.workouts,
+								refIds: workoutRefIds,
+							},
+							tx,
+						)
+					: { sourceMessageIds: [] }
 			const replaced = await this.saveMeasurements(
 				{ userId, timezone, message, now, localDate },
 				decision,
@@ -276,7 +320,11 @@ export class ChatTurnService {
 			// the meals it joined grew: earlier cards of them get a new «разом» line
 			return {
 				...edited,
-				sourceMessageIds: [...edited.sourceMessageIds, message.id],
+				sourceMessageIds: [
+					...edited.sourceMessageIds,
+					...workoutMessages.sourceMessageIds,
+					message.id,
+				],
 				replacedMeasurementMessageIds: replaced,
 			}
 		})

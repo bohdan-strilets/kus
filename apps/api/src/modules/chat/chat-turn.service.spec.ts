@@ -42,6 +42,7 @@ const toLogDecision = (items: ReturnType<typeof toItem>[], log: Record<string, u
 		edits: { corrections: [], deletions: [], restorations: [], resolutions: [] },
 		measurements: [],
 		measurementDeletions: [],
+		workouts: [],
 	}) as never
 
 const createService = () => {
@@ -55,6 +56,7 @@ const createService = () => {
 	const setDayCard = vi.fn().mockResolvedValue(undefined)
 	const findActiveEntriesByIds = vi.fn().mockResolvedValue([])
 	const recordForTurn = vi.fn()
+	const logWorkouts = vi.fn().mockResolvedValue({ sourceMessageIds: [] })
 	const service = new ChatTurnService(
 		{ $transaction: (callback: (tx: unknown) => unknown) => callback({}) } as never,
 		{ completeTurn, setDayCard } as never,
@@ -67,6 +69,7 @@ const createService = () => {
 		{ build } as never,
 		{ close } as never,
 		{ build: buildStats } as never,
+		{ logWorkouts } as never,
 	)
 	const save = (decision: never, copyRefIds: Map<string, string> = new Map()) =>
 		service.saveDecision(

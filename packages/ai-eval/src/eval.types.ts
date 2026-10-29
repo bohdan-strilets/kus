@@ -1,4 +1,4 @@
-import type { ClarifyKind, MeasurementKind } from '@kus/shared'
+import type { ClarifyKind, ExerciseKind, MeasurementKind, WorkoutPlace } from '@kus/shared'
 
 export type ActualDecision =
 	| 'log'
@@ -10,6 +10,7 @@ export type ActualDecision =
 	| 'day_card'
 	| 'close_day'
 	| 'stats'
+	| 'workout'
 	| 'error'
 
 export interface ValidationAttempt {
@@ -54,6 +55,8 @@ export interface CaseResult {
 	edits: EditResult | null
 	/** What log_measurement recorded (the day resolved); empty when nothing was. */
 	measurements: MeasuredItem[]
+	/** What log_workout recorded; empty when nothing was. */
+	workouts: LoggedWorkout[]
 	/** Days named by log_food, show_day and delete_measurement. */
 	calls: CallFacts
 	costUsd: number
@@ -91,6 +94,30 @@ export interface MeasuredItem {
 	/** `YYYY-MM-DD` */
 	date: string
 	confirmedJump: boolean
+}
+
+/** One exercise of a logged workout, sets already expanded. */
+export interface LoggedWorkoutExercise {
+	name: string
+	kind: ExerciseKind
+	exerciseRef: string | null
+	/** Sets after the groups are expanded, warm-ups included. */
+	sets: number
+	warmupSets: number
+	/** The heaviest working (not warm-up) weight; null without weights. */
+	maxWeightKg: number | null
+	/** Reps of the first working set. */
+	reps: number | null
+	durationMin: number | null
+	distanceKm: number | null
+}
+
+export interface LoggedWorkout {
+	place: WorkoutPlace | null
+	durationMin: number | null
+	kcalBurned: number | null
+	replaceRef: string | null
+	exercises: LoggedWorkoutExercise[]
 }
 
 export interface EditResult {
@@ -149,6 +176,8 @@ export interface ModelSummary {
 	edits: RateStats
 	/** Cases with expected measurements whose recorded set matched exactly (none expected = none recorded). */
 	measurements: RateStats
+	/** Cases with expected trainings whose logged set matched exactly (none expected = none logged). */
+	workouts: RateStats
 	/** Cases with expected log/item/card/deleted days or item count whose calls all matched. */
 	details: RateStats
 	/** Cases with expected sources whose every logged item carries one of them (labels → LABEL). */

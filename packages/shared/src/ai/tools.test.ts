@@ -7,7 +7,7 @@ import {
 	HISTORY_MESSAGE_MAX_CHARS,
 	selectHistory,
 } from './context.js'
-import { getAiFunctionTools } from './tools.js'
+import { getAiFunctionTools, logWorkoutInputSchema } from './tools.js'
 
 describe('getAiFunctionTools', () => {
 	const tools = getAiFunctionTools()
@@ -15,6 +15,7 @@ describe('getAiFunctionTools', () => {
 	it('exposes the tools in a stable order', () => {
 		expect(tools.map((tool) => tool.function.name)).toEqual([
 			'log_food',
+			'log_workout',
 			'log_measurement',
 			'delete_measurement',
 			'clarify',
@@ -158,5 +159,40 @@ describe('selectHistory', () => {
 		expect(selected[0]?.content).toHaveLength(HISTORY_MESSAGE_MAX_CHARS)
 		// 1500 tokens ≈ 6000 chars → exactly 6 cut messages fit, and 6 is the message cap
 		expect(selected).toHaveLength(6)
+	})
+})
+
+describe('getAiFunctionTools trimmed for the model', () => {
+	const tools = getAiFunctionTools()
+
+	it('shows no default values and no additionalProperties', () => {
+		const json = JSON.stringify(tools)
+		expect(json).not.toContain('"default"')
+		expect(json).not.toContain('additionalProperties')
+	})
+
+	it('keeps defaulted fields required, so the model always sends them', () => {
+		const workout = tools.find((tool) => tool.function.name === 'log_workout')
+		const parameters = workout?.function.parameters as { required: string[] }
+
+		expect(parameters.required).toEqual(
+			expect.arrayContaining(['date', 'place', 'durationMin', 'kcalBurned', 'replaceRef']),
+		)
+	})
+
+	it('still fills the defaults when a field is missing, as zod validates', () => {
+		const parsed = logWorkoutInputSchema.parse({
+			exercises: [{ name: 'Жим лежачи', kind: 'STRENGTH', sets: [{ reps: 8 }] }],
+			reply: 'Записав.',
+		})
+
+		expect(parsed).toMatchObject({ date: null, place: null, replaceRef: null, kcalBurned: null })
+		expect(parsed.exercises[0]).toMatchObject({ exerciseRef: null, durationMin: null })
+		expect(parsed.exercises[0]?.sets[0]).toEqual({
+			reps: 8,
+			weightKg: null,
+			count: 1,
+			isWarmup: false,
+		})
 	})
 })

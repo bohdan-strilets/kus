@@ -1,11 +1,14 @@
 import {
+	addressFormSchema,
 	COPY_REF_PATTERN,
+	exerciseKindSchema,
 	foodCategorySchema,
 	type FoodParseContext,
 	foodSourceSchema,
 	loggableMealTypeSchema,
 	measurementKindSchema,
 	statsDaysSchema,
+	workoutPlaceSchema,
 } from '@kus/shared'
 import { z } from 'zod'
 
@@ -16,7 +19,8 @@ import type { EvalPhoto } from './photo.js'
  * `log` = logged without a question; `clarify` = logged and asked; `log_or_clarify` = either is
  * fine; `edit` = only changed what was logged before (edit tools + reply), nothing new logged;
  * `day_card` = showed a day's card (show_day) instead of answering in words;
- * `close_day` / `stats` = closed the day or showed the stats card, nothing logged next to it.
+ * `close_day` / `stats` = closed the day or showed the stats card, nothing logged next to it;
+ * `workout` = logged a training (log_workout), no food.
  */
 export const expectedDecisionSchema = z.enum([
 	'log',
@@ -29,6 +33,7 @@ export const expectedDecisionSchema = z.enum([
 	'day_card',
 	'close_day',
 	'stats',
+	'workout',
 ])
 
 export type ExpectedDecision = z.infer<typeof expectedDecisionSchema>
@@ -97,6 +102,38 @@ export const expectedDeletedMeasurementSchema = z.object({
 	date: z.iso.date(),
 })
 
+/** One exercise of an expected workout; every field given is checked. */
+export const expectedWorkoutExerciseSchema = z.object({
+	/** Lower-case stem the exercise name must contain ("жим"). */
+	nameIncludes: z.string().min(1),
+	kind: exerciseKindSchema.optional(),
+	/** Sets after the groups are expanded, warm-ups included. */
+	sets: z.int().nonnegative().optional(),
+	warmupSets: z.int().nonnegative().optional(),
+	/** The heaviest working (not warm-up) weight, kg. */
+	weightKg: z.number().nonnegative().optional(),
+	/** Reps of the first working set. */
+	reps: z.int().positive().optional(),
+	durationMin: z.number().positive().optional(),
+	distanceKm: z.number().positive().optional(),
+	/** An "x1" of the case context, or null for a new exercise. */
+	exerciseRef: z.string().nullable().optional(),
+})
+
+/** One log_workout the answer must contain; its exercises are exactly these. */
+export const expectedWorkoutSchema = z.object({
+	place: workoutPlaceSchema.nullable().optional(),
+	durationMin: z.number().positive().nullable().optional(),
+	/** null = the user named no number, so none may be set. */
+	kcalBurned: z.number().positive().nullable().optional(),
+	/** The "w1" this call replaces; null = a new workout. */
+	replaceRef: z.string().nullable().optional(),
+	exercises: z.array(expectedWorkoutExerciseSchema).min(1),
+})
+
+export type ExpectedWorkoutExercise = z.infer<typeof expectedWorkoutExerciseSchema>
+export type ExpectedWorkout = z.infer<typeof expectedWorkoutSchema>
+
 export type ExpectedDeletedMeasurement = z.infer<typeof expectedDeletedMeasurementSchema>
 export type ExpectedMeasurement = z.infer<typeof expectedMeasurementSchema>
 export type ExpectedEdits = z.infer<typeof expectedEditsSchema>
@@ -109,6 +146,8 @@ export const evalCaseSchema = z
 		text: z.string().default(''),
 		/** A photo next to the words: a path relative to data/private/ (.jpg, .png or .webp). */
 		image: z.string().min(1).optional(),
+		/** A JSON case's gender forms of the user (Address form in the context); default neutral. */
+		addressForm: addressFormSchema.optional(),
 		/** A JSON case's day state by name (context-presets.ts); without it — an empty day. */
 		contextPreset: z.enum(CONTEXT_PRESET_NAMES).optional(),
 		expect: z.object({
@@ -130,6 +169,8 @@ export const evalCaseSchema = z
 			replyLang: replyLanguageSchema.optional(),
 			edits: expectedEditsSchema.optional(),
 			measurements: z.array(expectedMeasurementSchema).optional(),
+			/** Exactly these log_workout calls; `[]` = none. */
+			workouts: z.array(expectedWorkoutSchema).optional(),
 			/** Some kept clarify option renames the item ("Макарони сухі"). */
 			clarifyRenames: z.boolean().optional(),
 			/** Whole-day cases: an item (name stem) must land in this meal. */

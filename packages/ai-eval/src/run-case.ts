@@ -21,6 +21,7 @@ import type { ActualDecision, CaseResult, LoggedItem, ValidationAttempt } from '
 import { EMPTY_CALL_FACTS, getCallFacts } from './call-facts.js'
 import { getClarifyCalls } from './clarify-calls.js'
 import { getEditResult } from './edit-result.js'
+import { getLoggedWorkouts } from './workout-result.js'
 import { getMeasuredItems } from './measurement-result.js'
 import { findMixedScriptWords } from './mixed-script.js'
 import { type EvalModelOptions, requestFoodParse } from './openrouter.js'
@@ -28,6 +29,8 @@ import { type EvalModelOptions, requestFoodParse } from './openrouter.js'
 /** Fixed clock, so meal-type guesses and reruns compare like for like. */
 export const BASE_CONTEXT: FoodParseContext = {
 	localTime: '2026-10-07 13:20, Wednesday',
+	// the backend always says it; neutral unless a case is about the user's gender
+	addressForm: 'NEUTRAL',
 	dayTotals: { kcal: 0, protein: 0, fat: 0, carbs: 0 },
 	meals: [],
 	entries: [],
@@ -111,7 +114,9 @@ const getLoggedItems = (decision: FoodParseDecision) =>
 const getReplyText = (decision: FoodParseDecision): string => {
 	switch (decision.kind) {
 		case 'log':
-			return decision.log.reply
+			return [decision.log.reply, ...decision.workouts.map(({ reply }) => reply)].join(' ')
+		case 'workout':
+			return decision.workouts.map(({ reply }) => reply).join(' ')
 		case 'not_food':
 		case 'photo_unusable':
 			return decision.reply
@@ -154,6 +159,7 @@ const failedResult = (
 	replyText: null,
 	edits: null,
 	measurements: [],
+	workouts: [],
 	calls: EMPTY_CALL_FACTS,
 	wasRetried: attempts > 1,
 	validationErrors,
@@ -218,6 +224,7 @@ export const runCase = async (
 					replyText,
 					edits: getEditResult(result.decision, context),
 					measurements: getMeasuredItems(result.decision, context.measurements.today),
+					workouts: getLoggedWorkouts(result.decision),
 					calls,
 					items: items.map((item) =>
 						toLoggedItem(

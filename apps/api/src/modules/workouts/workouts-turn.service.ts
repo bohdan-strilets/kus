@@ -1,0 +1,332 @@
+import { Injectable, Logger } from '@nestjs/common'
+import {
+	type ExerciseContext,
+	type LogWorkoutInput,
+	MAX_CONTEXT_DELETED_WORKOUTS,
+	MAX_CONTEXT_EXERCISES,
+	type TodayWorkoutContext,
+	type WorkoutResponse,
+} from '@kus/shared'
+
+import { formatLocalTime } from '../../common/time'
+import type { Prisma } from '../../generated/prisma/client'
+import { isExerciseNamed, normalizeExerciseName } from './exercise-names'
+import {
+	expandSets,
+	isRecord,
+	toDistanceM,
+	toExerciseContext,
+	toWorkoutContext,
+	type WorkoutRecord,
+} from './workout-turn'
+import { toWorkoutResponse } from './workouts.mapper'
+import {
+	type ExerciseWrite,
+	type WorkoutWithExercises,
+	WorkoutsRepository,
+	type WorkoutWrite,
+} from './workouts.repository'
+
+/** The dictionary rows a message is matched against; a user with more has older ones forgotten. */
+const DICTIONARY_SCAN_LIMIT = 300
+
+/** Ref → id of what the model saw in this request; nothing else can be changed (IDOR). */
+export interface WorkoutRefIds {
+	workouts: ReadonlyMap<string, string>
+	deletedWorkouts: ReadonlyMap<string, string>
+	exercises: ReadonlyMap<string, string>
+}
+
+export interface WorkoutsContext {
+	workouts: TodayWorkoutContext[]
+	deletedWorkouts: TodayWorkoutContext[]
+	exercises: ExerciseContext[]
+	refIds: WorkoutRefIds
+}
+
+export const NO_WORKOUT_REFS: WorkoutRefIds = {
+	workouts: new Map(),
+	deletedWorkouts: new Map(),
+	exercises: new Map(),
+}
+
+/** Refs were checked against this same map by the parser; a miss is a bug, not user input. */
+const toId = (refIds: ReadonlyMap<string, string>, ref: string): string => {
+	const id = refIds.get(ref)
+	if (id === undefined) throw new Error(`Workout ref ${ref} is not in the request context`)
+	return id
+}
+
+/** What a turn does to workouts: the chat's model decisions become rows here. */
+@Injectable()
+export class WorkoutsTurnService {
+	private readonly logger = new Logger(WorkoutsTurnService.name)
+
+	constructor(private readonly workoutsRepository: WorkoutsRepository) {}
+
+	/** Today's workouts (w1…), the ones deleted today and the dictionary exercises the text names. */
+	async getContext({
+		userId,
+		localDate,
+		timezone,
+		text,
+	}: {
+		userId: string
+		localDate: Date
+		timezone: string
+		text: string
+	}): Promise<WorkoutsContext> {
+		const [active, deleted, dictionary] = await Promise.all([
+			this.workoutsRepository.findOfDay({ userId, localDate }),
+			this.workoutsRepository.findDeletedOfDay({
+				userId,
+				localDate,
+				take: MAX_CONTEXT_DELETED_WORKOUTS,
+			}),
+			this.workoutsRepository.findDictionary({ userId, take: DICTIONARY_SCAN_LIMIT }),
+		])
+		const toContext = (workout: WorkoutWithExercises, ref: string): TodayWorkoutContext =>
+			toWorkoutContext(workout, {
+				ref,
+				time: workout.startedAt ? formatLocalTime(workout.startedAt, timezone) : null,
+			})
+		const activeRefs = active.map((workout, index) => ({ workout, ref: `w${index + 1}` }))
+		const deletedRefs = deleted.map((workout, index) => ({
+			workout,
+			ref: `w${active.length + index + 1}`,
+		}))
+
+		const named = dictionary
+			.filter((exercise) => isExerciseNamed(text, exercise))
+			.slice(0, MAX_CONTEXT_EXERCISES)
+		const exercises = await Promise.all(
+			named.map(async (exercise, index) =>
+				toExerciseContext(exercise, {
+					ref: `x${index + 1}`,
+					last: await this.workoutsRepository.findLastResult({
+						userId,
+						exerciseId: exercise.id,
+					}),
+				}),
+			),
+		)
+		return {
+			workouts: activeRefs.map(({ workout, ref }) => toContext(workout, ref)),
+			deletedWorkouts: deletedRefs.map(({ workout, ref }) => toContext(workout, ref)),
+			exercises,
+			refIds: {
+				workouts: new Map(activeRefs.map(({ workout, ref }) => [ref, workout.id])),
+				deletedWorkouts: new Map(deletedRefs.map(({ workout, ref }) => [ref, workout.id])),
+				exercises: new Map(named.map((exercise, index) => [`x${index + 1}`, exercise.id])),
+			},
+		}
+	}
+
+	/**
+	 * Writes the workouts of a turn. A replaceRef rewrites that workout in place; the message that
+	 * first recorded it is returned so its card is refreshed.
+	 */
+	async logWorkouts(
+		{
+			userId,
+			sourceMessageId,
+			now,
+			localDate,
+			workouts,
+			refIds,
+		}: {
+			userId: string
+			sourceMessageId: string
+			now: Date
+			/** The user's today; a workout of another day gets the middle of it as its time. */
+			localDate: Date
+			workouts: LogWorkoutInput[]
+			refIds: WorkoutRefIds
+		},
+		tx: Prisma.TransactionClient,
+	): Promise<{ sourceMessageIds: string[] }> {
+		const sourceMessageIds: string[] = []
+		for (const input of workouts) {
+			const write = await this.toWrite(
+				{ userId, sourceMessageId, now, localDate, input, refIds },
+				tx,
+			)
+			const saved =
+				input.replaceRef === null
+					? await this.workoutsRepository.create(write, tx)
+					: await this.workoutsRepository.replace(
+							{ id: toId(refIds.workouts, input.replaceRef), write },
+							tx,
+						)
+			if (!saved) throw new Error('Workout to replace was deleted meanwhile')
+			if (input.replaceRef !== null && saved.sourceMessageId !== null) {
+				sourceMessageIds.push(saved.sourceMessageId)
+			}
+			await this.saveRecords(userId, saved, tx)
+			this.logger.log(
+				`Workout logged user=${userId} workout=${saved.id} exercises=${saved.exercises.length}`,
+			)
+		}
+		return { sourceMessageIds }
+	}
+
+	/** Soft-deletes workouts by their refs; the messages whose cards change are returned. */
+	async deleteByRefs(
+		{ userId, refs, refIds }: { userId: string; refs: string[]; refIds: WorkoutRefIds },
+		tx: Prisma.TransactionClient,
+	): Promise<string[]> {
+		return this.flip(
+			{ userId, ids: refs.map((ref) => toId(refIds.workouts, ref)), isDeleted: true },
+			tx,
+		)
+	}
+
+	/** Brings workouts deleted today back by their refs. */
+	async restoreByRefs(
+		{ userId, refs, refIds }: { userId: string; refs: string[]; refIds: WorkoutRefIds },
+		tx: Prisma.TransactionClient,
+	): Promise<string[]> {
+		return this.flip(
+			{ userId, ids: refs.map((ref) => toId(refIds.deletedWorkouts, ref)), isDeleted: false },
+			tx,
+		)
+	}
+
+	/** The cards of the chat: the workouts each user message recorded. */
+	async getByMessages(
+		userId: string,
+		messageIds: string[],
+	): Promise<Map<string, WorkoutResponse[]>> {
+		const byMessage = new Map<string, WorkoutResponse[]>()
+		if (messageIds.length === 0) return byMessage
+		const rows = await this.workoutsRepository.findBySourceMessages({ userId, messageIds })
+		for (const row of rows) {
+			if (row.sourceMessageId === null) continue
+			byMessage.set(row.sourceMessageId, [
+				...(byMessage.get(row.sourceMessageId) ?? []),
+				toWorkoutResponse(row),
+			])
+		}
+		return byMessage
+	}
+
+	private async flip(
+		{ userId, ids, isDeleted }: { userId: string; ids: string[]; isDeleted: boolean },
+		tx: Prisma.TransactionClient,
+	): Promise<string[]> {
+		const messageIds: string[] = []
+		for (const id of ids) {
+			const changed = isDeleted
+				? await this.workoutsRepository.softDelete({ userId, id }, tx)
+				: await this.workoutsRepository.restore({ userId, id }, tx)
+			const workout = await this.workoutsRepository.findOwned({ userId, id }, tx)
+			if (changed && workout?.sourceMessageId) messageIds.push(workout.sourceMessageId)
+		}
+		return messageIds
+	}
+
+	private async toWrite(
+		{
+			userId,
+			sourceMessageId,
+			now,
+			localDate,
+			input,
+			refIds,
+		}: {
+			userId: string
+			sourceMessageId: string
+			now: Date
+			localDate: Date
+			input: LogWorkoutInput
+			refIds: WorkoutRefIds
+		},
+		tx: Prisma.TransactionClient,
+	): Promise<WorkoutWrite> {
+		const day = input.date === null ? localDate : new Date(`${input.date}T00:00:00Z`)
+		const isToday = day.getTime() === localDate.getTime()
+		// another day has no clock time of its own: the middle of the day keeps it in that day
+		const performedAt = isToday ? now : getNoon(day)
+		const exercises: ExerciseWrite[] = []
+		for (const [position, exercise] of input.exercises.entries()) {
+			const exerciseId = await this.resolveExercise({ userId, exercise, refIds }, tx)
+			exercises.push({
+				exerciseId,
+				name: exercise.name,
+				kind: exercise.kind,
+				position,
+				durationMin: exercise.durationMin,
+				distanceM: toDistanceM(exercise.distanceKm),
+				performedAt,
+				sets: expandSets(exercise),
+			})
+		}
+		return {
+			userId,
+			localDate: day,
+			startedAt: isToday ? now : null,
+			durationMin: input.durationMin,
+			place: input.place,
+			kcalBurned: input.kcalBurned,
+			sourceMessageId,
+			exercises,
+		}
+	}
+
+	/** The dictionary row of the exercise: the ref the model gave, the same name, or a new one. */
+	private async resolveExercise(
+		{
+			userId,
+			exercise,
+			refIds,
+		}: {
+			userId: string
+			exercise: LogWorkoutInput['exercises'][number]
+			refIds: WorkoutRefIds
+		},
+		tx: Prisma.TransactionClient,
+	): Promise<string> {
+		if (exercise.exerciseRef !== null) return toId(refIds.exercises, exercise.exerciseRef)
+		const nameNormalized = normalizeExerciseName(exercise.name)
+		const known = await this.workoutsRepository.findExerciseByName({ userId, nameNormalized }, tx)
+		if (known) return known.id
+		const created = await this.workoutsRepository.createExercise(
+			{ userId, name: exercise.name, nameNormalized, kind: exercise.kind },
+			tx,
+		)
+		return created.id
+	}
+
+	/** Compares the workout with the earlier ones: a heavier set or a longer distance is a record. */
+	private async saveRecords(
+		userId: string,
+		workout: WorkoutWithExercises,
+		tx: Prisma.TransactionClient,
+	): Promise<void> {
+		const records: WorkoutRecord[] = []
+		for (const exercise of workout.exercises) {
+			if (exercise.exerciseId === null) continue
+			const key = { userId, exerciseId: exercise.exerciseId, exceptWorkoutId: workout.id }
+			const heaviest = Math.max(
+				0,
+				...exercise.sets.flatMap((set) =>
+					!set.isWarmup && set.weightKg !== null ? [set.weightKg.toNumber()] : [],
+				),
+			)
+			if (
+				heaviest > 0 &&
+				isRecord(await this.workoutsRepository.findMaxWeightKg(key, tx), heaviest)
+			) {
+				records.push({ exerciseEntryId: exercise.id, type: 'WEIGHT' })
+			}
+			if (isRecord(await this.workoutsRepository.findMaxDistanceM(key, tx), exercise.distanceM)) {
+				records.push({ exerciseEntryId: exercise.id, type: 'DISTANCE' })
+			}
+		}
+		await this.workoutsRepository.setRecords({ id: workout.id, records }, tx)
+	}
+}
+
+const NOON_HOUR = 12
+
+const getNoon = (day: Date): Date => new Date(day.getTime() + NOON_HOUR * 60 * 60 * 1000)

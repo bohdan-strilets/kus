@@ -5,6 +5,7 @@ import type { FoodParseContext } from './context.js'
 import type { TodayEntryContext } from './edit-context.js'
 import type { EntryChange, EntryEdits, ResolveClarificationInput } from './edit-tools.js'
 import { getMeasurementDayKey, type MeasurementRefs } from './measurements.js'
+import type { ExerciseContext, TodayWorkoutContext } from './workout-context.js'
 import { distributeOptionValues, type EntryValues, roundNutrition } from './option-values.js'
 
 /** Refs given to the model in this request; anything else is invented or out of reach. */
@@ -15,6 +16,12 @@ export interface ParseRefs extends MeasurementRefs {
 	entries: ReadonlyMap<string, TodayEntryContext>
 	deletedEntryRefs: ReadonlySet<string>
 	clarifications: ReadonlyMap<string, FoodParseContext['openClarifications'][number]>
+	/** `w1…` of «Today's workouts»; none when omitted. */
+	workouts?: ReadonlyMap<string, TodayWorkoutContext>
+	/** `w…` of the workouts deleted today. */
+	deletedWorkoutRefs?: ReadonlySet<string>
+	/** `x1…` of the «Exercises» section. */
+	exerciseRefs?: ReadonlySet<string>
 }
 
 export const getParseRefs = (context: FoodParseContext): ParseRefs => ({
@@ -23,6 +30,9 @@ export const getParseRefs = (context: FoodParseContext): ParseRefs => ({
 	entries: new Map(context.entries.map((entry) => [entry.ref, entry])),
 	deletedEntryRefs: new Set(context.deletedEntries.map((entry) => entry.ref)),
 	clarifications: new Map(context.openClarifications.map((item) => [item.ref, item])),
+	workouts: new Map((context.workouts ?? []).map((workout) => [workout.ref, workout])),
+	deletedWorkoutRefs: new Set((context.deletedWorkouts ?? []).map((workout) => workout.ref)),
+	exerciseRefs: new Set((context.exercises ?? []).map((exercise: ExerciseContext) => exercise.ref)),
 	today: context.measurements.today,
 	measurementDays: new Set(
 		(context.measurements.recent ?? []).map(({ kind, localDate }) =>
@@ -139,12 +149,14 @@ const getOverlapErrors = (edits: EntryEdits, refs: ParseRefs): string[] => {
 export const getEditErrors = (edits: EntryEdits, refs: ParseRefs): string[] => [
 	...edits.corrections.flatMap((change) => getCorrectionErrors(change, refs)),
 	...edits.deletions.flatMap((ref) =>
-		refs.entries.has(ref)
+		refs.entries.has(ref) || refs.workouts?.has(ref)
 			? []
 			: [`delete_entry: ${ref} is not in "Today's entries" — ${OUT_OF_CONTEXT_HINT}`],
 	),
 	...edits.restorations.flatMap((ref) =>
-		refs.deletedEntryRefs.has(ref) ? [] : [`restore_entry: ${ref} is not in "Deleted today"`],
+		refs.deletedEntryRefs.has(ref) || refs.deletedWorkoutRefs?.has(ref)
+			? []
+			: [`restore_entry: ${ref} is not in "Deleted today"`],
 	),
 	...edits.resolutions.flatMap((resolution) => getResolutionErrors(resolution, refs)),
 	...getOverlapErrors(edits, refs),

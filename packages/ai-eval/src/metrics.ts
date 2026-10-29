@@ -10,6 +10,7 @@ import type {
 	ModelSummary,
 } from './eval.types.js'
 import { detectLanguage } from './reply-checks.js'
+import { isWorkoutsCorrect } from './workout-metrics.js'
 
 /** Floors for the % base, so 0.5 g of protein in an apple doesn't turn 1 g into a 100 % error. */
 export const MIN_BASE = { kcal: 50, protein: 5 } as const
@@ -106,6 +107,10 @@ export const isMeasurementsCorrect = (
 				got.confirmedJump === (want.confirmedJump ?? false),
 		),
 	)
+
+export const isCaseWorkoutsCorrect = (evalCase: EvalCase, result: CaseResult): boolean =>
+	evalCase.expect.workouts === undefined ||
+	isWorkoutsCorrect(evalCase.expect.workouts, result.workouts)
 
 export const isCaseMeasurementsCorrect = (evalCase: EvalCase, result: CaseResult): boolean =>
 	evalCase.expect.measurements === undefined ||
@@ -306,6 +311,13 @@ export const summarize = (model: string, pairs: Pair[]): ModelSummary => {
 					evalCase.expect.measurements !== undefined && isCaseMeasurementsCorrect(evalCase, result),
 			).length,
 			total: pairs.filter(({ evalCase }) => evalCase.expect.measurements !== undefined).length,
+		},
+		workouts: {
+			correct: pairs.filter(
+				({ evalCase, result }) =>
+					evalCase.expect.workouts !== undefined && isCaseWorkoutsCorrect(evalCase, result),
+			).length,
+			total: pairs.filter(({ evalCase }) => evalCase.expect.workouts !== undefined).length,
 		},
 		details: {
 			correct: pairs.filter(

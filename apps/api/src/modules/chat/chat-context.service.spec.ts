@@ -74,6 +74,14 @@ const createService = ({
 			findInRange,
 		} as never,
 		{ findTargetWeightKg: vi.fn().mockResolvedValue(null) } as never,
+		{
+			getContext: vi.fn().mockResolvedValue({
+				workouts: [],
+				deletedWorkouts: [],
+				exercises: [],
+				refIds: { workouts: new Map(), deletedWorkouts: new Map(), exercises: new Map() },
+			}),
+		} as never,
 	)
 	return { service, getEditableEntries, getDaysKcal, findInRange }
 }

@@ -10,6 +10,7 @@ import {
 import { type EarlierEntryContext, formatEarlierEntries } from './history-context.js'
 import type { MeasurementPoint } from './measurements.js'
 import { SYSTEM_PROMPT } from './prompt.js'
+import type { ExerciseContext, TodayWorkoutContext } from './workout-context.js'
 
 /** Rough size estimate; good enough to cap history without shipping a tokenizer. */
 const CHARS_PER_TOKEN = 4
@@ -126,6 +127,12 @@ export interface FoodParseContext {
 	entries: TodayEntryContext[]
 	deletedEntries: DeletedEntryContext[]
 	openClarifications: OpenClarificationContext[]
+	/** Today's workouts, oldest first; no section when omitted or empty. */
+	workouts?: TodayWorkoutContext[]
+	/** Workouts deleted today (refs for restore_entry). */
+	deletedWorkouts?: TodayWorkoutContext[]
+	/** The exercises of the dictionary the message names; no section when omitted or empty. */
+	exercises?: ExerciseContext[]
 	goal: GoalContext | null
 	/** Today − 3 … today + 1; no line in the context when omitted or empty. */
 	days?: DayContext[]

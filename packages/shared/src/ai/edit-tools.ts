@@ -4,6 +4,7 @@
 import { z } from 'zod'
 
 import { foodEntryBaseSchema } from '../schemas/food-entry.js'
+import { ENTRY_OR_WORKOUT_REF_PATTERN } from './workout-tools.js'
 
 /** Refs the backend gives today's entries and open questions in the context, never database ids. */
 export const ENTRY_REF_PATTERN = /^e\d{1,3}$/
@@ -18,8 +19,14 @@ const entryRefSchema = z
 	.regex(ENTRY_REF_PATTERN)
 	.describe('Ref of an entry from "Today\'s entries" in the context, e.g. "e3"')
 
+/** Delete and restore take a workout (`w1`) as well as an entry (`e3`). */
+const entryOrWorkoutRefSchema = z
+	.string()
+	.regex(ENTRY_OR_WORKOUT_REF_PATTERN)
+	.describe('Ref of an entry from "Today\'s entries" in the context, e.g. "e3"')
+
 const entryRefsSchema = z
-	.array(entryRefSchema)
+	.array(entryOrWorkoutRefSchema)
 	.min(1)
 	.max(MAX_EDITS_PER_MESSAGE)
 	.refine((refs) => new Set(refs).size === refs.length, { message: 'refs must not repeat' })
@@ -84,7 +91,7 @@ export type DeleteEntryInput = z.infer<typeof deleteEntryInputSchema>
 
 export const restoreEntryInputSchema = z.object({
 	refs: z
-		.array(entryRefSchema.describe('Ref of an entry from "Deleted today" in the context'))
+		.array(entryOrWorkoutRefSchema.describe('Ref of an entry from "Deleted today" in the context'))
 		.min(1)
 		.max(MAX_EDITS_PER_MESSAGE)
 		.refine((refs) => new Set(refs).size === refs.length, { message: 'refs must not repeat' }),

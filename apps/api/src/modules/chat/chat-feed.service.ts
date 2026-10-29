@@ -9,11 +9,13 @@ import {
 	type LoggedMeal,
 	type MeasurementCard,
 	type StatsCard,
+	type WorkoutResponse,
 } from '@kus/shared'
 import { z } from 'zod'
 
 import { CursorPaginatedResult } from '../../common/pagination'
 import { MessageRole } from '../../generated/prisma/client'
+import { WorkoutsTurnService } from '../workouts/workouts-turn.service'
 import { AchievementsService } from '../achievements/achievements.service'
 import { EntriesService } from '../entries/entries.service'
 import { ChatMeasurementCardsService } from './chat-measurement-cards.service'
@@ -46,6 +48,8 @@ const toClarificationResponse = (
 
 interface ChatMessageExtras {
 	meals: Map<string, LoggedMeal[]>
+	/** By the user message that recorded them. */
+	workouts: Map<string, WorkoutResponse[]>
 	clarifications: ClarificationWithEntries[]
 	/** By the user message that recorded them. */
 	measurements: Map<string, MeasurementCard[]>
@@ -59,7 +63,15 @@ interface ChatMessageExtras {
 
 const toChatMessage = (
 	message: MessageWithAttachments,
-	{ meals, clarifications, measurements, achievements, dayCards, statsCards }: ChatMessageExtras,
+	{
+		meals,
+		workouts,
+		clarifications,
+		measurements,
+		achievements,
+		dayCards,
+		statsCards,
+	}: ChatMessageExtras,
 ): ChatMessage => {
 	const isAssistant = message.role === MessageRole.ASSISTANT
 	const [attachment] = message.attachments
@@ -87,6 +99,7 @@ const toChatMessage = (
 			: [],
 		measurements:
 			isAssistant && message.replyToId ? (measurements.get(message.replyToId) ?? []) : [],
+		workouts: isAssistant && message.replyToId ? (workouts.get(message.replyToId) ?? []) : [],
 		achievements: isAssistant ? (achievements.get(message.id) ?? []) : [],
 		dayCard: dayCards.get(message.id) ?? null,
 		statsCard: statsCards.get(message.id) ?? null,
@@ -104,13 +117,15 @@ export class ChatFeedService {
 		private readonly entriesService: EntriesService,
 		private readonly measurementCards: ChatMeasurementCardsService,
 		private readonly achievementsService: AchievementsService,
+		private readonly workoutsTurn: WorkoutsTurnService,
 	) {}
 
 	async toChatMessages(userId: string, messages: MessageWithAttachments[]): Promise<ChatMessage[]> {
 		const replies = messages.filter((message) => message.role === MessageRole.ASSISTANT)
 		const sourceIds = replies.flatMap((message) => (message.replyToId ? [message.replyToId] : []))
-		const [meals, clarifications, measurements, achievements] = await Promise.all([
+		const [meals, workouts, clarifications, measurements, achievements] = await Promise.all([
 			this.entriesService.getLoggedMealsByMessage(userId, sourceIds),
+			this.workoutsTurn.getByMessages(userId, sourceIds),
 			replies.length > 0
 				? this.clarificationsRepository.findClarifications({
 						userId,
@@ -128,6 +143,7 @@ export class ChatFeedService {
 		return messages.map((message) =>
 			toChatMessage(message, {
 				meals,
+				workouts,
 				clarifications,
 				measurements,
 				achievements,

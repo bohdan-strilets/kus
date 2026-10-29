@@ -49,6 +49,7 @@ const result = (overrides: Partial<CaseResult>): CaseResult => ({
 	replyText: null,
 	edits: null,
 	measurements: [],
+	workouts: [],
 	calls: EMPTY_CALL_FACTS,
 	costUsd: 0,
 	latencyMs: 0,

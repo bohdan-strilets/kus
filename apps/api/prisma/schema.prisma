@@ -879,6 +879,10 @@ model Workout {
   kcalBurned      Int?            @map("kcal_burned")
   kcalSource      ExerciseSource? @map("kcal_source")
   note            String?
+  // records this workout set when it was logged: [{ "exerciseEntryId": "…", "type": "WEIGHT" | "DISTANCE" }]
+  records         Json?
+  // when a later message replaced the whole workout (replaceRef); null if it never was
+  editedAt        DateTime?       @map("edited_at") @db.Timestamptz
   sourceMessageId String?         @map("source_message_id") @db.Uuid
   createdAt       DateTime        @default(now()) @map("created_at") @db.Timestamptz
   updatedAt       DateTime        @updatedAt @map("updated_at") @db.Timestamptz

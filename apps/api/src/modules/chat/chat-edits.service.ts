@@ -3,6 +3,7 @@ import type { EntryEdits } from '@kus/shared'
 
 import type { Prisma } from '../../generated/prisma/client'
 import { EntryEditsService } from '../entries/entry-edits.service'
+import { type WorkoutRefIds, WorkoutsTurnService } from '../workouts/workouts-turn.service'
 import { ClarificationsRepository } from './clarifications.repository'
 import { ClarificationsService } from './clarifications.service'
 import type { EditRefIds } from './edit-context'
@@ -22,6 +23,12 @@ const toId = (refIds: ReadonlyMap<string, string>, ref: string): string => {
 	return id
 }
 
+/** Splits the refs of delete and restore: workouts (`w1`) and entries (`e3`). */
+const partitionWorkoutRefs = (refs: readonly string[]): [string[], string[]] => [
+	refs.filter((ref) => ref.startsWith('w')),
+	refs.filter((ref) => !ref.startsWith('w')),
+]
+
 /** Applies what the model changed in earlier entries, inside the turn's transaction. */
 @Injectable()
 export class ChatEditsService {
@@ -29,6 +36,7 @@ export class ChatEditsService {
 		private readonly entryEdits: EntryEditsService,
 		private readonly clarifications: ClarificationsService,
 		private readonly clarificationsRepository: ClarificationsRepository,
+		private readonly workoutsTurn: WorkoutsTurnService,
 	) {}
 
 	async applyEdits(
@@ -37,7 +45,14 @@ export class ChatEditsService {
 			userMessageId,
 			edits,
 			refIds,
-		}: { userId: string; userMessageId: string; edits: EntryEdits; refIds: EditRefIds },
+			workoutRefIds,
+		}: {
+			userId: string
+			userMessageId: string
+			edits: EntryEdits
+			refIds: EditRefIds
+			workoutRefIds: WorkoutRefIds
+		},
 		tx: Prisma.TransactionClient,
 	): Promise<EditedMessages> {
 		const replyIds: string[] = []
@@ -60,7 +75,9 @@ export class ChatEditsService {
 			id: toId(refIds.entries, change.ref),
 			change,
 		}))
-		const deletedIds = edits.deletions.map((ref) => toId(refIds.entries, ref))
+		const [workoutDeletions, entryDeletions] = partitionWorkoutRefs(edits.deletions)
+		const [workoutRestorations, entryRestorations] = partitionWorkoutRefs(edits.restorations)
+		const deletedIds = entryDeletions.map((ref) => toId(refIds.entries, ref))
 		const corrected = await this.entryEdits.correctEntries({ userId, corrections }, tx)
 		const deleted = await this.entryEdits.deleteEntries({ userId, ids: deletedIds }, tx)
 		// the entry changed in words: its old options no longer fit (answered ones are not OPEN)
@@ -69,11 +86,21 @@ export class ChatEditsService {
 			tx,
 		)
 		const restored = await this.entryEdits.restoreEntries(
-			{ userId, ids: edits.restorations.map((ref) => toId(refIds.deletedEntries, ref)) },
+			{ userId, ids: entryRestorations.map((ref) => toId(refIds.deletedEntries, ref)) },
 			tx,
 		)
+		const workoutMessages = [
+			...(await this.workoutsTurn.deleteByRefs(
+				{ userId, refs: workoutDeletions, refIds: workoutRefIds },
+				tx,
+			)),
+			...(await this.workoutsTurn.restoreByRefs(
+				{ userId, refs: workoutRestorations, refIds: workoutRefIds },
+				tx,
+			)),
+		]
 		return {
-			sourceMessageIds: [...new Set([...corrected, ...deleted, ...restored])],
+			sourceMessageIds: [...new Set([...corrected, ...deleted, ...restored, ...workoutMessages])],
 			replyIds: [...new Set([...replyIds, ...dismissedReplyIds])],
 		}
 	}

@@ -10,6 +10,7 @@ import { PhotosModule } from '../photos/photos.module'
 import { ProfileModule } from '../profile/profile.module'
 import { ProgressModule } from '../progress/progress.module'
 import { UsersModule } from '../users/users.module'
+import { WorkoutsModule } from '../workouts/workouts.module'
 import { ChatContextService } from './chat-context.service'
 import { ChatCloseDayService } from './chat-close-day.service'
 import { ChatDayCardService } from './chat-day-card.service'
@@ -41,6 +42,7 @@ import { ClarificationsService } from './clarifications.service'
 		ProfileModule,
 		ProgressModule,
 		UsersModule,
+		WorkoutsModule,
 	],
 	controllers: [ChatController, ClarificationsController],
 	providers: [

@@ -2,7 +2,7 @@ import * as AlertDialog from '@radix-ui/react-alert-dialog'
 import { AnimatePresence } from 'motion/react'
 import type { ReactNode } from 'react'
 
-import { cn, getViewportBoxStyle, useViewportBox } from '@/shared/lib'
+import { cn, getViewportBoxStyle, useOverlayOpen, useViewportBox } from '@/shared/lib'
 
 import { Button } from '../button'
 import { DialogCard } from '../dialog-card'
@@ -53,6 +53,7 @@ export const ConfirmDialog = ({
 	children,
 }: ConfirmDialogProps) => {
 	const viewport = useViewportBox()
+	useOverlayOpen(isOpen)
 
 	return (
 		<AlertDialog.Root open={isOpen} onOpenChange={onOpenChange}>

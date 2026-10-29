@@ -407,3 +407,42 @@ describe('useFeedScroll isCovered', () => {
 		expect(distanceFromBottom()).toBe(FAR_FROM_BOTTOM_PX)
 	})
 })
+
+describe('useFeedScroll a card that changes height at the end', () => {
+	const CARD_TO_LINE_PX = 180
+	const LINE_TO_CARD_PX = 180
+
+	it('stays at the end when a card turns into a line while a dialog covers the feed', () => {
+		const { container, content, setCovered } = renderFeed()
+		setCovered(true)
+		// the dialog's scroll lock nudges the scroll before the card changes
+		metrics.scrollTop -= 60
+		act(() => {
+			container.dispatchEvent(new Event('scroll'))
+		})
+
+		metrics.scrollHeight -= CARD_TO_LINE_PX
+		resize(content)
+		setCovered(false)
+
+		expect(distanceFromBottom()).toBe(0)
+	})
+
+	it('stays at the end when a line turns back into a card (taller content), nothing covering', () => {
+		const { content } = renderFeed()
+
+		metrics.scrollHeight += LINE_TO_CARD_PX
+		resize(content)
+
+		expect(distanceFromBottom()).toBe(0)
+	})
+
+	it('does not drag a feed the user scrolled up when the dialog closes', () => {
+		const { container, setCovered } = renderFeed()
+		scrollTo(container, FAR_FROM_BOTTOM_PX)
+		setCovered(true)
+		setCovered(false)
+
+		expect(distanceFromBottom()).toBe(FAR_FROM_BOTTOM_PX)
+	})
+})

@@ -2,7 +2,12 @@ import * as Dialog from '@radix-ui/react-dialog'
 import { AnimatePresence } from 'motion/react'
 import type { ReactNode } from 'react'
 
-import { focusDialogContainer, getViewportBoxStyle, useViewportBox } from '@/shared/lib'
+import {
+	focusDialogContainer,
+	getViewportBoxStyle,
+	useOverlayOpen,
+	useViewportBox,
+} from '@/shared/lib'
 
 import { DialogCard } from '../dialog-card'
 import { DialogScrim } from '../dialog-scrim'
@@ -37,6 +42,7 @@ export const BaseModal = ({
 	actions,
 }: BaseModalProps) => {
 	const viewport = useViewportBox()
+	useOverlayOpen(isOpen)
 
 	return (
 		<Dialog.Root open={isOpen} onOpenChange={onOpenChange}>

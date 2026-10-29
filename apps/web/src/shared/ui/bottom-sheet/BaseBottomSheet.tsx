@@ -9,6 +9,7 @@ import {
 	focusFirstField,
 	getViewportBoxStyle,
 	sheetVariants,
+	useOverlayOpen,
 	useViewportBox,
 } from '@/shared/lib'
 
@@ -68,6 +69,7 @@ export const BaseBottomSheet = ({
 	const isDescriptionBelowRow = Boolean(description) && isDescriptionFullWidth && !isCentered
 	const { t } = useTranslation()
 	const viewport = useViewportBox()
+	useOverlayOpen(isOpen)
 	// dragging starts only from the grabber and header, so the body can scroll and select text
 	const dragControls = useDragControls()
 

@@ -33,6 +33,37 @@ describe('findGenderedForms', () => {
 	})
 })
 
+describe('findGenderedForms by the address form of the user', () => {
+	it('with masculine, «ти записав» is right and «ти записала» is a mistake', () => {
+		expect(findGenderedForms('Вечерю ти вже записав.', 'MASCULINE')).toEqual([])
+		expect(findGenderedForms('Ти вже записала вечерю.', 'MASCULINE')).toEqual(['ти … записала'])
+	})
+
+	it('with feminine, «ти записала» is right and «ти записав» is a mistake', () => {
+		expect(findGenderedForms('Ти вже записала вечерю.', 'FEMININE')).toEqual([])
+		expect(findGenderedForms('Вечерю ти вже записав.', 'FEMININE')).toEqual(['ти … записав'])
+	})
+
+	it('knows the gender of Polish forms and of short adjectives', () => {
+		expect(findGenderedForms('Zjadłeś dziś dwa jajka', 'MASCULINE')).toEqual([])
+		expect(findGenderedForms('Zjadłaś dziś dwa jajka', 'MASCULINE')).toEqual(['zjadłaś'])
+		expect(findGenderedForms('Ти голодна після залу?', 'FEMININE')).toEqual([])
+		expect(findGenderedForms('Ти голодний після залу?', 'FEMININE')).toEqual(['ти … голодний'])
+	})
+
+	it('flags a double form for every choice, and any form for neutral', () => {
+		expect(findGenderedForms('Ти записав(-ла) усе', 'MASCULINE')).toContain('записав(-ла)')
+		expect(findGenderedForms('Ти записала усе', 'NEUTRAL')).toEqual(['ти … записала'])
+		expect(findGenderedForms('Ти записав усе')).toEqual(['ти … записав'])
+	})
+
+	it('never flags Kusik speaking about himself, whatever the form', () => {
+		for (const form of ['NEUTRAL', 'MASCULINE', 'FEMININE'] as const) {
+			expect(findGenderedForms('Я записав, а ти можеш додати фото.', form)).toEqual([])
+		}
+	})
+})
+
 describe('detectLanguage', () => {
 	it.each([
 		['з’їв гречку і сік', 'uk'],

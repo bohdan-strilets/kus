@@ -40,7 +40,10 @@ const formatFlagged = (
 const formatGender = (pairs: Pair[]): string => {
 	const withReply = pairs.filter(({ result }) => result.replyText)
 	const flagged = withReply.flatMap((pair) => {
-		const forms = findGenderedForms(pair.result.replyText ?? '')
+		const forms = findGenderedForms(
+			pair.result.replyText ?? '',
+			pair.evalCase.context?.addressForm ?? 'NEUTRAL',
+		)
 		return forms.length > 0 ? [{ pair, detail: forms.join(', ') }] : []
 	})
 	return formatFlagged('Стать користувача в reply (ціль 0)', flagged, withReply.length)

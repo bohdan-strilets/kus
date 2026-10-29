@@ -4,6 +4,8 @@
  * Heuristics on purpose — they flag for a human look, the copy rules live in the prompt.
  */
 
+import type { AddressForm } from '@kus/shared'
+
 import type { ReplyLanguage } from './cases/case.types.js'
 
 const WORD_PATTERN = /[\p{L}'’ʼ]+/gu
@@ -15,40 +17,76 @@ const YOU_WORDS = new Set(['ти', 'ты'])
 const AFTER_YOU_SCAN = 3
 const PAST_MASCULINE_PATTERN = /[аеиіїуяюо]в(ся)?$|л(ся)?$/u
 const PAST_FEMININE_PATTERN = /ла(ся|сь)?$/u
-const ADJECTIVE_PATTERN = /(ий|ый|на|та|ова)$/u
+const ADJECTIVE_MASCULINE_PATTERN = /(ий|ый)$/u
+const ADJECTIVE_FEMININE_PATTERN = /(на|та|ова)$/u
 const MIN_ADJECTIVE_LENGTH = 4
 /** Polish 2nd person past is always gendered: zjadłeś / zjadłaś. */
-const POLISH_PAST_PATTERN = /\p{L}+(łeś|łaś|łbyś|łabyś)(?!\p{L})/giu
+const POLISH_MASCULINE_PATTERN = /\p{L}+(łeś|łbyś)(?!\p{L})/giu
+const POLISH_FEMININE_PATTERN = /\p{L}+(łaś|łabyś)(?!\p{L})/giu
 /** "записав(-ла)", "готовий/а" — a double form still names a gender. */
 const DOUBLE_FORM_PATTERN = /\p{L}+\s?[(/]\s?-?(ла|а|ая|ий)\)?(?!\p{L})/giu
+
+/** both — a double form ("записав(-ла)"): wrong whatever the user chose. */
+type FormGender = 'masculine' | 'feminine' | 'both'
+
+interface GenderedForm {
+	form: string
+	gender: FormGender
+}
 
 const toWords = (text: string): string[] =>
 	(text.toLowerCase().match(WORD_PATTERN) ?? []).map((word) =>
 		word.replace(APOSTROPHES_PATTERN, ''),
 	)
 
-const isGenderedAfterYou = (word: string): boolean =>
-	PAST_MASCULINE_PATTERN.test(word) ||
-	PAST_FEMININE_PATTERN.test(word) ||
-	(word.length >= MIN_ADJECTIVE_LENGTH && ADJECTIVE_PATTERN.test(word))
+const getWordGender = (word: string): FormGender | null => {
+	if (PAST_FEMININE_PATTERN.test(word)) return 'feminine'
+	if (PAST_MASCULINE_PATTERN.test(word)) return 'masculine'
+	if (word.length < MIN_ADJECTIVE_LENGTH) return null
+	if (ADJECTIVE_MASCULINE_PATTERN.test(word)) return 'masculine'
+	return ADJECTIVE_FEMININE_PATTERN.test(word) ? 'feminine' : null
+}
 
-const findAfterYou = (clause: string): string[] => {
+const findAfterYou = (clause: string): GenderedForm[] => {
 	const words = toWords(clause)
 	return words.flatMap((word, index) => {
 		if (!YOU_WORDS.has(word)) return []
-		const next = words.slice(index + 1, index + 1 + AFTER_YOU_SCAN)
-		return next.filter(isGenderedAfterYou).map((form) => `${word} … ${form}`)
+		return words.slice(index + 1, index + 1 + AFTER_YOU_SCAN).flatMap((next) => {
+			const gender = getWordGender(next)
+			return gender === null ? [] : [{ form: `${word} … ${next}`, gender }]
+		})
 	})
 }
 
+const toForms = (matches: RegExpMatchArray | null, gender: FormGender): GenderedForm[] =>
+	(matches ?? []).map((form) => ({ form, gender }))
+
 /** Forms that name the user's gender; Kusik about himself ("я записав") is fine and not flagged. */
-export const findGenderedForms = (reply: string): string[] => {
-	const forms = [
-		...reply.split(CLAUSE_SPLIT_PATTERN).flatMap(findAfterYou),
-		...(reply.match(POLISH_PAST_PATTERN) ?? []),
-		...(reply.match(DOUBLE_FORM_PATTERN) ?? []),
-	]
-	return [...new Set(forms.map((form) => form.toLowerCase()))]
+export const classifyGenderedForms = (reply: string): GenderedForm[] => [
+	...reply.split(CLAUSE_SPLIT_PATTERN).flatMap(findAfterYou),
+	...toForms(reply.match(POLISH_MASCULINE_PATTERN), 'masculine'),
+	...toForms(reply.match(POLISH_FEMININE_PATTERN), 'feminine'),
+	...toForms(reply.match(DOUBLE_FORM_PATTERN), 'both'),
+]
+
+const FORM_GENDER: Record<Exclude<AddressForm, 'NEUTRAL'>, FormGender> = {
+	MASCULINE: 'masculine',
+	FEMININE: 'feminine',
+}
+
+/**
+ * The forms that are a mistake for this user: with neutral any gendered form is; with masculine or
+ * feminine only the opposite one (and a double form) is.
+ */
+export const findGenderedForms = (
+	reply: string,
+	addressForm: AddressForm = 'NEUTRAL',
+): string[] => {
+	const wrong = classifyGenderedForms(reply).filter(
+		({ gender }) =>
+			addressForm === 'NEUTRAL' || gender === 'both' || gender !== FORM_GENDER[addressForm],
+	)
+	return [...new Set(wrong.map(({ form }) => form.toLowerCase()))]
 }
 
 const LANGUAGE_MARKERS: Record<ReplyLanguage, RegExp> = {

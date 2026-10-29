@@ -192,6 +192,7 @@ describe('repo cases', () => {
 			'not_food',
 			'reply',
 			'stats',
+			'workout',
 		])
 	})
 })

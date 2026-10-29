@@ -14,6 +14,7 @@ import { MEMORY_OVERRIDE_CASES } from './memory-override.cases.js'
 import { loadHoldoutCases, loadPrivateCases } from './private-cases.js'
 import { RANGE_CASES } from './range.cases.js'
 import { SAFETY_CASES } from './safety.cases.js'
+import { WORKOUT_CASES } from './workout.cases.js'
 
 export type {
 	EvalCase,
@@ -39,6 +40,7 @@ export const REPO_CASES: EvalCase[] = [
 	...HISTORY_CARD_CASES,
 	...FOREIGN_VOICE_CASES,
 	...SAFETY_CASES,
+	...WORKOUT_CASES,
 ]
 
 /** Written, but need a context the contract doesn't have yet; not run until it does. None now. */

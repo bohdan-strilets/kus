@@ -2,6 +2,7 @@
 import { cleanup, screen, within } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 
+import { FEATURES } from '@/shared/config'
 import { renderWithProviders } from '@/shared/testing'
 
 import { BottomNav } from './BottomNav'
@@ -54,9 +55,12 @@ describe('BottomNav', () => {
 		expect(screen.getByRole('link', { name: 'Прогрес' }).className).not.toContain('tracking-nav')
 	})
 
-	it('four tabs by default: the flag is off', () => {
+	it('follows the flag when the mode is not given', () => {
 		renderWithProviders(<BottomNav />, { route: '/app' })
 
-		expect(getLabels()).toHaveLength(4)
+		// FEATURES is a literal; read it as a plain boolean map so the check stays true if the flag flips
+		const features: Record<keyof typeof FEATURES, boolean> = FEATURES
+
+		expect(getLabels()).toHaveLength(features.workouts ? 5 : 4)
 	})
 })

@@ -30,6 +30,8 @@ export interface BaseBottomSheetProps {
 	title: string
 	/** Read by screen readers with the title; shown under it. */
 	description?: string
+	/** Start layout only: the description spans the whole sheet under the title row, not the title column (settings-address). */
+	isDescriptionFullWidth?: boolean
 	/** The 44px «Закрити» button (chat-edit-entry). install-hint has none. */
 	hasCloseButton?: boolean
 	/** start — title left, close right (chat-edit-entry); center — everything centred (install-hint). */
@@ -53,6 +55,7 @@ export const BaseBottomSheet = ({
 	onOpenChange,
 	title,
 	description,
+	isDescriptionFullWidth = false,
 	hasCloseButton = true,
 	titleAlign = 'start',
 	headerSlot,
@@ -62,6 +65,7 @@ export const BaseBottomSheet = ({
 }: BaseBottomSheetProps) => {
 	const isCentered = titleAlign === 'center'
 	const isSlotAtStart = headerSlotPlacement === 'start'
+	const isDescriptionBelowRow = Boolean(description) && isDescriptionFullWidth && !isCentered
 	const { t } = useTranslation()
 	const viewport = useViewportBox()
 	// dragging starts only from the grabber and header, so the body can scroll and select text
@@ -156,7 +160,7 @@ export const BaseBottomSheet = ({
 												<Dialog.Title asChild>
 													<Heading level="title">{title}</Heading>
 												</Dialog.Title>
-												{description && (
+												{description && !isDescriptionBelowRow && (
 													<Dialog.Description asChild>
 														{isCentered ? (
 															// install-hint: 14/1.45 muted-strong under a centred title
@@ -175,13 +179,20 @@ export const BaseBottomSheet = ({
 												<Dialog.Close asChild>
 													<IconButton
 														label={t('common.close')}
-														className={cn(isCentered && 'absolute top-0 right-0')}
+														className={cn('shrink-0', isCentered && 'absolute top-0 right-0')}
 													>
 														<Icon name="close" size={CLOSE_ICON_SIZE} />
 													</IconButton>
 												</Dialog.Close>
 											)}
 										</div>
+										{isDescriptionBelowRow && (
+											<Dialog.Description asChild>
+												<Text variant="caption" tone="muted">
+													{description}
+												</Text>
+											</Dialog.Description>
+										)}
 									</div>
 									<div className="flex min-h-0 flex-col gap-3.5 overflow-y-auto px-4 pt-3.5 pb-7">
 										{children}

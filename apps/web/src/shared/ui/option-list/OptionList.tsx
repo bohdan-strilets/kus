@@ -35,6 +35,7 @@ export const OptionList = <T extends string>({
 					className={cn(
 						'group flex min-h-14 cursor-pointer items-center gap-3 rounded-tile border-2 border-transparent bg-field px-3.5 py-2 text-left text-ink transition-colors duration-(--duration-base) focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-ink data-[state=checked]:border-primary data-[state=checked]:bg-primary-selected',
 						option.icon && 'py-1.5 pr-3.5 pl-1.5',
+						option.example && 'py-3',
 					)}
 					{...PRESS}
 				>
@@ -52,9 +53,23 @@ export const OptionList = <T extends string>({
 								{option.hint}
 							</Text>
 						)}
+						{option.example && (
+							<Text
+								as="span"
+								variant="small"
+								weight="regular"
+								className="mt-2 self-start rounded-chip rounded-bl-tail bg-surface px-3 py-2"
+							>
+								{option.example}
+							</Text>
+						)}
 					</span>
 					<RadioGroup.Indicator asChild>
-						<Icon name="check" size={CHECK_ICON_SIZE} className="text-primary" />
+						<Icon
+							name="check"
+							size={CHECK_ICON_SIZE}
+							className={cn('text-primary', option.example && 'self-start')}
+						/>
 					</RadioGroup.Indicator>
 				</motion.button>
 			</RadioGroup.Item>

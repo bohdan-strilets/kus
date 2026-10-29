@@ -209,3 +209,41 @@ describe('BaseBottomSheet initial focus', () => {
 		})
 	})
 })
+
+describe('BaseBottomSheet description layout', () => {
+	const renderSheet = (isDescriptionFullWidth: boolean) =>
+		render(
+			<BaseBottomSheet
+				isOpen
+				onOpenChange={() => undefined}
+				title="Title"
+				description="Explanation"
+				isDescriptionFullWidth={isDescriptionFullWidth}
+			>
+				<span>body</span>
+			</BaseBottomSheet>,
+		)
+
+	const getTitleRow = (): HTMLElement => {
+		const row = screen.getByText('Title').parentElement?.parentElement
+		if (!row) throw new Error('title row not found')
+		return row
+	}
+
+	it('full width: title and close share a row, the description is its own block under it', () => {
+		renderSheet(true)
+		const row = getTitleRow()
+		const close = screen.getByRole('button', { name: 'common.close' })
+		const description = screen.getByText('Explanation')
+
+		expect(row.contains(close)).toBe(true)
+		expect(row.contains(description)).toBe(false)
+		expect(row.nextElementSibling).toBe(description)
+	})
+
+	it('by default the description stays in the title column', () => {
+		renderSheet(false)
+
+		expect(getTitleRow().contains(screen.getByText('Explanation'))).toBe(true)
+	})
+})

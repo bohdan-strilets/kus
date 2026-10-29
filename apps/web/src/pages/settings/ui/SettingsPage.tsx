@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 
 import { useSessionUser } from '@/entities/session'
 import { DeleteAccountDialog } from '@/features/delete-account'
+import { ADDRESS_FORM_LABEL_KEY, EditAddressFormSheet } from '@/features/edit-address-form'
 import { SoundSettingsRows } from '@/features/sound-settings'
 import { ROUTES } from '@/shared/config'
 import { ListRow, RowGroup, ScreenHeader, Text } from '@/shared/ui'
@@ -12,6 +13,7 @@ export const SettingsPage = () => {
 	const { t } = useTranslation()
 	const user = useSessionUser()
 	const [isDeleteOpen, setIsDeleteOpen] = useState(false)
+	const [isAddressOpen, setIsAddressOpen] = useState(false)
 	// the session guard renders /app only with a user; this keeps the types honest
 	if (!user) return null
 
@@ -26,6 +28,21 @@ export const SettingsPage = () => {
 					<RowGroup>
 						<ListRow label={t('settings.email')} value={user.email} />
 						<ListRow label={t('settings.changePassword')} to={ROUTES.settingsPassword} />
+					</RowGroup>
+				</section>
+				<section className="flex flex-col gap-2">
+					<Text variant="eyebrow" tone="muted" className="px-1">
+						{t('settings.sections.kusik')}
+					</Text>
+					<RowGroup>
+						<ListRow
+							label={t('settings.address.title')}
+							value={t(ADDRESS_FORM_LABEL_KEY[user.addressForm])}
+							hasPopup
+							onClick={() => {
+								setIsAddressOpen(true)
+							}}
+						/>
 					</RowGroup>
 				</section>
 				<section className="flex flex-col gap-2">
@@ -48,6 +65,11 @@ export const SettingsPage = () => {
 					{t('settings.version', { version: __APP_VERSION__ })}
 				</Text>
 			</div>
+			<EditAddressFormSheet
+				isOpen={isAddressOpen}
+				onOpenChange={setIsAddressOpen}
+				value={user.addressForm}
+			/>
 			<DeleteAccountDialog isOpen={isDeleteOpen} onOpenChange={setIsDeleteOpen} />
 		</>
 	)

@@ -5,6 +5,8 @@ export interface Option<T extends string> {
 	label: string
 	/** 12px muted line under the label. */
 	hint?: string
+	/** A sample Kusik phrase in a small bubble under the label. */
+	example?: string
 	/** A 40px tile with this icon before the label. */
 	icon?: IconName
 }

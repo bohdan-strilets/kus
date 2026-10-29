@@ -485,7 +485,7 @@ const decide = (
 	}
 	if (log) {
 		const errors = [
-			...getWorkoutErrors(workouts, refs),
+			...getWorkoutErrors(workouts, refs, edits.deletions),
 			...checkLogReferences(log, clarifications, refs),
 			...getFoodDateErrors(log, refs.today),
 			...getEditErrors(edits, refs),

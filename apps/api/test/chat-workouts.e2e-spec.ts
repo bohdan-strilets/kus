@@ -19,6 +19,7 @@ import {
 	logFoodCall,
 } from '../src/modules/ai/ai.test-utils'
 import type { PrismaService } from '../src/prisma'
+import { WorkoutsRepository } from '../src/modules/workouts/workouts.repository'
 import { createDbTestApp } from './create-db-test-app'
 
 const MESSAGES_URL = '/api/v1/messages'
@@ -188,9 +189,11 @@ describe('chat workouts (e2e, real DB, fake model)', () => {
 		)
 		const restored = await send(owner, 'поверни тренування')
 
-		expect(hidden?.workouts).toEqual([])
+		expect(hidden?.workouts).toMatchObject([
+			{ id: first.assistantMessage.workouts[0]?.id, isDeleted: true },
+		])
 		expect(JSON.stringify(fake.bodies[2])).toContain('Deleted today (refs for restore_entry):')
-		expect(restored.updatedMessages[0]?.workouts).toHaveLength(1)
+		expect(restored.updatedMessages[0]?.workouts).toMatchObject([{ isDeleted: false }])
 		expect((await prisma.workout.findFirstOrThrow()).deletedAt).toBeNull()
 	})
 
@@ -227,6 +230,26 @@ describe('chat workouts (e2e, real DB, fake model)', () => {
 		expect(first.assistantMessage.workouts[0]?.exercises[0]?.record).toBeNull()
 		expect(equal.assistantMessage.workouts[0]?.exercises[0]?.record).toBeNull()
 		expect(heavier.assistantMessage.workouts[0]?.exercises[0]?.record).toBe('WEIGHT')
+	})
+
+	it('lets two parallel turns create the same new exercise without failing either', async () => {
+		await start()
+		const owner = await registerUser('owner@kus.app')
+		const repository = app.get(WorkoutsRepository)
+		const data = {
+			userId: owner.userId,
+			name: 'Тяга',
+			nameNormalized: 'тяга',
+			kind: 'STRENGTH' as const,
+		}
+
+		const [first, second] = await Promise.all([
+			prisma.$transaction((tx) => repository.createExercise(data, tx)),
+			prisma.$transaction((tx) => repository.createExercise(data, tx)),
+		])
+
+		expect(first.id).toBe(second.id)
+		expect(await prisma.exercise.count({ where: { userId: owner.userId } })).toBe(1)
 	})
 
 	it('keeps the dictionary and the workouts of each user apart', async () => {

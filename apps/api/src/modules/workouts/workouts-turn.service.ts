@@ -1,6 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common'
 import {
+	ENTRY_BACKDATE_MAX_DAYS,
 	type ExerciseContext,
+	getDayOffset,
 	type LogWorkoutInput,
 	MAX_CONTEXT_DELETED_WORKOUTS,
 	MAX_CONTEXT_EXERCISES,
@@ -8,9 +10,10 @@ import {
 	type WorkoutResponse,
 } from '@kus/shared'
 
-import { formatLocalTime } from '../../common/time'
+import { formatDbDate, formatLocalTime } from '../../common/time'
 import type { Prisma } from '../../generated/prisma/client'
 import { isExerciseNamed, normalizeExerciseName } from './exercise-names'
+import { WorkoutDateOutOfRangeException, WorkoutNotFoundException } from './workouts.exceptions'
 import {
 	expandSets,
 	isRecord,
@@ -158,7 +161,8 @@ export class WorkoutsTurnService {
 							{ id: toId(refIds.workouts, input.replaceRef), write },
 							tx,
 						)
-			if (!saved) throw new Error('Workout to replace was deleted meanwhile')
+			// deleted by a parallel request after the context was built: the turn rolls back
+			if (!saved) throw new WorkoutNotFoundException()
 			if (input.replaceRef !== null && saved.sourceMessageId !== null) {
 				sourceMessageIds.push(saved.sourceMessageId)
 			}
@@ -244,6 +248,7 @@ export class WorkoutsTurnService {
 		tx: Prisma.TransactionClient,
 	): Promise<WorkoutWrite> {
 		const day = input.date === null ? localDate : new Date(`${input.date}T00:00:00Z`)
+		this.assertLoggableDay(userId, formatDbDate(day), formatDbDate(localDate))
 		const isToday = day.getTime() === localDate.getTime()
 		// another day has no clock time of its own: the middle of the day keeps it in that day
 		const performedAt = isToday ? now : getNoon(day)
@@ -271,6 +276,13 @@ export class WorkoutsTurnService {
 			sourceMessageId,
 			exercises,
 		}
+	}
+
+	private assertLoggableDay(userId: string, day: string, today: string): void {
+		const offset = getDayOffset(day, today)
+		if (offset >= -ENTRY_BACKDATE_MAX_DAYS && offset <= 0) return
+		this.logger.error(`Workout day out of range user=${userId}`)
+		throw new WorkoutDateOutOfRangeException()
 	}
 
 	/** The dictionary row of the exercise: the ref the model gave, the same name, or a new one. */

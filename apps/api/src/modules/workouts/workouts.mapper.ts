@@ -26,6 +26,7 @@ const toResponse = (
 	kcalBurned: workout.kcalBurned,
 	kcalSource: workout.kcalSource,
 	isEdited: workout.editedAt !== null,
+	isDeleted: workout.deletedAt !== null,
 	exercises: workout.exercises.map((exercise) => ({
 		id: exercise.id,
 		name: exercise.name,

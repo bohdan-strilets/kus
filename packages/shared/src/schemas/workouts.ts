@@ -50,6 +50,8 @@ export const workoutResponseSchema = z.object({
 	kcalSource: exerciseSourceSchema.nullable(),
 	/** A later message replaced the whole workout («· змінено»). */
 	isEdited: z.boolean().default(false),
+	/** Deleted: the chat card turns into the line «Тренування 26.10 видалено.»; lists never contain it. */
+	isDeleted: z.boolean().default(false),
 	exercises: z.array(workoutExerciseResponseSchema),
 })
 

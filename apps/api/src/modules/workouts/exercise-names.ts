@@ -1,12 +1,16 @@
 const STEM_LENGTH = 5
 const MIN_WORD_LENGTH = 3
 
-/** Case, punctuation and spacing do not make a different exercise: «Жим  лежачи.» = «жим лежачи». */
+/**
+ * Case, punctuation and spacing do not make a different exercise: «Жим  лежачи.» = «жим лежачи».
+ * A name of nothing but symbols keeps its own (lower-cased) text, so such names do not all collapse
+ * into one dictionary row.
+ */
 export const normalizeExerciseName = (name: string): string =>
 	name
 		.toLowerCase()
 		.replace(/[^\p{L}\p{N}]+/gu, ' ')
-		.trim()
+		.trim() || name.trim().toLowerCase()
 
 const tokenize = (text: string): string[] => normalizeExerciseName(text).split(' ').filter(Boolean)
 

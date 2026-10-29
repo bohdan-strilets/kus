@@ -1,7 +1,5 @@
 import {
-	countSets,
 	type ExerciseContext,
-	type LogWorkoutInput,
 	type TodayWorkoutContext,
 	type WorkoutExerciseInput,
 	type WorkoutSetContext,
@@ -29,12 +27,11 @@ export const expandSets = (exercise: Pick<WorkoutExerciseInput, 'sets'>): Exerci
 	return rows
 }
 
-export const toDistanceM = (km: number | null): number | null =>
-	km === null ? null : Math.round(km * METRES_IN_KM)
-
-/** The set count the tool allows, checked once more where the rows are made. */
-export const hasTooManySets = (workout: LogWorkoutInput, max: number): boolean =>
-	workout.exercises.some((exercise) => countSets(exercise) > max)
+/** Whole metres; a distance too short to round to one is none. */
+export const toDistanceM = (km: number | null): number | null => {
+	if (km === null) return null
+	return Math.round(km * METRES_IN_KM) || null
+}
 
 const toSetContext = (set: {
 	reps: number | null

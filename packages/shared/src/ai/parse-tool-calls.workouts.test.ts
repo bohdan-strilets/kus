@@ -160,6 +160,36 @@ describe('parseToolCalls with log_workout', () => {
 	})
 })
 
+describe('parseToolCalls replacing and deleting the same workout', () => {
+	it('rejects a workout that one message both replaces and deletes', () => {
+		const result = parseToolCalls(
+			[logFood, workout({ replaceRef: 'w1' }), call('delete_entry', { refs: ['w1'] })],
+			refs,
+		)
+
+		expect(result.ok).toBe(false)
+		expect(result.ok ? [] : result.errors.join(' ')).toContain('w1 is also deleted')
+	})
+
+	it('allows replacing one workout and deleting another', () => {
+		const second: TodayWorkoutContext = { ...todayWorkout, ref: 'w3' }
+		const both = {
+			...refs,
+			workouts: new Map([
+				['w1', todayWorkout],
+				['w3', second],
+			]),
+		}
+
+		const result = parseToolCalls(
+			[logFood, workout({ replaceRef: 'w1' }), call('delete_entry', { refs: ['w3'] })],
+			both,
+		)
+
+		expect(result.ok).toBe(true)
+	})
+})
+
 describe('parseToolCalls deleting and restoring a workout', () => {
 	const reply = call('reply', { text: 'Прибрав.' })
 

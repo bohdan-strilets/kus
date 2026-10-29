@@ -10,6 +10,14 @@ describe('normalizeExerciseName', () => {
 	})
 })
 
+describe('normalizeExerciseName of symbols only', () => {
+	it('keeps the name itself, so such names do not collapse into one row', () => {
+		expect(normalizeExerciseName('🏋️')).toBe('🏋️')
+		expect(normalizeExerciseName('!!!')).toBe('!!!')
+		expect(normalizeExerciseName('  ')).toBe('')
+	})
+})
+
 describe('isExerciseNamed', () => {
 	it('finds an exercise by one of its words, whatever the ending', () => {
 		expect(isExerciseNamed('а жим сьогодні був добрий?', bench)).toBe(true)

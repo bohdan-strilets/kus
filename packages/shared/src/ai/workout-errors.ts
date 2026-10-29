@@ -53,10 +53,25 @@ const getReplaceOverlapErrors = (workouts: readonly LogWorkoutInput[]): string[]
 	)
 }
 
+/** A workout that the same message deletes cannot also be replaced: it would be rewritten and removed. */
+const getReplaceDeleteErrors = (
+	workouts: readonly LogWorkoutInput[],
+	deletions: readonly string[],
+): string[] =>
+	workouts.flatMap((workout) =>
+		workout.replaceRef !== null && deletions.includes(workout.replaceRef)
+			? [
+					`log_workout: ${workout.replaceRef} is also deleted in this message — replace it or delete it, not both`,
+				]
+			: [],
+	)
+
 export const getWorkoutErrors = (
 	workouts: readonly LogWorkoutInput[],
 	refs: ParseRefs,
+	deletions: readonly string[] = [],
 ): string[] => [
+	...getReplaceDeleteErrors(workouts, deletions),
 	...workouts.flatMap((workout) => [
 		...getWorkoutDateErrors(workout.date, refs.today),
 		...getRefErrors(workout, refs),

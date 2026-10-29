@@ -100,13 +100,13 @@ export class WorkoutsRepository {
 		})
 	}
 
-	/** The workouts a user message recorded, deleted ones left out. */
+	/** The workouts a user message recorded; a deleted one stays, the chat shows it as a line. */
 	findBySourceMessages(
 		{ userId, messageIds }: { userId: string; messageIds: string[] },
 		tx?: Prisma.TransactionClient,
 	): Promise<WorkoutWithExercises[]> {
 		return (tx ?? this.prisma).workout.findMany({
-			where: { userId, deletedAt: null, sourceMessageId: { in: messageIds } },
+			where: { userId, sourceMessageId: { in: messageIds } },
 			include: WITH_EXERCISES,
 			orderBy: { createdAt: 'asc' },
 		})
@@ -187,7 +187,7 @@ export class WorkoutsRepository {
 		if (count === 0) return null
 		await tx.exerciseEntry.deleteMany({ where: { workoutId: id, userId: write.userId } })
 		return tx.workout.update({
-			where: { id },
+			where: { id, userId: write.userId },
 			data: { records: [], exercises: { create: toExerciseCreate(write) } },
 			include: WITH_EXERCISES,
 		})
@@ -235,11 +235,18 @@ export class WorkoutsRepository {
 		})
 	}
 
-	createExercise(
+	/**
+	 * Creates the dictionary row, or leaves the one a parallel turn just created (ON CONFLICT DO NOTHING
+	 * on the partial unique: a failed insert would abort the whole turn's transaction), and returns it.
+	 */
+	async createExercise(
 		data: { userId: string; name: string; nameNormalized: string; kind: ExerciseKind },
 		tx: Prisma.TransactionClient,
 	) {
-		return tx.exercise.create({ data: { ...data, aliases: [] } })
+		await tx.exercise.createMany({ data: [{ ...data, aliases: [] }], skipDuplicates: true })
+		return tx.exercise.findFirstOrThrow({
+			where: { userId: data.userId, nameNormalized: data.nameNormalized, deletedAt: null },
+		})
 	}
 
 	/** The latest time the owner did the exercise (in a live workout), with its sets. */

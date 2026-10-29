@@ -6,6 +6,43 @@ All notable changes to Kusik are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.8.1] — 2026-10-29
+
+"Workouts": log a training in the chat like food, fix or delete it, see it on «Сьогодні», and tell Kusik how to address you. Prompt 2026-10-28.1. Three additive migrations (`20261028120000_user_address_form`, `20261029120000_workouts_and_exercises`, `20261030120000_workout_records`); the second refuses to run if `exercise_entries` has rows (check on prod before the deploy). No new environment variables. The «Тренування» tab and the five-tab bar are built but switched off (`FEATURES.workouts = false`) until they are checked on an iPhone; the workout card in the chat and the row on «Сьогодні» are on.
+
+### Added
+
+- `log_workout`: exercises in the user's order, set groups ("3×8 80" is three sets, "8, 8, 6 по 80" two groups), warm-ups, cardio with minutes and distance, `exerciseRef` from the user's own exercise dictionary, `replaceRef` to fix a whole workout of the day, burned kcal only when the user says the number (never added to the goal); together with `log_food` in one message ([470747d])
+- `delete_entry` / `restore_entry` take a workout by its `w` ref; "зроби як було" / "як спочатку" restore the `was:` / `originally` values of a changed entry ([470747d], [1b5741c])
+- Workouts, exercise dictionary and sets in the database; a record (a heavier working set or a longer distance than ever before, never the first result) is computed when a workout is logged and kept in `workouts.records`; a workout replaced by a later message gets `edited_at` ([2d593e6], [470747d])
+- `GET /workouts?from&to` (up to 93 days), `GET /workouts/day/:localDate`, `DELETE /workouts/:id` (soft) and `POST /workouts/:id/restore`, all scoped by the user of the token; another user's workout is `404 WORKOUT_NOT_FOUND` ([e36c5e9])
+- The workout card in the chat (exercises, sets, cardio, record badge and the `achieve` sound for a real record, "змінено", "Видалити" with a confirmation), a line "Тренування 26.10 видалено." for a deleted one, the row "Тренування" on «Сьогодні» (also for a day with no food), the «Тренування» tab and the five-tab bar with the raised «Чат» circle (off by default) ([07b1ef7])
+- `users.address_form` (MASCULINE | FEMININE | NEUTRAL, default NEUTRAL) and the setting «Як до тебе звертатися» in a new «Kusik» section of the settings; the model context always says `Address form: …` ([1f60192], [a43e7e3], [1b5741c])
+- Design for 0.8.1: the address sheet, "Видалити" on the workout card ([1dbcc6d])
+- Eval: the `workout` decision, `expect.workouts`, a workouts column, 25 workout cases; the gender check follows the case's Address form (neutral flags any gendered form, masculine / feminine only the opposite one and double forms) ([470747d], [84b3d1a])
+
+### Changed
+
+- Prompt 2026-10-28.1 (texts by the author): the workout rules, the Address form rule. The tool schemas shown to the model drop `default` and `additionalProperties` and write nullable as `type: [X, 'null']` (zod validation is unchanged); the cached prefix is 17 594 tokens (was ~16 770) and a request costs +18 % on the cases shared with 2026-10-27.2 ([470747d])
+- The chat history sent to the model keeps Kusik's replies up to 1000 characters (was 500) ([1b5741c])
+- A changed entry in the model context lists what it held before ("was: 100 g (originally 80 g)") ([1b5741c])
+- After a save or a delete in the entry editor the sheet goes back to the list of the meal's products; the chat stays at the bottom while a sheet is open ([90bdb01])
+
+### Fixed
+
+- Two parallel turns creating the same new exercise no longer fail on the unique name; a workout cannot be replaced and deleted in one message; the backend checks the day of a workout itself; a lost replace race answers `WORKOUT_NOT_FOUND` instead of 500 ([ab5b9cb])
+
+### Eval
+
+- Full run of 2026-10-28.1 on 263 of 265 cases (two private cases were not run): decisions 232/238 on the cases shared with 2026-10-27.2 (233/238 before), calorie error 1.2 / 0.2 % (1.4 / 0.2 %), 24/25 of the new workout cases; the regressions are close-day-unknown (a stricter wording check) and voice-teen-shawarma (a question instead of a log)
+
+### Known
+
+- Gendered forms about the user: 9 of 263 replies with the neutral form (4 of 238 before), three of them double forms such as "готовий(-а)"; planned for the prompt of 0.8.2
+- After "видали тренування" Kusik suggests to record it again instead of saying that it can be brought back with "поверни тренування"; planned for 0.8.2
+- "зранку пробіг, ввечері зал" is logged as one workout, not two
+- The user's data export does not include workouts (there is no export yet; before the beta)
+
 ## [0.8.0] — 2026-10-27
 
 "Live Kusik": a new prompt (2026-10-27.2) that describes intent instead of stock phrases, the stats card for any period of 2–92 days, and a stricter eval. No database migrations and no new environment variables; the prompt, the AI tool schemas, the API and the web app all change. Old web clients keep working with the new API (see Changed), so either deploy order works.
@@ -398,7 +435,19 @@ Design sync with `design/` v0.5.2. Web only: no API, shared-package or migration
 
 ## 0.2.0 / 0.1.0 — see tags
 
-[Unreleased]: https://github.com/bohdan-strilets/kus/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/bohdan-strilets/kus/compare/v0.8.1...HEAD
+[0.8.1]: https://github.com/bohdan-strilets/kus/compare/v0.8.0...v0.8.1
+[1f60192]: https://github.com/bohdan-strilets/kus/commit/1f60192a7f31e22168ed643da4ad496159ca7a5d
+[90bdb01]: https://github.com/bohdan-strilets/kus/commit/90bdb0106aa9d329f108bcc16fad0a4deb8eda74
+[1b5741c]: https://github.com/bohdan-strilets/kus/commit/1b5741c2ed8b82da22b878c7093c35b9e62c35f4
+[2d593e6]: https://github.com/bohdan-strilets/kus/commit/2d593e67e93b46487706740e14c12eca9034fb17
+[e36c5e9]: https://github.com/bohdan-strilets/kus/commit/e36c5e9a03d6f8f877af0d4cff0dc3f3319444ca
+[470747d]: https://github.com/bohdan-strilets/kus/commit/470747d9741036946384919bbff149d047ed78dd
+[84b3d1a]: https://github.com/bohdan-strilets/kus/commit/84b3d1a5bf53af128a9708059a7693304a04d7ff
+[1dbcc6d]: https://github.com/bohdan-strilets/kus/commit/1dbcc6dfcfe9494953dcfaa6c73f31d2a1737fe0
+[ab5b9cb]: https://github.com/bohdan-strilets/kus/commit/ab5b9cb9340c2ca75df1f9e9977628556e016b7f
+[07b1ef7]: https://github.com/bohdan-strilets/kus/commit/07b1ef780ed8d45a00e73ae007fd64d7e81253ff
+[a43e7e3]: https://github.com/bohdan-strilets/kus/commit/a43e7e3ab97623223609eb794d3360e712f7e3f7
 [0.8.0]: https://github.com/bohdan-strilets/kus/compare/v0.7.1...v0.8.0
 [8c9bbcb]: https://github.com/bohdan-strilets/kus/commit/8c9bbcb12f8fc5e15f2c305324f44efcc49657f3
 [bf40d77]: https://github.com/bohdan-strilets/kus/commit/bf40d776168a4c5b376f64e064cf5511eba6ab3a

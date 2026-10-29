@@ -12,6 +12,7 @@ import { AchievementCard } from './AchievementCard'
 import { DayCard } from './DayCard'
 import { MealCard } from './MealCard'
 import { MeasurementCard } from './MeasurementCard'
+import { WorkoutReplyCard } from './WorkoutReplyCard'
 
 interface KusikReplyProps {
 	message: ChatMessage
@@ -52,7 +53,7 @@ const ATTACHMENTS_CLASS = 'flex flex-col gap-1.5 pr-4 pl-10.5'
 /**
  * Kusik's answer: his words in the glass bubble next to his head, then a solid card per meal it
  * logged (a whole day → several) and per measurement, indented under the bubble as its attachments.
- * A closing card hides his words: only the card stays. Without words the card itself sits next to the head (mockups/chat.html). A bare weigh-in has no
+ * Workout cards follow the same way. A closing card hides his words: only the card stays. Without words the card itself sits next to the head (mockups/chat.html). A bare weigh-in has no
  * bubble: his words sit inside the card (mockups/chat-weight.html).
  */
 export const KusikReply = ({ message, isLatest, today, photoStatus }: KusikReplyProps) => {
@@ -87,6 +88,12 @@ export const KusikReply = ({ message, isLatest, today, photoStatus }: KusikReply
 			/>
 		))
 
+	const hasWorkouts = message.workouts.length > 0
+	const renderWorkouts = (hasTail: boolean) =>
+		message.workouts.map((workout, index) => (
+			<WorkoutReplyCard key={workout.id} workout={workout} hasTail={hasTail && index === 0} />
+		))
+
 	// close_day: the card follows the words and the estimate's meal card, with its own fixed sentence
 	// an empty day draws no card (the backend sends none; the front cuts it off too): only the text stays
 	const dayCard = message.dayCard?.verdict === 'empty' ? null : message.dayCard
@@ -107,9 +114,10 @@ export const KusikReply = ({ message, isLatest, today, photoStatus }: KusikReply
 		return (
 			<div className="flex flex-col gap-1.5 self-stretch">
 				<KusikRow kind={kind}>{firstCard}</KusikRow>
-				{(otherCards.length > 0 || achievement) && (
+				{(otherCards.length > 0 || hasWorkouts || achievement) && (
 					<div className={ATTACHMENTS_CLASS}>
 						{otherCards}
+						{renderWorkouts(false)}
 						{renderAchievement()}
 					</div>
 				)}
@@ -142,7 +150,8 @@ export const KusikReply = ({ message, isLatest, today, photoStatus }: KusikReply
 				<div className="flex flex-col gap-1.5">
 					{renderMeals(true)}
 					{renderMeasurements({ hasTail: false })}
-					{renderClosingCard(!hasMeals && !hasMeasurements)}
+					{renderWorkouts(!hasMeals && !hasMeasurements)}
+					{renderClosingCard(!hasMeals && !hasMeasurements && !hasWorkouts)}
 					{renderAchievement()}
 				</div>
 			</KusikRow>
@@ -155,10 +164,11 @@ export const KusikReply = ({ message, isLatest, today, photoStatus }: KusikReply
 					<Text>{content}</Text>
 				</MessageBubble>
 			</KusikRow>
-			{(hasMeals || hasMeasurements || achievement || closingCard) && (
+			{(hasMeals || hasMeasurements || hasWorkouts || achievement || closingCard) && (
 				<div className={ATTACHMENTS_CLASS}>
 					{renderMeals(false)}
 					{renderMeasurements({ hasTail: false })}
+					{renderWorkouts(false)}
 					{renderClosingCard(false)}
 					{renderAchievement()}
 				</div>

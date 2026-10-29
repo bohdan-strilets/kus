@@ -9,3 +9,4 @@ export {
 export { stubMatchMedia } from './match-media'
 export { createWrapper, renderHookWithProviders, renderWithProviders } from './render'
 export { makeProgress } from './progress.fixture'
+export { makeExercise, makeWorkout } from './workout.fixture'

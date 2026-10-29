@@ -85,6 +85,10 @@
 	--color-fat-ink: #6b4a33;
 	--color-fat-bar: #b05a26;
 
+	/* trainings: the duration plate and the exercise tile (mockups/training.html); theme.css calls them hint-training */
+	--color-hint-training-bg: #e2f0fb;
+	--color-hint-training-ink: #2f4a60;
+
 	/* tiles under food icons (shared/ui/food-icon), by category group */
 	--color-food-grain: #fff3d6;
 	--color-food-soup: #fde6d3;
@@ -171,6 +175,9 @@
 	--text-name--line-height: 1.2;
 	--text-name--font-weight: 800;
 
+	/* added: tab labels of the five-tab bar, -0.01em so «Тренування» fits 66 px (nav-5-tabs) */
+	--tracking-nav: -0.01em;
+
 	/* ── Radii ── */
 	--radius-screen: 40px;
 	--radius-sheet: 28px;
@@ -211,6 +218,9 @@
 	--shadow-list: 0 8px 22px rgb(80 50 20 / 0.08);
 	/* added: achievement card, a warm glow under the peach ring (chat-achievement) */
 	--shadow-achievement: 0 12px 30px rgb(185 82 26 / 0.18);
+	/* added: the raised «Чат» circle of the 5-tab nav, active and idle (nav-5-tabs) */
+	--shadow-nav-chat: 0 8px 18px rgb(185 82 26 / 0.3);
+	--shadow-nav-chat-idle: 0 6px 14px rgb(80 50 20 / 0.12);
 
 	/* added: static blur of the goal-celebration glow layer (design/interactive/motion.html, drop-shadow 14px);
 	   only its opacity and scale are animated */

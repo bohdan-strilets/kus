@@ -8,6 +8,8 @@ export interface AppLayoutProps {
 	bottomNav?: ReactNode
 	/** The page scrolls inside itself (the chat feed); otherwise the content area scrolls. */
 	isFixedHeight?: boolean
+	/** The nav has a raised centre button (five tabs): the content keeps 30 px more room. */
+	hasRaisedNav?: boolean
 }
 
 /**
@@ -17,7 +19,12 @@ export interface AppLayoutProps {
  * so the header stays put and the composer sits right on the keyboard. While a field is focused
  * on a touch screen the keyboard is up and the tab bar steps aside.
  */
-export const AppLayout = ({ children, bottomNav, isFixedHeight = false }: AppLayoutProps) => {
+export const AppLayout = ({
+	children,
+	bottomNav,
+	isFixedHeight = false,
+	hasRaisedNav = false,
+}: AppLayoutProps) => {
 	const viewport = useViewportBox()
 	const isTyping = useIsTypingOnTouch()
 	const hasNav = bottomNav !== undefined && !isTyping
@@ -34,7 +41,11 @@ export const AppLayout = ({ children, bottomNav, isFixedHeight = false }: AppLay
 						'flex min-h-0 flex-1 flex-col',
 						isFixedHeight ? 'overflow-hidden' : 'overflow-y-auto overscroll-contain',
 						// the home indicator is under the keyboard while typing: no room needed then
-						hasNav ? 'pb-nav-room' : !isTyping && 'pb-safe-bottom',
+						hasNav
+							? hasRaisedNav
+								? 'pb-nav-room-raised'
+								: 'pb-nav-room'
+							: !isTyping && 'pb-safe-bottom',
 					)}
 				>
 					{children}

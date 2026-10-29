@@ -9,4 +9,4 @@ export const ICON_STROKE = { opticalPx: 1.75, min: 1.6, max: 2.4 } as const
 
 /** Sizes from design/CLAUDE-design.md rule 6: 18 in buttons and fields, 22 in the bottom nav. */
 /** small — inline with a text button or a row chevron (16). */
-export const ICON_SIZE = { small: 16, control: 18, nav: 22 } as const
+export const ICON_SIZE = { small: 16, control: 18, nav: 22, navCenter: 26 } as const

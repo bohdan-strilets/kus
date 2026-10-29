@@ -1,9 +1,10 @@
-/** The four bottom-nav tabs; everything under /app needs a session (design/docs/screens.md). */
+/** The bottom-nav tabs («Тренування» only in the five-tab bar, FEATURES.workouts); everything under /app needs a session (design/docs/screens.md). */
 export const TAB_ROUTES = {
 	chat: '/app',
 	today: '/app/today',
 	progress: '/app/progress',
 	recipes: '/app/recipes',
+	training: '/app/training',
 } as const
 
 export const AUTH_ROUTES = {

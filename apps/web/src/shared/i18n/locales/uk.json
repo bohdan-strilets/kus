@@ -13,6 +13,7 @@
 		"today": "Сьогодні",
 		"progress": "Прогрес",
 		"recipes": "Рецепти",
+		"training": "Тренування",
 		"progressWithUpdate": "Прогрес, новий підсумок тижня"
 	},
 	"toast": {
@@ -29,6 +30,9 @@
 		"recipes": {
 			"title": "Рецепти",
 			"placeholder": "Тут будуть твої збережені рецепти."
+		},
+		"training": {
+			"title": "Тренування"
 		},
 		"profile": {
 			"title": "Профіль"
@@ -334,7 +338,20 @@
 		"title": "Налаштування",
 		"sections": {
 			"account": "Акаунт",
+			"kusik": "Kusik",
 			"sounds": "Звуки й вібрація"
+		},
+		"address": {
+			"title": "Як до тебе звертатися",
+			"hint": "Щоб Kusik говорив з тобою природно, а не обходив слова на кшталт «ситий» чи «сита».",
+			"default": "за замовчуванням",
+			"note": "Діє з наступної відповіді — минулі повідомлення не змінюються.",
+			"save": "Зберегти",
+			"options": {
+				"MASCULINE": { "label": "У чоловічому роді", "example": "Записав. Ти вже ситий?" },
+				"FEMININE": { "label": "У жіночому роді", "example": "Записав. Ти вже сита?" },
+				"NEUTRAL": { "label": "Нейтрально", "example": "Записав. Як настрій після обіду?" }
+			}
 		},
 		"email": "Email",
 		"changePassword": "Змінити пароль",
@@ -636,6 +653,65 @@
 		"answeredCaption": "{{amount}} · {{answer}}",
 		"editedCaption": "{{amount}} · змінено",
 		"mealTotal": "{{meal}} разом: {{kcal}} ккал"
+	},
+	"workout": {
+		"kg": "{{value}} кг",
+		"min": "{{value}} хв",
+		"hours": "{{value}} год",
+		"hourMin": "{{hours}} год {{minutes}} хв",
+		"km": "{{value}} км",
+		"sec": "{{value}} с",
+		"scheme": "{{sets}}×{{reps}}",
+		"weightTimes": "{{weight}} × {{reps}}",
+		"record": "рекорд",
+		"edited": "змінено",
+		"deleted": "Тренування {{date}} видалено.",
+		"deleteError": "Не вдалося видалити тренування. Спробуй ще раз.",
+		"delete": {
+			"action": "Видалити",
+			"ariaLabel": "Видалити тренування «{{name}}»",
+			"title": "Видалити тренування?",
+			"text": "«{{name}}» зникне з вкладки «Тренування» і зі «Сьогодні». Повернути можна словами в чаті.",
+			"cancel": "Скасувати",
+			"confirm": "Видалити"
+		},
+		"place": {
+			"GYM": "Зал",
+			"HOME": "Вдома",
+			"OUTDOOR": "Біг",
+			"OTHER": "Тренування"
+		},
+		"kcalSource": {
+			"MANUAL": "зі слів",
+			"DEVICE": "з табло"
+		},
+		"kcalNote": "{{kcal}} ккал · {{source}} · на ціль не впливає",
+		"dayRow": {
+			"title": "Тренування",
+			"summary": "{{place}}: {{names}}"
+		}
+	},
+	"training": {
+		"week": {
+			"count_one": "{{count}} тренування",
+			"count_few": "{{count}} тренування",
+			"count_many": "{{count}} тренувань",
+			"count_other": "{{count}} тренування",
+			"summary": "Цей тиждень: {{parts}}",
+			"none": "Цей тиждень: ще без тренувань"
+		},
+		"day": {
+			"today": "Сьогодні",
+			"yesterday": "Вчора",
+			"label": "{{day}} · {{date}}"
+		},
+		"empty": {
+			"title": "Тут будуть твої тренування",
+			"text": "Напиши в чат, що робили на тренуванні: «жим 80 кг 3×8, доріжка 20 хв» — Kusik запише й порахує час.",
+			"action": "Написати в чат"
+		},
+		"loadError": "Не вдалося завантажити тренування.",
+		"retry": "Спробувати ще"
 	},
 	"measurement": {
 		"kg": "{{value}} кг",

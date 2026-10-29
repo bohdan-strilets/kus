@@ -8,11 +8,14 @@ import {
 import { cleanup, screen } from '@testing-library/react'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 
-import { renderWithProviders } from '@/shared/testing'
+import { makeExercise, makeWorkout, renderWithProviders } from '@/shared/testing'
 
 import { KusikReply } from './KusikReply'
 
 vi.mock('./MealCard', () => ({ MealCard: () => <div data-testid="meal-card" /> }))
+vi.mock('./MeasurementCard', () => ({
+	MeasurementCard: () => <div data-testid="measurement-card" />,
+}))
 
 const TODAY = '2026-10-19'
 
@@ -67,6 +70,7 @@ const createReply = (overrides: Partial<ChatMessage>): ChatMessage =>
 		content: null,
 		meals: [],
 		measurements: [],
+		workouts: [],
 		achievements: [],
 		clarifications: [],
 		dayCard: null,
@@ -209,5 +213,59 @@ describe('KusikReply: stats', () => {
 
 		expect(screen.getByText('За цей період ще нічого не записано.')).toBeTruthy()
 		expect(screen.queryByText('За 30 днів')).toBeNull()
+	})
+})
+
+describe('KusikReply: workouts', () => {
+	it('a reply with words shows the card under the bubble', () => {
+		renderReply(createReply({ content: 'Записав тренування.', workouts: [makeWorkout()] }))
+
+		expect(screen.getByText('Записав тренування.')).toBeTruthy()
+		expect(screen.getByText('Жим лежачи')).toBeTruthy()
+		expect(screen.getByText('55 хв')).toBeTruthy()
+	})
+
+	it('a reply without words is the card alone next to the head', () => {
+		renderReply(createReply({ workouts: [makeWorkout()] }))
+
+		expect(screen.getByText('Жим лежачи')).toBeTruthy()
+	})
+
+	it('a workout next to a weigh-in keeps both cards', () => {
+		renderReply(
+			createReply({
+				measurements: [
+					{ id: 'm1', kind: 'WEIGHT', value: 82.4, chart: [] },
+				] as unknown as ChatMessage['measurements'],
+				workouts: [makeWorkout()],
+			}),
+		)
+
+		expect(screen.getByText('Жим лежачи')).toBeTruthy()
+		expect(screen.getByTestId('measurement-card')).toBeTruthy()
+	})
+
+	it('shows the record plate', () => {
+		renderReply(
+			createReply({ workouts: [makeWorkout({ exercises: [makeExercise({ record: 'WEIGHT' })] })] }),
+		)
+
+		expect(screen.getByText('рекорд')).toBeTruthy()
+	})
+})
+
+describe('KusikReply: deleted workout', () => {
+	it('a deleted workout is one quiet line without the card or its delete button', () => {
+		renderReply(createReply({ workouts: [makeWorkout({ isDeleted: true })] }))
+
+		expect(screen.getByText('Тренування 26.10 видалено.')).toBeTruthy()
+		expect(screen.queryByText('Жим лежачи')).toBeNull()
+		expect(screen.queryByRole('button', { name: /Видалити тренування/ })).toBeNull()
+	})
+
+	it('a live workout carries its delete button', () => {
+		renderReply(createReply({ workouts: [makeWorkout({ startedAt: null })] }))
+
+		expect(screen.getByRole('button', { name: 'Видалити тренування «Зал»' })).toBeTruthy()
 	})
 })

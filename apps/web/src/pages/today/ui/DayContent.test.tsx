@@ -1,10 +1,12 @@
 // @vitest-environment jsdom
-import type { DayResponse, LoggedMeal } from '@kus/shared'
+import type { DayResponse, LoggedMeal, WorkoutResponse } from '@kus/shared'
 import type { UseQueryResult } from '@tanstack/react-query'
-import { cleanup, screen } from '@testing-library/react'
+import { cleanup, screen, waitFor } from '@testing-library/react'
+import { AxiosHeaders, type AxiosResponse } from 'axios'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 
-import { renderWithProviders } from '@/shared/testing'
+import { httpClient } from '@/shared/api'
+import { makeExercise, makeWorkout, renderWithProviders } from '@/shared/testing'
 
 import { DayContent } from './DayContent'
 
@@ -96,5 +98,43 @@ describe('DayContent ahead', () => {
 
 		expect(screen.getByText('Цього дня нічого не записано')).toBeTruthy()
 		expect(screen.getByText(new RegExp(text))).toBeTruthy()
+	})
+})
+
+describe('DayContent with a training and no food', () => {
+	const getMock = vi.spyOn(httpClient, 'get')
+
+	const answer = (workouts: WorkoutResponse[]): AxiosResponse => ({
+		data: { data: workouts },
+		status: 200,
+		statusText: 'OK',
+		headers: {},
+		config: { headers: new AxiosHeaders() },
+	})
+
+	afterEach(() => {
+		getMock.mockReset()
+	})
+
+	it('shows the day with the workout row, not the empty state', async () => {
+		getMock.mockResolvedValue(answer([makeWorkout({ exercises: [makeExercise()] })]))
+
+		renderDay(TODAY, [])
+
+		expect(await screen.findByText('Зал: жим лежачи')).toBeTruthy()
+		expect(screen.queryByText('Цього дня нічого не записано')).toBeNull()
+		expect(screen.getByText("з'їдено")).toBeTruthy()
+		expect(getMock).toHaveBeenCalledWith(`/workouts/day/${TODAY}`)
+	})
+
+	it('keeps the empty state when the day has no training either', async () => {
+		getMock.mockResolvedValue(answer([]))
+
+		renderDay(TOMORROW, [])
+
+		await waitFor(() => {
+			expect(getMock).toHaveBeenCalled()
+		})
+		expect(screen.getByText('На завтра ще нічого не записано')).toBeTruthy()
 	})
 })

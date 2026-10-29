@@ -12,6 +12,8 @@ interface BottomNavItemProps {
 	updateLabel?: string
 	/** eaten / goal for the «Сьогодні» ring. */
 	todayProgress: number
+	/** The five-tab bar: tighter label. */
+	isCompact?: boolean
 }
 
 /** One tab as a route link; the active state comes from the router. */
@@ -20,6 +22,7 @@ export const BottomNavItem = ({
 	hasUpdate = false,
 	updateLabel,
 	todayProgress,
+	isCompact = false,
 }: BottomNavItemProps) => (
 	<NavLink
 		to={item.to}
@@ -28,7 +31,7 @@ export const BottomNavItem = ({
 		// «Чат» is /app itself: without `end` it would be active under every /app/* tab
 		end
 		aria-label={hasUpdate ? updateLabel : undefined}
-		className={({ isActive }) => navTabVariants({ isActive })}
+		className={({ isActive }) => navTabVariants({ isActive, isCompact })}
 	>
 		{({ isActive }) => (
 			<NavTabContent

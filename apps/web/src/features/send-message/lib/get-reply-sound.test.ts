@@ -1,6 +1,8 @@
 import type { ChatMessage, SendMessageResponse } from '@kus/shared'
 import { describe, expect, it } from 'vitest'
 
+import { makeExercise, makeWorkout } from '@/shared/testing'
+
 import { getReplySound } from './get-reply-sound'
 
 const message = (overrides: Partial<ChatMessage>): ChatMessage => ({
@@ -94,5 +96,12 @@ describe('getReplySound', () => {
 		expect(
 			getReplySound(turn({ achievements: ACHIEVEMENTS }, { photo: { status: 'FAILED' } })),
 		).toBe('photoFail')
+	})
+
+	it('plays «achieve» for a workout with a record, silent for a plain workout', () => {
+		const record = [makeWorkout({ exercises: [makeExercise({ record: 'WEIGHT' })] })]
+
+		expect(getReplySound(turn({ workouts: record }))).toBe('achieve')
+		expect(getReplySound(turn({ workouts: [makeWorkout()] }))).toBeNull()
 	})
 })

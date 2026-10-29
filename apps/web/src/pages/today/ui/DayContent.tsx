@@ -1,13 +1,15 @@
-import type { UseQueryResult } from '@tanstack/react-query'
+import { type UseQueryResult, useQuery } from '@tanstack/react-query'
 import type { DayResponse } from '@kus/shared'
 import { useTranslation } from 'react-i18next'
 
 import { DayStatsCard, getDayStats, getGaugeState, SupportCard } from '@/entities/stats'
+import { workoutsDayQueryOptions } from '@/entities/workout'
 import { formatInteger } from '@/shared/lib'
 import { Hamster, Skeleton, InlineError } from '@/shared/ui'
 
 import { getEmptyKind } from '../lib/get-empty-kind'
 import { getSupportKey } from '../lib/get-support-key'
+import { DayWorkouts } from './DayWorkouts'
 import { MealsList } from './MealsList'
 import { TodayEmpty } from './TodayEmpty'
 
@@ -36,6 +38,9 @@ export const DayContent = ({
 	onEmptyAction,
 }: DayContentProps) => {
 	const { t } = useTranslation()
+	// a day with no food but a training is not empty: asked only then, the meals decide otherwise
+	const isFoodless = query.data?.meals.length === 0
+	const workouts = useQuery({ ...workoutsDayQueryOptions(localDate), enabled: isFoodless })
 
 	if (query.isPending) {
 		return (
@@ -50,7 +55,7 @@ export const DayContent = ({
 	if (query.isError) {
 		return <InlineError message={t('today.loadError')} onRetry={() => void query.refetch()} />
 	}
-	if (query.data.meals.length === 0) {
+	if (query.data.meals.length === 0 && (workouts.data?.length ?? 0) === 0) {
 		return (
 			<TodayEmpty
 				kind={getEmptyKind(localDate, today)}
@@ -75,6 +80,7 @@ export const DayContent = ({
 				goalAction={{ label: t(goal === null ? 'goal.set' : 'goal.change'), onClick: onGoalClick }}
 			/>
 			<MealsList meals={query.data.meals} isPlanned={isPlanned} />
+			<DayWorkouts localDate={localDate} />
 			{gauge.status === 'over' && !isPlanned && (
 				<SupportCard
 					message={t(getSupportKey(gauge.over), { over: formatInteger(gauge.over) })}

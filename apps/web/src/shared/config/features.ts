@@ -7,4 +7,9 @@ export const FEATURES = {
 	photo: true,
 	voice: false,
 	quickChips: true,
+	/**
+	 * The «Тренування» tab and the five-tab bar with the raised «Чат» (nav-5-tabs). Off: four tabs as
+	 * before; the route, the chat card and the row on «Сьогодні» stay on either way.
+	 */
+	workouts: false,
 } as const

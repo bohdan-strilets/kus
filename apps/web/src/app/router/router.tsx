@@ -15,6 +15,7 @@ import {
 	RegisterPage,
 	SettingsPage,
 	TodayPage,
+	TrainingPage,
 } from './lazy-pages'
 import { RootLayout } from './RootLayout'
 import { RouteErrorPage } from './RouteErrorPage'
@@ -69,6 +70,7 @@ export const router = createBrowserRouter([
 									{ path: ROUTES.today, element: <TodayPage /> },
 									{ path: ROUTES.progress, element: <ProgressPage /> },
 									{ path: ROUTES.recipes, element: <RecipesPage /> },
+									{ path: ROUTES.training, element: <TrainingPage /> },
 									{ path: '*', element: <Navigate to={ROUTES.chat} replace /> },
 								],
 							},

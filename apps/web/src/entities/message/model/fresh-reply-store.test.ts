@@ -11,7 +11,7 @@ const USER_B = '0199b3a4-0000-7000-8000-00000000000b'
 
 const reply = (
 	mealIds: string[],
-	extras: { measurementIds?: string[]; achievementIds?: string[] } = {},
+	extras: { measurementIds?: string[]; achievementIds?: string[]; workoutIds?: string[] } = {},
 ): ChatMessage =>
 	({
 		id: '0199b3a4-0000-7000-8000-000000000011',
@@ -19,6 +19,7 @@ const reply = (
 		meals: mealIds.map((id) => ({ id })),
 		measurements: (extras.measurementIds ?? []).map((id) => ({ id })),
 		achievements: (extras.achievementIds ?? []).map((id) => ({ id })),
+		workouts: (extras.workoutIds ?? []).map((id) => ({ id })),
 		clarifications: [],
 	}) as unknown as ChatMessage
 
@@ -107,6 +108,12 @@ describe('useFreshReplyStore keys', () => {
 		expect(Object.keys(useFreshReplyStore.getState().freshAt).sort()).toEqual(
 			['achievement:x1', 'measurement:x1', 'meal:x1'].sort(),
 		)
+	})
+
+	it('marks workouts under their own prefix', () => {
+		useFreshReplyStore.getState().markFresh(reply([], { workoutIds: ['t1'] }))
+
+		expect(useFreshReplyStore.getState().isFresh(freshKey.workout('t1'))).toBe(true)
 	})
 
 	it('marks a reply that has only a measurement (no meals)', () => {

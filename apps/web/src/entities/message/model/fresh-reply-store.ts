@@ -9,12 +9,14 @@ export const freshKey = {
 	meal: (id: string): string => `meal:${id}`,
 	measurement: (id: string): string => `measurement:${id}`,
 	achievement: (id: string): string => `achievement:${id}`,
+	workout: (id: string): string => `workout:${id}`,
 } as const
 
 const getFreshKeys = (message: ChatMessage): string[] => [
 	...message.meals.map((meal) => freshKey.meal(meal.id)),
 	...message.measurements.map((measurement) => freshKey.measurement(measurement.id)),
 	...message.achievements.map((achievement) => freshKey.achievement(achievement.id)),
+	...message.workouts.map((workout) => freshKey.workout(workout.id)),
 ]
 
 interface FreshReplyState {

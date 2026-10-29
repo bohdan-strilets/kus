@@ -19,6 +19,11 @@ export const badgeVariants = cva('inline-flex shrink-0 items-center', {
 			closedNeutral:
 				'gap-1 rounded-badge bg-secondary px-2.25 py-1 text-small font-bold text-muted-strong',
 			failed: 'gap-1 text-small text-danger',
+			/** «55 хв» on a workout card: the training plate, 13/800, radius 10 (training) */
+			training:
+				'rounded-badge bg-hint-training-bg px-2.5 py-1 text-caption font-extrabold text-hint-training-ink tabular-nums',
+			/** «рекорд» with a trophy next to an exercise: success-soft / success-ink, 12/700 (chat-workout) */
+			record: 'gap-1 rounded-badge bg-success-soft px-2 py-1 text-small font-bold text-success-ink',
 		},
 	},
 	defaultVariants: { variant: 'kcal' },

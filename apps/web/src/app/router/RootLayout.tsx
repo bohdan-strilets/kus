@@ -1,7 +1,7 @@
 import { Suspense } from 'react'
 import { Outlet, useMatch } from 'react-router'
 
-import { ROUTES } from '@/shared/config'
+import { FEATURES, ROUTES } from '@/shared/config'
 import { useUnlockSoundOnFirstTap } from '@/shared/lib'
 import { AppLayout } from '@/shared/ui'
 import { BottomNav, useTodayProgress } from '@/widgets/bottom-nav'
@@ -16,7 +16,11 @@ export const RootLayout = () => {
 	useUnlockSoundOnFirstTap()
 
 	return (
-		<AppLayout bottomNav={<BottomNav todayProgress={todayProgress} />} isFixedHeight={isChat}>
+		<AppLayout
+			bottomNav={<BottomNav todayProgress={todayProgress} />}
+			isFixedHeight={isChat}
+			hasRaisedNav={FEATURES.workouts}
+		>
 			<Suspense fallback={<RouteLoader />}>
 				<Outlet />
 			</Suspense>

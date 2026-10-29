@@ -6,9 +6,12 @@ export const ICON_NAMES = [
 	'add-to-home',
 	'alert',
 	'bell',
+	'bike',
 	'body',
+	'bulb',
 	'calendar',
 	'camera',
+	'cardio',
 	'chat-filled',
 	'chat',
 	'check',
@@ -25,7 +28,9 @@ export const ICON_NAMES = [
 	'eye-off',
 	'eye',
 	'flame',
+	'gauge',
 	'globe',
+	'home',
 	'image-off',
 	'image',
 	'info',
@@ -42,7 +47,10 @@ export const ICON_NAMES = [
 	'progress',
 	'recipes-filled',
 	'recipes',
+	'repeat',
 	'retry',
+	'rowing',
+	'run',
 	'scale',
 	'search',
 	'send',
@@ -52,9 +60,13 @@ export const ICON_NAMES = [
 	'stop',
 	'tape',
 	'today',
+	'training-filled',
+	'training',
 	'trash',
 	'trend-down',
 	'trend-flat',
+	'trophy',
+	'utensils',
 	'walk',
 ] as const
 
@@ -79,10 +91,23 @@ export const ICON_PATHS: Record<IconName, ReactNode> = {
 			<path d="M10 20.5a2 2 0 0 0 4 0" />
 		</>
 	),
+	'bike': (
+		<>
+			<circle cx="6" cy="16" r="3.5" />
+			<circle cx="18" cy="16" r="3.5" />
+			<path d="M6 16l3.5-7h6L18 16M9.5 9L13 16h5M8 6h3" />
+		</>
+	),
 	'body': (
 		<>
 			<circle cx="12" cy="6" r="2.5" />
 			<path d="M7 21l2-9h6l2 9M9 12l-3-2M15 12l3-2" />
+		</>
+	),
+	'bulb': (
+		<>
+			<path d="M9.5 20.5h5M10 17.5h4" />
+			<path d="M12 3.5a6 6 0 0 0-3.6 10.8c.7.6 1.1 1.4 1.1 2.2v1h5v-1c0-.8.4-1.6 1.1-2.2A6 6 0 0 0 12 3.5z" />
 		</>
 	),
 	'calendar': (
@@ -95,6 +120,12 @@ export const ICON_PATHS: Record<IconName, ReactNode> = {
 		<>
 			<path d="M4 8.5a2 2 0 0 1 2-2h2l1.5-2h5l1.5 2h2a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z" />
 			<circle cx="12" cy="12.5" r="3.5" />
+		</>
+	),
+	'cardio': (
+		<>
+			<path d="M12 19.5s-7.5-4.5-7.5-10A4 4 0 0 1 12 7a4 4 0 0 1 7.5 2.5c0 5.5-7.5 10-7.5 10z" />
+			<path d="M6 12h2.5l1.5-2.5 2 5 1.5-2.5H18" />
 		</>
 	),
 	'chat-filled': (
@@ -189,11 +220,25 @@ export const ICON_PATHS: Record<IconName, ReactNode> = {
 			<path d="M12 3c1 3 4 4 4 8a4 4 0 0 1-8 0c0-2 1-3 1-3 0 2 1 3 2 3 0-3-1-5 1-8z" />
 		</>
 	),
+	'gauge': (
+		<>
+			<path d="M4 16.5a8 8 0 1 1 16 0" />
+			<path d="M12 16.5l3.5-4.5" />
+			<circle cx="12" cy="16.5" r="1.3" fill="currentColor" stroke="none" />
+		</>
+	),
 	'globe': (
 		<>
 			<circle cx="12" cy="12" r="8.5" />
 			<path d="M3.5 12h17" />
 			<path d="M12 3.5c2.5 2.5 3.5 5.5 3.5 8.5s-1 6-3.5 8.5c-2.5-2.5-3.5-5.5-3.5-8.5s1-6 3.5-8.5z" />
+		</>
+	),
+	'home': (
+		<>
+			<path d="M4 11.5l8-7 8 7" />
+			<path d="M6.5 9.5v10h11v-10" />
+			<path d="M10 19.5v-5h4v5" />
 		</>
 	),
 	'image-off': (
@@ -295,9 +340,30 @@ export const ICON_PATHS: Record<IconName, ReactNode> = {
 			<path d="M12 6.5v13" />
 		</>
 	),
+	'repeat': (
+		<>
+			<path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3" />
+			<path d="M4.5 4v4h4" />
+			<path d="M12 8.5V12l2.5 2" />
+		</>
+	),
 	'retry': (
 		<>
 			<path d="M20 12a8 8 0 1 1-2.3-5.6M20 4v5h-5" />
+		</>
+	),
+	'rowing': (
+		<>
+			<path d="M2.5 17h19" />
+			<path d="M5.5 17l2.5-4h6l2.5 4" />
+			<circle cx="10" cy="7.5" r="2" />
+			<path d="M15 13l5.5-6.5" />
+		</>
+	),
+	'run': (
+		<>
+			<circle cx="15" cy="4.5" r="2" />
+			<path d="M7.5 21l3.5-5 3 2.5V22M5.5 11.5L9 8h4.5l2.5 3.5 3.5 1M11 16l-1-5" />
 		</>
 	),
 	'scale': (
@@ -353,6 +419,20 @@ export const ICON_PATHS: Record<IconName, ReactNode> = {
 			<circle cx="12" cy="12" r="8.5" />
 		</>
 	),
+	'training-filled': (
+		<>
+			<rect x="5.5" y="6" width="3.5" height="12" rx="1.4" fill="currentColor" />
+			<rect x="15" y="6" width="3.5" height="12" rx="1.4" fill="currentColor" />
+			<path d="M9 12h6M3 9.5v5M21 9.5v5" strokeWidth="2.4" />
+		</>
+	),
+	'training': (
+		<>
+			<rect x="5.5" y="6" width="3.5" height="12" rx="1.4" />
+			<rect x="15" y="6" width="3.5" height="12" rx="1.4" />
+			<path d="M9 12h6M3 9.5v5M21 9.5v5" />
+		</>
+	),
 	'trash': (
 		<>
 			<path d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12" />
@@ -368,6 +448,18 @@ export const ICON_PATHS: Record<IconName, ReactNode> = {
 		<>
 			<path d="M4 12h13" />
 			<path d="M15 8.5l4 3.5-4 3.5" />
+		</>
+	),
+	'trophy': (
+		<>
+			<path d="M8 4.5h8V9a4 4 0 0 1-8 0z" />
+			<path d="M8 6.5H5.5a2.5 2.5 0 0 0 2.7 3.6M16 6.5h2.5a2.5 2.5 0 0 1-2.7 3.6M12 13v3.5M8.5 20h7M10 16.5h4l.5 3.5h-5z" />
+		</>
+	),
+	'utensils': (
+		<>
+			<path d="M7 3.5v17M4.5 3.5V8a2.5 2.5 0 0 0 5 0V3.5" />
+			<path d="M17.5 20.5v-17c-2 1-3.5 3.5-3.5 7v3h3.5" />
 		</>
 	),
 	'walk': (

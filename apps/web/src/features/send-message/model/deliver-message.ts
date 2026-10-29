@@ -9,6 +9,7 @@ import {
 	useFreshReplyStore,
 } from '@/entities/message'
 import { useGoalCelebrationStore } from '@/entities/stats'
+import { WORKOUTS_QUERY_KEY } from '@/entities/workout'
 import { type ApiError, getApiError, HTTP_STATUS } from '@/shared/api'
 import { playSound } from '@/shared/lib'
 
@@ -122,6 +123,7 @@ export const deliverMessage = async (
 		const sound = getReplySound(turn)
 		if (sound) playSound(sound)
 		void queryClient.invalidateQueries({ queryKey: DAY_QUERY_KEY })
+		void queryClient.invalidateQueries({ queryKey: WORKOUTS_QUERY_KEY })
 		// a replayed turn returns no updatedMessages: reload the feed so edited cards are current
 		if (isRetry) void queryClient.invalidateQueries({ queryKey: MESSAGES_QUERY_KEY })
 	} catch (error) {

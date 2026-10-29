@@ -6,6 +6,18 @@ All notable changes to Kusik are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.8.2] — 2026-10-29
+
+A small release: the «Тренування» tab is switched on, and the chat stays at the bottom after a workout is deleted from its card. No database migrations, no new environment variables, no API changes.
+
+### Changed
+
+- The «Тренування» tab and the five-tab bar with the raised «Чат» circle are on (`FEATURES.workouts = true`); the route, the workout card and the row on «Сьогодні» were already on in 0.8.1 ([1b5e6ca])
+
+### Fixed
+
+- The chat feed stayed at the bottom only under the entry editor's sheet: after «Видалити» on a workout card the card turned into a line and the feed ended up higher. Now every sheet and dialog registers as an overlay (`shared/lib/overlay`): the feed stays pinned while one is open and when it closes. The delete button holds the feed until the delete and the refetch of the chat are done (the card turns into a line then), 8 seconds at most, so a slow response does not unpin it ([36673bd])
+
 ## [0.8.1] — 2026-10-29
 
 "Workouts": log a training in the chat like food, fix or delete it, see it on «Сьогодні», and tell Kusik how to address you. Prompt 2026-10-28.1. Three additive migrations (`20261028120000_user_address_form`, `20261029120000_workouts_and_exercises`, `20261030120000_workout_records`); the second refuses to run if `exercise_entries` has rows (check on prod before the deploy). No new environment variables. The «Тренування» tab and the five-tab bar are built but switched off (`FEATURES.workouts = false`) until they are checked on an iPhone; the workout card in the chat and the row on «Сьогодні» are on.
@@ -435,7 +447,10 @@ Design sync with `design/` v0.5.2. Web only: no API, shared-package or migration
 
 ## 0.2.0 / 0.1.0 — see tags
 
-[Unreleased]: https://github.com/bohdan-strilets/kus/compare/v0.8.1...HEAD
+[Unreleased]: https://github.com/bohdan-strilets/kus/compare/v0.8.2...HEAD
+[0.8.2]: https://github.com/bohdan-strilets/kus/compare/v0.8.1...v0.8.2
+[36673bd]: https://github.com/bohdan-strilets/kus/commit/36673bd4d8dabbbc839db39e22c07643b3ee564e
+[1b5e6ca]: https://github.com/bohdan-strilets/kus/commit/1b5e6cad41ecf7bbf85b938b9bdee947f8a4f7de
 [0.8.1]: https://github.com/bohdan-strilets/kus/compare/v0.8.0...v0.8.1
 [1f60192]: https://github.com/bohdan-strilets/kus/commit/1f60192a7f31e22168ed643da4ad496159ca7a5d
 [90bdb01]: https://github.com/bohdan-strilets/kus/commit/90bdb0106aa9d329f108bcc16fad0a4deb8eda74

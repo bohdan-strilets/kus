@@ -62,7 +62,7 @@ export type FoodSource = z.infer<typeof foodSourceSchema>
 export const myFoodSourceSchema = z.enum(['LABEL', 'MANUAL', 'AI'])
 export type MyFoodSource = z.infer<typeof myFoodSourceSchema>
 
-export const factCategorySchema = z.enum(['PREFERENCE', 'HABIT', 'RESTRICTION', 'OTHER'])
+export const factCategorySchema = z.enum(['FOOD', 'SCHEDULE', 'TRAINING', 'OTHER'])
 export type FactCategory = z.infer<typeof factCategorySchema>
 
 export const factStatusSchema = z.enum(['PROPOSED', 'CONFIRMED', 'REJECTED'])

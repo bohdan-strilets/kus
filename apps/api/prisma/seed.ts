@@ -159,12 +159,14 @@ const seedUser = async (
 				create: [
 					{
 						text: 'Не їсть свинину',
-						category: FactCategory.RESTRICTION,
+						textNormalized: normalizeName('Не їсть свинину'),
+						category: FactCategory.FOOD,
 						status: FactStatus.CONFIRMED,
 					},
 					{
 						text: 'Зазвичай снідає вівсянкою з молоком',
-						category: FactCategory.HABIT,
+						textNormalized: normalizeName('Зазвичай снідає вівсянкою з молоком'),
+						category: FactCategory.FOOD,
 						status: FactStatus.PROPOSED,
 					},
 				],

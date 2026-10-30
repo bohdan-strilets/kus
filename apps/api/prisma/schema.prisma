@@ -187,10 +187,11 @@ enum MyFoodSource {
   @@map("my_food_source")
 }
 
+// the groups of «Пам'ять · Про тебе»: Їжа, Графік, Тренування, Інше
 enum FactCategory {
-  PREFERENCE
-  HABIT
-  RESTRICTION
+  FOOD
+  SCHEDULE
+  TRAINING
   OTHER
 
   @@map("fact_category")
@@ -833,6 +834,8 @@ model UserFact {
   id              String       @id @default(uuid(7)) @db.Uuid
   userId          String       @map("user_id") @db.Uuid
   text            String
+  // lowercased, trimmed, single spaces — computed by the backend; one active fact per text
+  textNormalized  String       @map("text_normalized")
   category        FactCategory
   status          FactStatus   @default(PROPOSED)
   sourceMessageId String?      @map("source_message_id") @db.Uuid
@@ -843,6 +846,8 @@ model UserFact {
   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   sourceMessage Message? @relation(fields: [sourceMessageId], references: [id], onDelete: SetNull)
 
+  // partial: a deleted or rejected fact doesn't block saying the same again
+  @@unique([userId, textNormalized], where: raw("deleted_at IS NULL AND status <> 'REJECTED'"))
   @@index([userId, status])
   @@index([sourceMessageId])
   @@map("user_facts")

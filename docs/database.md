@@ -111,7 +111,7 @@ erDiagram
   `nameNormalized` і `aliases` зберігаються нормалізованими (lowercase, trim, одинарні пробіли). Назва унікальна в межах користувача серед **не видалених** продуктів (partial unique `WHERE deleted_at IS NULL`, preview `partialIndexes`) — видалений продукт не заважає створити новий з тією ж назвою.
 - **Recipe** + **RecipeIngredient** — рецепти. Підсумки не зберігаються: бекенд сумує інгредієнти, а `cookedGrams` (вага готової страви) дає значення на 100 г готового. Унікальність назви — як у MyFood. `category` (default `plate`) — іконка страви цілком (сирники → `pancakes`), не інгредієнтів.
 - **Correction** — виправлення запису користувачем (тапом по уточненню чи текстом у чаті). `before` / `after` — Json лише зі змінених полів (`{ "grams": 120 }` → `{ "grams": 150 }`; назва, категорія, кількість теж), для видалення / відновлення — `{ "deleted": false }` → `{ "deleted": true }`. `myFoodId` / `recipeId` — куди виправлення застосовано, `savedToMemory` — чи оновили пам'ять.
-- **UserFact** — факти про користувача (вподобання, звички, обмеження). AI пропонує (`PROPOSED`), користувач підтверджує або відхиляє; у контекст моделі йдуть лише `CONFIRMED`.
+- **UserFact** — факти про користувача; `category` — групи екрана «Пам'ять · Про тебе»: `FOOD` (їжа, «не їсть X»), `SCHEDULE` (графік), `TRAINING`, `OTHER`. AI пропонує (`PROPOSED`), користувач підтверджує або відхиляє; у контекст моделі йдуть лише `CONFIRMED`. `textNormalized` (як `MyFood.nameNormalized`: lowercase, trim, одинарні пробіли) — один активний факт на текст.
 
 ### Ліміти й пізніші модулі
 
@@ -143,7 +143,7 @@ erDiagram
 | recipes               | partial UNIQUE `(user_id, name_normalized)`; GIN `aliases`; `(user_id, last_used_at)`                       | те саме                                           |
 | recipe_ingredients    | `recipe_id`; `my_food_id`                                                                                   |                                                   |
 | corrections           | `food_entry_id`; `(user_id, created_at)`; `my_food_id`; `recipe_id`                                         |                                                   |
-| user_facts            | `(user_id, status)`                                                                                         | факти в контекст AI                               |
+| user_facts            | partial UNIQUE `(user_id, text_normalized)` WHERE не видалено й не `REJECTED`; `(user_id, status)`          | факти в контекст AI; без дублів тексту            |
 | daily_usage           | `(user_id, local_date)` UNIQUE                                                                              | ліміти                                            |
 | exercise_entries      | `(user_id, local_date)`; `source_message_id`; `workout_id`; `exercise_id`                                   | вправи тренування                                 |
 | workouts              | `(user_id, local_date)`; `source_message_id`                                                                | тренування дня й тижня                            |

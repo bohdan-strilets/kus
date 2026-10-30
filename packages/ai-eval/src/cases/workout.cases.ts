@@ -208,7 +208,8 @@ export const WORKOUT_CASES: EvalCase[] = [
 		expect: {
 			decision: 'workout',
 			workouts: [
-				{ exercises: [{ nameIncludes: 'плав', kind: 'CARDIO', durationMin: 40 }] },
+				// the user's own word («басейн»), not a renamed «плавання»
+				{ exercises: [{ nameIncludes: 'басейн', kind: 'CARDIO', durationMin: 40 }] },
 				{ exercises: [{ nameIncludes: 'жим', kind: 'STRENGTH', sets: 3, weightKg: 70, reps: 8 }] },
 			],
 		},

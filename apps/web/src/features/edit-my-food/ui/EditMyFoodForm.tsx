@@ -5,7 +5,7 @@ import { Controller, useForm, useWatch } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 
 import { parseDecimalInput } from '@/shared/lib'
-import { Button, FormField, Icon, ICON_SIZE, Input, Text } from '@/shared/ui'
+import { Button, FormField, Icon, ICON_SIZE, Input, StickyActions, Text } from '@/shared/ui'
 
 import { buildUpdateRequest, isSameAsFood, toFormValues } from '../lib/my-food-form'
 import {
@@ -17,6 +17,7 @@ import type { MyFoodActions } from '../model/use-my-food-actions'
 import { FoodNumberField } from './FoodNumberField'
 
 const DUPLICATE_ERROR_TYPE = 'duplicate'
+const NAME_INPUT_NAME = 'food-title'
 
 interface EditMyFoodFormProps {
 	food: MyFoodResponse
@@ -80,7 +81,14 @@ export const EditMyFoodForm = ({ food, actions, onDone }: EditMyFoodFormProps) =
 						attemptCount={attemptCount}
 					>
 						{(controlProps) => (
-							<Input {...controlProps} {...field} autoComplete="off" enterKeyHint="done" />
+							<Input
+								{...controlProps}
+								{...field}
+								// iOS offers «AutoFill Contact» for name="name"
+								name={NAME_INPUT_NAME}
+								autoComplete="off"
+								enterKeyHint="done"
+							/>
 						)}
 					</FormField>
 				)}
@@ -139,26 +147,28 @@ export const EditMyFoodForm = ({ food, actions, onDone }: EditMyFoodFormProps) =
 			<Text variant="small" weight="regular" tone="muted" className="-mt-1.5 px-1">
 				{t('editMyFood.hint')}
 			</Text>
-			<Button
-				type="submit"
-				isFullWidth
-				isLoading={actions.isSaving}
-				loadingText={t('editMyFood.saving')}
-				disabled={actions.isDeleting || isDuplicate}
-			>
-				{t('editMyFood.save')}
-			</Button>
-			<Button
-				variant="textDanger"
-				icon={<Icon name="trash" size={ICON_SIZE.control} />}
-				onClick={() => {
-					actions.remove(food.id, onDone)
-				}}
-				disabled={isBusy}
-				className="self-center"
-			>
-				{t('editMyFood.delete')}
-			</Button>
+			<StickyActions>
+				<Button
+					type="submit"
+					isFullWidth
+					isLoading={actions.isSaving}
+					loadingText={t('editMyFood.saving')}
+					disabled={actions.isDeleting || isDuplicate}
+				>
+					{t('editMyFood.save')}
+				</Button>
+				<Button
+					variant="textDanger"
+					icon={<Icon name="trash" size={ICON_SIZE.control} />}
+					onClick={() => {
+						actions.remove(food.id, onDone)
+					}}
+					disabled={isBusy}
+					className="self-center"
+				>
+					{t('editMyFood.delete')}
+				</Button>
+			</StickyActions>
 		</form>
 	)
 }

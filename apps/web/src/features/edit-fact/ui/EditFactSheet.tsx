@@ -30,7 +30,6 @@ export const EditFactSheet = ({ fact, onClose }: EditFactSheetProps) => {
 			}}
 			title={t('editFact.title')}
 			description={shown ? formatFactSource(shown, t) : undefined}
-			initialFocus="first-field"
 		>
 			{shown && <EditFactForm key={shown.id} fact={shown} actions={actions} onDone={onClose} />}
 		</BaseBottomSheet>

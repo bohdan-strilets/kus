@@ -28,7 +28,6 @@ export const EditMyFoodSheet = ({ food, onClose }: EditMyFoodSheetProps) => {
 				if (!isOpen) onClose()
 			}}
 			title={t('editMyFood.title')}
-			initialFocus="first-field"
 		>
 			{shown && <EditMyFoodForm key={shown.id} food={shown} actions={actions} onDone={onClose} />}
 		</BaseBottomSheet>

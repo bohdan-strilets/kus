@@ -4,7 +4,7 @@ import { useMemo } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 
-import { Button, FormField, Icon, ICON_SIZE, Textarea } from '@/shared/ui'
+import { Button, FormField, Icon, ICON_SIZE, StickyActions, Textarea } from '@/shared/ui'
 
 import {
 	createEditFactSchema,
@@ -67,30 +67,34 @@ export const EditFactForm = ({ fact, actions, onDone }: EditFactFormProps) => {
 						error={fieldState.error?.message}
 						attemptCount={form.formState.submitCount}
 					>
-						{(controlProps) => <Textarea variant="field" {...controlProps} {...field} rows={2} />}
+						{(controlProps) => (
+							<Textarea variant="field" {...controlProps} {...field} autoComplete="off" rows={2} />
+						)}
 					</FormField>
 				)}
 			/>
-			<Button
-				type="submit"
-				isFullWidth
-				isLoading={actions.isSaving}
-				loadingText={t('editFact.saving')}
-				disabled={actions.isDeleting}
-			>
-				{t('editFact.save')}
-			</Button>
-			<Button
-				variant="textDanger"
-				icon={<Icon name="trash" size={ICON_SIZE.control} />}
-				onClick={() => {
-					actions.remove(fact.id, onDone)
-				}}
-				disabled={isBusy}
-				className="self-center"
-			>
-				{t('editFact.delete')}
-			</Button>
+			<StickyActions>
+				<Button
+					type="submit"
+					isFullWidth
+					isLoading={actions.isSaving}
+					loadingText={t('editFact.saving')}
+					disabled={actions.isDeleting}
+				>
+					{t('editFact.save')}
+				</Button>
+				<Button
+					variant="textDanger"
+					icon={<Icon name="trash" size={ICON_SIZE.control} />}
+					onClick={() => {
+						actions.remove(fact.id, onDone)
+					}}
+					disabled={isBusy}
+					className="self-center"
+				>
+					{t('editFact.delete')}
+				</Button>
+			</StickyActions>
 		</form>
 	)
 }

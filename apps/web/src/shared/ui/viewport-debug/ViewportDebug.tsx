@@ -4,7 +4,8 @@ import { useIsTextFieldFocused } from '@/shared/lib'
 
 import {
 	formatDebugLines,
-	getSessionStorage,
+	DEBUG_TOGGLE_EVENT,
+	getFlagStorage,
 	resolveViewportDebugFlag,
 	type ViewportDebugSnapshot,
 } from './viewport-debug.lib'
@@ -78,11 +79,24 @@ const DebugPanel = ({ isNavHidden }: ViewportDebugProps) => {
 	)
 }
 
-/** Only numbers and flags, no content. Renders nothing and attaches nothing unless the flag is on. */
+/** Only numbers and flags, no content. Renders nothing (one toggle listener) unless the flag is on. */
 export const ViewportDebug = ({ isNavHidden }: ViewportDebugProps) => {
-	const [isEnabled] = useState(() =>
-		resolveViewportDebugFlag(window.location.search, getSessionStorage()),
+	const [isEnabled, setIsEnabled] = useState(() =>
+		resolveViewportDebugFlag(window.location.search, getFlagStorage()),
 	)
+
+	useEffect(() => {
+		const onToggle = (event: Event): void => {
+			if (event instanceof CustomEvent && typeof event.detail === 'boolean') {
+				setIsEnabled(event.detail)
+			}
+		}
+		window.addEventListener(DEBUG_TOGGLE_EVENT, onToggle)
+		return () => {
+			window.removeEventListener(DEBUG_TOGGLE_EVENT, onToggle)
+		}
+	}, [])
+
 	if (!isEnabled) return null
 	return <DebugPanel isNavHidden={isNavHidden} />
 }

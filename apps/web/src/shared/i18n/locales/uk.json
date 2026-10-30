@@ -735,6 +735,16 @@
 			"gramsRange": "Від {{min}} до {{max}} г"
 		}
 	},
+	"factProposal": {
+		"question": "Запам'ятати: «{{text}}»?",
+		"quote": "«{{text}}»",
+		"yes": "Так",
+		"no": "Ні",
+		"saved": "Запам'ятав",
+		"change": "Змінити в «Пам'яті»",
+		"rejected": "Не запам'ятовую.",
+		"answerError": "Не вдалося відповісти. Спробуй ще раз."
+	},
 	"editFact": {
 		"title": "Факт",
 		"field": "Факт",

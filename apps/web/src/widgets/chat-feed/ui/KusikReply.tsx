@@ -3,6 +3,7 @@ import type { ChatMessage } from '@kus/shared'
 import { pickAchievement } from '@/entities/achievement'
 import { StatsCard, useGoalCelebrationStore } from '@/entities/stats'
 import { KusikRow, type KusikReplyKind, MessageBubble } from '@/entities/message'
+import { FactProposalPlaque } from '@/features/answer-fact-proposal'
 import { Text } from '@/shared/ui'
 
 import { getClarificationPlacement } from '../lib/get-clarification-placement'
@@ -144,7 +145,10 @@ export const KusikReply = ({ message, isLatest, today, photoStatus }: KusikReply
 		)
 	}
 
-	if (!content) {
+	// a fact to remember sits inside the bubble under his words (mockups/memory-facts.html)
+	const factPlaque = message.factProposal && <FactProposalPlaque proposal={message.factProposal} />
+
+	if (!content && !factPlaque) {
 		return (
 			<KusikRow kind={kind}>
 				<div className="flex flex-col gap-1.5">
@@ -161,7 +165,10 @@ export const KusikReply = ({ message, isLatest, today, photoStatus }: KusikReply
 		<div className="flex flex-col gap-1.5 self-stretch">
 			<KusikRow kind={kind}>
 				<MessageBubble>
-					<Text>{content}</Text>
+					<div className="flex flex-col gap-2.5">
+						{content && <Text>{content}</Text>}
+						{factPlaque}
+					</div>
 				</MessageBubble>
 			</KusikRow>
 			{(hasMeals || hasMeasurements || hasWorkouts || achievement || closingCard) && (

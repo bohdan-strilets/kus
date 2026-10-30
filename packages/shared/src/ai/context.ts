@@ -9,6 +9,7 @@ import {
 } from './edit-context.js'
 import { type EarlierEntryContext, formatEarlierEntries } from './history-context.js'
 import type { MeasurementPoint } from './measurements.js'
+import { type FactContext, formatFacts } from './memory-context.js'
 import { SYSTEM_PROMPT } from './prompt.js'
 import type { ExerciseContext, TodayWorkoutContext } from './workout-context.js'
 
@@ -138,6 +139,10 @@ export interface FoodParseContext {
 	days?: DayContext[]
 	measurements: MeasurementsContext
 	memory: MemoryFoodContext[]
+	/** Confirmed facts about the user, oldest first; no block when omitted or empty. */
+	facts?: FactContext[]
+	/** The fact waiting for the user's «Так / Ні»; no line when omitted or null. */
+	proposedFact?: string | null
 	/** Only for a message that points back («як вчора»); no section when omitted or empty. */
 	earlier?: EarlierEntryContext[]
 	/** Oldest first. */
@@ -277,6 +282,7 @@ export const formatContext = (context: FoodParseContext): string => {
 		formatMeasurements(context.measurements),
 		...formatRecentMeasurements(context.measurements.recent ?? []),
 		memory,
+		...formatFacts(context.facts ?? [], context.proposedFact ?? null),
 		...formatEarlierEntries(context.earlier ?? []),
 	].join('\n')
 }

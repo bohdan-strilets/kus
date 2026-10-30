@@ -1,7 +1,15 @@
 import { describe, expect, it } from 'vitest'
 
 import type { FoodEntry } from '../../generated/prisma/client'
-import { compareByName, isFoodMatchingQuery, toNewMyFood } from './my-foods.utils'
+import type { SaveFoodInput } from '@kus/shared'
+
+import {
+	compareByName,
+	isFoodMatchingQuery,
+	toMyFoodUpdate,
+	toNewChatFood,
+	toNewMyFood,
+} from './my-foods.utils'
 
 const createEntry = (overrides: Partial<FoodEntry> = {}): FoodEntry =>
 	({
@@ -79,5 +87,109 @@ describe('compareByName', () => {
 			'їжак',
 			'яблуко',
 		])
+	})
+})
+
+const createInput = (overrides: Partial<SaveFoodInput> = {}): SaveFoodInput => ({
+	name: 'Кабаноси',
+	aliases: [],
+	per100g: { kcal: 550.04, protein: 20, fat: 45, carbs: 3, fiber: null },
+	pieceGrams: null,
+	defaultGrams: null,
+	category: 'sausage',
+	fromItemIndex: null,
+	updateRef: null,
+	...overrides,
+})
+
+describe('toNewChatFood', () => {
+	it('takes the values of the call; LABEL when the message has a photo, else MANUAL', () => {
+		expect(toNewChatFood(createInput(), { entry: undefined, hasPhoto: false })).toMatchObject({
+			name: 'Кабаноси',
+			nameNormalized: 'кабаноси',
+			kcalPer100g: 550,
+			source: 'MANUAL',
+			category: 'sausage',
+		})
+		expect(toNewChatFood(createInput(), { entry: undefined, hasPhoto: true })?.source).toBe('LABEL')
+	})
+
+	it('stores aliases normalized, without the name itself and repeats, and no brand', () => {
+		const food = toNewChatFood(createInput({ aliases: [' Кабанос ', 'кабанос', 'Кабаноси'] }), {
+			entry: undefined,
+			hasPhoto: false,
+		})
+
+		expect(food).toMatchObject({ brand: null, aliases: ['кабанос'] })
+	})
+
+	it('takes the values of the entry (per 100 g, piece, usual portion) under the name of the call', () => {
+		const food = toNewChatFood(
+			createInput({ name: 'Яйця', per100g: null, category: null, fromItemIndex: 0 }),
+			{ entry: createEntry({ name: 'Яйце варене', grams: 150, quantity: 3 }), hasPhoto: false },
+		)
+
+		expect(food).toMatchObject({
+			name: 'Яйця',
+			nameNormalized: 'яйця',
+			kcalPer100g: 80,
+			pieceGrams: 50,
+			defaultGrams: 150,
+			category: 'yogurt',
+			source: 'AI',
+		})
+	})
+
+	it('lets the call set the piece and the usual portion over the entry', () => {
+		const food = toNewChatFood(
+			createInput({
+				per100g: null,
+				category: null,
+				fromItemIndex: 0,
+				pieceGrams: 40,
+				defaultGrams: 80,
+			}),
+			{ entry: createEntry({ quantity: 3 }), hasPhoto: false },
+		)
+
+		expect(food).toMatchObject({ pieceGrams: 40, defaultGrams: 80 })
+	})
+
+	it('gives nothing without values, entry or category', () => {
+		expect(
+			toNewChatFood(createInput({ per100g: null }), { entry: undefined, hasPhoto: false }),
+		).toBeNull()
+		expect(
+			toNewChatFood(createInput({ category: null }), { entry: undefined, hasPhoto: false }),
+		).toBeNull()
+	})
+})
+
+describe('toMyFoodUpdate', () => {
+	it('overwrites the values but never the name, and keeps what the call did not say', () => {
+		const data = toNewChatFood(createInput(), { entry: undefined, hasPhoto: false })
+		if (!data) throw new Error('expected a food')
+
+		const update = toMyFoodUpdate(data)
+
+		expect(update).toMatchObject({ kcalPer100g: 550, category: 'sausage', source: 'MANUAL' })
+		expect(update).not.toHaveProperty('name')
+		expect(update).not.toHaveProperty('pieceGrams')
+		expect(update).not.toHaveProperty('brand')
+		expect(update).not.toHaveProperty('aliases')
+	})
+
+	it('sets the piece, the usual portion and the aliases when the call has them', () => {
+		const data = toNewChatFood(
+			createInput({ pieceGrams: 25, defaultGrams: 50, aliases: ['кабанос'] }),
+			{ entry: undefined, hasPhoto: false },
+		)
+		if (!data) throw new Error('expected a food')
+
+		expect(toMyFoodUpdate(data)).toMatchObject({
+			pieceGrams: 25,
+			defaultGrams: 50,
+			aliases: ['кабанос'],
+		})
 	})
 })

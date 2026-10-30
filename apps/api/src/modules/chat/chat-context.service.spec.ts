@@ -49,6 +49,7 @@ const createService = ({
 	goalKcal = new Map(),
 	range = {},
 }: Mocks = {}) => {
+	const findContextFacts = vi.fn().mockResolvedValue({ confirmed: [], proposal: null })
 	const getEditableEntries = vi.fn().mockResolvedValue(editable)
 	const getDaysKcal = vi.fn().mockResolvedValue(daysKcal)
 	const findInRange = vi
@@ -82,8 +83,9 @@ const createService = ({
 				refIds: { workouts: new Map(), deletedWorkouts: new Map(), exercises: new Map() },
 			}),
 		} as never,
+		{ findContextFacts } as never,
 	)
-	return { service, getEditableEntries, getDaysKcal, findInRange }
+	return { service, getEditableEntries, getDaysKcal, findInRange, findContextFacts }
 }
 
 const build = (service: ChatContextService) =>

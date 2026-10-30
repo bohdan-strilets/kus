@@ -37,6 +37,15 @@ export const factResponseSchema = z.object({
 
 export type FactResponse = z.infer<typeof factResponseSchema>
 
+/** A fact a chat reply proposed or saved: the plaque under the reply («Запам'ятати?» / «Запам'ятав»). */
+export const factProposalSchema = z.object({
+	id: z.uuid(),
+	text: z.string(),
+	status: factStatusSchema,
+})
+
+export type FactProposal = z.infer<typeof factProposalSchema>
+
 /** `:id` of /facts/:id routes. */
 export const factParamsSchema = z.object({ id: z.uuid() })
 

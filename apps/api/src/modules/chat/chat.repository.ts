@@ -204,6 +204,14 @@ export class ChatRepository {
 		})
 	}
 
+	/** The text of a reply written in this same turn, once the backend added its own sentence. */
+	async setReplyContent(
+		{ userId, id, content }: { userId: string; id: string; content: string },
+		tx: Prisma.TransactionClient,
+	): Promise<void> {
+		await tx.message.updateMany({ where: { id, userId }, data: { content } })
+	}
+
 	/** The card of a reply written in this same turn, once the day it shows has been changed. */
 	async setDayCard(
 		{ userId, id, dayCard }: { userId: string; id: string; dayCard: DayCard },

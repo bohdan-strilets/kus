@@ -61,6 +61,17 @@ import {
 	getMeasurementErrors,
 	roundMeasurementValue,
 } from './measurements.js'
+import { getMemoryErrors } from './memory-errors.js'
+import {
+	type ForgetFactInput,
+	forgetFactInputSchema,
+	hasMemoryActions,
+	type MemoryActions,
+	type SaveFactInput,
+	saveFactInputSchema,
+	type SaveFoodInput,
+	saveFoodInputSchema,
+} from './memory-tools.js'
 import { MAX_WORKOUTS_PER_MESSAGE } from './workout-tools.js'
 import { normalizeFoodName } from './normalize-food-name.js'
 import { getWorkoutErrors } from './workout-errors.js'
@@ -101,10 +112,11 @@ export type FoodParseDecision =
 			measurementDeletions: DeleteMeasurementInput[]
 			/** A training in the same message as the food. */
 			workouts: LogWorkoutInput[]
+			memory: MemoryActions
 	  }
 	/** One or more trainings, no food. */
 	| { kind: 'workout'; workouts: LogWorkoutInput[] }
-	| { kind: 'edit'; edits: EntryEdits; text: string }
+	| { kind: 'edit'; edits: EntryEdits; text: string; memory: MemoryActions }
 	| { kind: 'not_food'; reply: string }
 	| { kind: 'photo_unusable'; reason: PhotoUnusableReason; reply: string }
 	| {
@@ -112,6 +124,7 @@ export type FoodParseDecision =
 			text: string
 			measurements: LogMeasurementInput[]
 			measurementDeletions: DeleteMeasurementInput[]
+			memory: MemoryActions
 	  }
 	/** `date` null = today. */
 	| { kind: 'day'; date: string | null; text: string }
@@ -145,6 +158,9 @@ type ValidatedCall =
 	| { name: typeof AI_TOOL_NAMES.resolveClarification; data: ResolveClarificationInput }
 	| { name: typeof AI_TOOL_NAMES.notFood; data: NotFoodInput }
 	| { name: typeof AI_TOOL_NAMES.photoUnusable; data: PhotoUnusableInput }
+	| { name: typeof AI_TOOL_NAMES.saveFood; data: SaveFoodInput }
+	| { name: typeof AI_TOOL_NAMES.saveFact; data: SaveFactInput }
+	| { name: typeof AI_TOOL_NAMES.forgetFact; data: ForgetFactInput }
 	| { name: typeof AI_TOOL_NAMES.reply; data: ReplyInput }
 
 type InputParse = { ok: true; call: ValidatedCall } | { ok: false; error: z.ZodError }
@@ -176,6 +192,12 @@ const parseInput = (name: AiToolName, value: unknown): InputParse => {
 			return toInputParse(closeDayInputSchema.safeParse(value), (data) => ({ name, data }))
 		case AI_TOOL_NAMES.showStats:
 			return toInputParse(showStatsInputSchema.safeParse(value), (data) => ({ name, data }))
+		case AI_TOOL_NAMES.saveFood:
+			return toInputParse(saveFoodInputSchema.safeParse(value), (data) => ({ name, data }))
+		case AI_TOOL_NAMES.saveFact:
+			return toInputParse(saveFactInputSchema.safeParse(value), (data) => ({ name, data }))
+		case AI_TOOL_NAMES.forgetFact:
+			return toInputParse(forgetFactInputSchema.safeParse(value), (data) => ({ name, data }))
 		case AI_TOOL_NAMES.clarify:
 			return toInputParse(clarifyInputSchema.safeParse(value), (data) => ({ name, data }))
 		case AI_TOOL_NAMES.correctEntry:
@@ -207,6 +229,15 @@ const normalizeCallNames = (call: ValidatedCall): ValidatedCall => {
 				data: {
 					...call.data,
 					items: call.data.items.map((item) => ({ ...item, name: normalizeFoodName(item.name) })),
+				},
+			}
+		case AI_TOOL_NAMES.saveFood:
+			return {
+				...call,
+				data: {
+					...call.data,
+					name: normalizeFoodName(call.data.name),
+					aliases: call.data.aliases.map(normalizeFoodName),
 				},
 			}
 		case AI_TOOL_NAMES.clarify:
@@ -328,6 +359,10 @@ const WORKOUT_ALONE_ERROR =
 const NO_PHOTO_ERROR =
 	'photo_unusable: this message has no photo — answer with reply (or not_food) instead'
 
+const MEMORY_ANSWER_ERROR =
+	'save_food, save_fact and forget_fact go together with log_food or reply (also next to edit tools) — not with not_food, photo_unusable, show_day, close_day, show_stats, or log_workout without log_food'
+const ONE_FACT_ERROR = 'save_fact: at most one per message'
+
 const MEASUREMENT_WITH_ANSWER_ERROR =
 	'log_measurement goes together with exactly one log_food or reply — not with not_food, photo_unusable or edit tools'
 
@@ -397,6 +432,14 @@ const decide = (
 	const shows = valid.flatMap((call) => (call.name === AI_TOOL_NAMES.showDay ? [call.data] : []))
 	const closes = valid.flatMap((call) => (call.name === AI_TOOL_NAMES.closeDay ? [call.data] : []))
 	const stats = valid.flatMap((call) => (call.name === AI_TOOL_NAMES.showStats ? [call.data] : []))
+	const saveFacts = valid.flatMap((call) =>
+		call.name === AI_TOOL_NAMES.saveFact ? [call.data] : [],
+	)
+	const memory: MemoryActions = {
+		foods: valid.flatMap((call) => (call.name === AI_TOOL_NAMES.saveFood ? [call.data] : [])),
+		fact: saveFacts[0] ?? null,
+		forgets: valid.flatMap((call) => (call.name === AI_TOOL_NAMES.forgetFact ? [call.data] : [])),
+	}
 	const edits = collectEdits(valid)
 	const isEditing = hasEdits(edits)
 	const [log] = logs
@@ -424,6 +467,13 @@ const decide = (
 		const answers = logs.length + otherAnswers
 		if (answers !== 1 || ((rejected || photoUnusable) && isEditing))
 			return { decision: null, errors: [ONE_DECISION_ERROR] }
+	}
+	if (hasMemoryActions(memory) || saveFacts.length > 1) {
+		const isWorkoutOnly = hasWorkouts && !log
+		if (rejected || photoUnusable || show || close || statsCall || isWorkoutOnly) {
+			return { decision: null, errors: [MEMORY_ANSWER_ERROR] }
+		}
+		if (saveFacts.length > 1) return { decision: null, errors: [ONE_FACT_ERROR] }
 	}
 	if (show) {
 		const isAlone = !isEditing && measurements.length === 0 && deletions.length === 0
@@ -475,6 +525,7 @@ const decide = (
 		...getMeasurementDeletionErrors(deletions, refs),
 		...getMeasurementOverlapErrors(measurements, deletions, refs.today),
 	]
+	const memoryErrors = hasMemoryActions(memory) ? getMemoryErrors(memory, log ?? null, refs) : []
 	if (hasWorkouts && !log) {
 		if (clarifications.length > 0 || isEditing) {
 			return { decision: null, errors: [WORKOUT_ALONE_ERROR] }
@@ -490,6 +541,7 @@ const decide = (
 			...getFoodDateErrors(log, refs.today),
 			...getEditErrors(edits, refs),
 			...measurementErrors,
+			...memoryErrors,
 		]
 		if (errors.length > 0) return { decision: null, errors }
 		const selected = filterClarifications(log, clarifications)
@@ -502,6 +554,7 @@ const decide = (
 				measurements,
 				measurementDeletions: deletions,
 				workouts,
+				memory,
 			},
 			errors: [],
 		}
@@ -520,20 +573,22 @@ const decide = (
 	}
 	if (!reply) return { decision: null, errors: [ONE_DECISION_ERROR] }
 	if (!isEditing) {
-		if (measurementErrors.length > 0) return { decision: null, errors: measurementErrors }
+		const replyErrors = [...measurementErrors, ...memoryErrors]
+		if (replyErrors.length > 0) return { decision: null, errors: replyErrors }
 		return {
 			decision: {
 				kind: 'reply',
 				text: reply.text,
 				measurements,
 				measurementDeletions: deletions,
+				memory,
 			},
 			errors: [],
 		}
 	}
-	const errors = getEditErrors(edits, refs)
+	const errors = [...getEditErrors(edits, refs), ...memoryErrors]
 	if (errors.length > 0) return { decision: null, errors }
-	return { decision: { kind: 'edit', edits, text: reply.text }, errors: [] }
+	return { decision: { kind: 'edit', edits, text: reply.text, memory }, errors: [] }
 }
 
 export const parseToolCalls = (

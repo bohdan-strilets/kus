@@ -28,6 +28,9 @@ describe('getAiFunctionTools', () => {
 			'show_day',
 			'close_day',
 			'show_stats',
+			'save_food',
+			'save_fact',
+			'forget_fact',
 			'reply',
 		])
 	})

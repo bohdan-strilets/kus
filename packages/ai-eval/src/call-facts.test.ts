@@ -78,3 +78,34 @@ describe('getCallFacts', () => {
 		expect(facts.dayCards).toEqual([])
 	})
 })
+
+describe('getCallFacts: memory tools', () => {
+	it('records save_food, save_fact and forget_fact as the model sent them', () => {
+		const facts = getCallFacts(
+			[
+				call('save_food', {
+					name: 'Кабаноси',
+					per100g: { kcal: 550, protein: 20, fat: 45, carbs: 3, fiber: null },
+					category: 'sausage',
+				}),
+				call('save_fact', { text: 'Не їсть рибу', category: 'FOOD', explicit: false }),
+				call('forget_fact', { ref: 'f2' }),
+			],
+			TODAY,
+		)
+
+		expect(facts.savedFoods).toMatchObject([{ name: 'Кабаноси', updateRef: null, aliases: [] }])
+		expect(facts.facts).toEqual([{ text: 'Не їсть рибу', category: 'FOOD', explicit: false }])
+		expect(facts.forgets).toEqual([{ ref: 'f2' }])
+	})
+
+	it('skips memory calls with broken arguments', () => {
+		const facts = getCallFacts(
+			[{ name: 'save_fact', arguments: '{oops' }, call('forget_fact', { ref: 'x1' })],
+			TODAY,
+		)
+
+		expect(facts.facts).toEqual([])
+		expect(facts.forgets).toEqual([])
+	})
+})

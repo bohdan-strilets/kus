@@ -7,6 +7,7 @@ import { ChatContextService } from './chat-context.service'
 import type { EditedMessages } from './chat-edits.service'
 import { ChatFeedService } from './chat-feed.service'
 import { ChatRepository } from './chat.repository'
+import type { SavedFoodRef } from './chat-turn-memory.service'
 
 interface BuildResponseParams {
 	userId: string
@@ -17,6 +18,8 @@ interface BuildResponseParams {
 	edited: EditedMessages & {
 		/** User messages whose weight or waist this turn replaced: their replies lose the card. */
 		replacedMeasurementMessageIds?: string[]
+		/** Foods this turn saved to memory: only the live response tells (a replay or a reload has none). */
+		savedFoods?: SavedFoodRef[]
 	}
 }
 
@@ -52,7 +55,12 @@ export class ChatResponseService {
 			this.chatContext.getDayOverview(userId, dayDate),
 			this.findUpdatedMessages(userId, edited, reply.id),
 		])
-		return { userMessage: userDto, assistantMessage: replyDto, dayTotals: totals, updatedMessages }
+		return {
+			userMessage: userDto,
+			assistantMessage: { ...replyDto, savedFoods: edited.savedFoods ?? [] },
+			dayTotals: totals,
+			updatedMessages,
+		}
 	}
 
 	/** The earlier replies whose cards or questions this turn changed, as they are now. */

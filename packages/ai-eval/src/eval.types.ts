@@ -1,4 +1,12 @@
-import type { ClarifyKind, ExerciseKind, MeasurementKind, WorkoutPlace } from '@kus/shared'
+import type {
+	ClarifyKind,
+	ExerciseKind,
+	ForgetFactInput,
+	MeasurementKind,
+	SaveFactInput,
+	SaveFoodInput,
+	WorkoutPlace,
+} from '@kus/shared'
 
 export type ActualDecision =
 	| 'log'
@@ -35,6 +43,12 @@ export interface CallFacts {
 	closeDays: { date: string; estimatedTotalKcal: number | null }[]
 	/** Every show_stats call; null end = today. */
 	statsCards: { days: number; endDate: string | null }[]
+	/** Every save_food call as the model sent it (defaults filled by the shared schema). */
+	savedFoods: SaveFoodInput[]
+	/** Every save_fact call as the model sent it. */
+	facts: SaveFactInput[]
+	/** Every forget_fact call as the model sent it. */
+	forgets: ForgetFactInput[]
 }
 
 export interface CaseResult {

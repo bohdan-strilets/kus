@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
 
 import { toModelParameters, toUncompactedParameters } from './model-schema.js'
-import { AI_TOOL_SCHEMAS } from './tools.js'
+import { AI_TOOL_SCHEMAS, getAiFunctionTools } from './tools.js'
 
 const NULL_BRANCH = '{"type":"null"}'
 const NULL_TYPE_LIST = ',"null"]'
@@ -137,5 +137,55 @@ describe('bounds are left to zod', () => {
 		expect(workout.safeParse(base).success).toBe(true)
 		expect(toValidator(toModelParameters(workout)).safeParse(input).success).toBe(true)
 		expect(workout.safeParse(input).success).toBe(false)
+	})
+})
+
+describe('the memory tools as the model sees them', () => {
+	const tools = Object.fromEntries(
+		getAiFunctionTools().map(({ function: tool }) => [tool.name, JSON.stringify(tool.parameters)]),
+	)
+
+	it.each(['save_food', 'save_fact', 'forget_fact'])(
+		'%s is bare: no bounds, counts or patterns',
+		(name) => {
+			expect(tools[name]).not.toMatch(
+				/"(minimum|exclusiveMinimum|minItems|maxItems|pattern|maxLength)"/,
+			)
+		},
+	)
+
+	it('shows save_food.category without the list, but keeps the fact categories', () => {
+		const saveFood = toModelParameters(AI_TOOL_SCHEMAS.save_food, { isBare: true }) as {
+			properties: { category: Record<string, unknown> }
+		}
+
+		expect(saveFood.properties.category).toEqual({
+			description: 'Same list as log_food; null with fromItemIndex',
+			type: ['string', 'null'],
+		})
+		expect(tools.save_fact).toContain('"enum":["FOOD","SCHEDULE","TRAINING","OTHER"]')
+	})
+
+	it('has no brand for the model to fill', () => {
+		expect(tools.save_food).not.toContain('"brand"')
+	})
+
+	it('still lets zod check what the model may no longer see', () => {
+		const food = {
+			name: 'Кабаноси',
+			aliases: [],
+			per100g: null,
+			pieceGrams: null,
+			defaultGrams: null,
+			fromItemIndex: 0,
+		}
+
+		expect(
+			AI_TOOL_SCHEMAS.save_food.safeParse({ ...food, category: 'кабаноси', updateRef: null }).data,
+		).toMatchObject({ category: 'plate' })
+		expect(
+			AI_TOOL_SCHEMAS.save_food.safeParse({ ...food, category: null, updateRef: 'x1' }).success,
+		).toBe(false)
+		expect(AI_TOOL_SCHEMAS.forget_fact.safeParse({ ref: 'e1' }).success).toBe(false)
 	})
 })

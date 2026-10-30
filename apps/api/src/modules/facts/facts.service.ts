@@ -178,12 +178,24 @@ export class FactsService {
 		}
 		if (input.explicit) {
 			const fact = await this.factsRepository.create({ ...base, status: 'CONFIRMED' }, tx)
-			return { kind: 'saved', fact }
+			return fact ? { kind: 'saved', fact } : this.findTwin(userId, textNormalized, tx)
 		}
 		const replaced = await this.factsRepository.rejectOpenProposals(userId, tx)
 		const fact = await this.factsRepository.create({ ...base, status: 'PROPOSED' }, tx)
+		if (!fact) return this.findTwin(userId, textNormalized, tx)
 		if (replaced > 0) this.logger.log(`Proposal ${fact.id} replaced ${replaced} open one(s)`)
 		return { kind: 'proposed', fact }
+	}
+
+	/** The insert lost a race with a parallel save of the same text: that fact is the answer. */
+	private async findTwin(
+		userId: string,
+		textNormalized: string,
+		tx: Prisma.TransactionClient,
+	): Promise<SaveFactFromChatResult> {
+		const twin = await this.factsRepository.findLiveByText({ userId, textNormalized }, tx)
+		if (!twin) throw new FactNotFoundException()
+		return { kind: 'exists', fact: twin }
 	}
 
 	/** «Забудь це»: soft delete of an active confirmed fact; false = no such fact. */

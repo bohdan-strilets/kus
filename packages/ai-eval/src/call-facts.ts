@@ -1,4 +1,11 @@
-import { measurementKindSchema, type RawToolCall, statsDaysSchema } from '@kus/shared'
+import {
+	forgetFactInputSchema,
+	measurementKindSchema,
+	type RawToolCall,
+	saveFactInputSchema,
+	saveFoodInputSchema,
+	statsDaysSchema,
+} from '@kus/shared'
 import { z } from 'zod'
 
 import type { CallFacts } from './eval.types.js'
@@ -26,6 +33,9 @@ export const EMPTY_CALL_FACTS: CallFacts = {
 	deletedMeasurements: [],
 	closeDays: [],
 	statsCards: [],
+	savedFoods: [],
+	facts: [],
+	forgets: [],
 }
 
 const parseArguments = (text: string): unknown => {
@@ -46,6 +56,9 @@ export const getCallFacts = (rawCalls: RawToolCall[], today: string): CallFacts 
 		deletedMeasurements: [],
 		closeDays: [],
 		statsCards: [],
+		savedFoods: [],
+		facts: [],
+		forgets: [],
 	}
 	for (const call of rawCalls) {
 		const args = parseArguments(call.arguments)
@@ -75,6 +88,18 @@ export const getCallFacts = (rawCalls: RawToolCall[], today: string): CallFacts 
 					estimatedTotalKcal: parsed.data.estimatedTotalKcal ?? null,
 				})
 			}
+		}
+		if (call.name === 'save_food') {
+			const parsed = saveFoodInputSchema.safeParse(args)
+			if (parsed.success) facts.savedFoods.push(parsed.data)
+		}
+		if (call.name === 'save_fact') {
+			const parsed = saveFactInputSchema.safeParse(args)
+			if (parsed.success) facts.facts.push(parsed.data)
+		}
+		if (call.name === 'forget_fact') {
+			const parsed = forgetFactInputSchema.safeParse(args)
+			if (parsed.success) facts.forgets.push(parsed.data)
 		}
 		if (call.name === 'show_stats') {
 			const parsed = showStatsFactsSchema.safeParse(args)

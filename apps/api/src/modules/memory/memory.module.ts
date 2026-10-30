@@ -10,6 +10,6 @@ import { MyFoodsService } from './my-foods.service'
 	imports: [EntriesModule],
 	controllers: [MyFoodsController],
 	providers: [MemoryService, MyFoodsService, MemoryRepository],
-	exports: [MemoryService],
+	exports: [MemoryService, MyFoodsService],
 })
 export class MemoryModule {}

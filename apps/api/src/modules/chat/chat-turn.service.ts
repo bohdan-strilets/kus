@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common'
 import {
 	type AddressForm,
+	applyMemoryNotice,
 	type AiFoodItem,
 	type DayCard,
 	type DeleteMeasurementInput,
@@ -8,8 +9,10 @@ import {
 	ENTRY_BACKDATE_MAX_DAYS,
 	type FoodParseDecision,
 	getDayOffset,
+	hasMemoryActions,
 	type LogFoodInput,
 	type LogMeasurementInput,
+	type MemoryActions,
 	STATS_EMPTY_REPLY,
 	type StatsCard,
 } from '@kus/shared'
@@ -27,6 +30,7 @@ import { EntriesService } from '../entries/entries.service'
 import type { EntryWithMealType } from '../entries/entries.repository'
 import type { LogEntriesParams, MealEntryInput, NewFoodEntry } from '../entries/entries.types'
 import { MemoryService, type RelevantFoods } from '../memory/memory.service'
+import { ChatTurnMemoryService, type SavedFoodRef } from './chat-turn-memory.service'
 import { ProgressStatsService } from '../progress/progress-stats.service'
 import { ChatCloseDayService } from './chat-close-day.service'
 import { ChatDayCardService } from './chat-day-card.service'
@@ -59,6 +63,15 @@ export interface TurnParams {
 /** What an edited turn changed, and the messages whose measurement card a new value replaced. */
 export interface TurnResult extends EditedMessages {
 	replacedMeasurementMessageIds: string[]
+	/** Foods saved to memory by this turn; live in the response only. */
+	savedFoods?: SavedFoodRef[]
+}
+
+/** The memory tools of a turn and the ids their refs stand for; the parser has checked the refs. */
+interface MemoryTurn {
+	actions: MemoryActions
+	foodsByRef: RelevantFoods['byRef']
+	factIdByRef: ReadonlyMap<string, string>
 }
 
 const hasWeight = (measurements: LogMeasurementInput[]): boolean =>
@@ -118,6 +131,8 @@ const copyEntryValues = (
 	}
 }
 
+const NO_FACT_REFS: ReadonlyMap<string, string> = new Map()
+
 const toDbDate = (date: string): Date => new Date(`${date}T00:00:00Z`)
 
 /** Stores what the model decided for one turn: the reply, the edits, new entries and questions. */
@@ -138,6 +153,7 @@ export class ChatTurnService {
 		private readonly closeDays: ChatCloseDayService,
 		private readonly progressStats: ProgressStatsService,
 		private readonly workoutsTurn: WorkoutsTurnService,
+		private readonly turnMemory: ChatTurnMemoryService,
 	) {}
 
 	async saveDecision(
@@ -148,25 +164,34 @@ export class ChatTurnService {
 			refIds,
 			workoutRefIds = NO_WORKOUT_REFS,
 			copyRefIds,
+			factRefIds = NO_FACT_REFS,
 		}: {
 			memory: RelevantFoods
 			refIds: EditRefIds
 			/** Omitted where the turn cannot touch workouts. */
 			workoutRefIds?: WorkoutRefIds
 			copyRefIds: CopyRefIds
+			/** `f1…` → fact ids; omitted where the context had no facts. */
+			factRefIds?: ReadonlyMap<string, string>
 		},
 	): Promise<TurnResult> {
 		// the numbers of the card are counted before the turn is written; a card is a snapshot anyway
 		const dayCard = await this.buildDayCard({ userId, message, now, localDate }, decision)
 		const statsCard = await this.buildStatsCard({ userId, localDate }, decision)
+		// nothing logged in the period: the model's text would talk about a card that is not there
+		const replyText =
+			decision.kind === 'stats' && !statsCard ? STATS_EMPTY_REPLY : getReplyText(decision)
+		const memoryTurn: MemoryTurn | null =
+			(decision.kind === 'log' || decision.kind === 'reply' || decision.kind === 'edit') &&
+			hasMemoryActions(decision.memory)
+				? { actions: decision.memory, foodsByRef: memory.byRef, factIdByRef: factRefIds }
+				: null
 		return this.prisma.$transaction(async (tx) => {
 			const reply = await this.chatRepository.completeTurn(
 				{
 					userId,
 					userMessageId: message.id,
-					// nothing logged in the period: the model's text would talk about a card that is not there
-					replyText:
-						decision.kind === 'stats' && !statsCard ? STATS_EMPTY_REPLY : getReplyText(decision),
+					replyText,
 					dayCard,
 					statsCard,
 				},
@@ -193,6 +218,11 @@ export class ChatTurnService {
 					decision,
 					tx,
 				)
+				const savedFoods = await this.saveMemory(
+					{ userId, message, replyId: reply.id, replyText, hasPhoto: photo !== undefined },
+					{ memoryTurn, entryIds: [] },
+					tx,
+				)
 				await this.achievementsService.recordForTurn(
 					{
 						userId,
@@ -205,7 +235,7 @@ export class ChatTurnService {
 					},
 					tx,
 				)
-				return { ...NO_EDITED_MESSAGES, replacedMeasurementMessageIds: replaced }
+				return { ...NO_EDITED_MESSAGES, replacedMeasurementMessageIds: replaced, savedFoods }
 			}
 			if (decision.kind === 'close_day') {
 				return this.saveClosedDay(
@@ -237,6 +267,11 @@ export class ChatTurnService {
 				tx,
 			)
 			if (decision.kind === 'edit') {
+				const savedFoods = await this.saveMemory(
+					{ userId, message, replyId: reply.id, replyText, hasPhoto: photo !== undefined },
+					{ memoryTurn, entryIds: [] },
+					tx,
+				)
 				// a restored entry can complete a streak; corrections and deletions never do
 				await this.achievementsService.recordForTurn(
 					{
@@ -250,7 +285,7 @@ export class ChatTurnService {
 					},
 					tx,
 				)
-				return { ...edited, replacedMeasurementMessageIds: [] }
+				return { ...edited, replacedMeasurementMessageIds: [], savedFoods }
 			}
 
 			const copies = await this.loadCopySources(
@@ -272,6 +307,11 @@ export class ChatTurnService {
 			)
 			const usedFoodIds = [...new Set(entries.flatMap(({ entry }) => entry.myFoodId ?? []))]
 			await this.memoryService.markUsed({ userId, ids: usedFoodIds, usedAt: now }, tx)
+			const savedFoods = await this.saveMemory(
+				{ userId, message, replyId: reply.id, replyText, hasPhoto: photo !== undefined },
+				{ memoryTurn, entryIds },
+				tx,
+			)
 
 			for (const clarification of decision.clarifications) {
 				await this.clarificationsRepository.createClarification(
@@ -326,8 +366,47 @@ export class ChatTurnService {
 					message.id,
 				],
 				replacedMeasurementMessageIds: replaced,
+				savedFoods,
 			}
 		})
+	}
+
+	/**
+	 * save_food, save_fact and forget_fact, after the entries they may point at. A notice (limit, a
+	 * fact the guard refused) goes into the reply text in this same transaction, so the history shows it.
+	 */
+	private async saveMemory(
+		params: {
+			userId: string
+			message: MessageWithAttachments
+			replyId: string
+			replyText: string
+			hasPhoto: boolean
+		},
+		{ memoryTurn, entryIds }: { memoryTurn: MemoryTurn | null; entryIds: readonly string[] },
+		tx: Prisma.TransactionClient,
+	): Promise<SavedFoodRef[]> {
+		if (!memoryTurn) return []
+		const { userId, message, replyId, replyText, hasPhoto } = params
+		const result = await this.turnMemory.apply(
+			{
+				userId,
+				messageId: message.id,
+				memory: memoryTurn.actions,
+				foodsByRef: memoryTurn.foodsByRef,
+				factIdByRef: memoryTurn.factIdByRef,
+				entryIds,
+				hasPhoto,
+			},
+			tx,
+		)
+		if (result.notice !== null) {
+			await this.chatRepository.setReplyContent(
+				{ userId, id: replyId, content: applyMemoryNotice(replyText, result.notice) },
+				tx,
+			)
+		}
+		return result.savedFoods
 	}
 
 	/** show_day only; null when the day is empty (the reply stays a text). */

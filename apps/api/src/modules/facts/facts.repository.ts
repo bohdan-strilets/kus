@@ -78,8 +78,15 @@ export class FactsRepository {
 		})
 	}
 
-	create(data: NewFact, tx?: Prisma.TransactionClient): Promise<UserFact> {
-		return (tx ?? this.prisma).userFact.create({ data })
+	/**
+	 * Conflict-safe insert: ON CONFLICT DO NOTHING honours the partial unique index, and a violation
+	 * inside a transaction would abort it. null = a live fact of this text exists already.
+	 */
+	async create(data: NewFact, tx?: Prisma.TransactionClient): Promise<UserFact | null> {
+		const client = tx ?? this.prisma
+		const { count } = await client.userFact.createMany({ data: [data], skipDuplicates: true })
+		if (count === 0) return null
+		return this.findLiveByText({ userId: data.userId, textNormalized: data.textNormalized }, tx)
 	}
 
 	/** Only an active confirmed fact; false = nothing matched. */

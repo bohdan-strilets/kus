@@ -208,6 +208,9 @@ describe('isCallDetailsCorrect', () => {
 		deletedMeasurements: [{ kind: 'WEIGHT' as const, date: '2026-10-06' }],
 		closeDays: [{ date: '2026-10-06', estimatedTotalKcal: 4000 }],
 		statsCards: [{ days: 7, endDate: null }],
+		savedFoods: [],
+		facts: [],
+		forgets: [],
 	}
 
 	it('passes when nothing about days is expected', () => {
@@ -265,6 +268,9 @@ describe('isCallDetailsCorrect: close_day, stats, copies', () => {
 		deletedMeasurements: [],
 		closeDays: [{ date: '2026-10-06', estimatedTotalKcal: 4000 }],
 		statsCards: [{ days: 7, endDate: null }],
+		savedFoods: [],
+		facts: [],
+		forgets: [],
 	}
 	const copy = (copyRef: string | null) =>
 		({ name: 'Суп', copyRef, memoryRef: null }) as unknown as CaseResult['items'][number]

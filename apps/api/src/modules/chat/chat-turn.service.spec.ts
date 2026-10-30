@@ -43,6 +43,7 @@ const toLogDecision = (items: ReturnType<typeof toItem>[], log: Record<string, u
 		measurements: [],
 		measurementDeletions: [],
 		workouts: [],
+		memory: { foods: [], fact: null, forgets: [] },
 	}) as never
 
 const createService = () => {
@@ -70,6 +71,7 @@ const createService = () => {
 		{ close } as never,
 		{ build: buildStats } as never,
 		{ logWorkouts } as never,
+		{ apply: vi.fn() } as never,
 	)
 	const save = (decision: never, copyRefIds: Map<string, string> = new Map()) =>
 		service.saveDecision(
@@ -230,6 +232,7 @@ describe('ChatTurnService.saveDecision measurement deletions', () => {
 			text: 'ok',
 			measurements: [{ kind: 'WAIST', value: 90, date: null, confirmedJump: false }],
 			measurementDeletions: [{ kind: 'WEIGHT', date: '2026-10-16' }],
+			memory: { foods: [], fact: null, forgets: [] },
 		} as never
 
 		const result = await save(decision)

@@ -4,6 +4,7 @@ import {
 	type ChatMessage,
 	type ClarificationResponse,
 	type DayCard,
+	type FactProposal,
 	clarifyOptionViewSchema,
 	type ListMessagesQuery,
 	type LoggedMeal,
@@ -18,6 +19,7 @@ import { MessageRole } from '../../generated/prisma/client'
 import { WorkoutsTurnService } from '../workouts/workouts-turn.service'
 import { AchievementsService } from '../achievements/achievements.service'
 import { EntriesService } from '../entries/entries.service'
+import { FactsService } from '../facts/facts.service'
 import { ChatMeasurementCardsService } from './chat-measurement-cards.service'
 import { InvalidCursorException } from './chat.exceptions'
 import {
@@ -59,6 +61,8 @@ interface ChatMessageExtras {
 	dayCards: Map<string, DayCard>
 	/** By the assistant reply that holds them. */
 	statsCards: Map<string, StatsCard>
+	/** By the user message whose reply proposed or saved the fact. */
+	factProposals: Map<string, FactProposal>
 }
 
 const toChatMessage = (
@@ -71,6 +75,7 @@ const toChatMessage = (
 		achievements,
 		dayCards,
 		statsCards,
+		factProposals,
 	}: ChatMessageExtras,
 ): ChatMessage => {
 	const isAssistant = message.role === MessageRole.ASSISTANT
@@ -103,6 +108,10 @@ const toChatMessage = (
 		achievements: isAssistant ? (achievements.get(message.id) ?? []) : [],
 		dayCard: dayCards.get(message.id) ?? null,
 		statsCard: statsCards.get(message.id) ?? null,
+		// saved foods are live only (the response of the turn adds them)
+		savedFoods: [],
+		factProposal:
+			isAssistant && message.replyToId ? (factProposals.get(message.replyToId) ?? null) : null,
 	}
 }
 
@@ -118,26 +127,29 @@ export class ChatFeedService {
 		private readonly measurementCards: ChatMeasurementCardsService,
 		private readonly achievementsService: AchievementsService,
 		private readonly workoutsTurn: WorkoutsTurnService,
+		private readonly factsService: FactsService,
 	) {}
 
 	async toChatMessages(userId: string, messages: MessageWithAttachments[]): Promise<ChatMessage[]> {
 		const replies = messages.filter((message) => message.role === MessageRole.ASSISTANT)
 		const sourceIds = replies.flatMap((message) => (message.replyToId ? [message.replyToId] : []))
-		const [meals, workouts, clarifications, measurements, achievements] = await Promise.all([
-			this.entriesService.getLoggedMealsByMessage(userId, sourceIds),
-			this.workoutsTurn.getByMessages(userId, sourceIds),
-			replies.length > 0
-				? this.clarificationsRepository.findClarifications({
-						userId,
-						messageIds: replies.map((message) => message.id),
-					})
-				: Promise.resolve([]),
-			this.measurementCards.getCardsByMessage(userId, sourceIds),
-			this.achievementsService.findByMessages(
-				userId,
-				replies.map((message) => message.id),
-			),
-		])
+		const [meals, workouts, clarifications, measurements, achievements, factProposals] =
+			await Promise.all([
+				this.entriesService.getLoggedMealsByMessage(userId, sourceIds),
+				this.workoutsTurn.getByMessages(userId, sourceIds),
+				replies.length > 0
+					? this.clarificationsRepository.findClarifications({
+							userId,
+							messageIds: replies.map((message) => message.id),
+						})
+					: Promise.resolve([]),
+				this.measurementCards.getCardsByMessage(userId, sourceIds),
+				this.achievementsService.findByMessages(
+					userId,
+					replies.map((message) => message.id),
+				),
+				this.findFactProposals(userId, sourceIds),
+			])
 		const dayCards = this.readDayCards(replies)
 		const statsCards = this.readStatsCards(replies)
 		return messages.map((message) =>
@@ -149,8 +161,23 @@ export class ChatFeedService {
 				achievements,
 				dayCards,
 				statsCards,
+				factProposals,
 			}),
 		)
+	}
+
+	/** The fact a user message proposed or saved, whatever its status now (a rejected one reads «Не запам'ятовую»). */
+	private async findFactProposals(
+		userId: string,
+		messageIds: string[],
+	): Promise<Map<string, FactProposal>> {
+		const facts = await this.factsService.findProposalsByMessages(userId, messageIds)
+		const proposals = new Map<string, FactProposal>()
+		for (const { id, text, status, sourceMessageId } of facts) {
+			if (sourceMessageId === null || proposals.has(sourceMessageId)) continue
+			proposals.set(sourceMessageId, { id, text, status })
+		}
+		return proposals
 	}
 
 	/** A snapshot that no longer parses is dropped (the text stays), without its content in the log. */

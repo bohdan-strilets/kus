@@ -121,6 +121,14 @@ describe('FactsService.saveFromChat', () => {
 		expect(repository.create).not.toHaveBeenCalled()
 	})
 
+	it('returns the twin when the insert lost a race with a parallel save of the same text', async () => {
+		const twin = makeFact({ status: 'CONFIRMED' })
+		repository.create.mockResolvedValue(null)
+		repository.findLiveByText.mockResolvedValueOnce(null).mockResolvedValueOnce(twin)
+
+		expect(await save({ explicit: true })).toEqual({ kind: 'exists', fact: twin })
+	})
+
 	it('returns exists when the same proposal is already open', async () => {
 		const open = makeFact({ status: 'PROPOSED' })
 		repository.findLiveByText.mockResolvedValue(open)

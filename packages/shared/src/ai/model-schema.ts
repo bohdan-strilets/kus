@@ -4,8 +4,25 @@ import { z } from 'zod'
 
 const DATE_FORMAT = 'date'
 const NULL_TYPE = 'null'
+/** Metadata key: the model sees a plain string; zod still checks (or falls back for) the enum. */
+const OPEN_ENUM_KEY = 'x-open-enum'
 
 type JsonSchema = Record<string, unknown>
+
+export interface ModelParametersOptions {
+	/**
+	 * A bare schema keeps only types, enums and descriptions: no minimum, item counts or patterns
+	 * either (the memory tools; their rules live in zod and the parser).
+	 */
+	isBare?: boolean
+}
+
+/**
+ * Marks a field whose enum the model knows from elsewhere (save_food.category — «Same list as
+ * log_food»): the list is dropped from what the model sees, the description stays.
+ */
+export const withOpenEnumForModel = <T extends z.ZodType>(schema: T, description: string): T =>
+	schema.meta({ description, [OPEN_ENUM_KEY]: true })
 
 /**
  * Per node of the generated schema:
@@ -27,6 +44,36 @@ const trimForModel = ({ jsonSchema }: { jsonSchema: JsonSchema }): void => {
 	delete jsonSchema.exclusiveMaximum
 	if (jsonSchema.minimum !== 0) delete jsonSchema.minimum
 	if (jsonSchema.exclusiveMinimum !== 0) delete jsonSchema.exclusiveMinimum
+}
+
+const trimBare = ({ jsonSchema }: { jsonSchema: JsonSchema }): void => {
+	trimForModel({ jsonSchema })
+	delete jsonSchema.minimum
+	delete jsonSchema.exclusiveMinimum
+	delete jsonSchema.minItems
+	delete jsonSchema.maxItems
+	delete jsonSchema.pattern
+}
+
+/** After compaction the enum of a marked field sits next to the mark: both go. */
+const dropOpenEnums = (node: unknown): unknown => {
+	if (Array.isArray(node)) return node.map(dropOpenEnums)
+	if (typeof node !== 'object' || node === null) return node
+	const { [OPEN_ENUM_KEY]: isOpen, ...rest } = node as JsonSchema
+	const cleaned = Object.fromEntries(
+		Object.entries(rest).map(([key, value]) => [key, dropOpenEnums(value)]),
+	)
+	if (isOpen !== true) return cleaned
+	const { enum: _enum, ...withoutEnum } = cleaned
+	return withoutEnum
+}
+
+const toJsonParameters = (schema: z.ZodType, { isBare = false }: ModelParametersOptions) => {
+	const { $schema: _schema, ...parameters } = z.toJSONSchema(schema, {
+		target: 'draft-07',
+		override: isBare ? trimBare : trimForModel,
+	})
+	return parameters
 }
 
 const isNullBranch = (branch: unknown): boolean =>
@@ -62,20 +109,14 @@ const compactNullable = (node: unknown): unknown => {
 }
 
 /** The `parameters` of a tool as the model gets them. */
-export const toModelParameters = (schema: z.ZodType): JsonSchema => {
-	// output side: defaulted fields stay required (nullable), which models follow more reliably
-	const { $schema: _schema, ...parameters } = z.toJSONSchema(schema, {
-		target: 'draft-07',
-		override: trimForModel,
-	})
-	return compactNullable(parameters) as JsonSchema
-}
+// output side: defaulted fields stay required (nullable), which models follow more reliably
+export const toModelParameters = (
+	schema: z.ZodType,
+	options: ModelParametersOptions = {},
+): JsonSchema => dropOpenEnums(compactNullable(toJsonParameters(schema, options))) as JsonSchema
 
 /** The same schema without the nullable compaction: what the compacted one must stay equal to. */
-export const toUncompactedParameters = (schema: z.ZodType): JsonSchema => {
-	const { $schema: _schema, ...parameters } = z.toJSONSchema(schema, {
-		target: 'draft-07',
-		override: trimForModel,
-	})
-	return parameters
-}
+export const toUncompactedParameters = (
+	schema: z.ZodType,
+	options: ModelParametersOptions = {},
+): JsonSchema => dropOpenEnums(toJsonParameters(schema, options)) as JsonSchema

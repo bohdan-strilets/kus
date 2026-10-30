@@ -7,6 +7,7 @@ import {
 import { z } from 'zod'
 
 import type { EvalCase } from './cases/index.js'
+import { toFoodContext } from './case-context.js'
 import { getImageTokens } from './cases/photo.js'
 import { OPENROUTER_API_URL } from './openrouter.js'
 import { BASE_CONTEXT } from './run-case.js'
@@ -57,7 +58,10 @@ export const fetchPrices = async (): Promise<Map<string, ModelPrice>> => {
 
 /** The words and the tools by their characters; a photo by its patches, not by its base64. */
 const estimateInputTokens = (evalCase: EvalCase): number => {
-	const messages = buildFoodParseMessages({ ...BASE_CONTEXT, ...evalCase.context }, evalCase.text)
+	const messages = buildFoodParseMessages(
+		{ ...BASE_CONTEXT, ...toFoodContext(evalCase.context) },
+		evalCase.text,
+	)
 	const request = createFoodParseRequest('estimate', messages)
 	const textTokens = Math.ceil(
 		JSON.stringify({ messages: request.messages, tools: request.tools }).length / CHARS_PER_TOKEN,

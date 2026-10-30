@@ -169,10 +169,11 @@ export class ChatService {
 				hasPhoto: photo !== undefined,
 			})
 			const memory = await this.memoryService.findRelevantFoods(userId, params.text ?? '')
-			const { context, refIds, workoutRefIds, copyRefIds } = await this.chatContext.buildContext({
-				...params,
-				memory: memory.context,
-			})
+			const { context, refIds, workoutRefIds, copyRefIds, factRefIds } =
+				await this.chatContext.buildContext({
+					...params,
+					memory: memory.context,
+				})
 			const decision = await this.aiService.parseFood({
 				userId,
 				messageId: message.id,
@@ -199,6 +200,7 @@ export class ChatService {
 				refIds,
 				workoutRefIds,
 				copyRefIds,
+				factRefIds,
 			})
 			this.logger.log(`Chat turn ${decision.kind} user=${userId} message=${message.id}`)
 			return edited

@@ -3,6 +3,7 @@ import { Module } from '@nestjs/common'
 import { AchievementsModule } from '../achievements/achievements.module'
 import { AiModule } from '../ai/ai.module'
 import { EntriesModule } from '../entries/entries.module'
+import { FactsModule } from '../facts/facts.module'
 import { GoalsModule } from '../goals/goals.module'
 import { MeasurementsModule } from '../measurements/measurements.module'
 import { MemoryModule } from '../memory/memory.module'
@@ -22,6 +23,7 @@ import { ChatMeasurementCardsService } from './chat-measurement-cards.service'
 import { ChatPhotosService } from './chat-photos.service'
 import { ChatResponseService } from './chat-response.service'
 import { ChatTurnMeasurementsService } from './chat-turn-measurements.service'
+import { ChatTurnMemoryService } from './chat-turn-memory.service'
 import { ChatTurnService } from './chat-turn.service'
 import { ChatController } from './chat.controller'
 import { ChatRepository } from './chat.repository'
@@ -35,6 +37,7 @@ import { ClarificationsService } from './clarifications.service'
 		AchievementsModule,
 		AiModule,
 		EntriesModule,
+		FactsModule,
 		GoalsModule,
 		MeasurementsModule,
 		MemoryModule,
@@ -59,6 +62,7 @@ import { ClarificationsService } from './clarifications.service'
 		ChatRepository,
 		ChatResponseService,
 		ChatTurnMeasurementsService,
+		ChatTurnMemoryService,
 		ChatTurnService,
 		ClarificationsRepository,
 		ClarificationsService,

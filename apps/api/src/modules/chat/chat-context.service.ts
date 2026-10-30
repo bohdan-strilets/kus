@@ -3,6 +3,7 @@ import {
 	type AddressForm,
 	type DailyGoal,
 	type DayContext,
+	type FactContext,
 	type DayTotals,
 	type FoodParseContext,
 	type GoalContext,
@@ -21,6 +22,7 @@ import {
 import { addDays, formatDbDate, formatLocalTime, getZonedMoment } from '../../common/time'
 import { MeasurementKind } from '../../generated/prisma/client'
 import { type DaySummary, EntriesService } from '../entries/entries.service'
+import { FactsService } from '../facts/facts.service'
 import { GoalsService } from '../goals/goals.service'
 import { MeasurementsService } from '../measurements/measurements.service'
 import { ProfileService } from '../profile/profile.service'
@@ -63,6 +65,7 @@ const groupEntryIdsBySourceMessage = (
 	return grouped
 }
 
+const FACT_REF_PREFIX = 'f'
 const CONTEXT_WEIGHT_COUNT = 2
 const MEASUREMENT_KINDS = [MeasurementKind.WEIGHT, MeasurementKind.WAIST] as const
 
@@ -85,6 +88,7 @@ export class ChatContextService {
 		private readonly measurementsService: MeasurementsService,
 		private readonly profileService: ProfileService,
 		private readonly workoutsTurn: WorkoutsTurnService,
+		private readonly factsService: FactsService,
 	) {}
 
 	/** Day totals vs goal; the remainder is computed here, never by the model. */
@@ -177,27 +181,38 @@ export class ChatContextService {
 		refIds: EditRefIds
 		workoutRefIds: WorkoutRefIds
 		copyRefIds: CopyRefIds
+		/** `f1…` → the id of the fact the model saw under that ref. */
+		factRefIds: ReadonlyMap<string, string>
 	}> {
 		const today = formatDbDate(localDate)
-		const [{ summary, goal, totals }, history, editable, measurements, days, earlier, workouts] =
-			await Promise.all([
-				this.getDayOverview(userId, localDate),
-				this.chatRepository.findHistory({
-					userId,
-					beforeId: message.id,
-					limit: HISTORY_MAX_MESSAGES,
-				}),
-				// entries of other days written today stay editable in the chat
-				this.entriesService.getEditableEntries(userId, localDate, {
-					from: toDbDate(shiftDate(today, -ENTRY_BACKDATE_MAX_DAYS)),
-					to: toDbDate(shiftDate(today, ENTRY_AHEAD_MAX_DAYS)),
-					createdSince: getZonedMoment(localDate, 0, timezone),
-				}),
-				this.getMeasurementsContext(userId, localDate),
-				this.getDaysContext(userId, today),
-				this.chatEarlier.getContext({ userId, text, today }),
-				this.workoutsTurn.getContext({ userId, localDate, timezone, text }),
-			])
+		const [
+			{ summary, goal, totals },
+			history,
+			editable,
+			measurements,
+			days,
+			earlier,
+			workouts,
+			facts,
+		] = await Promise.all([
+			this.getDayOverview(userId, localDate),
+			this.chatRepository.findHistory({
+				userId,
+				beforeId: message.id,
+				limit: HISTORY_MAX_MESSAGES,
+			}),
+			// entries of other days written today stay editable in the chat
+			this.entriesService.getEditableEntries(userId, localDate, {
+				from: toDbDate(shiftDate(today, -ENTRY_BACKDATE_MAX_DAYS)),
+				to: toDbDate(shiftDate(today, ENTRY_AHEAD_MAX_DAYS)),
+				createdSince: getZonedMoment(localDate, 0, timezone),
+			}),
+			this.getMeasurementsContext(userId, localDate),
+			this.getDaysContext(userId, today),
+			this.chatEarlier.getContext({ userId, text, today }),
+			this.workoutsTurn.getContext({ userId, localDate, timezone, text }),
+			this.factsService.findContextFacts(userId),
+		])
 		const clarifications = await this.clarificationsRepository.findOpenClarifications({
 			userId,
 			entryIds: editable.active.map((entry) => entry.id),
@@ -218,6 +233,11 @@ export class ChatContextService {
 		// all the day's entries, not only the windowed ones: a turn whose entries lost their refs
 		// must still read as logged
 		const entryIdsBySourceMessageId = groupEntryIdsBySourceMessage(editable.sourceMessages)
+		const confirmedIds = facts.confirmed.map(({ id }) => id)
+		const factContexts: FactContext[] = facts.confirmed.map(({ text }, index) => ({
+			ref: `${FACT_REF_PREFIX}${index + 1}`,
+			text,
+		}))
 		const goalContext: GoalContext | null =
 			goal && totals.remainingKcal !== null
 				? {
@@ -246,6 +266,9 @@ export class ChatContextService {
 				days,
 				measurements,
 				memory,
+				// no block at all unless there is a fact or a proposal
+				...(factContexts.length > 0 ? { facts: factContexts } : {}),
+				...(facts.proposal ? { proposedFact: facts.proposal.text } : {}),
 				// no section at all unless the message points back
 				...(earlier.earlier.length > 0 ? { earlier: earlier.earlier } : {}),
 				history: history
@@ -255,6 +278,7 @@ export class ChatContextService {
 			refIds,
 			workoutRefIds: workouts.refIds,
 			copyRefIds: earlier.copyRefIds,
+			factRefIds: new Map(factContexts.map(({ ref }, index) => [ref, confirmedIds[index] ?? ''])),
 		}
 	}
 }

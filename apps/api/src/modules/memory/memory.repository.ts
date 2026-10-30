@@ -43,17 +43,36 @@ export class MemoryRepository {
 		return tx.myFood.create({ data: { ...data, userId } })
 	}
 
+	/**
+	 * Conflict-safe insert for the chat turn: ON CONFLICT DO NOTHING honours the partial unique
+	 * index, while a violation would abort the turn's transaction. null = the name is taken.
+	 */
+	async createFoodIfFree(
+		{ userId, data }: { userId: string; data: NewMyFood },
+		tx: Prisma.TransactionClient,
+	): Promise<MyFood | null> {
+		const { count } = await tx.myFood.createMany({
+			data: [{ ...data, userId }],
+			skipDuplicates: true,
+		})
+		if (count === 0) return null
+		return this.findActiveFoodByName({ userId, nameNormalized: data.nameNormalized }, tx)
+	}
+
 	/** Only an active food; false = nothing matched. */
-	async updateActiveFood({
-		userId,
-		id,
-		data,
-	}: {
-		userId: string
-		id: string
-		data: Prisma.MyFoodUpdateManyMutationInput
-	}): Promise<boolean> {
-		const { count } = await this.prisma.myFood.updateMany({
+	async updateActiveFood(
+		{
+			userId,
+			id,
+			data,
+		}: {
+			userId: string
+			id: string
+			data: Prisma.MyFoodUpdateManyMutationInput
+		},
+		tx?: Prisma.TransactionClient,
+	): Promise<boolean> {
+		const { count } = await (tx ?? this.prisma).myFood.updateMany({
 			where: { id, userId, deletedAt: null },
 			data,
 		})

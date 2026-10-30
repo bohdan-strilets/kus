@@ -4,6 +4,7 @@ import { isMacrosConsistent, MAX_KCAL_PER_GRAM } from '../schemas/food-entry.js'
 import type { FoodParseContext } from './context.js'
 import type { TodayEntryContext } from './edit-context.js'
 import type { EntryChange, EntryEdits, ResolveClarificationInput } from './edit-tools.js'
+import { toFoodNameKey } from './memory-errors.js'
 import { getMeasurementDayKey, type MeasurementRefs } from './measurements.js'
 import type { ExerciseContext, TodayWorkoutContext } from './workout-context.js'
 import { distributeOptionValues, type EntryValues, roundNutrition } from './option-values.js'
@@ -22,6 +23,10 @@ export interface ParseRefs extends MeasurementRefs {
 	deletedWorkoutRefs?: ReadonlySet<string>
 	/** `x1…` of the «Exercises» section. */
 	exerciseRefs?: ReadonlySet<string>
+	/** `f1…` of «User facts». */
+	factRefs?: ReadonlySet<string>
+	/** Saved food name (see toFoodNameKey) → its `m1…` ref: a new save_food of such a name must update it. */
+	memoryRefByName?: ReadonlyMap<string, string>
 }
 
 export const getParseRefs = (context: FoodParseContext): ParseRefs => ({
@@ -33,6 +38,8 @@ export const getParseRefs = (context: FoodParseContext): ParseRefs => ({
 	workouts: new Map((context.workouts ?? []).map((workout) => [workout.ref, workout])),
 	deletedWorkoutRefs: new Set((context.deletedWorkouts ?? []).map((workout) => workout.ref)),
 	exerciseRefs: new Set((context.exercises ?? []).map((exercise: ExerciseContext) => exercise.ref)),
+	factRefs: new Set((context.facts ?? []).map((fact) => fact.ref)),
+	memoryRefByName: new Map(context.memory.map((food) => [toFoodNameKey(food.name), food.ref])),
 	today: context.measurements.today,
 	measurementDays: new Set(
 		(context.measurements.recent ?? []).map(({ kind, localDate }) =>

@@ -13,6 +13,7 @@ import {
 	messageStatusSchema,
 } from './enums.js'
 import { dayVerdictSchema } from './day-verdict.js'
+import { factProposalSchema } from './facts.js'
 import { measurementCardSchema } from './measurements.js'
 import { PHOTOS_PER_MESSAGE_LIMIT } from './photo-limits.js'
 import { statsCardSchema } from './stats-card.js'
@@ -256,6 +257,13 @@ export const chatMessageSchema = z.object({
 	 * and when the card cannot be read (the message stays, with its reply text).
 	 */
 	statsCard: statsCardSchema.nullable().default(null).catch(null),
+	/**
+	 * Replies only, live (the response of the turn): the foods this turn saved to memory. Not stored:
+	 * after a reload only the reply text remains. Empty in payloads of older servers.
+	 */
+	savedFoods: z.array(z.object({ id: z.uuid(), name: z.string() })).default([]),
+	/** Replies only: the fact this turn proposed or saved, with its current status. */
+	factProposal: factProposalSchema.nullable().default(null),
 })
 
 export type ChatMessage = z.infer<typeof chatMessageSchema>

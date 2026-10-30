@@ -379,3 +379,37 @@ describe('chatMessageSchema 0.7.0 fields', () => {
 		}
 	})
 })
+
+describe('chatMessageSchema memory fields', () => {
+	const base = {
+		id: clientMessageId,
+		role: 'ASSISTANT',
+		content: 'Запам’ятав.',
+		status: 'COMPLETED',
+		clientMessageId: null,
+		replyToId: clientMessageId,
+		createdAt: '2026-10-30T10:00:00.000Z',
+		photo: null,
+		meals: [],
+		clarifications: [],
+		measurements: [],
+		achievements: [],
+	}
+
+	it('defaults savedFoods and factProposal for a payload of an older server', () => {
+		const parsed = chatMessageSchema.parse(base)
+
+		expect(parsed.savedFoods).toEqual([])
+		expect(parsed.factProposal).toBeNull()
+	})
+
+	it('reads the saved foods and the proposal', () => {
+		const factProposal = { id: clientMessageId, text: 'Не їсть рибу', status: 'PROPOSED' }
+		const savedFoods = [{ id: clientMessageId, name: 'Кабаноси' }]
+
+		expect(chatMessageSchema.parse({ ...base, savedFoods, factProposal })).toMatchObject({
+			savedFoods,
+			factProposal,
+		})
+	})
+})

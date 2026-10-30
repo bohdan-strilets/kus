@@ -19,6 +19,7 @@ import {
 	restoreEntryInputSchema,
 } from './edit-tools.js'
 import { COPY_REF_PATTERN } from './history-context.js'
+import { forgetFactInputSchema, saveFactInputSchema, saveFoodInputSchema } from './memory-tools.js'
 import { toModelParameters } from './model-schema.js'
 import {
 	MAX_EXERCISES_PER_WORKOUT,
@@ -43,6 +44,9 @@ export const AI_TOOL_NAMES = {
 	showDay: 'show_day',
 	closeDay: 'close_day',
 	showStats: 'show_stats',
+	saveFood: 'save_food',
+	saveFact: 'save_fact',
+	forgetFact: 'forget_fact',
 	reply: 'reply',
 } as const
 
@@ -373,6 +377,9 @@ export const AI_TOOL_SCHEMAS: Record<AiToolName, z.ZodType> = {
 	show_day: showDayInputSchema,
 	close_day: closeDayInputSchema,
 	show_stats: showStatsInputSchema,
+	save_food: saveFoodInputSchema,
+	save_fact: saveFactInputSchema,
+	forget_fact: forgetFactInputSchema,
 	reply: replyInputSchema,
 }
 
@@ -385,11 +392,12 @@ const AI_TOOL_DESCRIPTIONS: Record<AiToolName, string> = {
 		'Log body weight (kg) or waist (cm) the user reports. Fix a wrong value of a day by logging it again for that date. confirmedJump only after the user confirmed an unusual change in a later message.',
 	delete_measurement:
 		'Remove a wrong weight or waist value listed in the context, by kind and date. Goes with one reply.',
-	show_day:
-		'Show the card of a day: what is logged so far, totals, meals. date null for today; any earlier day or tomorrow. Nothing is logged. reply — one short sentence next to the card.',
-	close_day:
-		'The user closes the day ("день закрито", "закрий день"): show the card of the day with how it went against the goal. date null for today, up to 3 days back, never tomorrow. estimatedTotalKcal only when the user gave the total of the whole day; only the backend may add the missing part as «Без деталей». reply — one short sentence next to the card.',
-	show_stats: `Show the summary of any period of ${STATS_DAYS_MIN}–${STATS_DAYS_MAX} days: average kcal and protein, days within the goal, weight change. Counted by the backend; today is included if anything is logged for it. Nothing is logged. reply — one short sentence next to the card.`,
+	show_day: 'Show the card of a day. See "Day card".',
+	close_day: 'The user closes a day: show its card with the verdict. See "Closing the day".',
+	show_stats: 'Show the summary of a period of 2–92 days. See "Stats".',
+	save_food: 'Save a food to the user\'s memory, only when they ask. See "Memory".',
+	save_fact: 'Remember one lasting thing about the user. See "Memory".',
+	forget_fact: 'Forget a fact from "User facts". See "Memory".',
 	clarify:
 		'Ask about logged items only when the answer changes their kcal a lot (by 80+ kcal and 15%+), or with kind "rename" which real food a strange name was (no kcal threshold). Call together with log_food, at most 2 per message.',
 	correct_entry:
@@ -404,7 +412,7 @@ const AI_TOOL_DESCRIPTIONS: Record<AiToolName, string> = {
 	photo_unusable:
 		'Only for a message with a photo: there is no food on it, or the label cannot be read. Nothing is logged. Never for a text-only message.',
 	reply:
-		'Conversation: greetings, small talk, questions about food, training or the day — answer and help for real ("how much can I still eat today" — from the day context). Nothing is logged. Also the chat answer of a message that only changes entries (correct_entry, delete_entry, restore_entry, resolve_clarification).',
+		'Conversation and answers: greetings, questions about food, training or the day. Nothing is logged. Also the chat answer next to correct_entry, delete_entry, restore_entry, resolve_clarification, save_food, save_fact or forget_fact.',
 }
 
 /** OpenAI-compatible tool definition, as OpenRouter expects it. */
@@ -413,12 +421,19 @@ export interface AiFunctionTool {
 	function: { name: string; description: string; parameters: Record<string, unknown> }
 }
 
+/** Tools the model sees bare (types, enums, descriptions): their rules live in zod and the parser. */
+const BARE_TOOLS: ReadonlySet<AiToolName> = new Set([
+	AI_TOOL_NAMES.saveFood,
+	AI_TOOL_NAMES.saveFact,
+	AI_TOOL_NAMES.forgetFact,
+])
+
 export const getAiFunctionTools = (): AiFunctionTool[] =>
 	Object.values(AI_TOOL_NAMES).map((name) => ({
 		type: 'function',
 		function: {
 			name,
 			description: AI_TOOL_DESCRIPTIONS[name],
-			parameters: toModelParameters(AI_TOOL_SCHEMAS[name]),
+			parameters: toModelParameters(AI_TOOL_SCHEMAS[name], { isBare: BARE_TOOLS.has(name) }),
 		},
 	}))

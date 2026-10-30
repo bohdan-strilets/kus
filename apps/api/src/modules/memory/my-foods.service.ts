@@ -14,7 +14,13 @@ import { EntriesService } from '../entries/entries.service'
 import { MemoryRepository } from './memory.repository'
 import { MyFoodExistsException, MyFoodNotFoundException } from './my-foods.exceptions'
 import { toMyFoodResponse } from './my-foods.mapper'
-import { compareByName, isFoodMatchingQuery, toNewMyFood } from './my-foods.utils'
+import {
+	compareByName,
+	isFoodMatchingQuery,
+	type NewMyFood,
+	toMyFoodUpdate,
+	toNewMyFood,
+} from './my-foods.utils'
 
 const UNIQUE_VIOLATION = 'P2002'
 
@@ -74,6 +80,28 @@ export class MyFoodsService {
 			throw error
 		}
 		return toMyFoodResponse(await this.getActiveFood(userId, id))
+	}
+
+	/** The chat's save_food: a new food, or null when the name is taken (a race, or a ref-less repeat). */
+	saveFromChat(
+		userId: string,
+		data: NewMyFood,
+		tx: Prisma.TransactionClient,
+	): Promise<MyFood | null> {
+		return this.memoryRepository.createFoodIfFree({ userId, data }, tx)
+	}
+
+	/** The chat's save_food with an agreed updateRef; null = the food is gone (deleted meanwhile). */
+	async updateFromChat(
+		{ userId, id, data }: { userId: string; id: string; data: NewMyFood },
+		tx: Prisma.TransactionClient,
+	): Promise<MyFood | null> {
+		const isUpdated = await this.memoryRepository.updateActiveFood(
+			{ userId, id, data: toMyFoodUpdate(data) },
+			tx,
+		)
+		if (!isUpdated) return null
+		return this.memoryRepository.findFood({ userId, id }, tx)
 	}
 
 	async remove(userId: string, id: string): Promise<void> {

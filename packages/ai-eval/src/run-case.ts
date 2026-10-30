@@ -14,6 +14,7 @@ import {
 	parseToolCalls,
 } from '@kus/shared'
 
+import { toFoodContext } from './case-context.js'
 import { EVAL_TODAY } from './cases/case-builders.js'
 import { withDayContext } from './day-context.js'
 import type { EvalCase } from './cases/index.js'
@@ -170,7 +171,7 @@ export const runCase = async (
 	evalCase: EvalCase,
 	options: EvalModelOptions,
 ): Promise<CaseResult> => {
-	const context = withDayContext({ ...BASE_CONTEXT, ...evalCase.context })
+	const context = withDayContext({ ...BASE_CONTEXT, ...toFoodContext(evalCase.context) })
 	const sources: ItemSources = { memory: context.memory, earlier: context.earlier ?? [] }
 	const refs = getParseRefs(context)
 	let messages: AiRequestMessage[] = buildFoodParseMessages(context, evalCase.text, evalCase.photo)

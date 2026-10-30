@@ -3,7 +3,6 @@ import {
 	COPY_REF_PATTERN,
 	exerciseKindSchema,
 	foodCategorySchema,
-	type FoodParseContext,
 	foodSourceSchema,
 	loggableMealTypeSchema,
 	measurementKindSchema,
@@ -12,6 +11,7 @@ import {
 } from '@kus/shared'
 import { z } from 'zod'
 
+import type { CaseContext } from '../case-context.js'
 import { CONTEXT_PRESET_NAMES } from './context-presets.js'
 import type { EvalPhoto } from './photo.js'
 
@@ -226,7 +226,7 @@ export type SavedFood = z.infer<typeof savedFoodSchema>
 
 export type EvalCase = z.infer<typeof evalCaseSchema> & {
 	/** Day state the model sees; defaults to an empty day without a goal. */
-	context?: Partial<FoodParseContext>
+	context?: CaseContext
 	/** The loaded photo of a private case with `image`. */
 	photo?: EvalPhoto
 }

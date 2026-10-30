@@ -6,6 +6,14 @@ All notable changes to Kusik are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.9.3] — 2026-10-30
+
+Removes the temporary viewport diagnostic of 0.9.1 now that the keyboard fixes of 0.9.2 are confirmed on the iPhone. Nothing changes for the user (no release notes entry). No database migrations, no API changes, no new environment variables, no prompt change.
+
+### Removed
+
+- The viewport debug overlay (`?debug=viewport`, five taps on the version in «Налаштування»); the version is plain text again ([3abf377])
+
 ## [0.9.2] — 2026-10-30
 
 iPhone keyboard and chat fixes, measured on the device with the 0.9.1 viewport overlay (which stays until the next patch). No database migrations, no API changes, no new environment variables, no prompt change.
@@ -496,7 +504,9 @@ Design sync with `design/` v0.5.2. Web only: no API, shared-package or migration
 
 ## 0.2.0 / 0.1.0 — see tags
 
-[Unreleased]: https://github.com/bohdan-strilets/kus/compare/v0.9.2...HEAD
+[Unreleased]: https://github.com/bohdan-strilets/kus/compare/v0.9.3...HEAD
+[0.9.3]: https://github.com/bohdan-strilets/kus/compare/v0.9.2...v0.9.3
+[3abf377]: https://github.com/bohdan-strilets/kus/commit/3abf377fd623d6b5f9c4b063fce525b40bc0056f
 [0.9.2]: https://github.com/bohdan-strilets/kus/compare/v0.9.1...v0.9.2
 [e794fcf]: https://github.com/bohdan-strilets/kus/commit/e794fcf7b3477bb2955718a04e3fed62224bff27
 [80fdd0c]: https://github.com/bohdan-strilets/kus/commit/80fdd0cafb1cd1b54868bcd6a1f7527a6e3bd434

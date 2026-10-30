@@ -2,6 +2,8 @@ import type { ReactNode } from 'react'
 
 import { cn, getViewportBoxStyle, useIsTypingOnTouch, useViewportBox } from '@/shared/lib'
 
+import { ViewportDebug } from '../viewport-debug'
+
 export interface AppLayoutProps {
 	children: ReactNode
 	/** The floating bottom nav; the content keeps room under it. */
@@ -35,6 +37,7 @@ export const AppLayout = ({
 			// dynamic: the keyboard changes the visible box; without visualViewport it stays 100dvh
 			style={getViewportBoxStyle(viewport)}
 		>
+			<ViewportDebug isNavHidden={!hasNav} />
 			<div className="relative mx-auto flex h-full w-full max-w-app flex-col pt-safe-top">
 				<main
 					className={cn(

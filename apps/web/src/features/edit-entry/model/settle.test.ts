@@ -21,6 +21,7 @@ const makeEntry = (id: string, kcal: number): FoodEntryResponse => ({
 	isEdited: false,
 	copiedFromDate: null,
 	isUndetailed: false,
+	canRemember: false,
 })
 
 const makeMeal = (mealTotalKcal: number | null = null): LoggedMeal => ({

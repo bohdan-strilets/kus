@@ -113,6 +113,24 @@ export class EntriesRepository {
 		})
 	}
 
+	/** Active entries of active meals: what the user still sees, so what can be remembered. */
+	findVisibleEntries(
+		{ userId, ids }: { userId: string; ids: string[] },
+		tx: Prisma.TransactionClient,
+	): Promise<FoodEntry[]> {
+		return tx.foodEntry.findMany({
+			where: { id: { in: ids }, userId, deletedAt: null, meal: { deletedAt: null } },
+		})
+	}
+
+	/** Links an entry to a saved food; nothing else about the entry changes (not even isEdited). */
+	async setMyFoodId(
+		{ userId, id, myFoodId }: { userId: string; id: string; myFoodId: string },
+		tx: Prisma.TransactionClient,
+	): Promise<void> {
+		await tx.foodEntry.updateMany({ where: { id, userId, deletedAt: null }, data: { myFoodId } })
+	}
+
 	/** An active entry of an active meal, with the meal (its type and day). */
 	findActiveEntryWithMeal(
 		{ userId, id }: { userId: string; id: string },

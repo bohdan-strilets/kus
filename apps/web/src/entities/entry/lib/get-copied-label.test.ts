@@ -48,6 +48,7 @@ const entry: FoodEntryResponse = {
 	isEdited: false,
 	copiedFromDate: null,
 	isUndetailed: false,
+	canRemember: false,
 }
 
 describe('toFoodEntryView with a copied mark', () => {

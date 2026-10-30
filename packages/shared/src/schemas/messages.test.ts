@@ -306,7 +306,7 @@ describe('chatMessageSchema 0.7.0 fields', () => {
 		})
 	})
 
-	it('reads an old entry and day card meal without copiedFromDate, isUndetailed and hasUndetailed', () => {
+	it('reads an old entry and day card meal without copiedFromDate, isUndetailed, canRemember and hasUndetailed', () => {
 		const entry = {
 			id: clientMessageId,
 			name: 'Гречка',
@@ -326,6 +326,7 @@ describe('chatMessageSchema 0.7.0 fields', () => {
 		const parsed = foodEntryResponseSchema.parse(entry)
 		expect(parsed.copiedFromDate).toBeNull()
 		expect(parsed.isUndetailed).toBe(false)
+		expect(parsed.canRemember).toBe(false)
 		expect(
 			foodEntryResponseSchema.parse({ ...entry, copiedFromDate: '2026-10-17', isUndetailed: true }),
 		).toMatchObject({ copiedFromDate: '2026-10-17', isUndetailed: true })

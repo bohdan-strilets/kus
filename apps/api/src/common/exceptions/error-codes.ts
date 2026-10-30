@@ -73,6 +73,12 @@ export const ErrorCodes = {
 	/** No workout with this id for this user (another user's is "not found" too). */
 	WORKOUT_NOT_FOUND: 'WORKOUT_NOT_FOUND',
 
+	// my foods
+	/** No active food with this id for this user (another user's is "not found" too). */
+	MY_FOOD_NOT_FOUND: 'MY_FOOD_NOT_FOUND',
+	/** Another active food of the user has this name; details: { existingId, name }. */
+	MY_FOOD_EXISTS: 'MY_FOOD_EXISTS',
+
 	// storage
 	/** The object storage failed or is unreachable (photos); the request can be retried. */
 	STORAGE_UNAVAILABLE: 'STORAGE_UNAVAILABLE',

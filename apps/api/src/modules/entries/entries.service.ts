@@ -9,7 +9,7 @@ import {
 } from '@kus/shared'
 
 import { formatDbDate } from '../../common/time'
-import type { Prisma } from '../../generated/prisma/client'
+import type { FoodEntry, Prisma } from '../../generated/prisma/client'
 import {
 	roundNutrition,
 	sumEntries,
@@ -23,6 +23,7 @@ import {
 	type MealWithEntries,
 } from './entries.repository'
 import { getMealRank } from './entries.constants'
+import { EntryNotFoundException } from './entries.exceptions'
 import { toValuesBefore } from './entry-values-before'
 import type { LogEntriesParams, MealEntryInput, NewFoodEntry } from './entries.types'
 
@@ -224,6 +225,34 @@ export class EntriesService {
 	): Promise<EntryWithMealType[]> {
 		if (ids.length === 0) return Promise.resolve([])
 		return this.entriesRepository.findActiveEntries({ userId, ids }, tx)
+	}
+
+	/**
+	 * The user's entries that can be remembered, in the order of `ids`. Any id that isn't theirs,
+	 * doesn't exist or is deleted (the entry or its meal) fails the whole request: not found.
+	 */
+	async getRememberableEntries(
+		userId: string,
+		ids: string[],
+		tx: Prisma.TransactionClient,
+	): Promise<FoodEntry[]> {
+		const found = await this.entriesRepository.findVisibleEntries({ userId, ids }, tx)
+		const byId = new Map(found.map((entry) => [entry.id, entry]))
+		return ids.map((id) => {
+			const entry = byId.get(id)
+			if (!entry) throw new EntryNotFoundException()
+			return entry
+		})
+	}
+
+	linkMyFood(
+		params: { userId: string; entryId: string; myFoodId: string },
+		tx: Prisma.TransactionClient,
+	): Promise<void> {
+		return this.entriesRepository.setMyFoodId(
+			{ userId: params.userId, id: params.entryId, myFoodId: params.myFoodId },
+			tx,
+		)
 	}
 
 	/** Active entries of one day, oldest first (the candidates of a «як вчора» message). */

@@ -17,6 +17,7 @@ import { ChatModule } from './modules/chat/chat.module'
 import { DaysModule } from './modules/days/days.module'
 import { FoodEntriesModule } from './modules/food-entries/food-entries.module'
 import { HealthModule } from './modules/health/health.module'
+import { MemoryModule } from './modules/memory/memory.module'
 import { MeasurementEditsModule } from './modules/measurements/measurement-edits.module'
 import { ProfileModule } from './modules/profile/profile.module'
 import { PhotosModule } from './modules/photos/photos.module'
@@ -49,6 +50,7 @@ const DEFAULT_THROTTLE = { ttl: minutes(1), limit: 100 }
 		DaysModule,
 		FoodEntriesModule,
 		MeasurementEditsModule,
+		MemoryModule,
 		WorkoutsModule,
 		ProgressModule,
 		StorageModule,

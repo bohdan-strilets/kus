@@ -115,6 +115,8 @@ export const foodEntryResponseSchema = z.object({
 	copiedFromDate: z.iso.date().nullable().default(null),
 	/** The «Без деталей» estimate written by closing a day. */
 	isUndetailed: z.boolean().default(false),
+	/** No saved food is linked yet: the «Запам'ятати» button shows. An old API without the field = false = hidden. */
+	canRemember: z.boolean().default(false),
 })
 
 export type FoodEntryResponse = z.infer<typeof foodEntryResponseSchema>

@@ -29,6 +29,7 @@ const createEntry = (overrides: Partial<FoodEntryResponse>): FoodEntryResponse =
 	isEdited: false,
 	copiedFromDate: null,
 	isUndetailed: false,
+	canRemember: false,
 	...overrides,
 })
 

@@ -55,7 +55,7 @@ export const FactProposalPlaque = ({ proposal }: FactProposalPlaqueProps) => {
 				</Text>
 				<Link
 					to={MEMORY_FACTS_HREF}
-					className="inline-flex min-h-tap items-center text-card-title font-bold text-primary"
+					className="inline-flex min-h-tap items-center text-card-title font-bold text-primary underline underline-offset-2"
 				>
 					{t('factProposal.change')}
 				</Link>

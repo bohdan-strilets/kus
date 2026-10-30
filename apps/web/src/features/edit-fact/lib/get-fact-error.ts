@@ -20,7 +20,8 @@ export const getFactErrorMessage = (error: ApiError, action: FactAction, t: TFun
 		if (error.errorCode === 'FACT_NOT_FOUND') return t('errors.api.FACT_NOT_FOUND')
 		if (error.errorCode === 'FACT_EXISTS') return t('errors.api.FACT_EXISTS')
 		if (error.errorCode === 'FACTS_LIMIT_REACHED') {
-			return t('errors.api.FACTS_LIMIT_REACHED', { count: FACTS_MAX })
+			// on the «Пам'ять» screen itself: no «у «Пам'яті»» at the end (the chat keeps the full sentence)
+			return t('editFact.limitReached', { count: FACTS_MAX })
 		}
 	}
 	return t(ACTION_ERROR_KEY[action])

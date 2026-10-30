@@ -41,9 +41,9 @@ describe('getFactFieldCode', () => {
 })
 
 describe('getFactErrorMessage', () => {
-	it('says that the memory is full when a restore hits the limit', () => {
+	it("says that the memory is full when a restore hits the limit, without pointing to «Пам'ять»", () => {
 		expect(getFactErrorMessage(http('FACTS_LIMIT_REACHED'), 'restore', t)).toBe(
-			"У пам'яті вже 30 фактів — щоб додати новий, прибери якийсь у «Пам'яті».",
+			"У пам'яті вже 30 фактів — щоб додати новий, прибери якийсь.",
 		)
 	})
 

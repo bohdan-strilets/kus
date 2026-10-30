@@ -2,12 +2,14 @@ import type { SendMessageResponse } from '@kus/shared'
 import type { QueryClient } from '@tanstack/react-query'
 
 import { DAY_QUERY_KEY } from '@/entities/day'
+import { FACTS_QUERY_KEY } from '@/entities/fact'
 import {
 	addTurnToFeed,
 	MESSAGES_QUERY_KEY,
 	replaceFeedMessage,
 	useFreshReplyStore,
 } from '@/entities/message'
+import { MY_FOODS_QUERY_KEY } from '@/entities/my-food'
 import { useGoalCelebrationStore } from '@/entities/stats'
 import { WORKOUTS_QUERY_KEY } from '@/entities/workout'
 import { type ApiError, getApiError, HTTP_STATUS } from '@/shared/api'
@@ -124,6 +126,9 @@ export const deliverMessage = async (
 		if (sound) playSound(sound)
 		void queryClient.invalidateQueries({ queryKey: DAY_QUERY_KEY })
 		void queryClient.invalidateQueries({ queryKey: WORKOUTS_QUERY_KEY })
+		// «запам'ятай …» / «забудь, що …» change «Пам'ять»; a closed screen is only marked stale
+		void queryClient.invalidateQueries({ queryKey: FACTS_QUERY_KEY })
+		void queryClient.invalidateQueries({ queryKey: MY_FOODS_QUERY_KEY })
 		// a replayed turn returns no updatedMessages: reload the feed so edited cards are current
 		if (isRetry) void queryClient.invalidateQueries({ queryKey: MESSAGES_QUERY_KEY })
 	} catch (error) {

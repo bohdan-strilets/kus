@@ -87,6 +87,7 @@ export const useMyFoodActions = ({ onGone }: UseMyFoodActionsParams): MyFoodActi
 
 	return {
 		save: ({ id, body }, { onSuccess, onDuplicate }) => {
+			if (update.isPending) return
 			update.mutate(
 				{ id, ...body },
 				{

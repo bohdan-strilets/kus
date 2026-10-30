@@ -85,6 +85,7 @@ export const useFactActions = ({ onGone }: UseFactActionsParams): FactActions =>
 
 	return {
 		save: (params, { onSuccess, onFieldError }) => {
+			if (update.isPending) return
 			update.mutate(params, {
 				onSuccess,
 				onError: (error) => {

@@ -5,6 +5,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { playSound } from '@/shared/lib'
 import { DAY_QUERY_KEY } from '@/entities/day'
+import { FACTS_QUERY_KEY } from '@/entities/fact'
+import { MY_FOODS_QUERY_KEY } from '@/entities/my-food'
 import { WORKOUTS_QUERY_KEY } from '@/entities/workout'
 import { MESSAGES_QUERY_KEY, type MessagesPage, useFreshReplyStore } from '@/entities/message'
 import { useGoalCelebrationStore } from '@/entities/stats'
@@ -124,6 +126,8 @@ describe('deliverMessage', () => {
 		expect(feed?.pages[0]?.messages.map((item) => item.role)).toEqual(['ASSISTANT', 'USER'])
 		expect(invalidate).toHaveBeenCalledWith({ queryKey: DAY_QUERY_KEY })
 		expect(invalidate).toHaveBeenCalledWith({ queryKey: WORKOUTS_QUERY_KEY })
+		expect(invalidate).toHaveBeenCalledWith({ queryKey: FACTS_QUERY_KEY })
+		expect(invalidate).toHaveBeenCalledWith({ queryKey: MY_FOODS_QUERY_KEY })
 	})
 
 	it('replaces the FAILED server copy of a resent message instead of showing it twice', async () => {

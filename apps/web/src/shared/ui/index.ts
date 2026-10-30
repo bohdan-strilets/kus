@@ -79,5 +79,6 @@ export {
 	type ToastApi,
 	type ToastOptions,
 	ToastProvider,
+	ToastRouteReset,
 	useToast,
 } from './toast'

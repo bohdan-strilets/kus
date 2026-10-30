@@ -1,23 +1,32 @@
 import * as RadixToast from '@radix-ui/react-toast'
 import { AnimatePresence, motion } from 'motion/react'
-import { type ReactNode, useMemo, useRef, useState } from 'react'
+import { type ReactNode, useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { TRANSITION } from '@/shared/lib'
 
-import { MAX_VISIBLE_TOASTS, TOAST_DURATION_MS, TOAST_ENTER_OFFSET_PX } from './toast.constants'
+import { MAX_VISIBLE_TOASTS, TOAST_ENTER_OFFSET_PX } from './toast.constants'
 import { type ToastApi, ToastContext } from './toast.context'
 import type { ToastItem } from './toast.types'
+import { useToastTimers } from './use-toast-timers'
 
 /**
  * No mockup exists for toasts; agreed minimal look: a surface card, radius 18, shadow-chip,
- * 15/600, text action 15/700, above the bottom nav, no icons. Radix Toast gives the live region, swipe and hotkey.
+ * 15/600, text action 15/700, at the top of the screen under the header (the bottom is taken by
+ * the composer and the sheet buttons), no icons. Radix Toast gives the live region, swipe and
+ * hotkey; closing is ours (useToastTimers, dismissAll on navigation).
  */
 export const ToastProvider = ({ children }: { children: ReactNode }) => {
 	const { t } = useTranslation()
 	const [toasts, setToasts] = useState<ToastItem[]>([])
 	// a counter, not crypto.randomUUID(): that one exists only in secure contexts (no http on LAN)
 	const nextId = useRef(0)
+
+	const dismiss = useCallback((id: number): void => {
+		setToasts((current) => current.filter((toast) => toast.id !== id))
+	}, [])
+
+	useToastTimers(toasts, dismiss)
 
 	const api = useMemo<ToastApi>(
 		() => ({
@@ -26,21 +35,17 @@ export const ToastProvider = ({ children }: { children: ReactNode }) => {
 				const toast: ToastItem = { id: nextId.current, message, action: options?.action }
 				setToasts((current) => [...current, toast].slice(-MAX_VISIBLE_TOASTS))
 			},
+			dismissAll: () => {
+				setToasts([])
+			},
 		}),
 		[],
 	)
 
-	const dismiss = (id: number): void => {
-		setToasts((current) => current.filter((toast) => toast.id !== id))
-	}
-
 	return (
 		<ToastContext value={api}>
-			<RadixToast.Provider
-				label={t('toast.label')}
-				duration={TOAST_DURATION_MS}
-				swipeDirection="down"
-			>
+			{/* Infinity: Radix never closes a toast by itself, see useToastTimers */}
+			<RadixToast.Provider label={t('toast.label')} duration={Infinity} swipeDirection="up">
 				{children}
 				<AnimatePresence>
 					{toasts.map((toast) => (
@@ -77,11 +82,10 @@ export const ToastProvider = ({ children }: { children: ReactNode }) => {
 						</RadixToast.Root>
 					))}
 				</AnimatePresence>
-				{/* above the floating nav (the same room the content keeps for it) and above sheets and
-				    dialogs (z-50) */}
+				{/* under the header, inside the app column, above sheets and dialogs (z-50) */}
 				<RadixToast.Viewport
 					label={t('toast.viewport')}
-					className="pointer-events-none fixed inset-x-0 bottom-0 z-60 mx-auto flex max-w-app flex-col gap-2 px-gutter pb-nav-room outline-none"
+					className="pointer-events-none fixed inset-x-0 top-below-header z-60 mx-auto flex max-w-app flex-col gap-2 px-gutter outline-none"
 				/>
 			</RadixToast.Provider>
 		</ToastContext>

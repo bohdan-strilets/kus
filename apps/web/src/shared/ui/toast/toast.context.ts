@@ -14,6 +14,8 @@ export interface ToastOptions {
 export interface ToastApi {
 	/** Shows a short message about an action (CLAUDE.md §12: toast is for action errors/results). */
 	show: (message: string, options?: ToastOptions) => void
+	/** Closes every toast: a toast belongs to the screen it was shown on. */
+	dismissAll: () => void
 }
 
 export const ToastContext = createContext<ToastApi | null>(null)

@@ -437,6 +437,24 @@ describe('useFeedScroll a card that changes height at the end', () => {
 		expect(distanceFromBottom()).toBe(0)
 	})
 
+	it('stays at the end through two height changes (taller, then shorter) while held', () => {
+		const { container, content, setCovered } = renderFeed()
+		setCovered(true)
+
+		// the status line makes the card taller, then the button goes: the browser clamps the scroll
+		metrics.scrollHeight += LINE_TO_CARD_PX
+		resize(content)
+		metrics.scrollHeight -= CARD_TO_LINE_PX
+		metrics.scrollTop = Math.min(metrics.scrollTop, maxScrollTop() - 90)
+		act(() => {
+			container.dispatchEvent(new Event('scroll'))
+		})
+		resize(content)
+		setCovered(false)
+
+		expect(distanceFromBottom()).toBe(0)
+	})
+
 	it('does not drag a feed the user scrolled up when the dialog closes', () => {
 		const { container, setCovered } = renderFeed()
 		scrollTo(container, FAR_FROM_BOTTOM_PX)

@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
 import type { FoodEntryResponse } from '@kus/shared'
+import { QueryClient } from '@tanstack/react-query'
 import { act, cleanup, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { useIsOverlayOpen } from '@/shared/lib'
 import type * as sharedLib from '@/shared/lib'
 import { renderHookWithProviders } from '@/shared/testing'
 
@@ -105,5 +107,40 @@ describe('useRememberAction', () => {
 		expect(result.current.rememberedNames).toEqual([])
 		expect(result.current.isSheetOpen).toBe(true)
 		expect(result.current.isVisible).toBe(true)
+	})
+	it('drops the button with the status in one render, before the refetch is done', async () => {
+		const refetches: (() => void)[] = []
+		const queryClient = new QueryClient()
+		vi.spyOn(queryClient, 'invalidateQueries').mockImplementation(
+			() =>
+				new Promise<void>((resolve) => {
+					refetches.push(resolve)
+				}),
+		)
+		// the entries stay canRemember: the refetch has not brought the new flag yet
+		const { result } = renderHookWithProviders(
+			() => ({ action: useRememberAction(ONE), isOverlayOpen: useIsOverlayOpen() }),
+			{ queryClient },
+		)
+
+		let submitted: Promise<void> = Promise.resolve()
+		act(() => {
+			submitted = result.current.action.submit(['a'])
+		})
+		await waitFor(() => {
+			expect(result.current.action.rememberedNames).toEqual(['Кабаноси'])
+		})
+		expect(result.current.action.rememberable).toEqual([])
+		// the feed is still held while the refetch runs
+		expect(result.current.isOverlayOpen).toBe(true)
+
+		await act(async () => {
+			refetches.forEach((finish) => {
+				finish()
+			})
+			await submitted
+		})
+		expect(result.current.isOverlayOpen).toBe(false)
+		expect(result.current.action.isVisible).toBe(true)
 	})
 })

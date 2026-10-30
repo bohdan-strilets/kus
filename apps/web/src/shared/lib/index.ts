@@ -1,5 +1,13 @@
 export { cn } from './cn'
-export { useIsOverlayOpen, useOverlayOpen, useOverlayStore } from './overlay'
+export {
+	OVERLAY_HOLD_MAX_MS,
+	useIsOverlayOpen,
+	useOverlayHold,
+	useOverlayOpen,
+	useOverlayStore,
+	useSettleHold,
+} from './overlay'
+export type { SettleHold } from './overlay'
 export {
 	type DayRelation,
 	fromCalendarDate,

@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { DAY_QUERY_KEY } from '@/entities/day'
 import { MESSAGES_QUERY_KEY } from '@/entities/message'
 import { WORKOUTS_QUERY_KEY } from '@/entities/workout'
-import { useOverlayStore } from '@/shared/lib'
+import { OVERLAY_HOLD_MAX_MS, useOverlayStore } from '@/shared/lib'
 import { makeWorkout, renderWithProviders } from '@/shared/testing'
 
 import { deleteWorkout } from '../api/delete-workout'
@@ -95,7 +95,7 @@ describe('DeleteWorkoutButton', () => {
 describe('DeleteWorkoutButton and the chat feed', () => {
 	// confirmDelete spends 600 ms on the dialog exit before the checks start
 	const SLOW_REFETCH_MS = 5000
-	const HOLD_MAX_MS = 8000
+	const HOLD_MAX_MS = OVERLAY_HOLD_MAX_MS
 
 	afterEach(() => {
 		vi.useRealTimers()

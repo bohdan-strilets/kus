@@ -1,9 +1,11 @@
 // @vitest-environment jsdom
 import type { FoodEntryResponse, LoggedMeal } from '@kus/shared'
+import { QueryClient } from '@tanstack/react-query'
 import { act, cleanup, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { useGoalCelebrationStore } from '@/entities/stats'
+import { useIsOverlayOpen } from '@/shared/lib'
 import { renderHookWithProviders } from '@/shared/testing'
 
 import { deleteFoodEntry } from '../api/delete-food-entry'
@@ -108,5 +110,41 @@ describe('useEditEntryForm', () => {
 		expect(onSettled).toHaveBeenCalledTimes(1)
 		expect(patchMock).not.toHaveBeenCalled()
 		expect(isArmed()).toBe(false)
+	})
+	it('holds the feed through the delete and the refetch behind it', async () => {
+		deleteMock.mockResolvedValue(undefined)
+		const refetches: (() => void)[] = []
+		const queryClient = new QueryClient()
+		vi.spyOn(queryClient, 'invalidateQueries').mockImplementation(
+			() =>
+				new Promise<void>((resolve) => {
+					refetches.push(resolve)
+				}),
+		)
+		const { result } = renderHookWithProviders(
+			() => ({
+				form: useEditEntryForm({ entry, meal, onSettled }),
+				isOverlayOpen: useIsOverlayOpen(),
+			}),
+			{ queryClient },
+		)
+
+		act(() => {
+			result.current.form.remove()
+		})
+		await waitFor(() => {
+			expect(onSettled).toHaveBeenCalledTimes(1)
+		})
+		// the request is done, the refetch is not: still held
+		expect(result.current.isOverlayOpen).toBe(true)
+
+		act(() => {
+			refetches.forEach((finish) => {
+				finish()
+			})
+		})
+		await waitFor(() => {
+			expect(result.current.isOverlayOpen).toBe(false)
+		})
 	})
 })

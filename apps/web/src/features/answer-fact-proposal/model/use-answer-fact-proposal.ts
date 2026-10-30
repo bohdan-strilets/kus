@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { FACTS_QUERY_KEY } from '@/entities/fact'
 import { MESSAGES_QUERY_KEY } from '@/entities/message'
 import { getApiError } from '@/shared/api'
-import { playSound } from '@/shared/lib'
+import { playSound, useOverlayHold, useSettleHold } from '@/shared/lib'
 import { useToast } from '@/shared/ui'
 
 import { answerFact } from '../api/answer-fact'
@@ -27,9 +27,15 @@ export const useAnswerFactProposal = (factId: string): FactProposalAnswer => {
 	const queryClient = useQueryClient()
 	const [notice, setNotice] = useState<string | null>(null)
 
+	// the plaque turns into a line or goes: the feed is held at its end until the refetch is done
+	const { track } = useSettleHold()
 	const refresh = (): void => {
-		void queryClient.invalidateQueries({ queryKey: MESSAGES_QUERY_KEY })
-		void queryClient.invalidateQueries({ queryKey: FACTS_QUERY_KEY })
+		void track(
+			Promise.all([
+				queryClient.invalidateQueries({ queryKey: MESSAGES_QUERY_KEY }),
+				queryClient.invalidateQueries({ queryKey: FACTS_QUERY_KEY }),
+			]),
+		)
 	}
 
 	const mutation = useMutation({
@@ -49,6 +55,7 @@ export const useAnswerFactProposal = (factId: string): FactProposalAnswer => {
 			if (outcome.shouldRefresh) refresh()
 		},
 	})
+	useOverlayHold(mutation.isPending)
 
 	return {
 		answer: (accept) => {

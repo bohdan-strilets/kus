@@ -23,16 +23,24 @@ export interface RememberActionState {
 export const useRememberAction = (entries: readonly FoodEntryResponse[]): RememberActionState => {
 	const { remember, isPending } = useRememberEntries()
 	const [rememberedNames, setRememberedNames] = useState<readonly string[]>([])
+	const [rememberedIds, setRememberedIds] = useState<readonly string[]>([])
 	const [isSheetOpen, setIsSheetOpen] = useState(false)
-	const rememberable = getRememberableEntries(entries)
+	// the lines saved here leave the list at once, not with the refetch: the status and the missing
+	// button come in one render, and the refetch then changes nothing in the card's height
+	const rememberable = getRememberableEntries(entries).filter(
+		(entry) => !rememberedIds.includes(entry.id),
+	)
 
 	const submit = async (entryIds: readonly string[]): Promise<void> => {
-		const isDone = await remember(entryIds)
-		if (!isDone) return
-		setIsSheetOpen(false)
-		// a second save in the same card adds to the line instead of replacing it
-		const saved = entries.filter((entry) => entryIds.includes(entry.id)).map((entry) => entry.name)
-		setRememberedNames((previous) => [...previous, ...saved])
+		await remember(entryIds, () => {
+			setIsSheetOpen(false)
+			setRememberedIds((previous) => [...previous, ...entryIds])
+			// a second save in the same card adds to the line instead of replacing it
+			const saved = entries
+				.filter((entry) => entryIds.includes(entry.id))
+				.map((entry) => entry.name)
+			setRememberedNames((previous) => [...previous, ...saved])
+		})
 	}
 
 	const press = (): void => {

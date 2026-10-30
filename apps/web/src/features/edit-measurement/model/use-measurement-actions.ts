@@ -5,6 +5,7 @@ import { DAY_QUERY_KEY } from '@/entities/day'
 import { MESSAGES_QUERY_KEY } from '@/entities/message'
 import { PROFILE_QUERY_KEY } from '@/entities/profile'
 import { getApiError } from '@/shared/api'
+import { useOverlayHold, useSettleHold } from '@/shared/lib'
 import { useToast } from '@/shared/ui'
 
 import { deleteMeasurement } from '../api/delete-measurement'
@@ -45,10 +46,16 @@ export const useMeasurementActions = ({
 	const toast = useToast()
 	const queryClient = useQueryClient()
 
+	// the chat feed is held at its end until the refetch is done (the cards change under it)
+	const { track } = useSettleHold()
 	const refresh = (): void => {
-		void queryClient.invalidateQueries({ queryKey: MESSAGES_QUERY_KEY })
-		void queryClient.invalidateQueries({ queryKey: DAY_QUERY_KEY })
-		void queryClient.invalidateQueries({ queryKey: PROFILE_QUERY_KEY })
+		void track(
+			Promise.all([
+				queryClient.invalidateQueries({ queryKey: MESSAGES_QUERY_KEY }),
+				queryClient.invalidateQueries({ queryKey: DAY_QUERY_KEY }),
+				queryClient.invalidateQueries({ queryKey: PROFILE_QUERY_KEY }),
+			]),
+		)
 	}
 	const handleError = (error: unknown, action: MeasurementAction): void => {
 		const apiError = getApiError(error)
@@ -90,6 +97,8 @@ export const useMeasurementActions = ({
 			handleError(error, 'delete')
 		},
 	})
+	// the request itself is held too, not only the refetch after it
+	useOverlayHold(update.isPending || removal.isPending || restore.isPending)
 
 	return {
 		save: (params, { onSuccess, onBound }) => {

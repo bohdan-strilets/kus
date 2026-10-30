@@ -9,6 +9,7 @@ import { DAY_QUERY_KEY } from '@/entities/day'
 import { MESSAGES_QUERY_KEY } from '@/entities/message'
 import { useGoalCelebrationStore } from '@/entities/stats'
 import { getApiError } from '@/shared/api'
+import { useOverlayHold, useSettleHold } from '@/shared/lib'
 import { useToast } from '@/shared/ui'
 
 import type { EntryChange } from './apply-entry-change'
@@ -67,9 +68,15 @@ export const useEditEntryForm = ({
 
 	// the day (totals, the list) and every chat card of the meal show the change; after a failure
 	// the screen shows the real state too (the entry may be gone)
+	// the chat feed is held at its end until the refetch is done (the sheet is closing, the cards change)
+	const { track } = useSettleHold()
 	const refresh = (): void => {
-		void queryClient.invalidateQueries({ queryKey: DAY_QUERY_KEY })
-		void queryClient.invalidateQueries({ queryKey: MESSAGES_QUERY_KEY })
+		void track(
+			Promise.all([
+				queryClient.invalidateQueries({ queryKey: DAY_QUERY_KEY }),
+				queryClient.invalidateQueries({ queryKey: MESSAGES_QUERY_KEY }),
+			]),
+		)
 	}
 	const handleError = (error: unknown, action: 'save' | 'delete'): void => {
 		const apiError = getApiError(error)
@@ -105,6 +112,8 @@ export const useEditEntryForm = ({
 			handleError(error, 'delete')
 		},
 	})
+	// the request itself is held too, not only the refetch after it
+	useOverlayHold(update.isPending || removal.isPending)
 
 	return {
 		form,

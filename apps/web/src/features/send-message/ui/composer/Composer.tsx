@@ -8,7 +8,13 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { COARSE_POINTER_QUERY, cn, keepFieldFocus, useMediaQuery } from '@/shared/lib'
+import {
+	COARSE_POINTER_QUERY,
+	cn,
+	keepFieldFocus,
+	requestViewportResync,
+	useMediaQuery,
+} from '@/shared/lib'
 import { Icon, ICON_SIZE, IconButton, Text, Textarea } from '@/shared/ui'
 
 import { getEnterAction } from '../../model/get-enter-action'
@@ -81,6 +87,10 @@ export const Composer = ({
 	}
 
 	const openPhotoPicker = (): void => {
+		// on a phone the keyboard closes first: iOS brings it back after the picker without telling the
+		// visual viewport for a second or more, and the composer sits under its bar; one more tap for
+		// the caption is the price of a predictable screen (plan-0.9.2)
+		if (isCoarsePointer) textareaRef.current?.blur()
 		fileInputRef.current?.click()
 	}
 
@@ -88,6 +98,8 @@ export const Composer = ({
 		const file = event.target.files?.[0]
 		// the same file can be chosen again right after it was removed
 		event.target.value = ''
+		// back from the picker: re-read the visible box until it settles
+		requestViewportResync()
 		if (file) onPhotoPick?.(file)
 	}
 

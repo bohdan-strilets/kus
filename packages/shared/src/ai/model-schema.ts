@@ -12,12 +12,21 @@ type JsonSchema = Record<string, unknown>
  * - a date keeps only `format: date` (the ~240-char ISO regex repeated in every date field cost ~1k tokens);
  * - `default` goes (a defaulted field stays required in the output schema, the model always sends
  *   it, and zod fills a missing one);
- * - `additionalProperties: false` goes (a stray key is dropped by zod).
+ * - `additionalProperties: false` goes (a stray key is dropped by zod);
+ * - string lengths and numeric bounds go (~1k characters of digits); a lower bound of 0 stays, since
+ *   "not negative" / "positive" tells the model what the field is. A value out of bounds fails zod
+ *   and gets a validation retry. Item counts (`minItems` / `maxItems`) stay: they are rules.
  */
 const trimForModel = ({ jsonSchema }: { jsonSchema: JsonSchema }): void => {
 	if (jsonSchema.format === DATE_FORMAT) delete jsonSchema.pattern
 	delete jsonSchema.default
 	delete jsonSchema.additionalProperties
+	delete jsonSchema.minLength
+	delete jsonSchema.maxLength
+	delete jsonSchema.maximum
+	delete jsonSchema.exclusiveMaximum
+	if (jsonSchema.minimum !== 0) delete jsonSchema.minimum
+	if (jsonSchema.exclusiveMinimum !== 0) delete jsonSchema.exclusiveMinimum
 }
 
 const isNullBranch = (branch: unknown): boolean =>

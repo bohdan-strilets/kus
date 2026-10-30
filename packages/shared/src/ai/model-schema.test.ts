@@ -5,6 +5,7 @@ import { toModelParameters, toUncompactedParameters } from './model-schema.js'
 import { AI_TOOL_SCHEMAS } from './tools.js'
 
 const NULL_BRANCH = '{"type":"null"}'
+const NULL_TYPE_LIST = ',"null"]'
 
 const countOccurrences = (text: string, part: string): number => text.split(part).length - 1
 
@@ -26,8 +27,9 @@ describe('toModelParameters nullable compaction', () => {
 		for (const [, schema] of tools) {
 			const original = JSON.stringify(toUncompactedParameters(schema))
 			const compacted = JSON.stringify(toModelParameters(schema))
-			before += countOccurrences(original, NULL_BRANCH)
-			after += countOccurrences(compacted, `,"null"]`)
+			// zod itself already writes a nullable without bounds as a type list
+			before += countOccurrences(original, NULL_BRANCH) + countOccurrences(original, NULL_TYPE_LIST)
+			after += countOccurrences(compacted, NULL_TYPE_LIST)
 			expect(compacted.length).toBeLessThanOrEqual(original.length)
 		}
 
@@ -83,9 +85,57 @@ describe('the compacted schema accepts and rejects the same inputs', () => {
 		['a string instead of minutes', { ...base, durationMin: 'long' }, false],
 		['a null name', { ...base, exercises: [{ ...exercise, name: null }] }, false],
 		['no exercises', { ...base, exercises: [] }, false],
-		['a negative number of minutes', { ...base, durationMin: -5 }, false],
+		[
+			'a negative weight',
+			{ ...base, exercises: [{ ...exercise, sets: [{ ...exercise.sets[0], weightKg: -5 }] }] },
+			false,
+		],
 	])('%s', (_label, input, isValid) => {
 		expect(original.safeParse(input).success).toBe(isValid)
 		expect(compacted.safeParse(input).success).toBe(isValid)
+	})
+})
+
+describe('bounds are left to zod', () => {
+	const workout = AI_TOOL_SCHEMAS.log_workout
+	const json = JSON.stringify(toModelParameters(workout))
+	const base = {
+		date: null,
+		place: null,
+		durationMin: null,
+		kcalBurned: null,
+		exercises: [
+			{
+				name: 'Біг',
+				exerciseRef: null,
+				kind: 'CARDIO',
+				sets: [],
+				durationMin: 30,
+				distanceKm: 5,
+			},
+		],
+		replaceRef: null,
+		reply: 'Записав.',
+	}
+
+	it('keeps no lengths and no bounds other than 0 in any tool', () => {
+		for (const [name, schema] of Object.entries(AI_TOOL_SCHEMAS)) {
+			const text = JSON.stringify(toModelParameters(schema))
+			expect(text, name).not.toMatch(/"(minLength|maxLength|maximum|exclusiveMaximum)"/)
+			expect(text, name).not.toMatch(/"(minimum|exclusiveMinimum)":(?!0[,}])/)
+		}
+	})
+
+	it('keeps the lower bound 0 and the item counts', () => {
+		expect(json).toContain('"minimum":0')
+		expect(json).toContain('"minItems":1')
+	})
+
+	it('accepts out-of-bounds values the zod schema still rejects', () => {
+		const input = { ...base, durationMin: 100_000 }
+
+		expect(workout.safeParse(base).success).toBe(true)
+		expect(toValidator(toModelParameters(workout)).safeParse(input).success).toBe(true)
+		expect(workout.safeParse(input).success).toBe(false)
 	})
 })

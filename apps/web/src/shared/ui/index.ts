@@ -14,6 +14,7 @@ export {
 	type WordmarkProps,
 } from './brand'
 export { Button, type ButtonProps } from './button'
+export { Checkbox, type CheckboxProps } from './checkbox'
 export { Chip, type ChipProps } from './chip'
 export { ConfirmDialog, type ConfirmDialogProps } from './confirm-dialog'
 export { DecorBackdrop, DecorCrumb, type DecorCrumbProps } from './decor-backdrop'

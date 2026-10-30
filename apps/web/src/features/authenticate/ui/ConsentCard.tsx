@@ -1,12 +1,7 @@
-import * as Checkbox from '@radix-ui/react-checkbox'
 import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { Icon, Text } from '@/shared/ui'
-
-import { checkboxVariants } from './consent-card.variants'
-
-const CHECK_ICON_SIZE = 16
+import { Checkbox, Text } from '@/shared/ui'
 
 interface ConsentCardProps {
 	isChecked: boolean
@@ -32,23 +27,16 @@ export const ConsentCard = ({ isChecked, onCheckedChange, onBlur, error }: Conse
 				htmlFor={id}
 				className="flex cursor-pointer items-start gap-3.25 rounded-tile bg-surface/60 p-3.5"
 			>
-				<Checkbox.Root
+				<Checkbox
 					id={id}
-					checked={isChecked}
-					onCheckedChange={(state) => {
-						onCheckedChange(state === true)
-					}}
+					isChecked={isChecked}
+					onCheckedChange={onCheckedChange}
 					onBlur={onBlur}
 					// the label wraps both lines; name = title only, so the text isn't read twice
 					aria-labelledby={titleId}
 					aria-describedby={error ? `${textId} ${errorId}` : textId}
 					aria-invalid={Boolean(error)}
-					className={checkboxVariants({ isChecked })}
-				>
-					<Checkbox.Indicator>
-						<Icon name="check" size={CHECK_ICON_SIZE} />
-					</Checkbox.Indicator>
-				</Checkbox.Root>
+				/>
 				<span className="flex flex-col gap-1.5">
 					<Text as="span" id={titleId} variant="cardTitle">
 						{t('auth.consentTitle')}

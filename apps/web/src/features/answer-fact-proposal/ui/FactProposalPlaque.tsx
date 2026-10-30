@@ -3,7 +3,7 @@ import { motion } from 'motion/react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 
-import { ROUTES } from '@/shared/config'
+import { MEMORY_FACTS_HREF } from '@/shared/config'
 import { TRANSITION } from '@/shared/lib'
 import { Button, Icon, ICON_SIZE, Text } from '@/shared/ui'
 
@@ -54,7 +54,7 @@ export const FactProposalPlaque = ({ proposal }: FactProposalPlaqueProps) => {
 					{t('factProposal.saved')}
 				</Text>
 				<Link
-					to={ROUTES.memory}
+					to={MEMORY_FACTS_HREF}
 					className="inline-flex min-h-tap items-center text-card-title font-bold text-primary"
 				>
 					{t('factProposal.change')}

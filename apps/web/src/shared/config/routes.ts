@@ -25,6 +25,11 @@ export const PROFILE_ROUTES = {
 
 export const ROUTES = { ...TAB_ROUTES, ...PROFILE_ROUTES, ...AUTH_ROUTES } as const
 
+/** «Пам'ять» keeps its tab in the address, so the chat can open «Про тебе» directly. */
+export const MEMORY_TAB_PARAM = 'tab'
+export const MEMORY_FACTS_TAB = 'facts'
+export const MEMORY_FACTS_HREF = `${PROFILE_ROUTES.memory}?${MEMORY_TAB_PARAM}=${MEMORY_FACTS_TAB}`
+
 export type TabRoutePath = (typeof TAB_ROUTES)[keyof typeof TAB_ROUTES]
 
 /** Registered only in dev builds (see app/router). */

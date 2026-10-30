@@ -62,12 +62,12 @@ describe('FactProposalPlaque', () => {
 		expect(screen.getByRole('button', { name: 'Ні' })).toBeTruthy()
 	})
 
-	it("says «Запам'ятав» with a link to the memory after «Так»", () => {
+	it("says «Запам'ятав» with a link to «Про тебе» after «Так»", () => {
 		renderPlaque('CONFIRMED')
 
 		expect(screen.getByRole('status').textContent).toBe("Запам'ятав")
 		expect(screen.getByRole('link', { name: "Змінити в «Пам'яті»" }).getAttribute('href')).toBe(
-			'/app/memory',
+			'/app/memory?tab=facts',
 		)
 		expect(screen.queryByRole('button')).toBeNull()
 	})

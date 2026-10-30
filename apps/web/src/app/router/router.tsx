@@ -19,6 +19,7 @@ import {
 	TrainingPage,
 } from './lazy-pages'
 import { RootLayout } from './RootLayout'
+import { RouterRoot } from './RouterRoot'
 import { RouteErrorPage } from './RouteErrorPage'
 import { RouteLoader } from './RouteLoader'
 import { SessionGuard } from './SessionGuard'
@@ -40,6 +41,7 @@ const devRoutes: RouteObject[] = import.meta.env.DEV
 export const router = createBrowserRouter([
 	...devRoutes,
 	{
+		element: <RouterRoot />,
 		errorElement: <RouteErrorPage />,
 		children: [
 			// no landing yet (static page before beta): the guards pick /app or /login

@@ -3,7 +3,7 @@ import { Outlet, useMatch } from 'react-router'
 
 import { FEATURES, ROUTES } from '@/shared/config'
 import { useUnlockSoundOnFirstTap } from '@/shared/lib'
-import { AppLayout, ToastRouteReset } from '@/shared/ui'
+import { AppLayout } from '@/shared/ui'
 import { BottomNav, useTodayProgress } from '@/widgets/bottom-nav'
 
 import { RouteLoader } from './RouteLoader'
@@ -21,7 +21,6 @@ export const RootLayout = () => {
 			isFixedHeight={isChat}
 			hasRaisedNav={FEATURES.workouts}
 		>
-			<ToastRouteReset />
 			<Suspense fallback={<RouteLoader />}>
 				<Outlet />
 			</Suspense>

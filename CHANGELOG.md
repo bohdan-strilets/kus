@@ -6,6 +6,20 @@ All notable changes to Kusik are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.9.1] — 2026-10-30
+
+iPhone fixes after 0.9.0: toasts, the «Пам'ять» sheets and the «Запам'ятав» line; plus a temporary viewport diagnostic for the keyboard bugs of 0.9.2. No database migrations, no API changes, no new environment variables, no prompt change.
+
+### Fixed
+
+- Toasts close on their own timer (5 s, 6 s with «Скасувати»), even after a touch, pause only while the app is hidden, close on every route change — the profile stack included — and sit at the top under the header, so they never cover the composer or a sheet's «Зберегти» ([da16ab2], [a03878c])
+- The product and fact sheets of «Пам'ять» open without the keyboard; the name field no longer triggers iOS contact AutoFill; «Зберегти» / «Видалити» stay in a sticky footer above the keyboard ([26dc258])
+- «✓ Запам'ятав: …» takes its own line above the buttons of a meal card instead of breaking next to them ([aaf4f4d])
+
+### Added
+
+- A temporary viewport overlay (numbers only: innerHeight, visualViewport, focus, nav hidden, last resize / scroll events) behind `?debug=viewport` or five taps on the version in «Налаштування»; to be removed in 0.9.2 ([6651a89], [5704524])
+
 ## [0.9.0] — 2026-10-30
 
 "Пам'ять": Kusik remembers your foods and lasting facts about you, and everything it remembers is in «Пам'ять» behind the profile. Prompt 2026-10-30.2 (cached prefix 18 356 tokens). One migration, `20261030130000_fact_categories_and_normalized_text`: `fact_category` becomes `FOOD / SCHEDULE / TRAINING / OTHER` (existing rows mapped explicitly: `OTHER` stays, the rest becomes `FOOD`) and `user_facts` gets `text_normalized` with a partial unique index; it stops if that column already exists or if active facts repeat by normalized text (check on prod before the deploy). One new dependency, `@radix-ui/react-tabs`. No new environment variables.
@@ -471,7 +485,14 @@ Design sync with `design/` v0.5.2. Web only: no API, shared-package or migration
 
 ## 0.2.0 / 0.1.0 — see tags
 
-[Unreleased]: https://github.com/bohdan-strilets/kus/compare/v0.9.0...HEAD
+[Unreleased]: https://github.com/bohdan-strilets/kus/compare/v0.9.1...HEAD
+[0.9.1]: https://github.com/bohdan-strilets/kus/compare/v0.9.0...v0.9.1
+[da16ab2]: https://github.com/bohdan-strilets/kus/commit/da16ab22a4ff73f1a41f6c55dc16b82bffb3c5b6
+[a03878c]: https://github.com/bohdan-strilets/kus/commit/a03878cca5250951e231b03d6612034570c67350
+[26dc258]: https://github.com/bohdan-strilets/kus/commit/26dc258455b949799091ae5465894ed86b0857a9
+[aaf4f4d]: https://github.com/bohdan-strilets/kus/commit/aaf4f4d842bbc708e27f8c3a19b307ff7560d142
+[6651a89]: https://github.com/bohdan-strilets/kus/commit/6651a8962bb1b0d184e9e1c1549464cf1510e382
+[5704524]: https://github.com/bohdan-strilets/kus/commit/57045246c074b2e0258d185588508ae1d356add9
 [0.9.0]: https://github.com/bohdan-strilets/kus/compare/v0.8.2...v0.9.0
 [f893e25]: https://github.com/bohdan-strilets/kus/commit/f893e25b6459e9d7082a3c13f1e10e2e922e6785
 [1e06ea9]: https://github.com/bohdan-strilets/kus/commit/1e06ea96f2e314648bcd3e4a9f2ebd2039136e0e

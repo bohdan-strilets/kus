@@ -1,8 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common'
 import {
 	getRejectedFactNotice,
-	FACTS_LIMIT_REPLY,
+	FACTS_LIMIT_NOTICE,
 	type MemoryActions,
+	type MemoryNotice,
 	type SaveFoodInput,
 } from '@kus/shared'
 
@@ -35,7 +36,7 @@ export interface MemoryTurnParams {
 export interface MemoryTurnResult {
 	savedFoods: SavedFoodRef[]
 	/** A sentence the backend adds to (or puts instead of) the reply; null = the reply stands. */
-	notice: string | null
+	notice: MemoryNotice | null
 }
 
 export const NO_MEMORY_RESULT: MemoryTurnResult = { savedFoods: [], notice: null }
@@ -80,7 +81,7 @@ export class ChatTurnMemoryService {
 	private async saveFact(
 		{ userId, messageId, memory }: MemoryTurnParams,
 		tx: Prisma.TransactionClient,
-	): Promise<string | null> {
+	): Promise<MemoryNotice | null> {
 		if (!memory.fact) return null
 		const result = await this.facts.saveFromChat(
 			userId,
@@ -92,7 +93,7 @@ export class ChatTurnMemoryService {
 			},
 			tx,
 		)
-		if (result.kind === 'limit') return FACTS_LIMIT_REPLY
+		if (result.kind === 'limit') return FACTS_LIMIT_NOTICE
 		if (result.kind === 'rejected') {
 			this.logger.warn(`Fact not saved user=${userId} issue=${result.issue}`)
 			return getRejectedFactNotice(result.issue)

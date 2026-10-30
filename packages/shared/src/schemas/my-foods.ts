@@ -84,7 +84,12 @@ export type MyFoodsQuery = z.infer<typeof myFoodsQuerySchema>
 /** Body of PATCH /my-foods/:id — the fields of the product sheet; null clears an optional one. */
 export const updateMyFoodRequestSchema = z
 	.object({
-		name: z.string().trim().min(1).max(MY_FOOD_NAME_MAX_LENGTH).optional(),
+		// one line: the name goes into the model context (CLAUDE.md §10)
+		name: z
+			.string()
+			.transform((name) => name.replace(/\s+/g, ' ').trim())
+			.pipe(z.string().min(1).max(MY_FOOD_NAME_MAX_LENGTH))
+			.optional(),
 		per100g: myFoodPer100gSchema.optional(),
 		pieceGrams: gramsSchema.nullable().optional(),
 		defaultGrams: gramsSchema.nullable().optional(),

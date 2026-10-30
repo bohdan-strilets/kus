@@ -400,11 +400,9 @@ export class ChatTurnService {
 			},
 			tx,
 		)
-		if (result.notice !== null) {
-			await this.chatRepository.setReplyContent(
-				{ userId, id: replyId, content: applyMemoryNotice(replyText, result.notice) },
-				tx,
-			)
+		const content = result.notice === null ? replyText : applyMemoryNotice(replyText, result.notice)
+		if (content !== replyText) {
+			await this.chatRepository.setReplyContent({ userId, id: replyId, content }, tx)
 		}
 		return result.savedFoods
 	}

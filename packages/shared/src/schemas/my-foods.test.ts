@@ -94,3 +94,15 @@ describe('myFoodsQuerySchema', () => {
 		})
 	})
 })
+
+describe('updateMyFoodRequestSchema name', () => {
+	it('keeps the name on one line with single spaces', () => {
+		const result = updateMyFoodRequestSchema.safeParse({ name: '  Кабаноси\n\nTarczyński  ' })
+
+		expect(result.success && result.data.name).toBe('Кабаноси Tarczyński')
+	})
+
+	it('rejects a name of only spaces and line breaks', () => {
+		expect(updateMyFoodRequestSchema.safeParse({ name: ' \n ' }).success).toBe(false)
+	})
+})

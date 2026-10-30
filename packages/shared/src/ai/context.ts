@@ -9,7 +9,7 @@ import {
 } from './edit-context.js'
 import { type EarlierEntryContext, formatEarlierEntries } from './history-context.js'
 import type { MeasurementPoint } from './measurements.js'
-import { type FactContext, formatFacts } from './memory-context.js'
+import { type FactContext, formatFacts, toContextText } from './memory-context.js'
 import { SYSTEM_PROMPT } from './prompt.js'
 import type { ExerciseContext, TodayWorkoutContext } from './workout-context.js'
 
@@ -244,10 +244,11 @@ export const formatRecentMeasurements = (recent: readonly RecentMeasurementConte
 			]
 
 const formatMemoryFood = (food: MemoryFoodContext): string => {
-	const aliases = food.aliases.length > 0 ? ` (also: ${food.aliases.join(', ')})` : ''
+	const aliases =
+		food.aliases.length > 0 ? ` (also: ${food.aliases.map(toContextText).join(', ')})` : ''
 	const piece = food.pieceGrams === null ? '' : `; 1 piece = ${food.pieceGrams} g`
 	const usual = food.defaultGrams === null ? '' : `; usual portion ${food.defaultGrams} g`
-	return `${food.ref}: "${food.name}"${aliases} — per 100 g: ${formatMacros(food.per100g)}${piece}${usual}; category ${food.category}`
+	return `${food.ref}: "${toContextText(food.name)}"${aliases} — per 100 g: ${formatMacros(food.per100g)}${piece}${usual}; category ${food.category}`
 }
 
 const ADDRESS_FORM_LABELS: Readonly<Record<AddressForm, string>> = {

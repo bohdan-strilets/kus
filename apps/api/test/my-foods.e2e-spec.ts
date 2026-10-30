@@ -209,7 +209,8 @@ describe('my foods (e2e, real DB)', () => {
 
 			expect(foodSchema.parse(response.body).data).toMatchObject({
 				id: food.id,
-				name: 'Яблуко   Зелене',
+				// one line with single spaces: the name goes into the model context
+				name: 'Яблуко Зелене',
 				per100g: { kcal: 40, protein: 1, fat: 0, carbs: 9, fiber: null },
 				pieceGrams: 150,
 				defaultGrams: null,

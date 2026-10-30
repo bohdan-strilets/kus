@@ -6,7 +6,7 @@ import { DeleteAccountDialog } from '@/features/delete-account'
 import { ADDRESS_FORM_LABEL_KEY, EditAddressFormSheet } from '@/features/edit-address-form'
 import { SoundSettingsRows } from '@/features/sound-settings'
 import { ROUTES } from '@/shared/config'
-import { ListRow, RowGroup, ScreenHeader, Text, useViewportDebugTaps } from '@/shared/ui'
+import { ListRow, RowGroup, ScreenHeader, Text } from '@/shared/ui'
 
 /** design/docs/screens.md → Налаштування (mockups/settings.html, settings-delete-confirm.html). */
 export const SettingsPage = () => {
@@ -14,8 +14,6 @@ export const SettingsPage = () => {
 	const user = useSessionUser()
 	const [isDeleteOpen, setIsDeleteOpen] = useState(false)
 	const [isAddressOpen, setIsAddressOpen] = useState(false)
-	// temporary diagnostic (0.9.1–0.9.2): five taps on the version toggle the viewport overlay
-	const onVersionTap = useViewportDebugTaps()
 	// the session guard renders /app only with a user; this keeps the types honest
 	if (!user) return null
 
@@ -63,11 +61,9 @@ export const SettingsPage = () => {
 						}}
 					/>
 				</RowGroup>
-				<button type="button" onClick={onVersionTap} className="min-h-tap self-center">
-					<Text as="span" variant="small" tone="muted">
-						{t('settings.version', { version: __APP_VERSION__ })}
-					</Text>
-				</button>
+				<Text variant="small" tone="muted" className="self-center">
+					{t('settings.version', { version: __APP_VERSION__ })}
+				</Text>
 			</div>
 			<EditAddressFormSheet
 				isOpen={isAddressOpen}

@@ -83,5 +83,3 @@ export {
 	ToastRouteReset,
 	useToast,
 } from './toast'
-// temporary diagnostic (0.9.1–0.9.2): remove with shared/ui/viewport-debug
-export { useViewportDebugTaps } from './viewport-debug'

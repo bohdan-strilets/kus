@@ -128,7 +128,7 @@ export const EntryCard = ({
 					</Text>
 					{/* only with a handler: a button that does nothing is worse than none */}
 					{(actions || onEdit) && (
-						<div className="flex items-center justify-end gap-2">
+						<div className="flex flex-wrap items-center justify-end gap-2">
 							{actions}
 							{onEdit && (
 								<Button variant="secondary" size="sm" onClick={onEdit}>

@@ -17,8 +17,10 @@ interface RememberActionProps {
 export const RememberAction = ({ action }: RememberActionProps) => {
 	const { t } = useTranslation()
 	const { rememberable, rememberedNames, isSheetOpen, isPending } = action
+	const hasStatus = rememberedNames.length > 0
 
-	// the live region exists before the text does, so a screen reader announces the result
+	// the live region exists before the text does, so a screen reader announces the result; empty, it
+	// is sr-only and takes no line. The status is its own line above the buttons (the row wraps)
 	return (
 		<>
 			<Text
@@ -27,9 +29,11 @@ export const RememberAction = ({ action }: RememberActionProps) => {
 				variant="caption"
 				weight="bold"
 				tone="successInk"
-				className="mr-auto flex min-w-0 items-center gap-1.5"
+				className={
+					hasStatus ? 'order-first flex basis-full items-center gap-1.5 self-start' : 'sr-only'
+				}
 			>
-				{rememberedNames.length > 0 && (
+				{hasStatus && (
 					<>
 						<Icon name="check" size={ICON_SIZE.small} />
 						{getRememberedLabel(rememberedNames, t)}

@@ -6,6 +6,17 @@ All notable changes to Kusik are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.9.2] — 2026-10-30
+
+iPhone keyboard and chat fixes, measured on the device with the 0.9.1 viewport overlay (which stays until the next patch). No database migrations, no API changes, no new environment variables, no prompt change.
+
+### Fixed
+
+- The keyboard state comes from the visual viewport, not from the focus: the bottom nav hides while the visible box is ≥ 120 px shorter than the full height (or for 700 ms after a focus) and comes back only when the box has grown back, so it no longer appears over the iOS bar on close or stays hidden without a keyboard; the box is re-read every frame until it settles after viewport events, focus changes, a return from the background or a rotation; a bottom sheet on touch no longer returns the focus into a text field ([e794fcf])
+- On a phone the camera closes the keyboard before the photo picker, so the composer no longer sits under the iOS bar when the picker returns ([80fdd0c])
+- The chat stays at the bottom while «Запам'ятати», saving or deleting an entry or a measurement and «Так / Ні» on a fact proposal run; «✓ Запам'ятав» and the missing button come in one frame ([fc01e6f])
+- No dark focus ring around the «Пам'ять» list after a sheet closes on touch: the focus returns only to a control and without the ring ([109e677])
+
 ## [0.9.1] — 2026-10-30
 
 iPhone fixes after 0.9.0: toasts, the «Пам'ять» sheets and the «Запам'ятав» line; plus a temporary viewport diagnostic for the keyboard bugs of 0.9.2. No database migrations, no API changes, no new environment variables, no prompt change.
@@ -485,7 +496,12 @@ Design sync with `design/` v0.5.2. Web only: no API, shared-package or migration
 
 ## 0.2.0 / 0.1.0 — see tags
 
-[Unreleased]: https://github.com/bohdan-strilets/kus/compare/v0.9.1...HEAD
+[Unreleased]: https://github.com/bohdan-strilets/kus/compare/v0.9.2...HEAD
+[0.9.2]: https://github.com/bohdan-strilets/kus/compare/v0.9.1...v0.9.2
+[e794fcf]: https://github.com/bohdan-strilets/kus/commit/e794fcf7b3477bb2955718a04e3fed62224bff27
+[80fdd0c]: https://github.com/bohdan-strilets/kus/commit/80fdd0cafb1cd1b54868bcd6a1f7527a6e3bd434
+[fc01e6f]: https://github.com/bohdan-strilets/kus/commit/fc01e6f9b211fd2010422a5788536bcf33c2891f
+[109e677]: https://github.com/bohdan-strilets/kus/commit/109e677acaa71705380ab411a3be48a3b1183aeb
 [0.9.1]: https://github.com/bohdan-strilets/kus/compare/v0.9.0...v0.9.1
 [da16ab2]: https://github.com/bohdan-strilets/kus/commit/da16ab22a4ff73f1a41f6c55dc16b82bffb3c5b6
 [a03878c]: https://github.com/bohdan-strilets/kus/commit/a03878cca5250951e231b03d6612034570c67350

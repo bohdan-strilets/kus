@@ -108,6 +108,13 @@ export const ProfilePage = () => {
 					/>
 					<ListRow
 						size="lg"
+						leading={<ListRowIcon icon="memory" tone="fat" />}
+						label={t('profile.menu.memory')}
+						value={t('profile.menu.memoryHint')}
+						to={ROUTES.memory}
+					/>
+					<ListRow
+						size="lg"
 						leading={<ListRowIcon icon="settings" tone="fat" />}
 						label={t('profile.menu.settings')}
 						value={t('profile.menu.settingsHint')}

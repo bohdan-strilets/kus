@@ -34,3 +34,6 @@ export const ChangePasswordPage = lazy(() =>
 export const AccountRestorePage = lazy(() =>
 	import('@/pages/account-restore').then((m) => ({ default: m.AccountRestorePage })),
 )
+export const MemoryPage = lazy(() =>
+	import('@/pages/memory').then((m) => ({ default: m.MemoryPage })),
+)

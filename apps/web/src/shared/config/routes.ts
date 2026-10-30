@@ -20,6 +20,7 @@ export const PROFILE_ROUTES = {
 	settings: '/app/settings',
 	settingsPassword: '/app/settings/password',
 	accountRestore: '/app/account-restore',
+	memory: '/app/memory',
 } as const
 
 export const ROUTES = { ...TAB_ROUTES, ...PROFILE_ROUTES, ...AUTH_ROUTES } as const

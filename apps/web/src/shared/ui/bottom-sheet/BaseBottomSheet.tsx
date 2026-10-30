@@ -5,10 +5,13 @@ import { useTranslation } from 'react-i18next'
 
 import {
 	cn,
+	COARSE_POINTER_QUERY,
 	focusDialogContainer,
 	focusFirstField,
 	getViewportBoxStyle,
+	isTextField,
 	sheetVariants,
+	useMediaQuery,
 	useOverlayOpen,
 	useViewportBox,
 } from '@/shared/lib'
@@ -70,6 +73,7 @@ export const BaseBottomSheet = ({
 	const { t } = useTranslation()
 	const viewport = useViewportBox()
 	useOverlayOpen(isOpen)
+	const isTouch = useMediaQuery(COARSE_POINTER_QUERY)
 	// dragging starts only from the grabber and header, so the body can scroll and select text
 	const dragControls = useDragControls()
 
@@ -88,7 +92,9 @@ export const BaseBottomSheet = ({
 		returnFocusRef.current = null
 		if (!target || !target.isConnected || target === document.body) return
 		event.preventDefault()
-		target.focus()
+		// on touch a focused field without the keyboard is a trap: the tab bar hides and nothing types
+		if (isTouch && isTextField(target)) return
+		target.focus({ preventScroll: true })
 	}
 
 	const handleDragEnd = (_event: PointerEvent, info: PanInfo): void => {

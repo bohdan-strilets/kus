@@ -9,7 +9,7 @@ export interface ViewportBox {
 export const NO_VIEWPORT_BOX: ViewportBox = { height: null, offsetTop: 0 }
 
 /** A pinch beyond this is a zoom, not the keyboard: the visual viewport shrinks by the scale. */
-const ZOOM_EPSILON = 0.01
+export const ZOOM_EPSILON = 0.01
 
 /** Same numbers → the same object, so useSyncExternalStore doesn't re-render for nothing. */
 export const isSameBox = (a: ViewportBox, b: ViewportBox): boolean =>

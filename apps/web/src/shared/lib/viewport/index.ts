@@ -1,5 +1,5 @@
 export { getViewportBoxStyle } from './get-viewport-box-style'
-export { useIsTypingOnTouch } from './use-is-typing-on-touch'
+export { useIsKeyboardOpen } from './use-is-keyboard-open'
 export { isTextField, useIsTextFieldFocused } from './use-text-field-focus'
-export { useViewportBox } from './use-viewport-box'
+export { requestViewportResync, useViewportBox } from './use-viewport-box'
 export { type ViewportBox } from './viewport-box'

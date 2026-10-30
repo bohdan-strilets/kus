@@ -89,7 +89,8 @@ export {
 	getViewportBoxStyle,
 	isTextField,
 	useIsTextFieldFocused,
-	useIsTypingOnTouch,
+	useIsKeyboardOpen,
+	requestViewportResync,
 	useViewportBox,
 	type ViewportBox,
 } from './viewport'

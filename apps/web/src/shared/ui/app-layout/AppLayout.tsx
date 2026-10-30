@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 
-import { cn, getViewportBoxStyle, useIsTypingOnTouch, useViewportBox } from '@/shared/lib'
+import { cn, getViewportBoxStyle, useIsKeyboardOpen, useViewportBox } from '@/shared/lib'
 
 import { ViewportDebug } from '../viewport-debug'
 
@@ -28,8 +28,8 @@ export const AppLayout = ({
 	hasRaisedNav = false,
 }: AppLayoutProps) => {
 	const viewport = useViewportBox()
-	const isTyping = useIsTypingOnTouch()
-	const hasNav = bottomNav !== undefined && !isTyping
+	const isKeyboardOpen = useIsKeyboardOpen()
+	const hasNav = bottomNav !== undefined && !isKeyboardOpen
 
 	return (
 		<div
@@ -48,7 +48,7 @@ export const AppLayout = ({
 							? hasRaisedNav
 								? 'pb-nav-room-raised'
 								: 'pb-nav-room'
-							: !isTyping && 'pb-safe-bottom',
+							: !isKeyboardOpen && 'pb-safe-bottom',
 					)}
 				>
 					{children}

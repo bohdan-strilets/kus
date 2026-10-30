@@ -3,15 +3,13 @@ import type { FoodEntryResponse } from '@kus/shared'
 import { act, cleanup, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import type * as myFoodEntity from '@/entities/my-food'
-import { postRememberEntries } from '@/entities/my-food'
 import type * as sharedLib from '@/shared/lib'
 import { renderHookWithProviders } from '@/shared/testing'
 
+import { postRememberEntries } from '../api/remember-entries'
 import { useRememberAction } from './use-remember-action'
 
-vi.mock('@/entities/my-food', async (importOriginal) => ({
-	...(await importOriginal<typeof myFoodEntity>()),
+vi.mock('../api/remember-entries', () => ({
 	postRememberEntries: vi.fn(),
 }))
 vi.mock('@/shared/lib', async (importOriginal) => ({
@@ -77,6 +75,20 @@ describe('useRememberAction', () => {
 
 		expect(result.current.rememberedNames).toEqual(['Кабаноси', 'Хліб'])
 		expect(result.current.isSheetOpen).toBe(false)
+	})
+
+	it('adds a second save to the line instead of replacing the first', async () => {
+		postMock.mockResolvedValue({ created: [], skipped: [] })
+		const { result } = renderHookWithProviders(() => useRememberAction(SEVERAL))
+
+		await act(async () => {
+			await result.current.submit(['a'])
+		})
+		await act(async () => {
+			await result.current.submit(['b'])
+		})
+
+		expect(result.current.rememberedNames).toEqual(['Кабаноси', 'Хліб'])
 	})
 
 	it('keeps the button and the sheet when the request fails', async () => {

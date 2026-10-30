@@ -30,9 +30,9 @@ export const useRememberAction = (entries: readonly FoodEntryResponse[]): Rememb
 		const isDone = await remember(entryIds)
 		if (!isDone) return
 		setIsSheetOpen(false)
-		setRememberedNames(
-			entries.filter((entry) => entryIds.includes(entry.id)).map((entry) => entry.name),
-		)
+		// a second save in the same card adds to the line instead of replacing it
+		const saved = entries.filter((entry) => entryIds.includes(entry.id)).map((entry) => entry.name)
+		setRememberedNames((previous) => [...previous, ...saved])
 	}
 
 	const press = (): void => {

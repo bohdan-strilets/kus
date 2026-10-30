@@ -1,4 +1,3 @@
-export { postRememberEntries } from './api/remember-entries'
 export { formatMyFoodLine } from './lib/format-my-food-line'
 export {
 	filterMyFoods,

@@ -3,11 +3,12 @@ import { useTranslation } from 'react-i18next'
 
 import { DAY_QUERY_KEY } from '@/entities/day'
 import { MESSAGES_QUERY_KEY } from '@/entities/message'
-import { MY_FOODS_QUERY_KEY, postRememberEntries } from '@/entities/my-food'
+import { MY_FOODS_QUERY_KEY } from '@/entities/my-food'
 import { getApiError } from '@/shared/api'
 import { playSound } from '@/shared/lib'
 import { useToast } from '@/shared/ui'
 
+import { postRememberEntries } from '../api/remember-entries'
 import { getRememberErrorKey } from '../lib/get-remember-error-key'
 
 export interface RememberEntries {

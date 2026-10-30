@@ -9,8 +9,9 @@ import { ScreenHeader } from '@/shared/ui'
 
 import { getMemorySubtitle } from '../lib/get-memory-subtitle'
 import { getMemoryTab } from '../lib/get-memory-tab'
+import type { MemoryTab } from '../lib/memory-tab.types'
 import { FactsTab } from './FactsTab'
-import { type MemoryTab, MemoryTabs } from './MemoryTabs'
+import { MemoryTabs } from './MemoryTabs'
 import { ProductsTab } from './ProductsTab'
 
 /**

@@ -2,9 +2,8 @@ import * as Tabs from '@radix-ui/react-tabs'
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import type { MemoryTab } from '../lib/memory-tab.types'
 import { memoryTabVariants } from './memory-tabs.variants'
-
-export type MemoryTab = 'products' | 'facts'
 
 const TAB_ORDER: readonly MemoryTab[] = ['products', 'facts']
 

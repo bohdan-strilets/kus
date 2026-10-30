@@ -1,0 +1,54 @@
+import type { FoodEntryResponse } from '@kus/shared'
+import { useState } from 'react'
+
+import { getRememberableEntries } from '../lib/get-rememberable-entries'
+import { useRememberEntries } from './use-remember-entries'
+
+export interface RememberActionState {
+	/** The new lines of the card. */
+	rememberable: FoodEntryResponse[]
+	/** Names saved from this card; they outlive the button (the refetch drops `canRemember`). */
+	rememberedNames: readonly string[]
+	isSheetOpen: boolean
+	isPending: boolean
+	/** False when there is neither a button nor a result line to show. */
+	isVisible: boolean
+	setIsSheetOpen: (isOpen: boolean) => void
+	/** One new line is saved at once, several open the sheet. */
+	press: () => void
+	submit: (entryIds: readonly string[]) => Promise<void>
+}
+
+/** State of «Запам'ятати» on a meal card. Lives in the card, so the result line survives the refetch. */
+export const useRememberAction = (entries: readonly FoodEntryResponse[]): RememberActionState => {
+	const { remember, isPending } = useRememberEntries()
+	const [rememberedNames, setRememberedNames] = useState<readonly string[]>([])
+	const [isSheetOpen, setIsSheetOpen] = useState(false)
+	const rememberable = getRememberableEntries(entries)
+
+	const submit = async (entryIds: readonly string[]): Promise<void> => {
+		const isDone = await remember(entryIds)
+		if (!isDone) return
+		setIsSheetOpen(false)
+		setRememberedNames(
+			entries.filter((entry) => entryIds.includes(entry.id)).map((entry) => entry.name),
+		)
+	}
+
+	const press = (): void => {
+		const [only] = rememberable
+		if (rememberable.length === 1 && only) void submit([only.id])
+		else setIsSheetOpen(true)
+	}
+
+	return {
+		rememberable,
+		rememberedNames,
+		isSheetOpen,
+		isPending,
+		isVisible: rememberable.length > 0 || rememberedNames.length > 0,
+		setIsSheetOpen,
+		press,
+		submit,
+	}
+}

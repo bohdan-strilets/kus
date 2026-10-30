@@ -13,6 +13,8 @@ export const buttonVariants = cva(
 			variant: {
 				primary: 'bg-primary font-bold text-white',
 				secondary: 'bg-secondary font-semibold text-ink',
+				/** «Запам'ятати» next to «Редагувати»: primary-deep on primary-soft keeps the contrast */
+				soft: 'bg-primary-soft font-bold text-primary-deep',
 				dark: 'bg-ink font-bold text-white',
 				danger: 'bg-danger font-bold text-white',
 				/** a link on a white card: primary 700, underlined («Спершу експортувати дані») */

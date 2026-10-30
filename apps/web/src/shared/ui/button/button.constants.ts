@@ -4,6 +4,7 @@ export const BUTTON_LOADER_SIZE = 20
 export const LOADER_TONE_BY_VARIANT = {
 	primary: 'onPrimary',
 	secondary: 'brand',
+	soft: 'brand',
 	dark: 'onPrimary',
 	danger: 'onPrimary',
 	text: 'brand',

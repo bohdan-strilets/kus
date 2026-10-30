@@ -19,6 +19,11 @@ export interface EntryCardProps {
 	/** EntryItem lines and an open ClarifyCard between them. */
 	children: ReactNode
 	onEdit?: () => void
+	/**
+	 * Before «Редагувати»: a feature's action («Запам'ятати») or its result line. With it the footer
+	 * takes two rows (macros, then the actions) as in mockups/chat-remember-product.html.
+	 */
+	actions?: ReactNode
 	/** Right next to Kusik's head (no words above it): the bubble tail at the bottom left. */
 	hasTail?: boolean
 	/** A small muted line under the macros: «Вечеря разом: 917 ккал». */
@@ -48,6 +53,7 @@ export const EntryCard = ({
 	macros,
 	children,
 	onEdit,
+	actions,
 	hasTail = true,
 	footnote,
 	badge,
@@ -107,7 +113,12 @@ export const EntryCard = ({
 				>
 					{children}
 				</motion.div>
-				<footer className="flex items-center justify-between px-3.5 pt-2 pb-3">
+				<footer
+					className={cn(
+						'flex px-3.5 pt-2 pb-3',
+						actions ? 'flex-col gap-2' : 'items-center justify-between',
+					)}
+				>
 					<Text as="span" variant="small" weight="regular" tone="muted" isTabular>
 						{t(isApprox ? 'entry.macroLineApprox' : 'entry.macroLine', {
 							protein: formatInteger(macros.protein),
@@ -116,10 +127,15 @@ export const EntryCard = ({
 						})}
 					</Text>
 					{/* only with a handler: a button that does nothing is worse than none */}
-					{onEdit && (
-						<Button variant="secondary" size="sm" onClick={onEdit}>
-							{t('entry.edit')}
-						</Button>
+					{(actions || onEdit) && (
+						<div className="flex items-center justify-end gap-2">
+							{actions}
+							{onEdit && (
+								<Button variant="secondary" size="sm" onClick={onEdit}>
+									{t('entry.edit')}
+								</Button>
+							)}
+						</div>
 					)}
 				</footer>
 				{footnote && (

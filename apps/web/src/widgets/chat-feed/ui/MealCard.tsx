@@ -16,6 +16,7 @@ import {
 import { freshKey, useFreshOnMount, useFreshReplyStore } from '@/entities/message'
 import { useAnswerClarification } from '@/features/answer-clarify'
 import { useEditEntryStore } from '@/features/edit-entry'
+import { RememberAction, useRememberAction } from '@/features/save-my-food'
 import { formatTime } from '@/shared/lib'
 
 import type { ClarificationPlacement } from '../lib/get-clarification-placement'
@@ -60,6 +61,7 @@ export const MealCard = ({
 	const isFresh = useFreshOnMount(freshKey.meal(meal.id))
 	const { answer, pending } = useAnswerClarification()
 	const openEditor = useEditEntryStore((state) => state.open)
+	const remember = useRememberAction(meal.entries)
 	const [openedIds, setOpenedIds] = useState<ReadonlySet<string>>(() =>
 		isLatestReply ? getOpenIds(clarifications) : new Set(),
 	)
@@ -102,6 +104,7 @@ export const MealCard = ({
 				) : undefined
 			}
 			footnote={getMealTotalNote(meal, t) ?? undefined}
+			actions={remember.isVisible ? <RememberAction action={remember} /> : undefined}
 			// one line opens its form at once; several — the picker first
 			onEdit={() => {
 				openEditor({

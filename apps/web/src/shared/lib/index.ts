@@ -88,6 +88,7 @@ export {
 } from './sound'
 export { focusDialogContainer } from './focus-dialog-container'
 export { focusFirstField } from './focus-first-field'
+export { isFocusReturnTarget } from './is-focus-return-target'
 export { keepFieldFocus } from './keep-field-focus'
 export { limitDecimals } from './limit-decimals'
 export { DEFAULT_FLAG_DELAY_MS, useDelayedFlag } from './use-delayed-flag'

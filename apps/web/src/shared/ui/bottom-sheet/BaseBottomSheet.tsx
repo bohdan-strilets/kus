@@ -9,6 +9,7 @@ import {
 	focusDialogContainer,
 	focusFirstField,
 	getViewportBoxStyle,
+	isFocusReturnTarget,
 	isTextField,
 	sheetVariants,
 	useMediaQuery,
@@ -92,9 +93,15 @@ export const BaseBottomSheet = ({
 		returnFocusRef.current = null
 		if (!target || !target.isConnected || target === document.body) return
 		event.preventDefault()
-		// on touch a focused field without the keyboard is a trap: the tab bar hides and nothing types
-		if (isTouch && isTextField(target)) return
-		target.focus({ preventScroll: true })
+		if (!isTouch) {
+			target.focus({ preventScroll: true })
+			return
+		}
+		// on touch a focused field without the keyboard is a trap: the tab bar hides and nothing types;
+		// a tapped container (a tab panel) is no place to return to — Safari rings the whole list
+		if (isTextField(target) || !isFocusReturnTarget(target)) return
+		// a finger never asked for a ring: focus for screen readers, without the outline
+		target.focus({ preventScroll: true, focusVisible: false })
 	}
 
 	const handleDragEnd = (_event: PointerEvent, info: PanInfo): void => {

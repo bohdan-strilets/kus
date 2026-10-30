@@ -15,6 +15,7 @@ import { AuthModule } from './modules/auth/auth.module'
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard'
 import { ChatModule } from './modules/chat/chat.module'
 import { DaysModule } from './modules/days/days.module'
+import { FactsModule } from './modules/facts/facts.module'
 import { FoodEntriesModule } from './modules/food-entries/food-entries.module'
 import { HealthModule } from './modules/health/health.module'
 import { MemoryModule } from './modules/memory/memory.module'
@@ -50,6 +51,7 @@ const DEFAULT_THROTTLE = { ttl: minutes(1), limit: 100 }
 		DaysModule,
 		FoodEntriesModule,
 		MeasurementEditsModule,
+		FactsModule,
 		MemoryModule,
 		WorkoutsModule,
 		ProgressModule,

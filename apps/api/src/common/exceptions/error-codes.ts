@@ -79,6 +79,16 @@ export const ErrorCodes = {
 	/** Another active food of the user has this name; details: { existingId, name }. */
 	MY_FOOD_EXISTS: 'MY_FOOD_EXISTS',
 
+	// facts about the user
+	/** No active fact with this id for this user, or not in the state the route needs (another user's reads the same). */
+	FACT_NOT_FOUND: 'FACT_NOT_FOUND',
+	/** Another active fact of the user has this text; details: { existingId }. */
+	FACT_EXISTS: 'FACT_EXISTS',
+	/** 30 confirmed facts already; details: { max }. */
+	FACTS_LIMIT_REACHED: 'FACTS_LIMIT_REACHED',
+	/** «Так / Ні» was already answered the other way. */
+	FACT_NOT_PROPOSED: 'FACT_NOT_PROPOSED',
+
 	// storage
 	/** The object storage failed or is unreachable (photos); the request can be retried. */
 	STORAGE_UNAVAILABLE: 'STORAGE_UNAVAILABLE',

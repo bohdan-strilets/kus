@@ -6,6 +6,30 @@ All notable changes to Kusik are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.9.0] — 2026-10-30
+
+"Пам'ять": Kusik remembers your foods and lasting facts about you, and everything it remembers is in «Пам'ять» behind the profile. Prompt 2026-10-30.2 (cached prefix 18 356 tokens). One migration, `20261030130000_fact_categories_and_normalized_text`: `fact_category` becomes `FOOD / SCHEDULE / TRAINING / OTHER` (existing rows mapped explicitly: `OTHER` stays, the rest becomes `FOOD`) and `user_facts` gets `text_normalized` with a partial unique index; it stops if that column already exists or if active facts repeat by normalized text (check on prod before the deploy). One new dependency, `@radix-ui/react-tabs`. No new environment variables.
+
+### Added
+
+- «Мої продукти»: `save_food` in the chat — from the user's words, a label or an item of the same answer's `log_food` (`fromItemIndex`), `updateRef` only after the user agrees to update; a saved food without an amount is logged as its usual portion, else one piece ([f893e25], [1e06ea9])
+- `/api/v1/my-foods`: the list with search by name and aliases, PATCH (a taken name → `409 MY_FOOD_EXISTS` with the existing food), soft DELETE and restore, `POST /my-foods/from-entries` for the «Запам'ятати» button; another user's food is `404 MY_FOOD_NOT_FOUND`; entry responses carry `canRemember`, true again once the linked food is deleted ([4a74767], [512f2d8])
+- Facts about the user: `save_fact` (an explicit «запам'ятай, що …» is saved at once, something lasting from the conversation is only a proposal «Запам'ятати? Так / Ні»), `forget_fact`; at most 30 confirmed facts, one open proposal; no health data, body numbers or instructions (a shared fact guard), fixed sentences in the reply when a fact is not saved ([847511a], [f893e25], [1959d3b], [a487a67])
+- `/api/v1/facts`: the list, PATCH, soft DELETE and restore, `POST /facts/:id/answer` for «Так / Ні»; a daily cleanup at 03:15 removes deleted facts after 30 days and unanswered or rejected proposals after 7 ([847511a])
+- The model context: «User facts» (f-refs, as data, not instructions) and the open «Proposed fact» in the variable part; saved food names and facts are put on one line without double quotes ([f893e25], [a487a67])
+- Web: «Запам'ятати» on the meal card with «Що запам'ятати?» for several entries; the «Пам'ять» screen (`/app/memory`, tabs «Продукти / Про тебе», search past 15 foods, the product and fact sheets, delete with «Скасувати»); the fact proposal under Kusik's reply; `?tab=facts` opens «Про тебе» ([cfb2321], [955b5d2], [a4bf5bd], [71ecb55])
+- Eval: 27 cases for the memory tools and the prompt backlog, memory expectations and a «пам'ять» column; the language check reads Polish without diacritics ([dba9247], [dc7112f])
+
+### Changed
+
+- The tool schemas the model sees drop string lengths and numeric bounds (zod still checks them); the memory tools are bare, `save_food.category` without the list; shorter `show_day`, `close_day`, `show_stats` and `reply` descriptions ([ee400be], [f893e25])
+- Prompt: after a delete Kusik says the entry can be brought back with words; two sessions in one message are two workouts; no double gender forms in neutral («готовий(-а)», «їв(-ла)», «активний чи активна») ([1e06ea9])
+- The checkbox moved to `shared/ui`; the remember request and the memory tab type follow FSD ([6037de4], [70c71a4])
+
+### Fixed
+
+- «Пам'ять» refreshes after «запам'ятай» / «забудь» in the chat; a second «Зберегти» tap is ignored while saving; visible keyboard focus on its rows; an underlined «Змінити в «Пам'яті»»; a shorter limit text on the «Пам'ять» screen itself ([23431a4], [0e628a7], [2eb9000])
+
 ## [0.8.2] — 2026-10-29
 
 A small release: the «Тренування» tab is switched on, and the chat stays at the bottom after a workout is deleted from its card. No database migrations, no new environment variables, no API changes.
@@ -447,7 +471,27 @@ Design sync with `design/` v0.5.2. Web only: no API, shared-package or migration
 
 ## 0.2.0 / 0.1.0 — see tags
 
-[Unreleased]: https://github.com/bohdan-strilets/kus/compare/v0.8.2...HEAD
+[Unreleased]: https://github.com/bohdan-strilets/kus/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/bohdan-strilets/kus/compare/v0.8.2...v0.9.0
+[f893e25]: https://github.com/bohdan-strilets/kus/commit/f893e25b6459e9d7082a3c13f1e10e2e922e6785
+[1e06ea9]: https://github.com/bohdan-strilets/kus/commit/1e06ea96f2e314648bcd3e4a9f2ebd2039136e0e
+[4a74767]: https://github.com/bohdan-strilets/kus/commit/4a74767fbac4fd9f5adf85d4b9c19e2c99e14149
+[512f2d8]: https://github.com/bohdan-strilets/kus/commit/512f2d80a07540714a6192d62534ff336a3f0aac
+[847511a]: https://github.com/bohdan-strilets/kus/commit/847511a551dd875ad7c263b8b4e44200d03f9db2
+[1959d3b]: https://github.com/bohdan-strilets/kus/commit/1959d3bad49e489d1d66b9b5b39893d731873295
+[a487a67]: https://github.com/bohdan-strilets/kus/commit/a487a67c277822f232094461cc45ea764a450028
+[cfb2321]: https://github.com/bohdan-strilets/kus/commit/cfb23214763a0c145b8e095e52e613ab3f89b75b
+[955b5d2]: https://github.com/bohdan-strilets/kus/commit/955b5d248e09a2cc60d3c76fe00c7b714f7bcd6c
+[a4bf5bd]: https://github.com/bohdan-strilets/kus/commit/a4bf5bda006ee827e3c3cd376c95fa76f940f9b8
+[71ecb55]: https://github.com/bohdan-strilets/kus/commit/71ecb55e50a18b1ab064214f8b8ab022a16b43da
+[dba9247]: https://github.com/bohdan-strilets/kus/commit/dba92478da1bb97470b6f235f329042d9445ad78
+[dc7112f]: https://github.com/bohdan-strilets/kus/commit/dc7112f490b6b5deebe2a907399111ad25c0e8cd
+[ee400be]: https://github.com/bohdan-strilets/kus/commit/ee400be79112468866ad2c194fca48c0d15addb6
+[6037de4]: https://github.com/bohdan-strilets/kus/commit/6037de4af222718d6542160a24611fc6daa025a4
+[70c71a4]: https://github.com/bohdan-strilets/kus/commit/70c71a4746facf4339aafbff61d2119957f85bdd
+[23431a4]: https://github.com/bohdan-strilets/kus/commit/23431a4be2443ddcc942afe22bf46e13846f38c0
+[0e628a7]: https://github.com/bohdan-strilets/kus/commit/0e628a79dd1d0983889e9d60c911d86e3cc8cd23
+[2eb9000]: https://github.com/bohdan-strilets/kus/commit/2eb90003acf5b66ecd31250e1b31f17991a19f20
 [0.8.2]: https://github.com/bohdan-strilets/kus/compare/v0.8.1...v0.8.2
 [36673bd]: https://github.com/bohdan-strilets/kus/commit/36673bd4d8dabbbc839db39e22c07643b3ee564e
 [1b5e6ca]: https://github.com/bohdan-strilets/kus/commit/1b5e6cad41ecf7bbf85b938b9bdee947f8a4f7de

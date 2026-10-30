@@ -202,6 +202,20 @@ export const WORKOUT_CASES: EvalCase[] = [
 		reference: 'One log_workout per session: a morning run and an evening gym are two workouts',
 	},
 	{
+		id: 'workout-two-sessions-2',
+		text: 'вранці басейн 40 хв, а після роботи зал: жим 70 3×8',
+		context: atClock('2026-10-07 22:10, Wednesday'),
+		expect: {
+			decision: 'workout',
+			workouts: [
+				{ exercises: [{ nameIncludes: 'плав', kind: 'CARDIO', durationMin: 40 }] },
+				{ exercises: [{ nameIncludes: 'жим', kind: 'STRENGTH', sets: 3, weightKg: 70, reps: 8 }] },
+			],
+		},
+		reference:
+			'Another wording of two sessions (a swim in the morning, a gym after work): two log_workout',
+	},
+	{
 		id: 'workout-known-exercise',
 		text: 'жим 80 3×8',
 		context: WITH_DICTIONARY,
@@ -255,6 +269,20 @@ export const WORKOUT_CASES: EvalCase[] = [
 		context: WITH_WORKOUT,
 		expect: { decision: 'edit', edits: { deleted: ['w1'] }, workouts: [] },
 		reference: 'delete_entry with the w-ref plus a reply',
+	},
+	{
+		id: 'workout-deleted-hint',
+		text: 'видали тренування',
+		context: WITH_WORKOUT,
+		expect: {
+			decision: 'edit',
+			edits: { deleted: ['w1'] },
+			workouts: [],
+			replyIncludesAny: ['поверн'],
+			replyExcludes: ['заново'],
+		},
+		reference:
+			'After a delete the reply says it can be brought back with «поверни …», never «запиши заново»',
 	},
 	{
 		id: 'workout-restore',
@@ -397,5 +425,17 @@ export const WORKOUT_CASES: EvalCase[] = [
 		expect: { decision: 'reply', replyExcludes: ['не можу допомогти'] },
 		reference:
 			'neutral: even if the user writes in the masculine, no gendered form about them in the reply',
+	},
+	{
+		id: 'neutral-no-double-forms',
+		text: 'я вже поїв і готовий до тренування, що порадиш?',
+		context: { addressForm: 'NEUTRAL' },
+		expect: {
+			decision: 'reply',
+			// the run's gender check (findGenderedForms) reports the same double forms
+			replyExcludes: ['(-а)', '(-ла)', '(-ий)', '(а)', '(ла)'],
+		},
+		reference:
+			'Neutral address: no «готовий(-а)» / «поїв(-ла)» double forms, the reply is worded without gender',
 	},
 ]

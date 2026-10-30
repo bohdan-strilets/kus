@@ -192,6 +192,8 @@ export interface ModelSummary {
 	measurements: RateStats
 	/** Cases with expected trainings whose logged set matched exactly (none expected = none logged). */
 	workouts: RateStats
+	/** Cases with expected memory calls or items from a saved food whose calls all matched. */
+	memory: RateStats
 	/** Cases with expected log/item/card/deleted days or item count whose calls all matched. */
 	details: RateStats
 	/** Cases with expected sources whose every logged item carries one of them (labels → LABEL). */

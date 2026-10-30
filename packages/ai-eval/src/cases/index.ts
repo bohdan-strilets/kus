@@ -10,6 +10,8 @@ import { EXACT_CASES } from './exact.cases.js'
 import { FOREIGN_VOICE_CASES } from './foreign-voices.cases.js'
 import { MEAL_TYPE_CASES } from './meal-type.cases.js'
 import { MEASUREMENT_CASES } from './measurement.cases.js'
+import { MEMORY_FACT_CASES } from './memory-facts.cases.js'
+import { MEMORY_FOOD_CASES } from './memory-foods.cases.js'
 import { MEMORY_OVERRIDE_CASES } from './memory-override.cases.js'
 import { loadHoldoutCases, loadPrivateCases } from './private-cases.js'
 import { RANGE_CASES } from './range.cases.js'
@@ -21,6 +23,7 @@ export type {
 	ExpectedDecision,
 	ExpectedDeletedMeasurement,
 	ExpectedEdits,
+	ExpectedMemory,
 	ExpectedMeasurement,
 	ExpectedValue,
 } from './case.types.js'
@@ -41,6 +44,8 @@ export const REPO_CASES: EvalCase[] = [
 	...FOREIGN_VOICE_CASES,
 	...SAFETY_CASES,
 	...WORKOUT_CASES,
+	...MEMORY_FOOD_CASES,
+	...MEMORY_FACT_CASES,
 ]
 
 /** Written, but need a context the contract doesn't have yet; not run until it does. None now. */

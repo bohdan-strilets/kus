@@ -7,7 +7,7 @@ import {
 	type TodayEntryContext,
 } from '@kus/shared'
 
-import type { ExpectedValue } from './case.types.js'
+import type { ExpectedMemory, ExpectedValue } from './case.types.js'
 
 const DECIMALS = 10
 
@@ -20,6 +20,9 @@ export const per100 = (valuePer100g: number, grams: number): ExpectedValue => ({
 })
 
 export const exact = (value: number): ExpectedValue => ({ exact: value })
+
+/** The memory expectation "no memory call at all": no save_food, no save_fact, no forget_fact. */
+export const NO_MEMORY_CALLS: ExpectedMemory = { foods: [], fact: null, forgets: [] }
 
 export const range = (min: number, max: number): ExpectedValue => ({ min, max })
 

@@ -70,6 +70,8 @@ describe('detectLanguage', () => {
 		['zjadłam dwa jajka', 'pl'],
 		['съел борщ и хлеб, всё', 'ru'],
 		['Вот сводка за последние 10 дней.', 'ru'],
+		['Zapisane: owsianka na mleku i banan. Smacznego!', 'pl'],
+		['nie wiem ile to ma kalorii', 'pl'],
 	] as const)('%s → %s', (text, language) => {
 		expect(detectLanguage(text)).toBe(language)
 	})
@@ -77,6 +79,7 @@ describe('detectLanguage', () => {
 	it.each([
 		'гречка 200',
 		'kebab 400 g',
+		'kebab with fries, 400 kcal',
 		'зjadłam і съел',
 		'Записав вечерю, усе добре',
 		'чи можна jeść jajka codziennie?',
@@ -107,5 +110,13 @@ describe('isNameFromText', () => {
 describe('getReplyOpening', () => {
 	it('takes the first three words in lower case', () => {
 		expect(getReplyOpening('Ось твій місяць. Тримай!')).toBe('ось твій місяць')
+	})
+})
+
+describe('findGenderedForms: double forms in neutral', () => {
+	it('reports «(-а)» and «(-ла)» endings', () => {
+		expect(findGenderedForms('Ти вже поїв(-ла)?')).toContain('поїв(-ла)')
+		expect(findGenderedForms('Готовий(-а) до тренування?')).toContain('готовий(-а)')
+		expect(findGenderedForms('Ти поїв(ла) вже?')).toContain('поїв(ла)')
 	})
 })

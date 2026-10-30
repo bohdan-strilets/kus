@@ -2,9 +2,12 @@ import {
 	addressFormSchema,
 	COPY_REF_PATTERN,
 	exerciseKindSchema,
+	FACT_REF_PATTERN,
+	factCategorySchema,
 	foodCategorySchema,
 	foodSourceSchema,
 	loggableMealTypeSchema,
+	MEMORY_REF_PATTERN,
 	measurementKindSchema,
 	statsDaysSchema,
 	workoutPlaceSchema,
@@ -131,6 +134,45 @@ export const expectedWorkoutSchema = z.object({
 	exercises: z.array(expectedWorkoutExerciseSchema).min(1),
 })
 
+/** One save_food the answer must contain; every field given is checked. */
+export const expectedSavedFoodSchema = z.object({
+	/** Lower-case stem the saved name must contain ("кабаноси"). */
+	nameIncludes: z.string().min(1).optional(),
+	/** The log_food item the values are taken from; null = standalone values. */
+	fromItemIndex: z.int().nonnegative().nullable().optional(),
+	/** The m-ref being updated; null = a new food. */
+	updateRef: z.string().regex(MEMORY_REF_PATTERN).nullable().optional(),
+	hasPer100g: z.boolean().optional(),
+	pieceGrams: z.number().positive().nullable().optional(),
+	defaultGrams: z.number().positive().nullable().optional(),
+	category: foodCategorySchema.optional(),
+})
+
+/** The save_fact the answer must contain; every field given is checked. */
+export const expectedFactSchema = z.object({
+	explicit: z.boolean().optional(),
+	category: factCategorySchema.optional(),
+	/** Lower-case substrings; the saved text must contain at least one. */
+	textIncludesAny: z.array(z.string().min(1)).min(1).optional(),
+	/** Lower-case substrings the saved text must not contain ("алерг"). */
+	textExcludes: z.array(z.string().min(1)).optional(),
+	/** No save_fact is fine too; a saved one must match the fields above. */
+	isOptional: z.boolean().optional(),
+})
+
+/**
+ * What the memory tools must do. Unset part = not judged; `foods: []` / `forgets: []` = none,
+ * `fact: null` = no save_fact (NO_MEMORY_CALLS in case-builders.ts sets all three).
+ */
+export const expectedMemorySchema = z.object({
+	foods: z.array(expectedSavedFoodSchema).optional(),
+	fact: expectedFactSchema.nullable().optional(),
+	forgets: z.array(z.string().regex(FACT_REF_PATTERN)).optional(),
+})
+
+export type ExpectedSavedFood = z.infer<typeof expectedSavedFoodSchema>
+export type ExpectedFact = z.infer<typeof expectedFactSchema>
+export type ExpectedMemory = z.infer<typeof expectedMemorySchema>
 export type ExpectedWorkoutExercise = z.infer<typeof expectedWorkoutExerciseSchema>
 export type ExpectedWorkout = z.infer<typeof expectedWorkoutSchema>
 
@@ -199,6 +241,14 @@ export const evalCaseSchema = z
 			deletedMeasurements: z.array(expectedDeletedMeasurementSchema).optional(),
 			/** Every logged item must carry one of these sources (a label photo → LABEL, a plate → ESTIMATE). */
 			sources: z.array(foodSourceSchema).min(1).optional(),
+			/** The memory calls: save_food, save_fact, forget_fact. */
+			memory: expectedMemorySchema.optional(),
+			/** Items logged from a saved food: its m-ref, source MEMORY and exactly these grams. */
+			memoryItems: z
+				.array(
+					z.object({ ref: z.string().regex(MEMORY_REF_PATTERN), grams: z.number().positive() }),
+				)
+				.optional(),
 		}),
 		/** Where the numbers come from (label text, USDA FDC, typical portion). */
 		reference: z.string().min(1),

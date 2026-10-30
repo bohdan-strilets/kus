@@ -6,6 +6,7 @@ import {
 	isDecisionCorrectWithMemory,
 	MISSED_CLARIFY_LABELS,
 } from './clarify-analysis.js'
+import { hasMemoryExpectations, isCaseMemoryCorrect } from './memory-metrics.js'
 import {
 	getErrorPct,
 	isCallDetailsCorrect,
@@ -35,8 +36,8 @@ const formatRate = ({ correct, total }: RateStats): string =>
 
 export const formatSummaryTable = (summaries: ModelSummary[]): string => {
 	const header = [
-		'| Модель | ккал точні: сер / мед | ккал діапазон | білок точні | білок діапазон | категорії | прийоми | правки | виміри | тренування | дні й деталі | джерела | рішення | без інструмента | повтор / збій / обрізано | $/запит | мс p50 / p95 | токени in / out | cached/запит |',
-		'|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|',
+		'| Модель | ккал точні: сер / мед | ккал діапазон | білок точні | білок діапазон | категорії | прийоми | правки | виміри | тренування | пам’ять | дні й деталі | джерела | рішення | без інструмента | повтор / збій / обрізано | $/запит | мс p50 / p95 | токени in / out | cached/запит |',
+		'|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|',
 	]
 	const rows = summaries.map((summary) => {
 		const { inputPerCase, outputPerCase, cachedPerCase } = summary.tokens
@@ -52,6 +53,7 @@ export const formatSummaryTable = (summaries: ModelSummary[]): string => {
 			formatRate(summary.edits),
 			formatRate(summary.measurements),
 			formatRate(summary.workouts),
+			formatRate(summary.memory),
 			formatRate(summary.details),
 			formatRate(summary.sources),
 			formatRate(summary.decisions),
@@ -127,6 +129,16 @@ const describeMiss = (evalCase: EvalCase, result: CaseResult): Miss[] => {
 		misses.push({
 			caseId: evalCase.id,
 			issue: `рішення: виміри ${JSON.stringify(result.measurements)}`,
+			errorPct: null,
+		})
+	}
+	if (hasMemoryExpectations(evalCase) && !isCaseMemoryCorrect(evalCase, result)) {
+		const { savedFoods, facts, forgets } = result.calls
+		// the texts of a private or hold-out case stay out of the terminal
+		const got = isHiddenCaseId(evalCase.id) ? '…' : JSON.stringify({ savedFoods, facts, forgets })
+		misses.push({
+			caseId: evalCase.id,
+			issue: `рішення: пам'ять ${got}, позицій ${result.items.length}`,
 			errorPct: null,
 		})
 	}

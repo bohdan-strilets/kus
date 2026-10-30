@@ -9,6 +9,7 @@ import type {
 	MeasuredItem,
 	ModelSummary,
 } from './eval.types.js'
+import { hasMemoryExpectations, isCaseMemoryCorrect } from './memory-metrics.js'
 import { detectLanguage } from './reply-checks.js'
 import { isWorkoutsCorrect } from './workout-metrics.js'
 
@@ -318,6 +319,13 @@ export const summarize = (model: string, pairs: Pair[]): ModelSummary => {
 					evalCase.expect.workouts !== undefined && isCaseWorkoutsCorrect(evalCase, result),
 			).length,
 			total: pairs.filter(({ evalCase }) => evalCase.expect.workouts !== undefined).length,
+		},
+		memory: {
+			correct: pairs.filter(
+				({ evalCase, result }) =>
+					hasMemoryExpectations(evalCase) && isCaseMemoryCorrect(evalCase, result),
+			).length,
+			total: pairs.filter(({ evalCase }) => hasMemoryExpectations(evalCase)).length,
 		},
 		details: {
 			correct: pairs.filter(

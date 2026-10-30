@@ -116,8 +116,37 @@ const RUSSIAN_WORDS = new Set([
 const CYRILLIC_PATTERN = /\p{Script=Cyrillic}/u
 const LATIN_PATTERN = /\p{Script=Latin}/u
 
+/**
+ * Polish words that need no diacritics: a model may skip them ("Zapisane: owsianka na mleku").
+ * None of them is English, so a plain "kebab 400 g" stays unknown.
+ */
+const POLISH_WORDS = new Set([
+	'nie',
+	'jest',
+	'sie',
+	'czy',
+	'oraz',
+	'dla',
+	'juz',
+	'jeszcze',
+	'tylko',
+	'bardzo',
+	'dzisiaj',
+	'zapisane',
+	'zapisalem',
+	'zapisalam',
+	'dodalem',
+	'smacznego',
+	'kalorii',
+	'mleku',
+	'jajka',
+])
+
 const hasRussianWord = (text: string): boolean =>
 	toWords(text).some((word) => RUSSIAN_WORDS.has(word))
+
+const hasPolishWord = (text: string): boolean =>
+	LATIN_PATTERN.test(text) && toWords(text).some((word) => POLISH_WORDS.has(word))
 
 /**
  * Only when the letters leave no doubt; plain Cyrillic or plain Latin → null. A message mixing
@@ -129,6 +158,7 @@ export const detectLanguage = (text: string): ReplyLanguage | null => {
 		LANGUAGE_MARKERS[language].test(text),
 	)
 	if (found.length === 0 && hasRussianWord(text)) return 'ru'
+	if (found.length === 0 && hasPolishWord(text)) return 'pl'
 	return found.length === 1 ? (found[0] ?? null) : null
 }
 

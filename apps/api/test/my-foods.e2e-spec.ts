@@ -5,6 +5,7 @@ import {
 	authSessionResponseSchema,
 	createDataResponseSchema,
 	createPaginatedResponseSchema,
+	dayResponseSchema,
 	foodEntryResponseSchema,
 	myFoodResponseSchema,
 	rememberEntriesResponseSchema,
@@ -19,6 +20,8 @@ import { createDbTestApp } from './create-db-test-app'
 
 const MY_FOODS_URL = '/api/v1/my-foods'
 const REMEMBER_URL = `${MY_FOODS_URL}/from-entries`
+/** The day of seedEntry's meal. */
+const DAY_URL = '/api/v1/days/2026-10-01'
 const myFoodUrl = (id: string): string => `${MY_FOODS_URL}/${id}`
 const UNKNOWN_ID = '00000000-0000-4000-8000-000000000000'
 
@@ -26,6 +29,7 @@ const listSchema = createPaginatedResponseSchema(myFoodResponseSchema)
 const foodSchema = createDataResponseSchema(myFoodResponseSchema)
 const rememberSchema = createDataResponseSchema(rememberEntriesResponseSchema)
 const entrySchema = createDataResponseSchema(foodEntryResponseSchema)
+const dayResponse = createDataResponseSchema(dayResponseSchema)
 
 const PER_100G = { kcal: 52, protein: 0.3, fat: 0.2, carbs: 14, fiber: 2.4 }
 
@@ -496,6 +500,27 @@ describe('my foods (e2e, real DB)', () => {
 			const after = await owner.agent.patch(entryUrl).send({ grams: 160 }).expect(200)
 
 			expect(entrySchema.parse(after.body).data.canRemember).toBe(false)
+		})
+
+		it("offers «Запам'ятати» again in the day once the saved food is deleted", async () => {
+			await start()
+			const owner = await registerUser('owner@kus.app')
+			const entry = await seedEntry(owner)
+			const remembered = await owner.agent
+				.post(REMEMBER_URL)
+				.send({ entryIds: [entry.id] })
+				.expect(201)
+			const [food] = rememberSchema.parse(remembered.body).data.created
+			const readCanRemember = async (): Promise<boolean | undefined> => {
+				const day = await owner.agent.get(DAY_URL).expect(200)
+				return dayResponse.parse(day.body).data.meals[0]?.entries[0]?.canRemember
+			}
+
+			expect(await readCanRemember()).toBe(false)
+			await owner.agent.delete(myFoodUrl(food?.id ?? UNKNOWN_ID)).expect(204)
+			expect(await readCanRemember()).toBe(true)
+			await owner.agent.post(`${myFoodUrl(food?.id ?? UNKNOWN_ID)}/restore`).expect(200)
+			expect(await readCanRemember()).toBe(false)
 		})
 	})
 })

@@ -6,7 +6,10 @@ import type { LoggableMealType } from '@kus/shared'
 
 import type { NewFoodEntry } from './entries.types'
 
-export type MealWithEntries = Meal & { entries: FoodEntry[] }
+/** An entry with the state of its saved food when the query loads it (a deleted food can be remembered again). */
+export type EntryWithSavedFood = FoodEntry & { myFood?: { deletedAt: Date | null } | null }
+
+export type MealWithEntries = Meal & { entries: EntryWithSavedFood[] }
 
 export type EntryWithMealType = FoodEntry & { meal: Pick<Meal, 'type' | 'localDate'> }
 
@@ -21,10 +24,12 @@ interface FindOrCreateMealData {
 	sourceMessageId: string | null
 }
 
-// entries of one message share createdAt: the id keeps their order stable across updates
+// entries of one message share createdAt: the id keeps their order stable across updates;
+// the saved food's deletedAt decides whether «Запам'ятати» comes back (one batched lookup by id)
 const ACTIVE_ENTRIES = {
 	where: { deletedAt: null },
 	orderBy: [{ createdAt: 'asc' as const }, { id: 'asc' as const }],
+	include: { myFood: { select: { deletedAt: true } } },
 }
 
 @Injectable()

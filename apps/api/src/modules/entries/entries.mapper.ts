@@ -2,7 +2,7 @@ import type { DayMealContext, FoodEntryResponse, LoggedMeal, NutritionTotals } f
 
 import { formatDbDate } from '../../common/time'
 import type { FoodEntry } from '../../generated/prisma/client'
-import type { MealWithEntries } from './entries.repository'
+import type { EntryWithSavedFood, MealWithEntries } from './entries.repository'
 
 const DECIMALS = 10
 
@@ -32,7 +32,18 @@ export const sumEntries = (entries: FoodEntry[]): NutritionTotals => {
 	}
 }
 
-export const toFoodEntryResponse = (entry: FoodEntry): FoodEntryResponse => ({
+/**
+ * «Запам'ятати» is offered for an entry with no saved food, or whose saved food was deleted; a
+ * linked entry read without its food (myFood not loaded) stays not rememberable.
+ */
+const canRemember = (entry: EntryWithSavedFood): boolean => {
+	// «Без деталей» is the rest of a day, not a food
+	if (entry.isUndetailed) return false
+	if (entry.myFoodId === null) return true
+	return (entry.myFood?.deletedAt ?? null) !== null
+}
+
+export const toFoodEntryResponse = (entry: EntryWithSavedFood): FoodEntryResponse => ({
 	id: entry.id,
 	name: entry.name,
 	grams: entry.grams,
@@ -49,12 +60,11 @@ export const toFoodEntryResponse = (entry: FoodEntry): FoodEntryResponse => ({
 	isEdited: entry.isEdited,
 	copiedFromDate: entry.copiedFromDate === null ? null : formatDbDate(entry.copiedFromDate),
 	isUndetailed: entry.isUndetailed,
-	// «Без деталей» is the rest of a day, not a food
-	canRemember: entry.myFoodId === null && !entry.isUndetailed,
+	canRemember: canRemember(entry),
 })
 
 /** Totals of the `entries` the caller shows; the whole meal's kcal only when it holds more. */
-const toMeal = (meal: MealWithEntries, entries: FoodEntry[]): LoggedMeal => ({
+const toMeal = (meal: MealWithEntries, entries: EntryWithSavedFood[]): LoggedMeal => ({
 	id: meal.id,
 	type: meal.type,
 	localDate: formatDbDate(meal.localDate),

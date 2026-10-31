@@ -327,8 +327,9 @@ pnpm db:reset                         # ⚠️ стирає всі локаль�
 pnpm dev                              # api + web
 pnpm exec eslint <змінені файли>      # lint на коміт (повний `pnpm lint` — за потреби)
 pnpm --filter api typecheck           # typecheck зачеплених пакетів
-pnpm --filter api exec vitest run <файли>             # api: нові/змінені тест-файли і явний список спеків коміту (без related)
-pnpm --filter web exec vitest related --run <файли>   # web / shared: тести, зачеплені змінами
+pnpm --filter api exec vitest run src/… test/…        # api: нові/змінені тест-файли і явний список спеків коміту (без related)
+pnpm --filter web exec vitest related --run src/…     # web / shared: тести, зачеплені змінами
+# шляхи — від теки пакета (`src/…`, `test/…`), не від кореня: `apps/api/…` дає оманливе «Command "vitest" not found»
 pnpm test                             # повний, усі пакети — раз наприкінці етапу
 pnpm --filter api prisma migrate dev
 pnpm --filter ai-eval eval --only <id,...> --max-cost <ліміт>   # нові кейси; повний — раз на версію промпту

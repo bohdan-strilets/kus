@@ -21,7 +21,6 @@
 
 1. New Project → регіон **EU West (Amsterdam)** — найближче до Польщі. Той самий регіон для обох сервісів.
 2. Add → Database → **PostgreSQL**. Public Networking (TCP proxy) — **вимкнено**: API ходить у базу приватною мережею.
-3. У Postgres → **Backups** увімкнути **Daily** і **Weekly** (див. «Бекапи»).
 
 ### Сервіс `@kus/api`
 
@@ -98,7 +97,7 @@ New Project → цей репозиторій.
 
 ## Перший запуск з нуля
 
-1. Railway: проєкт, Postgres, бекапи, сервіс `@kus/api` з налаштуваннями й змінними вище. `ALLOW_REGISTRATION=true`.
+1. Railway: проєкт, Postgres, сервіс `@kus/api` з налаштуваннями й змінними вище. `ALLOW_REGISTRATION=true`.
 2. Дочекатися деплою: у логах pre-deploy — застосовані міграції, далі `API listening on port …`.
 3. Перевірити напряму:
    - `curl https://kusapi-production.up.railway.app/api/v1/health` → `{"data":{"status":"ok"}}`;
@@ -116,7 +115,7 @@ New Project → цей репозиторій.
 
 1. Локально: `pnpm --filter api prisma migrate dev --name <що_змінилось>` → закомітити теку `apps/api/prisma/migrations/<дата>_<назва>/` разом з кодом.
 2. Міграція має бути сумісна зі старим кодом: між pre-deploy і перемиканням старий API ще працює на новій схемі. Видалення чи перейменування колонки — у два деплої (спершу код перестає її читати, потім міграція її прибирає).
-3. Перед push — логічний дамп (команда в «Бекапи й відновлення»): ручні volume-бекапи на Hobby/trial недоступні, тож `pg_dump` через Docker із `DATABASE_PUBLIC_URL` у теку поза репо.
+3. Перед push — визначити тип міграції. Лише **додає** (нові таблиці, колонки, індекси, nullable-поля) — без бекапу. **Видаляє або переписує** дані (`DROP`, зміна типу, `UPDATE` наявних рядків, `NOT NULL` на заповнену колонку) — один дамп за розділом «Дамп перед руйнівною міграцією»; репетиція на копії бази — лише в цьому випадку.
 4. Push → збірка → pre-deploy `prisma migrate deploy` → healthcheck → нова версія.
 5. Перевірити, що міграції застосовані (нижче).
 
@@ -125,19 +124,13 @@ New Project → цей репозиторій.
 Міграція `20261015120000_add_stored_files` додає `stored_files` і видаляє колонку `message_attachments.storage_key`. Файли тепер живуть у S3-сумісному сховищі, не в базі.
 
 1. **Бакет Cloudflare R2.** Створити бакет з юрисдикцією **EU**; окремі бакети для prod і dev. API-токен — права **Object Read & Write** лише на цей бакет. Endpoint для EU-юрисдикції має вигляд `https://<ACCOUNT_ID>.eu.r2.cloudflarestorage.com`, `S3_REGION=auto`, `S3_BUCKET` — назва бакета.
-2. **Бекап перед міграцією.** Логічний дамп прод-бази через Docker — точно за кроками з «Бекапи й відновлення» (проксі → `pg_dump` → закрити проксі). Перевірити цілісність: файл помітно більший за кілька кілобайт і `docker run --rm -v "$HOME\kus-backups:/backup" postgres:18 pg_restore --list /backup/kus-<дата>.dump` друкує список об'єктів без помилок.
-3. **Запобіжник.** Виконати на проді (Railway → Postgres → Data → Query):
-   ```sql
-   SELECT count(*) FROM message_attachments WHERE storage_key IS NOT NULL;
-   ```
-   Має бути `0`. Міграція починається з `RAISE EXCEPTION`, якщо такі рядки є, а далі видаляє колонку; якщо запобіжник спрацював — див. «Якщо міграція впала на запобіжнику».
-4. **Змінні Railway** — з таблиці «Змінні сервісу `@kus/api`» вище (`STORAGE_PROVIDER`, `S3_*`, `STORAGE_KEY_PREFIX`, `PHOTOS_PER_MESSAGE_MAX`, `PHOTO_DAILY_UPLOAD_LIMIT`, `AI_DAILY_PHOTO_LIMIT`, `PHOTO_ORPHAN_TTL_HOURS`). Секрети не пишемо ні в репо, ні в чат.
-5. **Деплой API** (push у `main` після `security-audit`): pre-deploy застосовує міграцію, healthcheck → нова версія.
-6. **Smoke сховища.** Проти **dev**-бакета, не prod: `S3_*` у `apps/api/.env`, потім `pnpm --filter api test:smoke:storage`.
-7. **Реальне завантаження** фото ≈ 2 МБ через домен Vercel (rewrite) після деплою API, до оголошення релізу.
-8. **iPhone PWA** — кроки з чекліста деплою A.
+2. **Змінні Railway** — з таблиці «Змінні сервісу `@kus/api`» вище (`STORAGE_PROVIDER`, `S3_*`, `STORAGE_KEY_PREFIX`, `PHOTOS_PER_MESSAGE_MAX`, `PHOTO_DAILY_UPLOAD_LIMIT`, `AI_DAILY_PHOTO_LIMIT`, `PHOTO_ORPHAN_TTL_HOURS`). Секрети не пишемо ні в репо, ні в чат.
+3. **Деплой API** (push у `main` після `security-audit`): pre-deploy застосовує міграцію, healthcheck → нова версія.
+4. **Smoke сховища.** Проти **dev**-бакета, не prod: `S3_*` у `apps/api/.env`, потім `pnpm --filter api test:smoke:storage`.
+5. **Реальне завантаження** фото ≈ 2 МБ через домен Vercel (rewrite) після деплою API, до оголошення релізу.
+6. **iPhone PWA** — кроки з чекліста деплою A.
 
-**Відкат.** Файли в бакеті лишаються, а колонку `storage_key` міграція видалила, тому код попередньої версії працювати не буде. Відкат — лише відновленням з дампа кроку 2 (див. «Відновлення → з логічного дампу»).
+**Відкат.** Файли в бакеті лишаються, а колонку `storage_key` міграція видалила, тому код попередньої версії працювати не буде. Відкат — лише відновленням з дампу (див. «Відновлення з дампу»).
 
 ### Як перевірити, що міграції застосовані
 
@@ -158,7 +151,7 @@ New Project → цей репозиторій.
   ```bash
   railway ssh -- pnpm --filter @kus/api exec prisma migrate resolve --rolled-back <тека_міграції>
   ```
-  і задеплоїти виправлену міграцію. Якщо щось зіпсовано — відновити дамп з кроку 3 (див. «Відновлення → з логічного дампу»).
+  і задеплоїти виправлену міграцію. Якщо щось зіпсовано — відновити дамп (див. «Відновлення з дампу»).
 
 #### Якщо міграція впала на запобіжнику
 
@@ -233,34 +226,30 @@ New Project → цей репозиторій.
 - [ ] «склянка соку» → «250 мл», «пляшка пива» → «500 мл», «чашка кави з молоком» → «… мл»; йогурт і суп — у грамах.
 - [ ] Той самий напій на «Сьогодні» й у варіантах уточнення ніде не показаний як «г».
 
-## Бекапи й відновлення
+## Дамп перед руйнівною міграцією
 
-### Що вмикаємо
+Лише перед міграцією, що видаляє або переписує дані. Бекапів Railway (Postgres → Backups) на Hobby немає, тож один логічний дамп на свій диск. Ніколи не в репо: там раціон і вага (RODO, репозиторій публічний). `pg_dump` локально не встановлений, тож через Docker (`postgres:18` — версія клієнта має бути не нижча за серверну). Перевірена послідовність на Windows / PowerShell:
 
-- **Volume backups** (Railway → Postgres → Backups): Daily (зберігається 6 днів) і Weekly (1 місяць); за потреби Monthly (3 місяці). **Ручний бекап на Hobby/trial недоступний** (кнопка є лише на Pro), тому перед кожним деплоєм з міграцією — логічний дамп нижче.
-- Обмеження: **видалення тому видаляє і всі його бекапи**. Від цього захищає лише логічний дамп.
-- **Логічний дамп** — перед деплоєм з міграцією і раз на тиждень, на свій диск. Ніколи не в репо: там раціон і вага (RODO, репозиторій публічний). `pg_dump` локально не встановлений, тож через Docker (`postgres:18` — версія клієнта має бути не нижча за серверну). Перевірена послідовність на Windows / PowerShell:
-  1. **Відкрити проксі.** Railway → Postgres → **Settings → Networking → TCP Proxy** → увімкнути → **Deploy**: зміни налаштувань стають у чергу «Apply changes» і діють лише після Deploy. `DATABASE_PUBLIC_URL` з'являється у Variables тільки після цього.
-  2. **Дамп у теку поза репо** (наприклад `$HOME\kus-backups`). URL — лише через змінну оточення, яку вводиш через `Read-Host`: так він не лишається ні в команді, ні в історії PowerShell:
-     ```powershell
-     New-Item -ItemType Directory -Force "$HOME\kus-backups"
-     $env:DB_URL = Read-Host 'DATABASE_PUBLIC_URL'
-     docker run --rm -v "$HOME\kus-backups:/backup" postgres:18 pg_dump "$env:DB_URL" -Fc --no-owner -f /backup/kus-<дата>.dump
-     Get-ChildItem "$HOME\kus-backups"
-     Remove-Item Env:DB_URL
-     ```
-     `Get-ChildItem` має показати файл з розміром явно більшим за кілька кілобайт; порожній або крихітний дамп означає, що з'єднання не відбулось.
-  3. **Закрити проксі.** Postgres → Settings → Networking → видалити TCP Proxy → знову **Deploy**. Без цього база лишається доступна з інтернету за паролем.
-  - У Git Bash той самий `docker run` із `-v /c/Users/<user>/kus-backups:/backup` і `PGURL` з `export`/`unset`; суть та сама — URL не в історії, проксі лише на час дампу.
+1. **Відкрити проксі.** Railway → Postgres → **Settings → Networking → TCP Proxy** → увімкнути → **Deploy**: зміни налаштувань стають у чергу «Apply changes» і діють лише після Deploy. `DATABASE_PUBLIC_URL` з'являється у Variables тільки після цього.
+2. **Дамп у теку поза репо** (наприклад `$HOME\kus-backups`). URL — лише через змінну оточення, яку вводиш через `Read-Host`: так він не лишається ні в команді, ні в історії PowerShell:
+   ```powershell
+   New-Item -ItemType Directory -Force "$HOME\kus-backups"
+   $env:DB_URL = Read-Host 'DATABASE_PUBLIC_URL'
+   docker run --rm -v "$HOME\kus-backups:/backup" postgres:18 pg_dump "$env:DB_URL" -Fc --no-owner -f /backup/kus-<дата>.dump
+   Get-ChildItem "$HOME\kus-backups"
+   Remove-Item Env:DB_URL
+   ```
+   `Get-ChildItem` має показати файл з розміром явно більшим за кілька кілобайт; порожній або крихітний дамп означає, що з'єднання не відбулось.
+3. **Одразу закрити проксі.** Postgres → Settings → Networking → видалити TCP Proxy → знову **Deploy**. Без цього база лишається доступна з інтернету за паролем.
 
-### Відновлення
+У Git Bash той самий `docker run` із `-v /c/Users/<user>/kus-backups:/backup` і `PGURL` з `export`/`unset`; суть та сама — URL не в історії, проксі лише на час дампу.
 
-- **З volume backup** (дані зіпсовано, том цілий): Postgres → Backups → вибрати бекап → Restore → застосувати зміну. Відновлення перезаписує поточні дані бази. CLI: `railway postgres pitr backup restore <ID>`.
-- **З логічного дампу** (том втрачено):
-  1. Створити новий сервіс PostgreSQL у тому ж проєкті й регіоні.
-  2. Тимчасово увімкнути йому TCP proxy → `pg_restore --no-owner --dbname "<його публічний DATABASE_URL>" kus-<дата>.dump` → вимкнути TCP proxy.
-  3. У сервісі `@kus/api` змінити `DATABASE_URL` на посилання на нову базу → redeploy. Pre-deploy докатить міграції, новіші за дамп.
-  4. Перевірити `migrate status` і smoke-тест.
+### Відновлення з дампу
+
+1. Створити новий сервіс PostgreSQL у тому ж проєкті й регіоні.
+2. Тимчасово увімкнути йому TCP proxy → `pg_restore --no-owner --dbname "<його публічний DATABASE_URL>" kus-<дата>.dump` → вимкнути TCP proxy.
+3. У сервісі `@kus/api` змінити `DATABASE_URL` на посилання на нову базу → redeploy. Pre-deploy докатить міграції, новіші за дамп.
+4. Перевірити `migrate status` і smoke-тест.
 
 ## Секрети
 

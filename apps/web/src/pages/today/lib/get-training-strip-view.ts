@@ -1,7 +1,7 @@
 import { TRAINING_GROUP_ORDER, type TrainingGroupKey, type WorkoutResponse } from '@kus/shared'
 import type { TFunction } from 'i18next'
 
-import { formatWorkoutMinutes } from '@/entities/workout'
+import { formatWorkoutDuration } from '@/entities/workout'
 import { getTrainingSessionPath } from '@/shared/config'
 import { formatTime } from '@/shared/lib'
 
@@ -35,20 +35,6 @@ export const sortWorkoutsByTime = (workouts: readonly WorkoutResponse[]): Workou
 		return left.startedAt < right.startedAt ? -1 : 1
 	})
 
-/** «62 хв» for a named duration, «≈ 62 хв» for an estimate, null for neither. */
-export const getStripDuration = (
-	workout: WorkoutResponse,
-	t: TFunction,
-	isSpoken = false,
-): string | null => {
-	if (workout.durationMin !== null) return formatWorkoutMinutes(workout.durationMin, t)
-	if (workout.estimatedDurationMin === null) return null
-	const minutes = formatWorkoutMinutes(workout.estimatedDurationMin, t)
-	return t(isSpoken ? 'today.trainingStrip.estimatedSpoken' : 'today.trainingStrip.estimated', {
-		duration: minutes,
-	})
-}
-
 export const getTrainingStripView = (
 	workout: WorkoutResponse,
 	t: TFunction,
@@ -57,7 +43,7 @@ export const getTrainingStripView = (
 	const groups = getSessionGroups(workout)
 	const time =
 		hasSiblings && workout.startedAt !== null ? formatTime(new Date(workout.startedAt)) : null
-	const spokenDuration = getStripDuration(workout, t, true)
+	const spokenDuration = formatWorkoutDuration(workout, t, true)
 	const groupNames = groups.map((group) => t(`muscle.${group}`).toLocaleLowerCase('uk'))
 
 	const ariaLabel = t('today.trainingStrip.aria.open', {
@@ -77,7 +63,7 @@ export const getTrainingStripView = (
 	return {
 		id: workout.id,
 		href: getTrainingSessionPath(workout.id),
-		duration: getStripDuration(workout, t),
+		duration: formatWorkoutDuration(workout, t),
 		time,
 		groups,
 		ariaLabel,

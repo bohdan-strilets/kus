@@ -1,3 +1,4 @@
+export { getWorkout } from './api/get-workout'
 export { getWorkoutsInRange, getWorkoutsOfDay } from './api/get-workouts'
 export {
 	formatCardioSummary,
@@ -5,6 +6,7 @@ export {
 	formatExerciseSummary,
 	formatSetsSummary,
 	formatWorkoutKcalNote,
+	formatWorkoutDistance,
 	formatWorkoutKind,
 	formatWorkoutMinutes,
 	formatWorkoutTotal,
@@ -12,6 +14,7 @@ export {
 } from './lib/format-workout'
 export {
 	WORKOUTS_QUERY_KEY,
+	workoutQueryOptions,
 	workoutsDayQueryOptions,
 	workoutsRangeQueryOptions,
 } from './model/workout-query'
@@ -26,3 +29,4 @@ export {
 export { GroupDot, type GroupDotProps } from './ui/group-dot'
 export { GroupTag, type GroupTagProps } from './ui/group-tag'
 export { SetLine, type SetLineProps } from './ui/set-line'
+export { formatWorkoutDuration } from './lib/format-workout-duration'

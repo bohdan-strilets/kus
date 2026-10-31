@@ -10,11 +10,24 @@ import { useDeleteWorkout } from '../model/use-delete-workout'
 
 const TRASH_ICON_SIZE = 14
 
-/** «Видалити» in the footer of a workout card (mockups/chat-workout.html): confirm, then delete. */
-export const DeleteWorkoutButton = ({ workout }: { workout: WorkoutResponse }) => {
+export interface DeleteWorkoutButtonProps {
+	workout: WorkoutResponse
+	/** card: «Видалити» in the footer of a chat card; screen: «Видалити тренування» under the session. */
+	placement?: 'card' | 'screen'
+	/** The training is deleted: the screen that showed it goes back. */
+	onDeleted?: () => void
+}
+
+/** Confirm, then delete (mockups/chat-workout.html card footer, mockups/training-session.html screen). */
+export const DeleteWorkoutButton = ({
+	workout,
+	placement = 'card',
+	onDeleted,
+}: DeleteWorkoutButtonProps) => {
 	const { t } = useTranslation()
 	const [isOpen, setIsOpen] = useState(false)
 	const { remove, isDeleting } = useDeleteWorkout({
+		onDeleted,
 		onSettled: () => {
 			setIsOpen(false)
 		},
@@ -24,14 +37,15 @@ export const DeleteWorkoutButton = ({ workout }: { workout: WorkoutResponse }) =
 	// and the refetch are done (the card unmounts when it changes), OVERLAY_HOLD_MAX_MS at most.
 	useOverlayOpen(isOpen)
 	useOverlayHold(isDeleting)
-	const name = formatWorkoutName(workout, t)
+	const isScreen = placement === 'screen'
+	const name = formatWorkoutName(workout, t, { placement })
 
 	return (
 		<>
 			<Button
-				variant="secondary"
-				size="sm"
-				className="text-danger"
+				variant={isScreen ? 'textDanger' : 'secondary'}
+				size={isScreen ? 'md' : 'sm'}
+				className={isScreen ? 'min-h-tap' : 'text-danger'}
 				icon={<Icon name="trash" size={TRASH_ICON_SIZE} />}
 				aria-label={t('workout.delete.ariaLabel', { name })}
 				aria-haspopup="dialog"
@@ -39,7 +53,7 @@ export const DeleteWorkoutButton = ({ workout }: { workout: WorkoutResponse }) =
 					setIsOpen(true)
 				}}
 			>
-				{t('workout.delete.action')}
+				{t(isScreen ? 'workout.delete.screenAction' : 'workout.delete.action')}
 			</Button>
 			<ConfirmDialog
 				isOpen={isOpen}

@@ -17,8 +17,11 @@ import { getDeleteWorkoutErrorKey } from '../lib/get-delete-error-key'
  */
 export const useDeleteWorkout = ({
 	onSettled,
+	onDeleted,
 }: {
 	onSettled?: () => void
+	/** After the server deleted it, before the lists refresh: the open screen of the training leaves. */
+	onDeleted?: () => void
 } = {}): { remove: (id: string) => void; isDeleting: boolean } => {
 	const { t } = useTranslation()
 	const toast = useToast()
@@ -35,8 +38,11 @@ export const useDeleteWorkout = ({
 	// done, so `isDeleting` covers the whole time the card still shows the old state
 	const mutation = useMutation({
 		mutationFn: deleteWorkout,
-		onSuccess: async () => {
+		onSuccess: async (_result, id) => {
 			onSettled?.()
+			// the open screen of this training must not refetch a row that is gone (a 404 for nothing)
+			queryClient.removeQueries({ queryKey: [...WORKOUTS_QUERY_KEY, 'detail', id], exact: true })
+			onDeleted?.()
 			await refresh()
 		},
 		onError: async (error) => {

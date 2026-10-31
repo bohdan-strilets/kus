@@ -41,6 +41,9 @@ export const DEV_ROUTES = {
 export const isProtectedPath = (pathname: string): boolean =>
 	pathname === TAB_ROUTES.chat || pathname.startsWith(`${TAB_ROUTES.chat}/`)
 
+/** The pattern of the session screen in the router; links use getTrainingSessionPath. */
+export const TRAINING_SESSION_ROUTE = `${TAB_ROUTES.training}/:id`
+
 /** One training: the session screen opened from «Сьогодні» and the journal. */
 export const getTrainingSessionPath = (workoutId: string): string =>
 	`${TAB_ROUTES.training}/${workoutId}`

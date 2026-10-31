@@ -418,8 +418,6 @@
 		"trainingStrip": {
 			"title": "Тренування",
 			"titleWithDuration": "Тренування · {{duration}}",
-			"estimated": "≈ {{duration}}",
-			"estimatedSpoken": "приблизно {{duration}}",
 			"atTime": "· {{time}}",
 			"aria": {
 				"title": "Тренування",
@@ -841,11 +839,20 @@
 		"record": "рекорд",
 		"repsUnit": "повт.",
 		"warmupShort": "розм.",
+		"bodyweight": "власна вага",
+		"estimated": "≈ {{duration}}",
+		"estimatedSpoken": "приблизно {{duration}}",
+		"exerciseCount_one": "{{count}} вправа",
+		"exerciseCount_few": "{{count}} вправи",
+		"exerciseCount_many": "{{count}} вправ",
+		"exerciseCount_other": "{{count}} вправи",
+		"setCount": "{{count}} підх.",
 		"edited": "змінено",
 		"deleted": "Тренування {{date}} видалено.",
 		"deleteError": "Не вдалося видалити тренування. Спробуй ще раз.",
 		"delete": {
 			"action": "Видалити",
+			"screenAction": "Видалити тренування",
 			"ariaLabel": "Видалити тренування «{{name}}»",
 			"title": "Видалити тренування?",
 			"text": "«{{name}}» зникне з вкладки «Тренування» і зі «Сьогодні». Повернути можна словами в чаті.",
@@ -884,7 +891,21 @@
 			"action": "Написати в чат"
 		},
 		"loadError": "Не вдалося завантажити тренування.",
-		"retry": "Спробувати ще"
+		"retry": "Спробувати ще",
+		"session": {
+			"title": "{{kind}} · {{duration}}",
+			"subtitle": "{{date}} · {{time}}",
+			"timeRange": "{{from}}–{{to}}",
+			"tiles": {
+				"duration": "Тривалість",
+				"strength": "Вправ · підходів"
+			},
+			"notFound": {
+				"title": "Такого тренування немає",
+				"text": "Можливо, його вже видалили. Усі тренування — на вкладці «Тренування».",
+				"action": "До тренувань"
+			}
+		}
 	},
 	"measurement": {
 		"kg": "{{value}} кг",

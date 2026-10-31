@@ -5,7 +5,6 @@ import { makeExercise, makeWorkout } from '@/shared/testing'
 
 import {
 	getSessionGroups,
-	getStripDuration,
 	getTrainingStripView,
 	sortWorkoutsByTime,
 } from './get-training-strip-view'
@@ -40,24 +39,6 @@ describe('sortWorkoutsByTime', () => {
 			'late',
 			'untimed',
 		])
-	})
-})
-
-describe('getStripDuration', () => {
-	it('names the duration, marks an estimate with ≈ and returns null without both', () => {
-		expect(getStripDuration(makeWorkout({ durationMin: 62 }), t)).toBe('62 хв')
-		expect(getStripDuration(makeWorkout({ durationMin: null, estimatedDurationMin: 62 }), t)).toBe(
-			'≈ 62 хв',
-		)
-		expect(
-			getStripDuration(makeWorkout({ durationMin: null, estimatedDurationMin: null }), t),
-		).toBeNull()
-	})
-
-	it('prefers the named duration over the estimate', () => {
-		expect(getStripDuration(makeWorkout({ durationMin: 40, estimatedDurationMin: 62 }), t)).toBe(
-			'40 хв',
-		)
 	})
 })
 

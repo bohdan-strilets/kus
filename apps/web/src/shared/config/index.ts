@@ -12,5 +12,6 @@ export {
 	PROFILE_ROUTES,
 	ROUTES,
 	TAB_ROUTES,
+	TRAINING_SESSION_ROUTE,
 	type TabRoutePath,
 } from './routes'

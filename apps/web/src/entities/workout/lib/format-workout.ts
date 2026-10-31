@@ -37,7 +37,7 @@ export const formatWorkoutTotal = (minutes: number, t: TFunction): string => {
 }
 
 /** «3,0 км». */
-const formatDistance = (meters: number, t: TFunction): string =>
+export const formatWorkoutDistance = (meters: number, t: TFunction): string =>
 	t('workout.km', { value: formatDecimal(meters / METERS_IN_KM, 1) })
 
 const formatTimedSet = (set: WorkoutSetResponse, t: TFunction): string | null =>
@@ -102,7 +102,7 @@ export const formatCardioSummary = (
 ): string | null => {
 	const parts = [
 		exercise.durationMin === null ? null : formatWorkoutMinutes(exercise.durationMin, t),
-		exercise.distanceM === null ? null : formatDistance(exercise.distanceM, t),
+		exercise.distanceM === null ? null : formatWorkoutDistance(exercise.distanceM, t),
 	].filter((part): part is string => part !== null)
 	return parts.length > 0 ? parts.join(SEPARATOR) : null
 }

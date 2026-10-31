@@ -40,6 +40,40 @@ afterEach(() => {
 })
 
 describe('DeleteWorkoutButton', () => {
+	it('drops the cached detail of the deleted training so nothing refetches it', async () => {
+		deleteMock.mockResolvedValue(undefined)
+		const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+		const detailKey = [...WORKOUTS_QUERY_KEY, 'detail', workout.id]
+		queryClient.setQueryData(detailKey, workout)
+		renderWithProviders(<DeleteWorkoutButton workout={workout} placement="screen" />, {
+			queryClient,
+		})
+
+		await userEvent.click(screen.getByRole('button', { name: 'Видалити тренування «Зал, 55 хв»' }))
+		await userEvent.click(screen.getByRole('button', { name: 'Видалити' }))
+
+		await waitFor(() => {
+			expect(queryClient.getQueryData(detailKey)).toBeUndefined()
+		})
+	})
+
+	it('on the screen says «Видалити тренування» and tells when the training is deleted', async () => {
+		deleteMock.mockResolvedValue(undefined)
+		const onDeleted = vi.fn()
+		renderWithProviders(
+			<DeleteWorkoutButton workout={workout} placement="screen" onDeleted={onDeleted} />,
+		)
+
+		const button = screen.getByRole('button', { name: 'Видалити тренування «Зал, 55 хв»' })
+		expect(button.className).toContain('min-h-tap')
+		await userEvent.click(button)
+		await userEvent.click(screen.getByRole('button', { name: 'Видалити' }))
+
+		await waitFor(() => {
+			expect(onDeleted).toHaveBeenCalledTimes(1)
+		})
+	})
+
 	it('asks first and sends nothing when the user cancels', async () => {
 		renderButton()
 		await openDialog()

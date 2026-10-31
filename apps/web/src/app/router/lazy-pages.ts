@@ -12,6 +12,9 @@ export const RecipesPage = lazy(() =>
 export const TrainingPage = lazy(() =>
 	import('@/pages/training').then((m) => ({ default: m.TrainingPage })),
 )
+export const TrainingSessionPage = lazy(() =>
+	import('@/pages/training-session').then((m) => ({ default: m.TrainingSessionPage })),
+)
 export const ProfilePage = lazy(() =>
 	import('@/pages/profile').then((m) => ({ default: m.ProfilePage })),
 )

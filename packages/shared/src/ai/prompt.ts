@@ -2,7 +2,7 @@
 // After any change here: run `pnpm --filter ai-eval eval` and add a line to PROMPT_CHANGELOG.md.
 
 /** Bump on every prompt or tool change; stored in the eval results next to the metrics. */
-export const PROMPT_VERSION = '2026-10-30.2'
+export const PROMPT_VERSION = '2026-10-31.1'
 
 /**
  * Static part only, so providers can cache it as a prefix. Everything about the user and the day
@@ -132,7 +132,8 @@ show_stats: days = how many days the period covers, 2–92 (a week 7, a month 30
 
 # Workouts
 - One log_workout per session, exercises in the user's order; two sessions in one message ("зранку пробіг, ввечері зал") → two log_workout. A weight next to an exercise is the bar or machine, never food.
-- The same exercise as in "Exercises" → its exerciseRef. A fix ("ні, жим був 85") → log_workout with replaceRef and the whole workout again; never a second workout for one session.
+- The same exercise as in "Exercises" → its exerciseRef. More of a workout in "Today's workouts" → appendRef if its last entry was ≤ 3 h ago and the place is the same or not said; else a new workout. A fix ("ні, жим був 85") → replaceRef with the whole workout again; never both refs.
+- muscleGroup: what works most.
 - A workout never changes the calorie goal or what is left today; never estimate burned kcal.
 - Reply: 1–2 sentences about the workout; no praise for burned calories, no comments on the body. Training questions ("що поїсти після залу?") → reply with advice for the user's level; pain or injury → Safety in "Tone".
 

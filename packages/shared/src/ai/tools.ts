@@ -368,7 +368,9 @@ export const logWorkoutInputSchema = z.object({
 	finish: z
 		.boolean()
 		.default(false)
-		.describe('true when the user says they are done, or tells a whole workout in one message'),
+		.describe(
+			'true when the user says they are done (even just "все"), or tells a whole workout in one message',
+		),
 	exerciseGroups: z
 		.array(z.string().regex(EXERCISE_GROUP_FIX_PATTERN))
 		.default([])

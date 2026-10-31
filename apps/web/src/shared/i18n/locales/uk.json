@@ -415,6 +415,20 @@
 		"nextWeek": "Наступний тиждень",
 		"loadError": "Не вдалося завантажити день.",
 		"weekLoadError": "Не вдалося завантажити тиждень.",
+		"trainingStrip": {
+			"title": "Тренування",
+			"titleWithDuration": "Тренування · {{duration}}",
+			"estimated": "≈ {{duration}}",
+			"estimatedSpoken": "приблизно {{duration}}",
+			"atTime": "· {{time}}",
+			"aria": {
+				"title": "Тренування",
+				"titleAt": "Тренування {{time}}",
+				"durationPart": ", {{duration}}",
+				"groupsPart": ": {{groups}}",
+				"open": "{{summary}} — відкрити"
+			}
+		},
 		"empty": {
 			"title": "Сьогодні ще нічого не записано",
 			"text": "Напиши в чаті про їжу, і тут з'являться калорії, білки й прийоми їжі за день.",
@@ -848,11 +862,7 @@
 			"MANUAL": "зі слів",
 			"DEVICE": "з табло"
 		},
-		"kcalNote": "{{kcal}} ккал · {{source}} · на ціль не впливає",
-		"dayRow": {
-			"title": "Тренування",
-			"summary": "{{place}}: {{names}}"
-		}
+		"kcalNote": "{{kcal}} ккал · {{source}} · на ціль не впливає"
 	},
 	"training": {
 		"week": {

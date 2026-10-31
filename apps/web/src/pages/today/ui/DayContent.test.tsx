@@ -116,12 +116,12 @@ describe('DayContent with a training and no food', () => {
 		getMock.mockReset()
 	})
 
-	it('shows the day with the workout row, not the empty state', async () => {
+	it('shows the day with the training strip, not the empty state', async () => {
 		getMock.mockResolvedValue(answer([makeWorkout({ exercises: [makeExercise()] })]))
 
 		renderDay(TODAY, [])
 
-		expect(await screen.findByText('Зал: жим лежачи')).toBeTruthy()
+		expect(await screen.findByText('Тренування · 55 хв')).toBeTruthy()
 		expect(screen.queryByText('Цього дня нічого не записано')).toBeNull()
 		expect(screen.getByText("з'їдено")).toBeTruthy()
 		expect(getMock).toHaveBeenCalledWith(`/workouts/day/${TODAY}`)

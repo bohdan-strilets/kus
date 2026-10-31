@@ -4,6 +4,7 @@ export { RELEASE_NOTES, type ReleaseNote } from './release-notes'
 export {
 	AUTH_ROUTES,
 	DEV_ROUTES,
+	getTrainingSessionPath,
 	isProtectedPath,
 	MEMORY_FACTS_HREF,
 	MEMORY_FACTS_TAB,

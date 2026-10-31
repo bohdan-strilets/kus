@@ -40,3 +40,7 @@ export const DEV_ROUTES = {
 /** `/app` and everything under it: the routes that need a session. */
 export const isProtectedPath = (pathname: string): boolean =>
 	pathname === TAB_ROUTES.chat || pathname.startsWith(`${TAB_ROUTES.chat}/`)
+
+/** One training: the session screen opened from «Сьогодні» and the journal. */
+export const getTrainingSessionPath = (workoutId: string): string =>
+	`${TAB_ROUTES.training}/${workoutId}`

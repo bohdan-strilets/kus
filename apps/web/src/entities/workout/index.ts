@@ -16,7 +16,6 @@ export {
 	workoutsRangeQueryOptions,
 } from './model/workout-query'
 export { WorkoutCard, type WorkoutCardProps } from './ui/workout-card/WorkoutCard'
-export { WorkoutDayRow } from './ui/workout-day-row/WorkoutDayRow'
 export { DeletedWorkoutRow } from './ui/deleted-workout-row/DeletedWorkoutRow'
 export {
 	formatSets,

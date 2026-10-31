@@ -48,6 +48,7 @@ const message = (overrides: Partial<ChatMessage>): ChatMessage => ({
 	clarifications: [],
 	measurements: [],
 	workouts: [],
+	workoutCards: [],
 	achievements: [],
 	dayCard: null,
 	statsCard: null,
@@ -73,6 +74,7 @@ const turn: SendMessageResponse = {
 		remainingKcal: null,
 	},
 	updatedMessages: [],
+	hasNewWorkoutRecord: false,
 }
 
 const networkError = new AxiosError('Network Error')

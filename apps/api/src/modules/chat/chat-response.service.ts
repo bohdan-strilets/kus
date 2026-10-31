@@ -20,6 +20,8 @@ interface BuildResponseParams {
 		replacedMeasurementMessageIds?: string[]
 		/** Foods this turn saved to memory: only the live response tells (a replay or a reload has none). */
 		savedFoods?: SavedFoodRef[]
+		/** A new workout record of this turn: only the live response tells (for the sound). */
+		hasNewWorkoutRecord?: boolean
 	}
 }
 
@@ -60,6 +62,7 @@ export class ChatResponseService {
 			assistantMessage: { ...replyDto, savedFoods: edited.savedFoods ?? [] },
 			dayTotals: totals,
 			updatedMessages,
+			hasNewWorkoutRecord: edited.hasNewWorkoutRecord ?? false,
 		}
 	}
 

@@ -65,6 +65,8 @@ export interface TurnResult extends EditedMessages {
 	replacedMeasurementMessageIds: string[]
 	/** Foods saved to memory by this turn; live in the response only. */
 	savedFoods?: SavedFoodRef[]
+	/** A workout record the sessions did not hold before this turn; live in the response only. */
+	hasNewWorkoutRecord?: boolean
 }
 
 /** The memory tools of a turn and the ids their refs stand for; the parser has checked the refs. */
@@ -245,7 +247,7 @@ export class ChatTurnService {
 				)
 			}
 			if (decision.kind === 'workout') {
-				const { sourceMessageIds } = await this.workoutsTurn.logWorkouts(
+				const { sourceMessageIds, hasNewRecord } = await this.workoutsTurn.logWorkouts(
 					{
 						userId,
 						sourceMessageId: message.id,
@@ -256,7 +258,12 @@ export class ChatTurnService {
 					},
 					tx,
 				)
-				return { ...NO_EDITED_MESSAGES, sourceMessageIds, replacedMeasurementMessageIds: [] }
+				return {
+					...NO_EDITED_MESSAGES,
+					sourceMessageIds,
+					replacedMeasurementMessageIds: [],
+					hasNewWorkoutRecord: hasNewRecord,
+				}
 			}
 			if (decision.kind !== 'log' && decision.kind !== 'edit') {
 				return { ...NO_EDITED_MESSAGES, replacedMeasurementMessageIds: [] }
@@ -339,7 +346,7 @@ export class ChatTurnService {
 							},
 							tx,
 						)
-					: { sourceMessageIds: [] }
+					: { sourceMessageIds: [], hasNewRecord: false }
 			const replaced = await this.saveMeasurements(
 				{ userId, timezone, message, now, localDate },
 				decision,
@@ -367,6 +374,7 @@ export class ChatTurnService {
 				],
 				replacedMeasurementMessageIds: replaced,
 				savedFoods,
+				hasNewWorkoutRecord: workoutMessages.hasNewRecord,
 			}
 		})
 	}

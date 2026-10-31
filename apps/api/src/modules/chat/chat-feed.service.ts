@@ -10,13 +10,12 @@ import {
 	type LoggedMeal,
 	type MeasurementCard,
 	type StatsCard,
-	type WorkoutResponse,
 } from '@kus/shared'
 import { z } from 'zod'
 
 import { CursorPaginatedResult } from '../../common/pagination'
 import { MessageRole } from '../../generated/prisma/client'
-import { WorkoutsTurnService } from '../workouts/workouts-turn.service'
+import { type MessageWorkouts, WorkoutsTurnService } from '../workouts/workouts-turn.service'
 import { AchievementsService } from '../achievements/achievements.service'
 import { EntriesService } from '../entries/entries.service'
 import { FactsService } from '../facts/facts.service'
@@ -50,8 +49,8 @@ const toClarificationResponse = (
 
 interface ChatMessageExtras {
 	meals: Map<string, LoggedMeal[]>
-	/** By the user message that recorded them. */
-	workouts: Map<string, WorkoutResponse[]>
+	/** By the user message that started, added to or finished them. */
+	workouts: Map<string, MessageWorkouts>
 	clarifications: ClarificationWithEntries[]
 	/** By the user message that recorded them. */
 	measurements: Map<string, MeasurementCard[]>
@@ -80,6 +79,8 @@ const toChatMessage = (
 ): ChatMessage => {
 	const isAssistant = message.role === MessageRole.ASSISTANT
 	const [attachment] = message.attachments
+	const messageWorkouts =
+		isAssistant && message.replyToId ? workouts.get(message.replyToId) : undefined
 	return {
 		id: message.id,
 		role: message.role,
@@ -104,7 +105,8 @@ const toChatMessage = (
 			: [],
 		measurements:
 			isAssistant && message.replyToId ? (measurements.get(message.replyToId) ?? []) : [],
-		workouts: isAssistant && message.replyToId ? (workouts.get(message.replyToId) ?? []) : [],
+		workouts: messageWorkouts?.workouts ?? [],
+		workoutCards: messageWorkouts?.workoutCards ?? [],
 		achievements: isAssistant ? (achievements.get(message.id) ?? []) : [],
 		dayCard: dayCards.get(message.id) ?? null,
 		statsCard: statsCards.get(message.id) ?? null,

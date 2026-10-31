@@ -80,6 +80,24 @@ export const workoutResponseSchema = z.object({
 
 export type WorkoutResponse = z.infer<typeof workoutResponseSchema>
 
+/**
+ * SUMMARY: the message finished the session (or told it whole) — the card of the whole session.
+ * EXERCISES: the message added these exercises to a session — a card per exercise.
+ */
+export const workoutCardVariantSchema = z.enum(['SUMMARY', 'EXERCISES'])
+
+export type WorkoutCardVariant = z.infer<typeof workoutCardVariantSchema>
+
+/** How one workout of `workouts` shows on a message. */
+export const workoutCardSchema = z.object({
+	workoutId: z.uuid(),
+	variant: workoutCardVariantSchema,
+	/** The exercises the card shows: those the message added, or the whole session for SUMMARY. */
+	exerciseIds: z.array(z.uuid()),
+})
+
+export type WorkoutCard = z.infer<typeof workoutCardSchema>
+
 /** Path of the /workouts/:id routes. */
 export const workoutParamsSchema = z.object({ id: z.uuid() })
 

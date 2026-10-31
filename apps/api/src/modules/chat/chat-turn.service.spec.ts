@@ -57,7 +57,7 @@ const createService = () => {
 	const setDayCard = vi.fn().mockResolvedValue(undefined)
 	const findActiveEntriesByIds = vi.fn().mockResolvedValue([])
 	const recordForTurn = vi.fn()
-	const logWorkouts = vi.fn().mockResolvedValue({ sourceMessageIds: [] })
+	const logWorkouts = vi.fn().mockResolvedValue({ sourceMessageIds: [], hasNewRecord: false })
 	const service = new ChatTurnService(
 		{ $transaction: (callback: (tx: unknown) => unknown) => callback({}) } as never,
 		{ completeTurn, setDayCard } as never,

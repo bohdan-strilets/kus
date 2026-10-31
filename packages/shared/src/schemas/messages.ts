@@ -17,7 +17,7 @@ import { factProposalSchema } from './facts.js'
 import { measurementCardSchema } from './measurements.js'
 import { PHOTOS_PER_MESSAGE_LIMIT } from './photo-limits.js'
 import { statsCardSchema } from './stats-card.js'
-import { workoutResponseSchema } from './workouts.js'
+import { workoutCardSchema, workoutResponseSchema } from './workouts.js'
 
 export const MESSAGE_TEXT_MAX_LENGTH = 2000
 export const MESSAGES_PAGE_DEFAULT_LIMIT = 30
@@ -248,6 +248,11 @@ export const chatMessageSchema = z.object({
 	measurements: z.array(measurementCardSchema),
 	/** Assistant replies only: the trainings this turn recorded (empty in payloads of older servers). */
 	workouts: z.array(workoutResponseSchema).default([]),
+	/**
+	 * Assistant replies only: how each workout of `workouts` shows on this message — the summary of
+	 * the session or the exercises this message added. Empty in payloads of older servers.
+	 */
+	workoutCards: z.array(workoutCardSchema).default([]),
 	/** Assistant replies only: the milestone this turn reached — the highest one per type. */
 	achievements: z.array(achievementResponseSchema),
 	/** Replies to show_day only: the day snapshot. null elsewhere and in payloads of older servers. */
@@ -288,6 +293,11 @@ export const sendMessageResponseSchema = z.object({
 	 * restored, a question answered in words), as they are now. Empty on a replayed turn.
 	 */
 	updatedMessages: z.array(chatMessageSchema),
+	/**
+	 * Live only, not stored: this turn set a workout record the session did not have before (for the
+	 * sound). false on a replayed turn and in payloads of older servers.
+	 */
+	hasNewWorkoutRecord: z.boolean().default(false),
 })
 
 export type SendMessageResponse = z.infer<typeof sendMessageResponseSchema>

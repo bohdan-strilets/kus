@@ -3,6 +3,7 @@ import { Injectable } from '@nestjs/common'
 import type { Prisma } from '../../generated/prisma/client'
 import type { ExerciseKind, MuscleGroup } from '../../generated/prisma/enums'
 import { PrismaService } from '../../prisma'
+import { placeAfter } from './workout-session'
 
 /**
  * A workout with its live exercises and their sets, in the order they were done; the dictionary
@@ -30,7 +31,25 @@ export interface WorkoutWrite {
 	place: Prisma.WorkoutUncheckedCreateInput['place']
 	kcalBurned: number | null
 	sourceMessageId: string | null
+	/** Set when the message finishes the session (or tells it whole); a replace leaves them as they are. */
+	finishedAt: Date | null
+	finishedMessageId: string | null
 	exercises: ExerciseWrite[]
+}
+
+/** What a later message adds to a session: its rows keep the session's day. */
+export type ExercisesAppend = Pick<
+	WorkoutWrite,
+	'userId' | 'localDate' | 'sourceMessageId' | 'exercises'
+>
+
+/** Session fields a later message names; undefined leaves the field as it is. */
+export interface SessionFields {
+	place?: NonNullable<WorkoutWrite['place']>
+	durationMin?: number
+	kcalBurned?: number
+	finishedAt?: Date
+	finishedMessageId?: string
 }
 
 export interface ExerciseWrite {
@@ -43,11 +62,13 @@ export interface ExerciseWrite {
 	durationMin: number | null
 	distanceM: number | null
 	performedAt: Date
+	/** The message the row came from when not the workout's own (a replace keeps the earlier one). */
+	sourceMessageId?: string | null
 	sets: { position: number; reps: number | null; weightKg: number | null; isWarmup: boolean }[]
 }
 
 const toExerciseCreate = (
-	write: WorkoutWrite,
+	write: ExercisesAppend,
 ): Prisma.ExerciseEntryUncheckedCreateWithoutWorkoutInput[] =>
 	write.exercises.map((exercise) => ({
 		userId: write.userId,
@@ -61,7 +82,8 @@ const toExerciseCreate = (
 		source: 'MANUAL',
 		performedAt: exercise.performedAt,
 		localDate: write.localDate,
-		sourceMessageId: write.sourceMessageId,
+		sourceMessageId:
+			exercise.sourceMessageId === undefined ? write.sourceMessageId : exercise.sourceMessageId,
 		sets: {
 			create: exercise.sets.map((set) => ({ ...set, userId: write.userId })),
 		},
@@ -125,13 +147,27 @@ export class WorkoutsRepository {
 		})
 	}
 
-	/** The workouts a user message recorded; a deleted one stays, the chat shows it as a line. */
+	/**
+	 * The workouts user messages started, finished or added exercises to; a deleted one stays, the
+	 * chat shows it as a line.
+	 */
 	findBySourceMessages(
 		{ userId, messageIds }: { userId: string; messageIds: string[] },
 		tx?: Prisma.TransactionClient,
 	): Promise<WorkoutWithExercises[]> {
 		return (tx ?? this.prisma).workout.findMany({
-			where: { userId, sourceMessageId: { in: messageIds } },
+			where: {
+				userId,
+				OR: [
+					{ sourceMessageId: { in: messageIds } },
+					{ finishedMessageId: { in: messageIds } },
+					{
+						exercises: {
+							some: { userId, deletedAt: null, sourceMessageId: { in: messageIds } },
+						},
+					},
+				],
+			},
 			include: WITH_EXERCISES,
 			orderBy: { createdAt: 'asc' },
 		})
@@ -194,10 +230,53 @@ export class WorkoutsRepository {
 				kcalBurned: write.kcalBurned,
 				kcalSource: write.kcalBurned === null ? null : 'MANUAL',
 				sourceMessageId: write.sourceMessageId,
+				finishedAt: write.finishedAt,
+				finishedMessageId: write.finishedMessageId,
 				exercises: { create: toExerciseCreate(write) },
 			},
 			include: WITH_EXERCISES,
 		})
+	}
+
+	/**
+	 * Adds exercises to the owner's live workout; the session's own fields stay. Null when it is not
+	 * theirs or was deleted meanwhile.
+	 */
+	async appendExercises(
+		{ id, append }: { id: string; append: ExercisesAppend },
+		tx: Prisma.TransactionClient,
+	): Promise<WorkoutWithExercises | null> {
+		const workout = await tx.workout.findFirst({
+			where: { id, userId: append.userId, deletedAt: null },
+			select: { id: true },
+		})
+		if (!workout) return null
+		// read in this transaction, right before the write: the new rows go after every row there is
+		const { _max } = await tx.exerciseEntry.aggregate({
+			_max: { position: true },
+			where: { workoutId: id, userId: append.userId },
+		})
+		const exercises = placeAfter(append.exercises, _max.position)
+		return tx.workout.update({
+			where: { id, userId: append.userId },
+			data: { exercises: { create: toExerciseCreate({ ...append, exercises }) } },
+			include: WITH_EXERCISES,
+		})
+	}
+
+	/** Sets the named fields of the owner's live workout; false when it is not theirs or deleted. */
+	async updateSessionFields(
+		{ userId, id, fields }: { userId: string; id: string; fields: SessionFields },
+		tx: Prisma.TransactionClient,
+	): Promise<boolean> {
+		const { count } = await tx.workout.updateMany({
+			where: { id, userId, deletedAt: null },
+			data: {
+				...fields,
+				...(fields.kcalBurned === undefined ? {} : { kcalSource: 'MANUAL' as const }),
+			},
+		})
+		return count > 0
 	}
 
 	/**
@@ -282,6 +361,17 @@ export class WorkoutsRepository {
 		await tx.exercise.createMany({ data: [{ ...data, aliases: [] }], skipDuplicates: true })
 		return tx.exercise.findFirstOrThrow({
 			where: { userId: data.userId, nameNormalized: data.nameNormalized, deletedAt: null },
+		})
+	}
+
+	/** The user's fix of a group: overwrites the owner's dictionary row (never a cardio one). */
+	async setExerciseMuscleGroup(
+		{ userId, id, muscleGroup }: { userId: string; id: string; muscleGroup: MuscleGroup },
+		tx: Prisma.TransactionClient,
+	): Promise<void> {
+		await tx.exercise.updateMany({
+			where: { id, userId, deletedAt: null, kind: { not: 'CARDIO' } },
+			data: { muscleGroup },
 		})
 	}
 

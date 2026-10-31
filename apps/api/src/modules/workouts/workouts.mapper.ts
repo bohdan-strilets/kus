@@ -67,11 +67,14 @@ export const getEstimatedDurationMin = ({
 	return Math.round(minutes)
 }
 
-export const toWorkoutResponse = (workout: WorkoutWithExercises): WorkoutResponse => {
-	// written by the backend; a value that no longer parses only loses the trophy
-	const records = storedRecordsSchema.catch([]).parse(workout.records ?? [])
-	return toResponse(workout, records)
-}
+/** The records the workout holds; written by the backend, a value that no longer parses is none. */
+export const readWorkoutRecords = (
+	workout: Pick<WorkoutWithExercises, 'records'>,
+): z.infer<typeof storedRecordsSchema> => storedRecordsSchema.catch([]).parse(workout.records ?? [])
+
+// a stored value that no longer parses only loses the trophy
+export const toWorkoutResponse = (workout: WorkoutWithExercises): WorkoutResponse =>
+	toResponse(workout, readWorkoutRecords(workout))
 
 const toResponse = (
 	workout: WorkoutWithExercises,

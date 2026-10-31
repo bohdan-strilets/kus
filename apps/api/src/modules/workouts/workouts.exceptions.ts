@@ -18,3 +18,13 @@ export class WorkoutNotFoundException extends AppException {
 		super({ status: HttpStatus.NOT_FOUND, errorCode: ErrorCodes.WORKOUT_NOT_FOUND })
 	}
 }
+
+/**
+ * A ref or a group the parser already checked is not in the request context: a bug, never user
+ * input. The turn rolls back.
+ */
+export class WorkoutTurnInconsistentException extends AppException {
+	constructor() {
+		super({ status: HttpStatus.INTERNAL_SERVER_ERROR, errorCode: ErrorCodes.INTERNAL_ERROR })
+	}
+}

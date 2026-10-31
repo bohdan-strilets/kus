@@ -89,6 +89,28 @@
 	--color-hint-training-bg: #e2f0fb;
 	--color-hint-training-ink: #2f4a60;
 
+	/* muscle groups (design/docs/training-groups.md): names for existing values, no new colours.
+	   cardio / back / core reuse tokens; the rest keep hex copies from design/tokens/theme.css */
+	--color-muscle-cardio-bg: var(--color-carbs-bg);
+	--color-muscle-cardio-ink: var(--color-carbs-ink);
+	/* = hint-food in design/tokens/theme.css */
+	--color-muscle-chest-bg: #fde6d3;
+	--color-muscle-chest-ink: #7a3a10;
+	--color-muscle-back-bg: var(--color-hint-training-bg);
+	--color-muscle-back-ink: var(--color-hint-training-ink);
+	/* = hint-measure; the same values as success-soft / success-ink, deliberately without var():
+	   success is only for success and data */
+	--color-muscle-legs-bg: #e3f3ea;
+	--color-muscle-legs-ink: #0f5e40;
+	/* = hint-advice in design/tokens/theme.css */
+	--color-muscle-shoulders-bg: #f1e7fa;
+	--color-muscle-shoulders-ink: #5a3a7a;
+	/* = hint-day in design/tokens/theme.css */
+	--color-muscle-arms-bg: #fff0c2;
+	--color-muscle-arms-ink: #5e4508;
+	--color-muscle-core-bg: var(--color-secondary);
+	--color-muscle-core-ink: var(--color-muted-strong);
+
 	/* tiles under food icons (shared/ui/food-icon), by category group */
 	--color-food-grain: #fff3d6;
 	--color-food-soup: #fde6d3;
@@ -202,6 +224,8 @@
 	--radius-panel: 26px;
 	/* added: floating bottom nav (mockups chat, today) */
 	--radius-nav: 30px;
+	/* added: GroupTag «Спина 6», radius 9 (design/docs/components.md); tokens.json radius.tag */
+	--radius-tag: 9px;
 
 	/* ── Shadows ── */
 	--shadow-card: 0 10px 28px rgb(80 50 20 / 0.1);

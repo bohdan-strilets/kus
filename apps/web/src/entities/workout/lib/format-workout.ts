@@ -14,7 +14,7 @@ import {
 const SEPARATOR = ' · '
 
 /** «80», «77,5» — a decimal only when there is one. */
-const formatNumber = (value: number): string =>
+export const formatNumber = (value: number): string =>
 	Number.isInteger(value) ? formatInteger(value) : formatDecimal(value, 1)
 
 const formatWeight = (weightKg: number, t: TFunction): string =>

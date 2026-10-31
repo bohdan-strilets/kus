@@ -805,6 +805,15 @@
 		"editedCaption": "{{amount}} · змінено",
 		"mealTotal": "{{meal}} разом: {{kcal}} ккал"
 	},
+	"muscle": {
+		"CARDIO": "Кардіо",
+		"CHEST": "Груди",
+		"BACK": "Спина",
+		"LEGS": "Ноги",
+		"SHOULDERS": "Плечі",
+		"ARMS": "Руки",
+		"CORE": "Кор"
+	},
 	"workout": {
 		"kg": "{{value}} кг",
 		"min": "{{value}} хв",
@@ -815,6 +824,8 @@
 		"scheme": "{{sets}}×{{reps}}",
 		"weightTimes": "{{weight}} × {{reps}}",
 		"record": "рекорд",
+		"repsUnit": "повт.",
+		"warmupShort": "розм.",
 		"edited": "змінено",
 		"deleted": "Тренування {{date}} видалено.",
 		"deleteError": "Не вдалося видалити тренування. Спробуй ще раз.",

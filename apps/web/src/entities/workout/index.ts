@@ -18,3 +18,12 @@ export {
 export { WorkoutCard, type WorkoutCardProps } from './ui/workout-card/WorkoutCard'
 export { WorkoutDayRow } from './ui/workout-day-row/WorkoutDayRow'
 export { DeletedWorkoutRow } from './ui/deleted-workout-row/DeletedWorkoutRow'
+export {
+	formatSets,
+	type FormattedSets,
+	type SetSegment,
+	type SetSegmentKind,
+} from './lib/format-sets'
+export { GroupDot, type GroupDotProps } from './ui/group-dot'
+export { GroupTag, type GroupTagProps } from './ui/group-tag'
+export { SetLine, type SetLineProps } from './ui/set-line'

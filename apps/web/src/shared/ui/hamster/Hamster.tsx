@@ -52,8 +52,8 @@ export const Hamster = ({
 			{parts.badge && <MoodBadge text={badge === undefined ? undefined : String(badge)} />}
 			<Body />
 			{parts.over}
-			<Cookie gradientId={gradientId} maskId={maskId} />
-			{parts.paw === 'wave' ? <PawWave /> : <PawLeft />}
+			{!parts.isBare && <Cookie gradientId={gradientId} maskId={maskId} />}
+			{!parts.isBare && (parts.paw === 'wave' ? <PawWave /> : <PawLeft />)}
 			{parts.face}
 			{parts.front}
 		</svg>

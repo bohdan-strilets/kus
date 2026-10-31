@@ -20,6 +20,7 @@ export const HAMSTER_COLORS = {
 	bubble: '#F2B987',
 	bell: '#F5C451',
 	sweat: '#8FCBF2',
+	headband: '#B9521A',
 	moon: '#F8D9A8',
 	success: '#17845A',
 	white: '#FFFFFF',
@@ -43,4 +44,5 @@ export const HAMSTER_LABEL_KEYS = {
 	remind: 'hamster.mood.remind',
 	oops: 'hamster.mood.oops',
 	sleepy: 'hamster.mood.sleepy',
+	warmup: 'hamster.mood.warmup',
 } as const satisfies Record<HamsterMood, `hamster.mood.${HamsterMood}`>

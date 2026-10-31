@@ -19,6 +19,18 @@ beforeEach(() => {
 
 afterEach(cleanup)
 
+describe('Hamster warmup', () => {
+	it('draws no cookie in the bare mood', () => {
+		const { container } = render(<Hamster mood="warmup" />)
+		expect(container.querySelector('text')).toBeNull()
+	})
+
+	it('keeps the cookie in other moods', () => {
+		const { container } = render(<Hamster mood="happy" />)
+		expect(container.querySelector('text')?.textContent).toBe('k')
+	})
+})
+
 describe('Hamster badge', () => {
 	it('shows the number on the proud medal', () => {
 		const { container } = render(<Hamster mood="proud" badge={7} />)

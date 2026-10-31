@@ -26,6 +26,8 @@ export type HamsterMood =
 	| 'oops'
 	/** Вечір — day summary */
 	| 'sleepy'
+	/** Розминка — empty workout journal (headband, no cookie) */
+	| 'warmup'
 
 /** Chat avatar faces, picked by context (design/docs/components.md, Bubble — Kusik). */
 export type HamsterHeadMood =
@@ -57,6 +59,8 @@ export interface MoodParts {
 	over?: ReactNode
 	/** Left paw: resting or waving. */
 	paw?: 'down' | 'wave'
+	/** No cookie and no resting paw: the mood draws its own paws in `front` (sport props instead). */
+	isBare?: true
 	face: ReactNode
 	/** Decor on top (green check). */
 	front?: ReactNode

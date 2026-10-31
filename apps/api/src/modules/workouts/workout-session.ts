@@ -41,6 +41,30 @@ export const findSessionToClose = <
 			workout.deletedAt === null && workout.finishedAt === null && workout.exercises.length > 0,
 	) ?? null
 
+/** A «все» this long after the last entry still marks the end; later, the session ended at its last entry. */
+export const FINISH_AT_MESSAGE_MAX_GAP_MIN = 30
+const MS_PER_MINUTE = 60_000
+
+/**
+ * When a session that a message closes ended: at that message if it adds exercises or comes within
+ * FINISH_AT_MESSAGE_MAX_GAP_MIN of the last entry, otherwise at the last entry, so a late «все»
+ * does not stretch the estimated duration.
+ */
+export const getFinishedAt = ({
+	workout,
+	addsExercises,
+	now,
+}: {
+	workout: Pick<WorkoutWithExercises, 'exercises'>
+	addsExercises: boolean
+	now: Date
+}): Date => {
+	const last = getLastPerformedAt(workout)
+	if (addsExercises || last === null) return now
+	const gapMs = now.getTime() - last.getTime()
+	return gapMs <= FINISH_AT_MESSAGE_MAX_GAP_MIN * MS_PER_MINUTE ? now : last
+}
+
 /** Rows added to a session go after every row it already has (`maxPosition` null: none yet). */
 export const placeAfter = <T extends { position: number }>(
 	rows: readonly T[],

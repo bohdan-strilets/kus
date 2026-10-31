@@ -14,6 +14,7 @@ import type { ExerciseKind, MuscleGroup } from '../../generated/prisma/enums'
 import { toId, type WorkoutRefIds } from './workout-refs'
 import {
 	findSessionToClose,
+	getFinishedAt,
 	getNewSessionReason,
 	getRecordKeys,
 	getSessionMessageIds,
@@ -197,7 +198,16 @@ export class WorkoutSessionsService {
 			...(input.place === null ? {} : { place: input.place }),
 			...(input.durationMin === null ? {} : { durationMin: input.durationMin }),
 			...(input.kcalBurned === null ? {} : { kcalBurned: input.kcalBurned }),
-			...(input.finish ? { finishedAt: now, finishedMessageId: sourceMessageId } : {}),
+			...(input.finish
+				? {
+						finishedAt: getFinishedAt({
+							workout: before,
+							addsExercises: exercises.length > 0,
+							now,
+						}),
+						finishedMessageId: sourceMessageId,
+					}
+				: {}),
 		}
 		if (Object.keys(fields).length > 0) await this.updateSession({ userId, id, fields }, tx)
 		const workout =

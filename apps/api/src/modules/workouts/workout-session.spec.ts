@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+	FINISH_AT_MESSAGE_MAX_GAP_MIN,
 	findSessionToClose,
+	getFinishedAt,
 	getNewSessionReason,
 	getRecordKeys,
 	getSessionMessageIds,
@@ -245,5 +247,31 @@ describe('inheritEntryOrigins in a fix', () => {
 			fallback: fix,
 		})
 		expect(origins).toEqual([{ sourceMessageId: 'm1', performedAt: hoursAgo(1) }, fix])
+	})
+})
+
+describe('getFinishedAt', () => {
+	const MINUTE_MS = 60 * 1000
+	const withLastEntry = (minutesAgo: number) => ({
+		exercises: [
+			{ performedAt: new Date(NOW.getTime() - minutesAgo * MINUTE_MS) },
+		] as WorkoutWithExercises['exercises'],
+	})
+
+	it('ends at the «все» when it comes within the gap of the last entry', () => {
+		const workout = withLastEntry(FINISH_AT_MESSAGE_MAX_GAP_MIN)
+		expect(getFinishedAt({ workout, addsExercises: false, now: NOW })).toEqual(NOW)
+	})
+
+	it('ends at the last entry when the «все» comes later', () => {
+		const workout = withLastEntry(FINISH_AT_MESSAGE_MAX_GAP_MIN + 1)
+		expect(getFinishedAt({ workout, addsExercises: false, now: NOW })).toEqual(
+			workout.exercises[0]?.performedAt,
+		)
+	})
+
+	it('ends at the message when the message itself adds exercises', () => {
+		const workout = withLastEntry(120)
+		expect(getFinishedAt({ workout, addsExercises: true, now: NOW })).toEqual(NOW)
 	})
 })

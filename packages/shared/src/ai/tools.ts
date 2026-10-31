@@ -25,6 +25,7 @@ import {
 	MAX_EXERCISES_PER_WORKOUT,
 	MAX_WORKOUT_KCAL,
 	MAX_WORKOUT_MINUTES,
+	EXERCISE_GROUP_FIX_PATTERN,
 	WORKOUT_REF_PATTERN,
 	workoutExerciseSchema,
 } from './workout-tools.js'
@@ -350,13 +351,30 @@ export const logWorkoutInputSchema = z.object({
 		.nullable()
 		.default(null)
 		.describe('Only a number the user said; else null'),
-	exercises: z.array(workoutExerciseSchema).min(1).max(MAX_EXERCISES_PER_WORKOUT),
+	// may be empty only with appendRef + finish or with exerciseGroups (the parser checks)
+	exercises: z.array(workoutExerciseSchema).max(MAX_EXERCISES_PER_WORKOUT),
 	replaceRef: z
 		.string()
 		.regex(WORKOUT_REF_PATTERN)
 		.nullable()
 		.default(null)
 		.describe('w-ref from "Today\'s workouts" to replace that whole workout; else null'),
+	appendRef: z
+		.string()
+		.regex(WORKOUT_REF_PATTERN)
+		.nullable()
+		.default(null)
+		.describe('w-ref from "Today\'s workouts" to add to; else null'),
+	finish: z
+		.boolean()
+		.default(false)
+		.describe('true when the user says they are done, or tells a whole workout in one message'),
+	exerciseGroups: z
+		.array(z.string().regex(EXERCISE_GROUP_FIX_PATTERN))
+		.default([])
+		.describe(
+			'"x1:LEGS" when the user corrects the group of an exercise from "Exercises"; else []',
+		),
 	reply: replyTextSchema.describe("Short chat reply in the language of the user's message"),
 })
 
@@ -384,8 +402,7 @@ export const AI_TOOL_SCHEMAS: Record<AiToolName, z.ZodType> = {
 }
 
 const AI_TOOL_DESCRIPTIONS: Record<AiToolName, string> = {
-	log_workout:
-		'Log a workout or a part of it: strength sets (reps × weight) and cardio (minutes, distance). See "Workouts".',
+	log_workout: 'Log a workout or part of it. See "Workouts".',
 	log_food:
 		'Log everything the user says they ate or drank in this message. Always log your best estimate, even when you also ask a clarify question. For today or another day from "Days". Never to fix something already logged.',
 	log_measurement:

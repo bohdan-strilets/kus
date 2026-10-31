@@ -118,12 +118,16 @@ describe('getLoggedWorkouts', () => {
 		durationMin: null,
 		kcalBurned: null,
 		replaceRef: null,
+		appendRef: null,
+		finish: false,
+		exerciseGroups: [],
 		reply: 'ок',
 		exercises: [
 			{
 				name: 'Жим лежачи',
 				exerciseRef: null,
 				kind: 'STRENGTH',
+				muscleGroup: null,
 				durationMin: null,
 				distanceKm: null,
 				sets: [

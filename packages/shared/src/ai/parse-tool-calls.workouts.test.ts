@@ -217,3 +217,120 @@ describe('parseToolCalls deleting and restoring a workout', () => {
 		expect(parseToolCalls([call('correct_entry', change), reply], refs).ok).toBe(false)
 	})
 })
+
+describe('parseToolCalls adding to a workout, finishing it and fixing groups', () => {
+	const errorsOf = (calls: RawToolCall[], parseRefs: ParseRefs = refs): string =>
+		((result) => (result.ok ? '' : result.errors.join(' ')))(parseToolCalls(calls, parseRefs))
+
+	it('fills the new fields with their defaults', () => {
+		expect(parseToolCalls([workout()], refs)).toMatchObject({
+			ok: true,
+			decision: {
+				workouts: [
+					{
+						appendRef: null,
+						finish: false,
+						exerciseGroups: [],
+						exercises: [{ muscleGroup: null }],
+					},
+				],
+			},
+		})
+	})
+
+	it('adds exercises to a workout of the context, with their group', () => {
+		const result = parseToolCalls(
+			[workout({ appendRef: 'w1', exercises: [{ ...bench, muscleGroup: 'CHEST' }] })],
+			refs,
+		)
+
+		expect(result).toMatchObject({
+			ok: true,
+			decision: { workouts: [{ appendRef: 'w1', exercises: [{ muscleGroup: 'CHEST' }] }] },
+		})
+	})
+
+	it('finishes a workout without new exercises', () => {
+		expect(
+			parseToolCalls([workout({ appendRef: 'w1', finish: true, exercises: [] })], refs),
+		).toMatchObject({
+			ok: true,
+			decision: { workouts: [{ appendRef: 'w1', finish: true, exercises: [] }] },
+		})
+	})
+
+	it('fixes a group without exercises', () => {
+		expect(
+			parseToolCalls([workout({ exercises: [], exerciseGroups: ['x1:LEGS'] })], refs),
+		).toMatchObject({
+			ok: true,
+			decision: { workouts: [{ exerciseGroups: ['x1:LEGS'], exercises: [] }] },
+		})
+	})
+
+	it('rejects empty exercises without appendRef and finish or a group fix', () => {
+		expect(errorsOf([workout({ exercises: [] })])).toContain('no exercises')
+		expect(errorsOf([workout({ exercises: [], finish: true })])).toContain('no exercises')
+		expect(errorsOf([workout({ exercises: [], appendRef: 'w1' })])).toContain('no exercises')
+	})
+
+	it('rejects appendRef together with replaceRef', () => {
+		expect(errorsOf([workout({ appendRef: 'w1', replaceRef: 'w1' })])).toContain(
+			'appendRef and replaceRef together',
+		)
+	})
+
+	it('rejects appendRef with a date', () => {
+		expect(errorsOf([workout({ appendRef: 'w1', date: '2026-10-26' })])).toContain(
+			'appendRef goes with date null',
+		)
+	})
+
+	it("rejects appendRef that is not in «Today's workouts», a deleted one too", () => {
+		expect(errorsOf([workout({ appendRef: 'w9' })])).toContain('appendRef "w9" is not in')
+		expect(errorsOf([workout({ appendRef: 'w2' })])).toContain('appendRef "w2" is not in')
+	})
+
+	it('rejects two calls adding to one workout, or adding to and replacing it', () => {
+		expect(errorsOf([workout({ appendRef: 'w1' }), workout({ appendRef: 'w1' })])).toContain(
+			'w1 gets more than one call',
+		)
+		expect(errorsOf([workout({ appendRef: 'w1' }), workout({ replaceRef: 'w1' })])).toContain(
+			'w1 gets more than one call',
+		)
+	})
+
+	it('keeps the old text for a workout replaced twice', () => {
+		const errors = errorsOf([workout({ replaceRef: 'w1' }), workout({ replaceRef: 'w1' })])
+
+		expect(errors).toContain('w1 is replaced more than once')
+		expect(errors).not.toContain('gets more than one call')
+	})
+
+	it('rejects adding to a workout the same message deletes', () => {
+		const errors = errorsOf([
+			logFood,
+			workout({ appendRef: 'w1' }),
+			call('delete_entry', { refs: ['w1'] }),
+		])
+
+		expect(errors).toContain('w1 is also deleted in this message — add to it or delete it')
+	})
+
+	it('rejects a group fix of an exercise that is not in «Exercises», or a malformed one', () => {
+		expect(errorsOf([workout({ exerciseGroups: ['x7:LEGS'] })])).toContain(
+			'exerciseGroups "x7:LEGS" — x7 is not in "Exercises"',
+		)
+		expect(parseToolCalls([workout({ exerciseGroups: ['x1:NECK'] })], refs).ok).toBe(false)
+		expect(errorsOf([workout({ exerciseGroups: ['x1:NECK'] })])).toContain(
+			'exerciseGroups "x1:NECK" — NECK is not one of CHEST, BACK, LEGS, SHOULDERS, ARMS, CORE',
+		)
+		expect(parseToolCalls([workout({ exerciseGroups: ['x1'] })], refs).ok).toBe(false)
+	})
+
+	it('rejects an unknown muscle group', () => {
+		const neck = { ...bench, muscleGroup: 'NECK' }
+
+		expect(parseToolCalls([workout({ exercises: [neck] })], refs).ok).toBe(false)
+	})
+})

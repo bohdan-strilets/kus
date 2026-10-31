@@ -6,6 +6,7 @@ import { AI_TOOL_SCHEMAS, getAiFunctionTools } from './tools.js'
 
 const NULL_BRANCH = '{"type":"null"}'
 const NULL_TYPE_LIST = ',"null"]'
+const NULL_IN_ENUM = ',null]'
 
 const countOccurrences = (text: string, part: string): number => text.split(part).length - 1
 
@@ -29,7 +30,9 @@ describe('toModelParameters nullable compaction', () => {
 			const compacted = JSON.stringify(toModelParameters(schema))
 			// zod itself already writes a nullable without bounds as a type list
 			before += countOccurrences(original, NULL_BRANCH) + countOccurrences(original, NULL_TYPE_LIST)
-			after += countOccurrences(compacted, NULL_TYPE_LIST)
+			// a nullable enum keeps null in its list instead of a type list
+			after +=
+				countOccurrences(compacted, NULL_TYPE_LIST) + countOccurrences(compacted, NULL_IN_ENUM)
 			expect(compacted.length).toBeLessThanOrEqual(original.length)
 		}
 
@@ -37,13 +40,31 @@ describe('toModelParameters nullable compaction', () => {
 		expect(after).toBe(before)
 	})
 
-	it('adds null to the enum of a nullable enum, so null stays allowed', () => {
+	it('adds null to the enum of a nullable enum and drops the type next to it', () => {
 		const schema = toModelParameters(AI_TOOL_SCHEMAS.log_workout) as {
-			properties: { place: { type: string[]; enum: (string | null)[] } }
+			properties: { place: Record<string, unknown> }
 		}
 
-		expect(schema.properties.place.type).toEqual(['string', 'null'])
+		expect(schema.properties.place).not.toHaveProperty('type')
 		expect(schema.properties.place.enum).toEqual(['GYM', 'HOME', 'OUTDOOR', 'OTHER', null])
+	})
+
+	it('leaves no type next to an enum that lists null, in any tool', () => {
+		const findTypedNullEnums = (node: unknown): number => {
+			if (Array.isArray(node))
+				return node.reduce<number>((sum, item) => sum + findTypedNullEnums(item), 0)
+			if (typeof node !== 'object' || node === null) return 0
+			const own = node as Record<string, unknown>
+			const isTyped = Array.isArray(own.enum) && own.enum.includes(null) && 'type' in own
+			return (
+				(isTyped ? 1 : 0) +
+				Object.values(own).reduce<number>((sum, value) => sum + findTypedNullEnums(value), 0)
+			)
+		}
+
+		for (const [name, schema] of tools) {
+			expect(findTypedNullEnums(toModelParameters(schema)), name).toBe(0)
+		}
 	})
 })
 
@@ -59,6 +80,7 @@ describe('the compacted schema accepts and rejects the same inputs', () => {
 		sets: [{ reps: 8, weightKg: 80, count: 3, isWarmup: false }],
 		durationMin: null,
 		distanceKm: null,
+		muscleGroup: null,
 	}
 	const base = {
 		date: null,
@@ -67,6 +89,9 @@ describe('the compacted schema accepts and rejects the same inputs', () => {
 		kcalBurned: null,
 		exercises: [exercise],
 		replaceRef: null,
+		appendRef: null,
+		finish: false,
+		exerciseGroups: [],
 		reply: 'Записав.',
 	}
 
@@ -84,7 +109,25 @@ describe('the compacted schema accepts and rejects the same inputs', () => {
 		['an unknown place', { ...base, place: 'MOON' }, false],
 		['a string instead of minutes', { ...base, durationMin: 'long' }, false],
 		['a null name', { ...base, exercises: [{ ...exercise, name: null }] }, false],
-		['no exercises', { ...base, exercises: [] }, false],
+		['no exercises (the parser decides when that is allowed)', { ...base, exercises: [] }, true],
+		['a muscle group', { ...base, exercises: [{ ...exercise, muscleGroup: 'LEGS' }] }, true],
+		[
+			'an unknown muscle group',
+			{ ...base, exercises: [{ ...exercise, muscleGroup: 'NECK' }] },
+			false,
+		],
+		[
+			'a number as a muscle group',
+			{ ...base, exercises: [{ ...exercise, muscleGroup: 3 }] },
+			false,
+		],
+		['an appendRef with finish', { ...base, appendRef: 'w1', finish: true }, true],
+		['an appendRef not like a w-ref', { ...base, appendRef: 'x1' }, false],
+		['a null finish', { ...base, finish: null }, false],
+		['a group fix', { ...base, exerciseGroups: ['x1:LEGS'] }, true],
+		// the schema checks only the format; the parser rejects an unknown group
+		['a group fix with an unknown group', { ...base, exerciseGroups: ['x1:NECK'] }, true],
+		['a group fix without a ref', { ...base, exerciseGroups: ['LEGS'] }, false],
 		[
 			'a negative weight',
 			{ ...base, exercises: [{ ...exercise, sets: [{ ...exercise.sets[0], weightKg: -5 }] }] },
@@ -112,9 +155,13 @@ describe('bounds are left to zod', () => {
 				sets: [],
 				durationMin: 30,
 				distanceKm: 5,
+				muscleGroup: null,
 			},
 		],
 		replaceRef: null,
+		appendRef: null,
+		finish: false,
+		exerciseGroups: [],
 		reply: 'Записав.',
 	}
 
@@ -128,7 +175,7 @@ describe('bounds are left to zod', () => {
 
 	it('keeps the lower bound 0 and the item counts', () => {
 		expect(json).toContain('"minimum":0')
-		expect(json).toContain('"minItems":1')
+		expect(JSON.stringify(toModelParameters(AI_TOOL_SCHEMAS.log_food))).toContain('"minItems":1')
 	})
 
 	it('accepts out-of-bounds values the zod schema still rejects', () => {

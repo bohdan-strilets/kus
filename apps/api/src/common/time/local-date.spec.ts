@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+	formatLocalClock,
 	formatLocalTime,
 	getLocalDate,
 	getLocalDateString,
@@ -23,6 +24,11 @@ describe('local date', () => {
 		expect(formatLocalTime(new Date('2026-10-07T11:20:00Z'), WARSAW)).toBe(
 			'2026-10-07 13:20, Wednesday',
 		)
+	})
+
+	it('formats only the wall clock, midnight as 00', () => {
+		expect(formatLocalClock(new Date('2026-10-07T11:20:00Z'), WARSAW)).toBe('13:20')
+		expect(formatLocalClock(new Date('2026-10-06T22:05:00Z'), WARSAW)).toBe('00:05')
 	})
 
 	it('reports midnight as hour 0', () => {

@@ -3,11 +3,14 @@
 // After any change here: run `pnpm --filter ai-eval eval` and add a line to PROMPT_CHANGELOG.md.
 import { z } from 'zod'
 
-import { exerciseKindSchema } from '../schemas/enums.js'
+import { exerciseKindSchema, muscleGroupSchema } from '../schemas/enums.js'
 
 /** Refs the backend gives today's workouts and the dictionary exercises named in the message. */
 export const WORKOUT_REF_PATTERN = /^w\d{1,3}$/
 export const EXERCISE_REF_PATTERN = /^x\d{1,3}$/
+
+/** A group fix of an exercise from «Exercises»: `x1:LEGS`. Only the format, to keep the prefix short; the parser checks the group. */
+export const EXERCISE_GROUP_FIX_PATTERN = /^x\d+:[A-Z]+$/
 
 /** Delete and restore point at an entry (`e3`) or a workout (`w1`). */
 export const ENTRY_OR_WORKOUT_REF_PATTERN = /^[ew]\d{1,3}$/
@@ -62,6 +65,8 @@ export const workoutExerciseSchema = z.object({
 	kind: exerciseKindSchema.describe(
 		'STRENGTH: sets. CARDIO: minutes or distance. OTHER: anything else',
 	),
+	// no description: the rule lives in "Workouts" of the prompt
+	muscleGroup: muscleGroupSchema.nullable().default(null),
 	sets: z
 		.array(workoutSetSchema)
 		.max(MAX_SET_GROUPS_PER_EXERCISE)

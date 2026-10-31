@@ -35,6 +35,12 @@ export const formatLocalTime = (date: Date, timezone: string): string => {
 	return `${getLocalDateString(date, timezone)} ${hour}:${minute}, ${weekday}`
 }
 
+/** `13:20` on the user's wall clock. */
+export const formatLocalClock = (date: Date, timezone: string): string => {
+	const { hour = '', minute = '' } = getParts(date, timezone)
+	return `${hour}:${minute}`
+}
+
 const MS_IN_MINUTE = 60 * 1000
 
 /** How far the timezone's wall clock is ahead of UTC at this moment, in ms. */

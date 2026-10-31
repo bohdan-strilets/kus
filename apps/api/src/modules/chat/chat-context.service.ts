@@ -210,7 +210,7 @@ export class ChatContextService {
 			this.getMeasurementsContext(userId, localDate),
 			this.getDaysContext(userId, today),
 			this.chatEarlier.getContext({ userId, text, today }),
-			this.workoutsTurn.getContext({ userId, localDate, timezone, text }),
+			this.workoutsTurn.getContext({ userId, localDate, timezone, text, now }),
 			this.factsService.findContextFacts(userId),
 		])
 		const clarifications = await this.clarificationsRepository.findOpenClarifications({

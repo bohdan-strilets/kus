@@ -96,6 +96,22 @@ export class WorkoutsRepository {
 		})
 	}
 
+	/** Live workouts with a live entry done since `since` (any day), in the order they were logged. */
+	findRecent(
+		{ userId, since }: { userId: string; since: Date },
+		tx?: Prisma.TransactionClient,
+	): Promise<WorkoutWithExercises[]> {
+		return (tx ?? this.prisma).workout.findMany({
+			where: {
+				userId,
+				deletedAt: null,
+				exercises: { some: { userId, deletedAt: null, performedAt: { gte: since } } },
+			},
+			include: WITH_EXERCISES,
+			orderBy: { createdAt: 'asc' },
+		})
+	}
+
 	/** Workouts deleted on a day (by their own day), the latest deletion first. */
 	findDeletedOfDay(
 		{ userId, localDate, take }: { userId: string; localDate: Date; take: number },

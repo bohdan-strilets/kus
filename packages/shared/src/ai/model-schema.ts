@@ -83,14 +83,24 @@ const isNullBranch = (branch: unknown): boolean =>
 	Object.keys(branch).length === 1
 
 /**
+ * An enum that lists null already allows exactly its values: a type next to it says nothing more.
+ * An open enum keeps its type, since its list is dropped later.
+ */
+const dropEnumType = (node: JsonSchema): JsonSchema => {
+	if (!Array.isArray(node.enum) || !node.enum.includes(null) || OPEN_ENUM_KEY in node) return node
+	const { type: _type, ...rest } = node
+	return rest
+}
+
+/**
  * `anyOf: [X, { type: 'null' }]` → X with `type: [X.type, 'null']`: the same schema in fewer
- * characters. An `enum` gets null in its list, since `enum` applies whatever the type says.
+ * characters. An `enum` gets null in its list instead of the type (`enum` alone decides).
  */
 const compactNullable = (node: unknown): unknown => {
 	if (Array.isArray(node)) return node.map(compactNullable)
 	if (typeof node !== 'object' || node === null) return node
-	const compacted: JsonSchema = Object.fromEntries(
-		Object.entries(node).map(([key, value]) => [key, compactNullable(value)]),
+	const compacted: JsonSchema = dropEnumType(
+		Object.fromEntries(Object.entries(node).map(([key, value]) => [key, compactNullable(value)])),
 	)
 	const { anyOf } = compacted
 	if (!Array.isArray(anyOf) || anyOf.length !== 2) return compacted
@@ -100,12 +110,12 @@ const compactNullable = (node: unknown): unknown => {
 	const { type, enum: values } = other as { type?: unknown; enum?: unknown }
 	if (typeof type !== 'string') return compacted
 	const { anyOf: _anyOf, ...rest } = compacted
-	return {
+	return dropEnumType({
 		...rest,
 		...other,
 		type: [type, NULL_TYPE],
 		...(Array.isArray(values) ? { enum: [...(values as unknown[]), null] } : {}),
-	}
+	})
 }
 
 /** The `parameters` of a tool as the model gets them. */

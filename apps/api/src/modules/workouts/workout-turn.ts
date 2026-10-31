@@ -47,17 +47,42 @@ const toSetContext = (set: {
 const toKm = (distanceM: number | null): number | null =>
 	distanceM === null ? null : Number((distanceM / METRES_IN_KM).toFixed(KM_DECIMALS))
 
+/** The latest moment of the workout's live entries; null without any. */
+export const getLastPerformedAt = (workout: Pick<WorkoutWithExercises, 'exercises'>): Date | null =>
+	workout.exercises.reduce<Date | null>(
+		(latest, exercise) =>
+			latest === null || exercise.performedAt > latest ? exercise.performedAt : latest,
+		null,
+	)
+
 export const toWorkoutContext = (
 	workout: WorkoutWithExercises,
-	{ ref, time }: { ref: string; time: string | null },
+	{
+		ref,
+		time,
+		lastAt,
+		exerciseRefs,
+	}: {
+		ref: string
+		time: string | null
+		lastAt: string | null
+		/** Dictionary id → its `x…` in «Exercises». */
+		exerciseRefs: ReadonlyMap<string, string>
+	},
 ): TodayWorkoutContext => ({
 	ref,
 	place: workout.place,
 	time,
+	lastAt,
+	finished: workout.finishedAt !== null,
 	durationMin: workout.durationMin,
 	kcalBurned: workout.kcalBurned,
 	exercises: workout.exercises.map((exercise) => ({
 		name: exercise.name,
+		exerciseRef:
+			exercise.exerciseId === null ? null : (exerciseRefs.get(exercise.exerciseId) ?? null),
+		// the dictionary row's group is the one shown; the entry's snapshot when the row is gone
+		muscleGroup: exercise.exercise?.muscleGroup ?? exercise.muscleGroup,
 		sets: exercise.sets.map(toSetContext),
 		durationMin: exercise.durationMin,
 		distanceKm: toKm(exercise.distanceM),
@@ -65,7 +90,11 @@ export const toWorkoutContext = (
 })
 
 export const toExerciseContext = (
-	exercise: { name: string; kind: ExerciseContext['kind'] },
+	exercise: {
+		name: string
+		kind: ExerciseContext['kind']
+		muscleGroup: NonNullable<ExerciseContext['muscleGroup']> | null
+	},
 	{
 		ref,
 		last,
@@ -82,6 +111,7 @@ export const toExerciseContext = (
 	ref,
 	name: exercise.name,
 	kind: exercise.kind,
+	muscleGroup: exercise.muscleGroup,
 	last:
 		last === null
 			? null

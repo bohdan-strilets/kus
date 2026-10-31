@@ -3,6 +3,8 @@ import {
 	ENTRY_BACKDATE_MAX_DAYS,
 	type ExerciseContext,
 	getDayOffset,
+	getOpenWorkoutSince,
+	isWorkoutOpen,
 	type LogWorkoutInput,
 	MAX_CONTEXT_DELETED_WORKOUTS,
 	MAX_CONTEXT_EXERCISES,
@@ -12,7 +14,7 @@ import {
 	type WorkoutResponse,
 } from '@kus/shared'
 
-import { formatDbDate, formatLocalTime } from '../../common/time'
+import { formatDbDate, formatLocalClock } from '../../common/time'
 import type { Prisma } from '../../generated/prisma/client'
 import type { ExerciseKind, MuscleGroup } from '../../generated/prisma/enums'
 import { isExerciseNamed } from './exercise-names'
@@ -20,6 +22,7 @@ import { WorkoutDateOutOfRangeException, WorkoutNotFoundException } from './work
 import {
 	expandSets,
 	getBodyweightMaxReps,
+	getLastPerformedAt,
 	isRecord,
 	toDistanceM,
 	toExerciseContext,
@@ -73,20 +76,29 @@ export class WorkoutsTurnService {
 
 	constructor(private readonly workoutsRepository: WorkoutsRepository) {}
 
-	/** Today's workouts (w1…), the ones deleted today and the dictionary exercises the text names. */
+	/**
+	 * Today's workouts (w1…) with a still open one of the day before first, the ones deleted today,
+	 * and the dictionary exercises the text names plus those of the listed workouts.
+	 */
 	async getContext({
 		userId,
 		localDate,
 		timezone,
 		text,
+		now,
 	}: {
 		userId: string
 		localDate: Date
 		timezone: string
 		text: string
+		now: Date
 	}): Promise<WorkoutsContext> {
-		const [active, deleted, dictionary] = await Promise.all([
+		const [ofDay, recent, deleted, dictionary] = await Promise.all([
 			this.workoutsRepository.findOfDay({ userId, localDate }),
+			this.workoutsRepository.findRecent({
+				userId,
+				since: getOpenWorkoutSince(now),
+			}),
 			this.workoutsRepository.findDeletedOfDay({
 				userId,
 				localDate,
@@ -94,22 +106,29 @@ export class WorkoutsTurnService {
 			}),
 			this.workoutsRepository.findDictionary({ userId, take: DICTIONARY_SCAN_LIMIT }),
 		])
-		const toContext = (workout: WorkoutWithExercises, ref: string): TodayWorkoutContext =>
-			toWorkoutContext(workout, {
-				ref,
-				time: workout.startedAt ? formatLocalTime(workout.startedAt, timezone) : null,
-			})
+		const nightBefore = recent.filter((workout) => {
+			const last = getLastPerformedAt(workout)
+			return workout.localDate < localDate && last !== null && isWorkoutOpen(last, now)
+		})
+		const active = [...nightBefore, ...ofDay]
 		const activeRefs = active.map((workout, index) => ({ workout, ref: `w${index + 1}` }))
 		const deletedRefs = deleted.map((workout, index) => ({
 			workout,
 			ref: `w${active.length + index + 1}`,
 		}))
 
-		const named = dictionary
-			.filter((exercise) => isExerciseNamed(text, exercise))
-			.slice(0, MAX_CONTEXT_EXERCISES)
+		const sessionExerciseIds = new Set(
+			active.flatMap((workout) => workout.exercises.flatMap(({ exerciseId }) => exerciseId ?? [])),
+		)
+		const listed = [
+			...dictionary.filter((exercise) => isExerciseNamed(text, exercise)),
+			...dictionary.filter(
+				(exercise) => sessionExerciseIds.has(exercise.id) && !isExerciseNamed(text, exercise),
+			),
+		].slice(0, MAX_CONTEXT_EXERCISES)
+		const exerciseRefs = new Map(listed.map((exercise, index) => [exercise.id, `x${index + 1}`]))
 		const exercises = await Promise.all(
-			named.map(async (exercise, index) =>
+			listed.map(async (exercise, index) =>
 				toExerciseContext(exercise, {
 					ref: `x${index + 1}`,
 					last: await this.workoutsRepository.findLastResult({
@@ -119,6 +138,19 @@ export class WorkoutsTurnService {
 				}),
 			),
 		)
+		const toContext = (workout: WorkoutWithExercises, ref: string): TodayWorkoutContext => {
+			const last = getLastPerformedAt(workout)
+			// a workout of another day has no clock time; its entries sit at noon
+			if (workout.startedAt === null) {
+				return toWorkoutContext(workout, { ref, time: null, lastAt: null, exerciseRefs })
+			}
+			return toWorkoutContext(workout, {
+				ref,
+				time: formatLocalClock(workout.startedAt, timezone),
+				lastAt: last === null ? null : formatLocalClock(last, timezone),
+				exerciseRefs,
+			})
+		}
 		return {
 			workouts: activeRefs.map(({ workout, ref }) => toContext(workout, ref)),
 			deletedWorkouts: deletedRefs.map(({ workout, ref }) => toContext(workout, ref)),
@@ -126,7 +158,7 @@ export class WorkoutsTurnService {
 			refIds: {
 				workouts: new Map(activeRefs.map(({ workout, ref }) => [ref, workout.id])),
 				deletedWorkouts: new Map(deletedRefs.map(({ workout, ref }) => [ref, workout.id])),
-				exercises: new Map(named.map((exercise, index) => [`x${index + 1}`, exercise.id])),
+				exercises: new Map(listed.map((exercise, index) => [`x${index + 1}`, exercise.id])),
 			},
 		}
 	}
@@ -389,5 +421,6 @@ export class WorkoutsTurnService {
 }
 
 const NOON_HOUR = 12
+const MS_IN_HOUR = 60 * 60 * 1000
 
-const getNoon = (day: Date): Date => new Date(day.getTime() + NOON_HOUR * 60 * 60 * 1000)
+const getNoon = (day: Date): Date => new Date(day.getTime() + NOON_HOUR * MS_IN_HOUR)

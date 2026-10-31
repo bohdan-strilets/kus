@@ -1,6 +1,7 @@
 export {
 	addDays,
 	formatDbDate,
+	formatLocalClock,
 	formatLocalTime,
 	getLocalDate,
 	getLocalDateString,

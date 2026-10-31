@@ -116,7 +116,7 @@ const formatClarification = (clarification: OpenClarificationContext): string =>
 }
 
 const WORKOUTS_HEADER =
-	"Today's workouts (refs for delete_entry / restore_entry and log_workout.replaceRef):"
+	"Today's workouts (refs for delete_entry / restore_entry and log_workout.replaceRef / appendRef):"
 
 export const formatEditContext = ({
 	entries,
@@ -159,7 +159,7 @@ export const formatEditContext = ({
 	}
 	if (exercises.length > 0) {
 		lines.push(
-			'Exercises (refs for exerciseRef; the last result of each):',
+			'Exercises (refs for exerciseRef and exerciseGroups; the last result of each):',
 			...exercises.map(formatExercise),
 		)
 	}

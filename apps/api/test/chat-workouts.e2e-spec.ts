@@ -143,9 +143,23 @@ describe('chat workouts (e2e, real DB, fake model)', () => {
 
 		const context = JSON.stringify(fake.bodies[1])
 		expect(context).toContain("Today's workouts (refs")
-		expect(context).toContain('\\"Жим лежачи\\" 3×8 at 80 kg')
+		expect(context).toMatch(/w1 GYM \d{2}:\d{2}, last \d{2}:\d{2}, 55 min:/)
+		expect(context).toContain('\\"Жим лежачи\\" [x1 CHEST] 3×8 at 80 kg')
 		expect(context).toContain('Exercises (refs for exerciseRef')
-		expect(context).toContain('x1 \\"Жим лежачи\\" (STRENGTH)')
+		expect(context).toContain('x1 \\"Жим лежачи\\" (STRENGTH, CHEST)')
+	})
+
+	it("lists the exercises of today's workout under «Exercises» even when the text names none", async () => {
+		await start()
+		const owner = await registerUser('owner@kus.app')
+		fake.respond(createCompletion([workoutCall({})]), createCompletion([reply('ок')]))
+		await send(owner, 'жим 80 3×8')
+
+		await send(owner, 'ні, це ноги')
+
+		const context = JSON.stringify(fake.bodies[1])
+		expect(context).toContain('x1 \\"Жим лежачи\\" (STRENGTH, CHEST)')
+		expect(context).toContain('[x1 CHEST]')
 	})
 
 	it('replaces a whole workout in place and refreshes the first card', async () => {

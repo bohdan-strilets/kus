@@ -230,6 +230,18 @@ enum ExerciseSource {
   @@map("exercise_source")
 }
 
+// Cardio is not a muscle group: it is ExerciseKind CARDIO and its exercises have none.
+enum MuscleGroup {
+  CHEST
+  BACK
+  LEGS
+  SHOULDERS
+  ARMS
+  CORE
+
+  @@map("muscle_group")
+}
+
 // Picks the dish icon only — never affects kcal or macros (design/docs/food-categories.md).
 // Lowercase snake_case: the values are also the icon file names in apps/web.
 enum FoodCategory {
@@ -504,6 +516,7 @@ model Message {
   facts              UserFact[]
   exerciseEntries    ExerciseEntry[]
   workouts           Workout[]
+  finishedWorkouts   Workout[]           @relation("WorkoutFinish")
   measurements       Measurement[]
   achievements       Achievement[]
 
@@ -875,30 +888,37 @@ model DailyUsage {
 // One training session; its exercises are ExerciseEntry rows. Burned calories are only a number the
 // user said or a device showed — never added to the calorie goal.
 model Workout {
-  id              String          @id @default(uuid(7)) @db.Uuid
-  userId          String          @map("user_id") @db.Uuid
-  localDate       DateTime        @map("local_date") @db.Date
-  startedAt       DateTime?       @map("started_at") @db.Timestamptz
-  durationMin     Int?            @map("duration_min")
-  place           WorkoutPlace?
-  kcalBurned      Int?            @map("kcal_burned")
-  kcalSource      ExerciseSource? @map("kcal_source")
-  note            String?
-  // records this workout set when it was logged: [{ "exerciseEntryId": "…", "type": "WEIGHT" | "DISTANCE" }]
-  records         Json?
+  id                String          @id @default(uuid(7)) @db.Uuid
+  userId            String          @map("user_id") @db.Uuid
+  localDate         DateTime        @map("local_date") @db.Date
+  startedAt         DateTime?       @map("started_at") @db.Timestamptz
+  durationMin       Int?            @map("duration_min")
+  place             WorkoutPlace?
+  kcalBurned        Int?            @map("kcal_burned")
+  kcalSource        ExerciseSource? @map("kcal_source")
+  note              String?
+  // records this workout set when it was logged: [{ "exerciseEntryId": "…", "type": "WEIGHT" | "DISTANCE" | "REPS" }];
+  // REPS is for an exercise with no weight in its working sets
+  records           Json?
   // when a later message replaced the whole workout (replaceRef); null if it never was
-  editedAt        DateTime?       @map("edited_at") @db.Timestamptz
-  sourceMessageId String?         @map("source_message_id") @db.Uuid
-  createdAt       DateTime        @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt       DateTime        @updatedAt @map("updated_at") @db.Timestamptz
-  deletedAt       DateTime?       @map("deleted_at") @db.Timestamptz
+  editedAt          DateTime?       @map("edited_at") @db.Timestamptz
+  // when the session was finished («все») and the message that carries its summary card;
+  // null while the session is still open
+  finishedAt        DateTime?       @map("finished_at") @db.Timestamptz
+  finishedMessageId String?         @map("finished_message_id") @db.Uuid
+  sourceMessageId   String?         @map("source_message_id") @db.Uuid
+  createdAt         DateTime        @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt         DateTime        @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt         DateTime?       @map("deleted_at") @db.Timestamptz
 
-  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  sourceMessage Message?        @relation(fields: [sourceMessageId], references: [id], onDelete: SetNull)
-  exercises     ExerciseEntry[]
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sourceMessage   Message?        @relation(fields: [sourceMessageId], references: [id], onDelete: SetNull)
+  finishedMessage Message?        @relation("WorkoutFinish", fields: [finishedMessageId], references: [id], onDelete: SetNull)
+  exercises       ExerciseEntry[]
 
   @@index([userId, localDate])
   @@index([sourceMessageId])
+  @@index([finishedMessageId])
   @@map("workouts")
 }
 
@@ -910,6 +930,8 @@ model Exercise {
   nameNormalized String       @map("name_normalized")
   aliases        String[]
   kind           ExerciseKind
+  // the single source of truth for the exercise's group; null for cardio and until it is known
+  muscleGroup    MuscleGroup? @map("muscle_group")
   createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz
   updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz
   deletedAt      DateTime?    @map("deleted_at") @db.Timestamptz
@@ -931,6 +953,8 @@ model ExerciseEntry {
   // as the user wrote it
   name            String
   kind            ExerciseKind   @default(OTHER)
+  // snapshot of the group when logged, the fallback once exerciseId is gone (SetNull); null for cardio
+  muscleGroup     MuscleGroup?   @map("muscle_group")
   position        Int            @default(0)
   durationMin     Int?           @map("duration_min")
   distanceM       Int?           @map("distance_m")

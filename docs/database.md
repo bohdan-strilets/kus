@@ -69,6 +69,7 @@ erDiagram
     Message |o--o{ UserFact : "source"
     Message |o--o{ ExerciseEntry : "source"
     Message |o--o{ Workout : "source"
+    Message |o--o{ Workout : "finish"
 ```
 
 `|o` — необов'язковий зв'язок (`onDelete: SetNull`), `||` — обов'язковий (`onDelete: Cascade`).
@@ -116,9 +117,9 @@ erDiagram
 ### Ліміти й пізніші модулі
 
 - **DailyUsage** — лічильники за **локальний** день користувача (повідомлення, фото, вартість AI) для денних лімітів. Інкремент атомарний: `upsert` + `increment` по `unique(userId, localDate)`. Відомий компроміс: зміна timezone може «скинути» ліміт раніше.
-- **Workout** — одне тренування (0.8.1): день, місце (`WorkoutPlace`: GYM / HOME / OUTDOOR / OTHER), тривалість, `kcalBurned` — лише число, яке назвала людина або показав тренажер (`kcalSource`: MANUAL / DEVICE), оцінку моделі не зберігаємо; **спалене ніколи не додається до цілі**. Soft delete, повідомлення-джерело — `sourceMessageId`.
-- **Exercise** — словник вправ користувача (як `MyFood`): `name`, `nameNormalized`, `aliases`, `kind` (`ExerciseKind`: STRENGTH / CARDIO / OTHER). Унікальність `(userId, nameNormalized)` — лише серед не видалених. Склеює «жим», «жим лежачи» й «bench» в один ряд прогресу.
-- **ExerciseEntry** — одна вправа тренування (`workoutId`, `exerciseId?`, `kind`, `position`, `durationMin?`, `distanceM?`); `name` — як написала людина. `performedAt`, `localDate`, `source` повторюють тренування. До 0.8.1 таблиця була порожньою заготовкою — міграція має запобіжник і не запуститься над рядками.
+- **Workout** — одне тренування (0.8.1): день, місце (`WorkoutPlace`: GYM / HOME / OUTDOOR / OTHER), тривалість, `kcalBurned` — лише число, яке назвала людина або показав тренажер (`kcalSource`: MANUAL / DEVICE), оцінку моделі не зберігаємо; **спалене ніколи не додається до цілі**. Soft delete, повідомлення-джерело — `sourceMessageId`. Сесія (0.10.0): `finishedAt` — коли тренування завершено («все»), `finishedMessageId` — повідомлення з карткою-зведенням (relation `WorkoutFinish`, `onDelete: SetNull`); обидва `null`, поки сесія відкрита. Міграція заповнила їх для старих тренувань (`finished_message_id = source_message_id`, `finished_at = created_at`): до 0.10.0 тренування було одним повідомленням, і його картка вже була зведенням. `records` — рекорди, встановлені під час запису: `WEIGHT`, `DISTANCE` або `REPS` (вправа без ваги в робочих підходах).
+- **Exercise** — словник вправ користувача (як `MyFood`): `name`, `nameNormalized`, `aliases`, `kind` (`ExerciseKind`: STRENGTH / CARDIO / OTHER), `muscleGroup?` (`MuscleGroup`: CHEST / BACK / LEGS / SHOULDERS / ARMS / CORE; 0.10.0) — єдине джерело правди для групи м'язів; кардіо групи не має (`null`). Унікальність `(userId, nameNormalized)` — лише серед не видалених. Склеює «жим», «жим лежачи» й «bench» в один ряд прогресу.
+- **ExerciseEntry** — одна вправа тренування (`workoutId`, `exerciseId?`, `kind`, `position`, `durationMin?`, `distanceM?`); `name` — як написала людина. `muscleGroup?` — знімок групи на момент запису: запасний варіант, коли `exerciseId` став `null` (`SetNull`) або вправи немає в словнику; кардіо — `null`. Може розходитися з `Exercise.muscleGroup` після виправлення — так задумано. `performedAt`, `localDate`, `source` повторюють тренування. До 0.8.1 таблиця була порожньою заготовкою — міграція має запобіжник і не запуститься над рядками.
 - **ExerciseSet** — підхід (`reps?`, `weightKg?`, `durationSec?`, `distanceM?`, `isWarmup`); `userId` дублює власника, щоб рекорди рахувались без з'єднань. Рекорди не зберігаються: бекенд рахує їх запитом.
 
 ## Індекси
@@ -146,7 +147,7 @@ erDiagram
 | user_facts            | partial UNIQUE `(user_id, text_normalized)` WHERE не видалено й не `REJECTED`; `(user_id, status)`          | факти в контекст AI; без дублів тексту            |
 | daily_usage           | `(user_id, local_date)` UNIQUE                                                                              | ліміти                                            |
 | exercise_entries      | `(user_id, local_date)`; `source_message_id`; `workout_id`; `exercise_id`                                   | вправи тренування                                 |
-| workouts              | `(user_id, local_date)`; `source_message_id`                                                                | тренування дня й тижня                            |
+| workouts              | `(user_id, local_date)`; `source_message_id`; `finished_message_id`                                         | тренування дня й тижня                            |
 | exercises             | partial UNIQUE `(user_id, name_normalized)` WHERE не видалено                                               | словник вправ                                     |
 | exercise_sets         | `(user_id, exercise_entry_id)`                                                                              | підходи, рекорди                                  |
 

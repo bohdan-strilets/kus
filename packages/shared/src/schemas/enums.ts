@@ -77,8 +77,7 @@ export type ExerciseKind = z.infer<typeof exerciseKindSchema>
 export const exerciseSourceSchema = z.enum(['MANUAL', 'AI_ESTIMATE', 'DEVICE'])
 export type ExerciseSource = z.infer<typeof exerciseSourceSchema>
 
-// The Prisma mirror (enum MuscleGroup and its row in enums-sync.spec.ts) comes with the 0.10.0
-// migration. Cardio is not a muscle group: it is ExerciseKind CARDIO.
+// Cardio is not a muscle group: it is ExerciseKind CARDIO.
 export const muscleGroupSchema = z.enum(['CHEST', 'BACK', 'LEGS', 'SHOULDERS', 'ARMS', 'CORE'])
 export type MuscleGroup = z.infer<typeof muscleGroupSchema>
 

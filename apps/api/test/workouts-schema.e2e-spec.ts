@@ -98,6 +98,51 @@ describe('workouts schema (real DB)', () => {
 		expect(await prisma.exerciseSet.count()).toBe(0)
 	})
 
+	it('stores a muscle group on the dictionary exercise and its entry snapshot', async () => {
+		const userId = await start()
+		const { entry } = await seedWorkout(userId)
+		const exercise = await prisma.exercise.create({
+			data: {
+				userId,
+				name: 'Жим',
+				nameNormalized: 'жим',
+				kind: 'STRENGTH',
+				aliases: [],
+				muscleGroup: 'CHEST',
+			},
+		})
+
+		await prisma.exerciseEntry.update({
+			where: { id: entry.id },
+			data: { exerciseId: exercise.id, muscleGroup: 'CHEST' },
+		})
+		await prisma.exercise.delete({ where: { id: exercise.id } })
+
+		const stored = await prisma.exerciseEntry.findUniqueOrThrow({ where: { id: entry.id } })
+		expect(stored.exerciseId).toBeNull()
+		expect(stored.muscleGroup).toBe('CHEST')
+	})
+
+	it('leaves a new workout open and keeps it when its summary message is deleted', async () => {
+		const userId = await start()
+		const { workout } = await seedWorkout(userId)
+		expect(workout.finishedAt).toBeNull()
+		expect(workout.finishedMessageId).toBeNull()
+		const message = await prisma.message.create({
+			data: { userId, role: 'ASSISTANT', status: 'COMPLETED', content: 'Тренування записано' },
+		})
+
+		await prisma.workout.update({
+			where: { id: workout.id },
+			data: { finishedAt: NOW, finishedMessageId: message.id },
+		})
+		await prisma.message.delete({ where: { id: message.id } })
+
+		const stored = await prisma.workout.findUniqueOrThrow({ where: { id: workout.id } })
+		expect(stored.finishedMessageId).toBeNull()
+		expect(stored.finishedAt).toEqual(NOW)
+	})
+
 	it('keeps a dictionary name unique per user until the exercise is soft-deleted', async () => {
 		const userId = await start()
 		const data = {

@@ -41,3 +41,7 @@ export const formatShortDate = (date: Date, timeZone?: string): string => {
 /** «5 вер» — a short date under a chart; the abbreviation's trailing dot is dropped. */
 export const formatDayMonthShort = (date: Date): string =>
 	date.toLocaleDateString(LOCALE, { day: 'numeric', month: 'short' }).replace(/\.$/, '')
+
+/** «Жовтень» — a month heading over a list (the nominative, not the genitive of a date). */
+export const formatMonthLong = (date: Date): string =>
+	capitalize(date.toLocaleDateString(LOCALE, { month: 'long' }))

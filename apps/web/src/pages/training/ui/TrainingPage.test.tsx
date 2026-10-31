@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import type { AuthUser, WorkoutResponse } from '@kus/shared'
 import { QueryClient } from '@tanstack/react-query'
-import { cleanup, fireEvent, screen } from '@testing-library/react'
+import { cleanup, fireEvent, screen, within } from '@testing-library/react'
 import { AxiosHeaders, type AxiosResponse } from 'axios'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -65,25 +65,38 @@ describe('TrainingPage', () => {
 		expect(screen.getByRole('heading', { name: 'Тренування' })).toBeTruthy()
 	})
 
-	it('groups the trainings by day, newest first, with the week in the header', async () => {
+	it('shows the week card and the trainings by month, each row a link to its session', async () => {
 		getMock.mockResolvedValue(
 			reply([
 				makeWorkout({
 					id: '0199b3a4-0000-7000-8000-0000000000f2',
-					localDate: '2026-10-23',
-					exercises: [makeExercise({ name: 'Тяга штанги в нахилі' })],
+					localDate: '2026-09-30',
+					place: 'HOME',
+					durationMin: 30,
+					exercises: [makeExercise({ muscleGroup: 'BACK' })],
 				}),
-				makeWorkout({ id: '0199b3a4-0000-7000-8000-0000000000f3', localDate: TODAY }),
+				makeWorkout({
+					id: '0199b3a4-0000-7000-8000-0000000000f3',
+					localDate: TODAY,
+					exercises: [makeExercise({ muscleGroup: 'CHEST', record: 'WEIGHT' })],
+				}),
 			]),
 		)
 
 		renderPage()
 
-		expect(await screen.findByText('Сьогодні · 26 жовтня')).toBeTruthy()
-		expect(screen.getByText("П'ятниця · 23 жовтня")).toBeTruthy()
-		expect(screen.getByText('Цей тиждень: 1 тренування · 55 хв')).toBeTruthy()
-		expect(screen.getByText('Жим лежачи')).toBeTruthy()
-		expect(screen.getByText('Тяга штанги в нахилі')).toBeTruthy()
+		expect(await screen.findByText('Цей тиждень')).toBeTruthy()
+		expect(screen.getByText('1 тренування · 55 хв')).toBeTruthy()
+		expect(screen.getByText('Жовтень')).toBeTruthy()
+		expect(screen.getByText('Вересень')).toBeTruthy()
+		expect(screen.getByText('Понеділок: було тренування')).toBeTruthy()
+		expect(screen.getByText('Вівторок: без тренування')).toBeTruthy()
+		const links = screen.getAllByRole('link')
+		expect(links.map((link) => link.getAttribute('href'))).toEqual([
+			'/app/training/0199b3a4-0000-7000-8000-0000000000f3',
+			'/app/training/0199b3a4-0000-7000-8000-0000000000f2',
+		])
+		expect(within(links[0] as HTMLElement).getByText('Зал · 55 хв')).toBeTruthy()
 		expect(getMock).toHaveBeenCalledWith('/workouts', {
 			params: { from: '2026-09-01', to: TODAY },
 		})
@@ -94,7 +107,7 @@ describe('TrainingPage', () => {
 
 		renderPage()
 
-		expect(await screen.findByText('Цей тиждень: ще без тренувань')).toBeTruthy()
+		expect(await screen.findByText('ще без тренувань')).toBeTruthy()
 	})
 
 	it('shows the empty state with a way to the chat', async () => {
@@ -104,11 +117,12 @@ describe('TrainingPage', () => {
 		renderPage(onPathname)
 
 		expect(await screen.findByText('Тут будуть твої тренування')).toBeTruthy()
+		expect(screen.getByText('Цей тиждень: ще без тренувань')).toBeTruthy()
 		fireEvent.click(screen.getByRole('button', { name: 'Написати в чат' }))
 		expect(onPathname).toHaveBeenLastCalledWith(ROUTES.chat)
 	})
 
-	it('shows the error with «Спробувати ще» in place of the list and retries', async () => {
+	it('shows the error in place of the journal and retries', async () => {
 		getMock.mockRejectedValueOnce(new Error('network'))
 		getMock.mockResolvedValue(reply([makeWorkout()]))
 
@@ -116,7 +130,7 @@ describe('TrainingPage', () => {
 
 		expect(await screen.findByText('Не вдалося завантажити тренування.')).toBeTruthy()
 		expect(screen.getByRole('alert')).toBeTruthy()
-		fireEvent.click(screen.getByRole('button', { name: 'Спробувати ще' }))
-		expect(await screen.findByText('Жим лежачи')).toBeTruthy()
+		fireEvent.click(screen.getByRole('button', { name: 'Повторити' }))
+		expect(await screen.findByText('Цей тиждень')).toBeTruthy()
 	})
 })

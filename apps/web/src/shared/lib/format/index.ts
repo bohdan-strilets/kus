@@ -2,6 +2,7 @@ export {
 	formatDayHeading,
 	formatDayMonth,
 	formatDayMonthShort,
+	formatMonthLong,
 	formatShortDate,
 	formatTime,
 	formatWeekdayLong,

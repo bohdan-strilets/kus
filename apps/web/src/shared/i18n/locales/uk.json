@@ -872,26 +872,31 @@
 		"kcalNote": "{{kcal}} ккал · {{source}} · на ціль не впливає"
 	},
 	"training": {
-		"week": {
-			"count_one": "{{count}} тренування",
-			"count_few": "{{count}} тренування",
-			"count_many": "{{count}} тренувань",
-			"count_other": "{{count}} тренування",
-			"summary": "Цей тиждень: {{parts}}",
-			"none": "Цей тиждень: ще без тренувань"
-		},
-		"day": {
-			"today": "Сьогодні",
-			"yesterday": "Вчора",
-			"label": "{{day}} · {{date}}"
-		},
-		"empty": {
-			"title": "Тут будуть твої тренування",
-			"text": "Напиши в чат, що робили на тренуванні: «жим 80 кг 3×8, доріжка 20 хв» — Kusik запише й порахує час.",
-			"action": "Написати в чат"
+		"journal": {
+			"week": {
+				"title": "Цей тиждень",
+				"count_one": "{{count}} тренування",
+				"count_few": "{{count}} тренування",
+				"count_many": "{{count}} тренувань",
+				"count_other": "{{count}} тренування",
+				"none": "ще без тренувань",
+				"noneInHeader": "Цей тиждень: ще без тренувань",
+				"dayTrained": "{{day}}: було тренування",
+				"dayRest": "{{day}}: без тренування"
+			},
+			"rowTitle": "{{kind}} · {{duration}}",
+			"rowDate": "{{weekday}}, {{date}}",
+			"records_one": "{{count}} рекорд",
+			"records_few": "{{count}} рекорди",
+			"records_many": "{{count}} рекордів",
+			"records_other": "{{count}} рекорду",
+			"empty": {
+				"title": "Тут будуть твої тренування",
+				"text": "Напиши в чат, що робили: «жим 60 на 8 три підходи, доріжка 20 хв» — Kusik розкладе по вправах і групах.",
+				"action": "Написати в чат"
+			}
 		},
 		"loadError": "Не вдалося завантажити тренування.",
-		"retry": "Спробувати ще",
 		"session": {
 			"title": "{{kind}} · {{duration}}",
 			"subtitle": "{{date}} · {{time}}",

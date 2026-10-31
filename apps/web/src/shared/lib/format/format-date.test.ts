@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
 	formatDayHeading,
 	formatDayMonth,
+	formatMonthLong,
 	formatDayMonthShort,
 	formatShortDate,
 	formatTime,
@@ -61,5 +62,11 @@ describe('formatShortDate', () => {
 		const lateEveningUtc = new Date('2026-11-07T23:30:00.000Z')
 		expect(formatShortDate(lateEveningUtc, 'Europe/Warsaw')).toBe('08.11')
 		expect(formatShortDate(lateEveningUtc, 'UTC')).toBe('07.11')
+	})
+})
+
+describe('formatMonthLong', () => {
+	it('writes the month in the nominative with a capital', () => {
+		expect(formatMonthLong(new Date(2026, 9, 5))).toBe('Жовтень')
 	})
 })

@@ -23,6 +23,7 @@ export {
 	formatDayHeading,
 	formatDayMonth,
 	formatDayMonthShort,
+	formatMonthLong,
 	formatDecimal,
 	formatInteger,
 	formatSignedDecimal,

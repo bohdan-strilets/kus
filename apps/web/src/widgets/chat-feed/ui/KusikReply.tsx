@@ -7,6 +7,7 @@ import { FactProposalPlaque } from '@/features/answer-fact-proposal'
 import { Text } from '@/shared/ui'
 
 import { getClarificationPlacement } from '../lib/get-clarification-placement'
+import { getWorkoutCards } from '../lib/get-workout-cards'
 import type { FeedPhotoStatus } from '../model/feed.types'
 import { useAchievementFace } from '../model/use-achievement-face'
 import { AchievementCard } from './AchievementCard'
@@ -89,10 +90,15 @@ export const KusikReply = ({ message, isLatest, today, photoStatus }: KusikReply
 			/>
 		))
 
-	const hasWorkouts = message.workouts.length > 0
+	const workoutCards = getWorkoutCards(message)
+	const hasWorkouts = workoutCards.length > 0
 	const renderWorkouts = (hasTail: boolean) =>
-		message.workouts.map((workout, index) => (
-			<WorkoutReplyCard key={workout.id} workout={workout} hasTail={hasTail && index === 0} />
+		workoutCards.map((item, index) => (
+			<WorkoutReplyCard
+				key={`${item.workout.id}-${item.variant}`}
+				item={item}
+				hasTail={hasTail && index === 0}
+			/>
 		))
 
 	// close_day: the card follows the words and the estimate's meal card, with its own fixed sentence

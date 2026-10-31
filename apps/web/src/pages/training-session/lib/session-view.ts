@@ -1,3 +1,4 @@
+import { getWorkoutCounts } from '@/entities/workout'
 import {
 	TRAINING_GROUP_ORDER,
 	type TrainingGroupKey,
@@ -51,12 +52,8 @@ const buildSection = (
 	key,
 	group: key === OTHER_SECTION ? null : key,
 	exercises,
-	setCount:
-		key === 'CARDIO'
-			? 0
-			: exercises.reduce((sum, exercise) => sum + exercise.sets.filter(isWorking).length, 0),
-	cardioMinutes:
-		key === 'CARDIO' ? sumNamed(exercises.map((exercise) => exercise.durationMin)) : null,
+	setCount: key === 'CARDIO' ? 0 : getWorkoutCounts(exercises).setCount,
+	cardioMinutes: key === 'CARDIO' ? getWorkoutCounts(exercises).cardioMinutes : null,
 })
 
 /**
@@ -77,8 +74,9 @@ export const getSessionView = (workout: Pick<WorkoutResponse, 'exercises'>): Ses
 	})
 
 	const strengthSections = sections.filter((section) => section.key !== 'CARDIO')
+	const strengthCounts = getWorkoutCounts(strengthSections.flatMap((section) => section.exercises))
 	const cardioExercises = sections.find((section) => section.key === 'CARDIO')?.exercises ?? []
-	const minutes = sumNamed(cardioExercises.map((exercise) => exercise.durationMin))
+	const { cardioMinutes: minutes } = getWorkoutCounts(cardioExercises)
 	const distanceM = sumNamed(cardioExercises.map((exercise) => exercise.distanceM))
 
 	return {
@@ -86,13 +84,7 @@ export const getSessionView = (workout: Pick<WorkoutResponse, 'exercises'>): Ses
 		strength:
 			strengthSections.length === 0
 				? null
-				: {
-						exerciseCount: strengthSections.reduce(
-							(sum, section) => sum + section.exercises.length,
-							0,
-						),
-						setCount: strengthSections.reduce((sum, section) => sum + section.setCount, 0),
-					},
+				: { exerciseCount: strengthCounts.exerciseCount, setCount: strengthCounts.setCount },
 		cardio: minutes === null && distanceM === null ? null : { minutes, distanceM },
 	}
 }

@@ -2,9 +2,6 @@ export { getWorkout } from './api/get-workout'
 export { getWorkoutsInRange, getWorkoutsOfDay } from './api/get-workouts'
 export {
 	formatCardioSummary,
-	formatExerciseNames,
-	formatExerciseSummary,
-	formatSetsSummary,
 	formatWorkoutKcalNote,
 	formatWorkoutDistance,
 	formatWorkoutKind,
@@ -18,7 +15,6 @@ export {
 	workoutsDayQueryOptions,
 	workoutsRangeQueryOptions,
 } from './model/workout-query'
-export { WorkoutCard, type WorkoutCardProps } from './ui/workout-card/WorkoutCard'
 export { DeletedWorkoutRow } from './ui/deleted-workout-row/DeletedWorkoutRow'
 export {
 	formatSets,
@@ -26,7 +22,9 @@ export {
 	type SetSegment,
 	type SetSegmentKind,
 } from './lib/format-sets'
+export { GroupIcon, type GroupIconProps } from './ui/group-icon'
 export { GroupDot, type GroupDotProps } from './ui/group-dot'
 export { GroupTag, type GroupTagProps } from './ui/group-tag'
 export { SetLine, type SetLineProps } from './ui/set-line'
+export { getWorkoutCounts, type WorkoutCounts } from './lib/get-workout-counts'
 export { formatWorkoutDuration } from './lib/format-workout-duration'

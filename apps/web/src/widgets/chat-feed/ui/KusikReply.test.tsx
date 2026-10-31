@@ -33,6 +33,7 @@ const createReply = (overrides: Partial<ChatMessage> = {}): ChatMessage =>
 		meals: [],
 		measurements: [],
 		workouts: [],
+		workoutCards: [],
 		achievements: [],
 		clarifications: [],
 		...overrides,

@@ -8,6 +8,6 @@ export const CARDIO_ICON_RULES: readonly { pattern: RegExp; icon: IconName }[] =
 ]
 
 export const FALLBACK_CARDIO_ICON: IconName = 'cardio'
-export const STRENGTH_ICON: IconName = 'training'
+export const STRENGTH_ICON: IconName = 'dumbbell'
 
 export const METERS_IN_KM = 1000

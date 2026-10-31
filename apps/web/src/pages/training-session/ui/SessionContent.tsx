@@ -38,7 +38,7 @@ export const SessionContent = ({ workout }: { workout: WorkoutResponse }) => {
 						/>
 					))}
 					<div className="flex justify-center">
-						<DeleteWorkoutButton workout={workout} placement="screen" onDeleted={goBack} />
+						<DeleteWorkoutButton workout={workout} onDeleted={goBack} />
 					</div>
 				</div>
 			</div>

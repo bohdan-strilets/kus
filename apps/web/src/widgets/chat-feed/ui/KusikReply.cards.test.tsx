@@ -8,7 +8,7 @@ import {
 import { cleanup, screen } from '@testing-library/react'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 
-import { makeExercise, makeWorkout, renderWithProviders } from '@/shared/testing'
+import { makeWorkout, renderWithProviders } from '@/shared/testing'
 
 import { KusikReply } from './KusikReply'
 
@@ -71,6 +71,7 @@ const createReply = (overrides: Partial<ChatMessage>): ChatMessage =>
 		meals: [],
 		measurements: [],
 		workouts: [],
+		workoutCards: [],
 		achievements: [],
 		clarifications: [],
 		dayCard: null,
@@ -217,18 +218,19 @@ describe('KusikReply: stats', () => {
 })
 
 describe('KusikReply: workouts', () => {
-	it('a reply with words shows the card under the bubble', () => {
+	it('a reply with words shows the session summary under the bubble (old messages without cards)', () => {
 		renderReply(createReply({ content: 'Записав тренування.', workouts: [makeWorkout()] }))
 
 		expect(screen.getByText('Записав тренування.')).toBeTruthy()
-		expect(screen.getByText('Жим лежачи')).toBeTruthy()
 		expect(screen.getByText('55 хв')).toBeTruthy()
+		expect(screen.getByText('1 вправа · 3 підходи')).toBeTruthy()
+		expect(screen.getByRole('link', { name: /Відкрити тренування/ })).toBeTruthy()
 	})
 
 	it('a reply without words is the card alone next to the head', () => {
 		renderReply(createReply({ workouts: [makeWorkout()] }))
 
-		expect(screen.getByText('Жим лежачи')).toBeTruthy()
+		expect(screen.getByText('1 вправа · 3 підходи')).toBeTruthy()
 	})
 
 	it('a workout next to a weigh-in keeps both cards', () => {
@@ -241,31 +243,63 @@ describe('KusikReply: workouts', () => {
 			}),
 		)
 
-		expect(screen.getByText('Жим лежачи')).toBeTruthy()
+		expect(screen.getByText('1 вправа · 3 підходи')).toBeTruthy()
 		expect(screen.getByTestId('measurement-card')).toBeTruthy()
 	})
 
-	it('shows the record plate', () => {
+	it('shows a card per exercise of an EXERCISES card, with the counter of the session', () => {
+		const workout = makeWorkout()
 		renderReply(
-			createReply({ workouts: [makeWorkout({ exercises: [makeExercise({ record: 'WEIGHT' })] })] }),
+			createReply({
+				workouts: [workout],
+				workoutCards: [
+					{
+						workoutId: workout.id,
+						variant: 'EXERCISES',
+						exerciseIds: workout.exercises.map((exercise) => exercise.id),
+					},
+				],
+			}),
 		)
 
-		expect(screen.getByText('рекорд')).toBeTruthy()
+		expect(screen.getByText('Жим лежачи')).toBeTruthy()
+		// every piece of the footer is one unbreakable span
+		expect(screen.getByText('1 вправа')).toBeTruthy()
+		expect(screen.getByText('3 підходи')).toBeTruthy()
+		expect(screen.queryByText('55 хв')).toBeNull()
+	})
+
+	it('a deleted session is one quiet line for an EXERCISES card too', () => {
+		const workout = makeWorkout({ isDeleted: true })
+		renderReply(
+			createReply({
+				workouts: [workout],
+				workoutCards: [
+					{
+						workoutId: workout.id,
+						variant: 'EXERCISES',
+						exerciseIds: workout.exercises.map((exercise) => exercise.id),
+					},
+				],
+			}),
+		)
+
+		expect(screen.getByText('Тренування 26.10 видалено.')).toBeTruthy()
+		expect(screen.queryByText('Жим лежачи')).toBeNull()
 	})
 })
 
 describe('KusikReply: deleted workout', () => {
-	it('a deleted workout is one quiet line without the card or its delete button', () => {
+	it('a deleted workout is one quiet line without the card', () => {
 		renderReply(createReply({ workouts: [makeWorkout({ isDeleted: true })] }))
 
 		expect(screen.getByText('Тренування 26.10 видалено.')).toBeTruthy()
-		expect(screen.queryByText('Жим лежачи')).toBeNull()
-		expect(screen.queryByRole('button', { name: /Видалити тренування/ })).toBeNull()
+		expect(screen.queryByText('1 вправа · 3 підходи')).toBeNull()
 	})
 
-	it('a live workout carries its delete button', () => {
-		renderReply(createReply({ workouts: [makeWorkout({ startedAt: null })] }))
+	it('a live workout has no delete button in the chat', () => {
+		renderReply(createReply({ workouts: [makeWorkout()] }))
 
-		expect(screen.getByRole('button', { name: 'Видалити тренування «Зал»' })).toBeTruthy()
+		expect(screen.queryByRole('button', { name: /Видалити/ })).toBeNull()
 	})
 })

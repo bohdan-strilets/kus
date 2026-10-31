@@ -828,14 +828,11 @@
 		"CORE": "Кор"
 	},
 	"workout": {
-		"kg": "{{value}} кг",
 		"min": "{{value}} хв",
 		"hours": "{{value}} год",
 		"hourMin": "{{hours}} год {{minutes}} хв",
 		"km": "{{value}} км",
 		"sec": "{{value}} с",
-		"scheme": "{{sets}}×{{reps}}",
-		"weightTimes": "{{weight}} × {{reps}}",
 		"record": "рекорд",
 		"repsUnit": "повт.",
 		"warmupShort": "розм.",
@@ -847,11 +844,24 @@
 		"exerciseCount_many": "{{count}} вправ",
 		"exerciseCount_other": "{{count}} вправи",
 		"setCount": "{{count}} підх.",
-		"edited": "змінено",
+		"setCountFull_one": "{{count}} підхід",
+		"setCountFull_few": "{{count}} підходи",
+		"setCountFull_many": "{{count}} підходів",
+		"setCountFull_other": "{{count}} підходи",
+		"cardioPart": "кардіо {{duration}}",
+		"cardioBare": "кардіо",
+		"summary": {
+			"record": "Рекорд: {{name}} {{value}}",
+			"open": "Відкрити тренування"
+		},
+		"log": {
+			"title": "Тренування",
+			"titleAt": "Тренування · {{time}}",
+			"changed": "змінено"
+		},
 		"deleted": "Тренування {{date}} видалено.",
 		"deleteError": "Не вдалося видалити тренування. Спробуй ще раз.",
 		"delete": {
-			"action": "Видалити",
 			"screenAction": "Видалити тренування",
 			"ariaLabel": "Видалити тренування «{{name}}»",
 			"title": "Видалити тренування?",

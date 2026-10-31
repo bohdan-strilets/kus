@@ -1,13 +1,12 @@
 // @vitest-environment jsdom
 import { QueryClient } from '@tanstack/react-query'
-import { act, cleanup, screen, waitFor } from '@testing-library/react'
+import { cleanup, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { DAY_QUERY_KEY } from '@/entities/day'
 import { MESSAGES_QUERY_KEY } from '@/entities/message'
 import { WORKOUTS_QUERY_KEY } from '@/entities/workout'
-import { OVERLAY_HOLD_MAX_MS, useOverlayStore } from '@/shared/lib'
 import { makeWorkout, renderWithProviders } from '@/shared/testing'
 
 import { deleteWorkout } from '../api/delete-workout'
@@ -16,8 +15,7 @@ import { DeleteWorkoutButton } from './DeleteWorkoutButton'
 vi.mock('../api/delete-workout', () => ({ deleteWorkout: vi.fn() }))
 
 const deleteMock = vi.mocked(deleteWorkout)
-// no start time keeps the name independent of the test machine's time zone
-const workout = makeWorkout({ startedAt: null })
+const workout = makeWorkout()
 
 const renderButton = () => {
 	const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -27,7 +25,7 @@ const renderButton = () => {
 }
 
 const openDialog = async () => {
-	await userEvent.click(screen.getByRole('button', { name: 'Видалити тренування «Зал»' }))
+	await userEvent.click(screen.getByRole('button', { name: 'Видалити тренування «Зал, 55 хв»' }))
 }
 
 beforeEach(() => {
@@ -36,7 +34,6 @@ beforeEach(() => {
 
 afterEach(() => {
 	cleanup()
-	useOverlayStore.setState({ count: 0 })
 })
 
 describe('DeleteWorkoutButton', () => {
@@ -45,7 +42,7 @@ describe('DeleteWorkoutButton', () => {
 		const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
 		const detailKey = [...WORKOUTS_QUERY_KEY, 'detail', workout.id]
 		queryClient.setQueryData(detailKey, workout)
-		renderWithProviders(<DeleteWorkoutButton workout={workout} placement="screen" />, {
+		renderWithProviders(<DeleteWorkoutButton workout={workout} />, {
 			queryClient,
 		})
 
@@ -60,9 +57,7 @@ describe('DeleteWorkoutButton', () => {
 	it('on the screen says «Видалити тренування» and tells when the training is deleted', async () => {
 		deleteMock.mockResolvedValue(undefined)
 		const onDeleted = vi.fn()
-		renderWithProviders(
-			<DeleteWorkoutButton workout={workout} placement="screen" onDeleted={onDeleted} />,
-		)
+		renderWithProviders(<DeleteWorkoutButton workout={workout} onDeleted={onDeleted} />)
 
 		const button = screen.getByRole('button', { name: 'Видалити тренування «Зал, 55 хв»' })
 		expect(button.className).toContain('min-h-tap')
@@ -81,7 +76,7 @@ describe('DeleteWorkoutButton', () => {
 		expect(screen.getByText('Видалити тренування?')).toBeTruthy()
 		expect(
 			screen.getByText(
-				'«Зал» зникне з вкладки «Тренування» і зі «Сьогодні». Повернути можна словами в чаті.',
+				'«Зал, 55 хв» зникне з вкладки «Тренування» і зі «Сьогодні». Повернути можна словами в чаті.',
 			),
 		).toBeTruthy()
 		await userEvent.click(screen.getByRole('button', { name: 'Скасувати' }))
@@ -123,85 +118,5 @@ describe('DeleteWorkoutButton', () => {
 			expect(screen.getByText('Не вдалося видалити тренування. Спробуй ще раз.')).toBeTruthy()
 		})
 		expect(invalidate).toHaveBeenCalled()
-	})
-})
-
-describe('DeleteWorkoutButton and the chat feed', () => {
-	// confirmDelete spends 600 ms on the dialog exit before the checks start
-	const SLOW_REFETCH_MS = 5000
-	const HOLD_MAX_MS = OVERLAY_HOLD_MAX_MS
-
-	afterEach(() => {
-		vi.useRealTimers()
-	})
-
-	const renderSlow = (refetchMs: number | null) => {
-		vi.useFakeTimers({ shouldAdvanceTime: true })
-		deleteMock.mockResolvedValue(undefined)
-		const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-		// refetchMs null: a refetch that never finishes
-		vi.spyOn(queryClient, 'invalidateQueries').mockImplementation(
-			() =>
-				new Promise<void>((resolve) => {
-					if (refetchMs !== null) setTimeout(resolve, refetchMs)
-				}),
-		)
-		const view = renderWithProviders(<DeleteWorkoutButton workout={workout} />, { queryClient })
-		return view
-	}
-
-	const confirmDelete = async () => {
-		const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
-		await user.click(screen.getByRole('button', { name: 'Видалити тренування «Зал»' }))
-		await user.click(screen.getByRole('button', { name: 'Видалити' }))
-		// the dialog closes and plays its exit animation
-		await act(async () => {
-			await vi.advanceTimersByTimeAsync(600)
-		})
-	}
-
-	it('covers the feed while the dialog is open, and until the card is gone', async () => {
-		const view = renderSlow(SLOW_REFETCH_MS)
-		expect(useOverlayStore.getState().count).toBe(0)
-
-		await confirmDelete()
-		// the dialog is closed, yet the feed is held: the refetch has not turned the card into a line
-		expect(useOverlayStore.getState().count).toBe(1)
-
-		// the card is replaced by a line: the button unmounts and the feed is let go (and pinned)
-		view.unmount()
-		expect(useOverlayStore.getState().count).toBe(0)
-	})
-
-	it('keeps holding the feed when the refetch takes longer than three seconds', async () => {
-		renderSlow(SLOW_REFETCH_MS)
-
-		await confirmDelete()
-		await act(async () => {
-			await vi.advanceTimersByTimeAsync(3500)
-		})
-		expect(useOverlayStore.getState().count).toBe(1)
-
-		await act(async () => {
-			await vi.advanceTimersByTimeAsync(1000)
-		})
-		await waitFor(() => {
-			expect(useOverlayStore.getState().count).toBe(0)
-		})
-	})
-
-	it('lets the feed go after eight seconds when the refetch hangs', async () => {
-		renderSlow(null)
-
-		await confirmDelete()
-		await act(async () => {
-			await vi.advanceTimersByTimeAsync(HOLD_MAX_MS - 1500)
-		})
-		expect(useOverlayStore.getState().count).toBe(1)
-
-		await act(async () => {
-			await vi.advanceTimersByTimeAsync(2000)
-		})
-		expect(useOverlayStore.getState().count).toBe(0)
 	})
 })

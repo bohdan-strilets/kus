@@ -36,9 +36,11 @@ const ANSWERED = [{ status: 'ANSWERED' }] as unknown as ChatMessage['clarificati
 const turn = (
 	reply: Partial<ChatMessage>,
 	user: Partial<ChatMessage> = {},
-): Pick<SendMessageResponse, 'userMessage' | 'assistantMessage'> => ({
+	hasNewWorkoutRecord = false,
+): Pick<SendMessageResponse, 'userMessage' | 'assistantMessage' | 'hasNewWorkoutRecord'> => ({
 	userMessage: message(user),
 	assistantMessage: message({ role: 'ASSISTANT', clientMessageId: null, ...reply }),
+	hasNewWorkoutRecord,
 })
 
 describe('getReplySound', () => {
@@ -101,10 +103,17 @@ describe('getReplySound', () => {
 		).toBe('photoFail')
 	})
 
-	it('plays «achieve» for a workout with a record, silent for a plain workout', () => {
-		const record = [makeWorkout({ exercises: [makeExercise({ record: 'WEIGHT' })] })]
+	it('plays «achieve» when the turn lifted a new workout record', () => {
+		const workouts = [makeWorkout({ exercises: [makeExercise({ record: 'WEIGHT' })] })]
 
-		expect(getReplySound(turn({ workouts: record }))).toBe('achieve')
+		expect(getReplySound(turn({ workouts }, {}, true))).toBe('achieve')
+	})
+
+	it('is silent for a workout without a new record: a first exercise, a warm-up, an addition', () => {
+		// the cards may still show a record of the session, but this turn did not lift one
+		const workouts = [makeWorkout({ exercises: [makeExercise({ record: 'WEIGHT' })] })]
+
+		expect(getReplySound(turn({ workouts }))).toBeNull()
 		expect(getReplySound(turn({ workouts: [makeWorkout()] }))).toBeNull()
 	})
 })

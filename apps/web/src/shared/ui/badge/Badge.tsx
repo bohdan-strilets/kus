@@ -9,7 +9,6 @@ const SUCCESS_ICON_SIZE = 16
 const FAILED_ICON_SIZE = 14
 const DATE_ICON_SIZE = 14
 const CLOSED_ICON_SIZE = 14
-const RECORD_ICON_SIZE = 14
 
 export type BadgeProps = BadgeVariantProps & {
 	/** Text for kcal / date / closed / failed. */
@@ -37,7 +36,6 @@ export const Badge = ({ variant, children, label, className }: BadgeProps) => {
 				<Icon name="check" size={CLOSED_ICON_SIZE} />
 			)}
 			{variant === 'failed' && <Icon name="alert" size={FAILED_ICON_SIZE} />}
-			{variant === 'record' && <Icon name="trophy" size={RECORD_ICON_SIZE} />}
 			{!isIconOnly && children}
 		</span>
 	)

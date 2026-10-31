@@ -1,15 +1,21 @@
 import { Injectable } from '@nestjs/common'
 
 import type { Prisma } from '../../generated/prisma/client'
-import type { ExerciseKind } from '../../generated/prisma/enums'
+import type { ExerciseKind, MuscleGroup } from '../../generated/prisma/enums'
 import { PrismaService } from '../../prisma'
 
-/** A workout with its live exercises and their sets, in the order they were done. */
+/**
+ * A workout with its live exercises and their sets, in the order they were done; the dictionary
+ * row's group is the one shown.
+ */
 const WITH_EXERCISES = {
 	exercises: {
 		where: { deletedAt: null },
 		orderBy: { position: 'asc' },
-		include: { sets: { orderBy: { position: 'asc' } } },
+		include: {
+			sets: { orderBy: { position: 'asc' } },
+			exercise: { select: { muscleGroup: true } },
+		},
 	},
 } satisfies Prisma.WorkoutInclude
 
@@ -31,6 +37,8 @@ export interface ExerciseWrite {
 	exerciseId: string
 	name: string
 	kind: ExerciseKind
+	/** The snapshot of the group when logged; null for cardio. */
+	muscleGroup: MuscleGroup | null
 	position: number
 	durationMin: number | null
 	distanceM: number | null
@@ -46,6 +54,7 @@ const toExerciseCreate = (
 		exerciseId: exercise.exerciseId,
 		name: exercise.name,
 		kind: exercise.kind,
+		muscleGroup: exercise.muscleGroup,
 		position: exercise.position,
 		durationMin: exercise.durationMin,
 		distanceM: exercise.distanceM,
@@ -109,6 +118,17 @@ export class WorkoutsRepository {
 			where: { userId, sourceMessageId: { in: messageIds } },
 			include: WITH_EXERCISES,
 			orderBy: { createdAt: 'asc' },
+		})
+	}
+
+	/** The owner's live workout; null when it is not theirs or was deleted. */
+	findLiveOwned(
+		{ userId, id }: { userId: string; id: string },
+		tx?: Prisma.TransactionClient,
+	): Promise<WorkoutWithExercises | null> {
+		return (tx ?? this.prisma).workout.findFirst({
+			where: { id, userId, deletedAt: null },
+			include: WITH_EXERCISES,
 		})
 	}
 
@@ -249,6 +269,17 @@ export class WorkoutsRepository {
 		})
 	}
 
+	/** Sets the group of the owner's dictionary row unless it already has one. */
+	async fillExerciseMuscleGroup(
+		{ userId, id, muscleGroup }: { userId: string; id: string; muscleGroup: MuscleGroup },
+		tx: Prisma.TransactionClient,
+	): Promise<void> {
+		await tx.exercise.updateMany({
+			where: { id, userId, muscleGroup: null },
+			data: { muscleGroup },
+		})
+	}
+
 	/** The latest time the owner did the exercise (in a live workout), with its sets. */
 	findLastResult(
 		{ userId, exerciseId }: { userId: string; exerciseId: string },
@@ -283,6 +314,31 @@ export class WorkoutsRepository {
 			},
 		})
 		return _max.weightKg === null ? null : _max.weightKg.toNumber()
+	}
+
+	/** The most reps in a working set without weight (none or 0 kg) of the exercise in other live workouts. */
+	async findMaxReps(
+		{
+			userId,
+			exerciseId,
+			exceptWorkoutId,
+		}: { userId: string; exerciseId: string; exceptWorkoutId: string },
+		tx: Prisma.TransactionClient,
+	): Promise<number | null> {
+		const { _max } = await tx.exerciseSet.aggregate({
+			_max: { reps: true },
+			where: {
+				userId,
+				isWarmup: false,
+				OR: [{ weightKg: null }, { weightKg: 0 }],
+				exerciseEntry: {
+					exerciseId,
+					deletedAt: null,
+					workout: { deletedAt: null, id: { not: exceptWorkoutId } },
+				},
+			},
+		})
+		return _max.reps
 	}
 
 	/** The longest distance of the exercise in other live workouts, metres. */

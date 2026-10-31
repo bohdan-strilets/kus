@@ -6,6 +6,7 @@ import {
 	type LogWorkoutInput,
 	MAX_CONTEXT_DELETED_WORKOUTS,
 	MAX_CONTEXT_EXERCISES,
+	matchMuscleGroup,
 	normalizeExerciseName,
 	type TodayWorkoutContext,
 	type WorkoutResponse,
@@ -13,10 +14,12 @@ import {
 
 import { formatDbDate, formatLocalTime } from '../../common/time'
 import type { Prisma } from '../../generated/prisma/client'
+import type { ExerciseKind, MuscleGroup } from '../../generated/prisma/enums'
 import { isExerciseNamed } from './exercise-names'
 import { WorkoutDateOutOfRangeException, WorkoutNotFoundException } from './workouts.exceptions'
 import {
 	expandSets,
+	getBodyweightMaxReps,
 	isRecord,
 	toDistanceM,
 	toExerciseContext,
@@ -33,6 +36,8 @@ import {
 
 /** The dictionary rows a message is matched against; a user with more has older ones forgotten. */
 const DICTIONARY_SCAN_LIMIT = 300
+
+type ExerciseRow = { id: string; name: string; kind: ExerciseKind; muscleGroup: MuscleGroup | null }
 
 /** Ref → id of what the model saw in this request; nothing else can be changed (IDOR). */
 export interface WorkoutRefIds {
@@ -255,11 +260,15 @@ export class WorkoutsTurnService {
 		const performedAt = isToday ? now : getNoon(day)
 		const exercises: ExerciseWrite[] = []
 		for (const [position, exercise] of input.exercises.entries()) {
-			const exerciseId = await this.resolveExercise({ userId, exercise, refIds }, tx)
+			const { exerciseId, muscleGroup } = await this.resolveExercise(
+				{ userId, exercise, refIds },
+				tx,
+			)
 			exercises.push({
 				exerciseId,
 				name: exercise.name,
 				kind: exercise.kind,
+				muscleGroup,
 				position,
 				durationMin: exercise.durationMin,
 				distanceM: toDistanceM(exercise.distanceKm),
@@ -286,7 +295,10 @@ export class WorkoutsTurnService {
 		throw new WorkoutDateOutOfRangeException()
 	}
 
-	/** The dictionary row of the exercise: the ref the model gave, the same name, or a new one. */
+	/**
+	 * The dictionary row of the exercise (the ref the model gave, the same name, or a new one) and the
+	 * group the entry keeps as its snapshot. A row without a group gets the dictionary's.
+	 */
 	private async resolveExercise(
 		{
 			userId,
@@ -298,19 +310,51 @@ export class WorkoutsTurnService {
 			refIds: WorkoutRefIds
 		},
 		tx: Prisma.TransactionClient,
-	): Promise<string> {
-		if (exercise.exerciseRef !== null) return toId(refIds.exercises, exercise.exerciseRef)
+	): Promise<{ exerciseId: string; muscleGroup: MuscleGroup | null }> {
+		const row = await this.findOrCreateExercise({ userId, exercise, refIds }, tx)
+		if (exercise.kind === 'CARDIO') return { exerciseId: row.id, muscleGroup: null }
+		if (row.muscleGroup !== null) return { exerciseId: row.id, muscleGroup: row.muscleGroup }
+		const matched = matchMuscleGroup(row.name) ?? matchMuscleGroup(exercise.name)
+		if (matched !== null && row.kind !== 'CARDIO') {
+			await this.workoutsRepository.fillExerciseMuscleGroup(
+				{ userId, id: row.id, muscleGroup: matched },
+				tx,
+			)
+		}
+		return { exerciseId: row.id, muscleGroup: matched }
+	}
+
+	private async findOrCreateExercise(
+		{
+			userId,
+			exercise,
+			refIds,
+		}: {
+			userId: string
+			exercise: LogWorkoutInput['exercises'][number]
+			refIds: WorkoutRefIds
+		},
+		tx: Prisma.TransactionClient,
+	): Promise<ExerciseRow> {
+		if (exercise.exerciseRef !== null) {
+			const id = toId(refIds.exercises, exercise.exerciseRef)
+			const [row] = await this.workoutsRepository.findExercisesByIds({ userId, ids: [id] }, tx)
+			// deleted from the dictionary after the context was built: the entry still points at it
+			return row ?? { id, name: exercise.name, kind: exercise.kind, muscleGroup: null }
+		}
 		const nameNormalized = normalizeExerciseName(exercise.name)
 		const known = await this.workoutsRepository.findExerciseByName({ userId, nameNormalized }, tx)
-		if (known) return known.id
-		const created = await this.workoutsRepository.createExercise(
+		if (known) return known
+		return this.workoutsRepository.createExercise(
 			{ userId, name: exercise.name, nameNormalized, kind: exercise.kind },
 			tx,
 		)
-		return created.id
 	}
 
-	/** Compares the workout with the earlier ones: a heavier set or a longer distance is a record. */
+	/**
+	 * Compares the workout with the other ones: a heavier set, a longer distance or (without weight)
+	 * more reps is a record.
+	 */
 	private async saveRecords(
 		userId: string,
 		workout: WorkoutWithExercises,
@@ -334,6 +378,10 @@ export class WorkoutsTurnService {
 			}
 			if (isRecord(await this.workoutsRepository.findMaxDistanceM(key, tx), exercise.distanceM)) {
 				records.push({ exerciseEntryId: exercise.id, type: 'DISTANCE' })
+			}
+			const reps = getBodyweightMaxReps(exercise.sets)
+			if (reps !== null && isRecord(await this.workoutsRepository.findMaxReps(key, tx), reps)) {
+				records.push({ exerciseEntryId: exercise.id, type: 'REPS' })
 			}
 		}
 		await this.workoutsRepository.setRecords({ id: workout.id, records }, tx)

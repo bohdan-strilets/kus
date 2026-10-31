@@ -31,6 +31,13 @@ export class WorkoutsService {
 		return workouts.map(toWorkoutResponse)
 	}
 
+	/** One live workout of the owner — the session screen; another user's or a deleted one is 404. */
+	async getOne(userId: string, id: string): Promise<WorkoutResponse> {
+		const workout = await this.workoutsRepository.findLiveOwned({ userId, id })
+		if (!workout) throw new WorkoutNotFoundException()
+		return toWorkoutResponse(workout)
+	}
+
 	async remove(userId: string, id: string): Promise<void> {
 		if (!(await this.workoutsRepository.softDelete({ userId, id }))) {
 			throw new WorkoutNotFoundException()

@@ -11,6 +11,8 @@ export const makeExercise = (
 	kind: 'STRENGTH',
 	durationMin: null,
 	distanceM: null,
+	muscleGroup: 'CHEST',
+	performedAt: '2026-10-26T17:30:00.000Z',
 	sets: [1, 2, 3].map(() => ({
 		reps: 8,
 		weightKg: 80,
@@ -33,6 +35,8 @@ export const makeWorkout = (overrides: Partial<WorkoutResponse> = {}): WorkoutRe
 	kcalSource: null,
 	isEdited: false,
 	isDeleted: false,
+	finishedAt: null,
+	estimatedDurationMin: null,
 	exercises: [makeExercise()],
 	...overrides,
 })

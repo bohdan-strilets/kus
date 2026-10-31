@@ -2,6 +2,7 @@ import {
 	type ExerciseContext,
 	type TodayWorkoutContext,
 	type WorkoutExerciseInput,
+	type WorkoutRecordType,
 	type WorkoutSetContext,
 } from '@kus/shared'
 
@@ -92,8 +93,29 @@ export const toExerciseContext = (
 				},
 })
 
-export type WorkoutRecord = { exerciseEntryId: string; type: 'WEIGHT' | 'DISTANCE' }
+export type WorkoutRecord = { exerciseEntryId: string; type: WorkoutRecordType }
 
 /** A record is a result above everything before it: a first result is none. */
 export const isRecord = (before: number | null, now: number | null): boolean =>
 	before !== null && before > 0 && now !== null && now > before
+
+type RecordSet = {
+	reps: number | null
+	weightKg: { toNumber: () => number } | null
+	isWarmup: boolean
+}
+
+/** Weight 0 is «without weight» too: the model writes it for pull-ups as often as null. */
+const hasWeight = (set: RecordSet): boolean => set.weightKg !== null && set.weightKg.toNumber() > 0
+
+/**
+ * The most reps in a working set of an exercise done without weight, the result a REPS record is
+ * about. Null when a working set has weight (the record is then WEIGHT), or there are no reps;
+ * warm-up sets never count.
+ */
+export const getBodyweightMaxReps = (sets: readonly RecordSet[]): number | null => {
+	const working = sets.filter((set) => !set.isWarmup)
+	if (working.length === 0 || working.some(hasWeight)) return null
+	const reps = working.flatMap((set) => (set.reps === null ? [] : [set.reps]))
+	return reps.length === 0 ? null : Math.max(...reps)
+}

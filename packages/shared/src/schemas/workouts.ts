@@ -1,12 +1,17 @@
 import { z } from 'zod'
 
 import { countRangeDays } from './date-range.js'
-import { exerciseKindSchema, exerciseSourceSchema, workoutPlaceSchema } from './enums.js'
+import {
+	exerciseKindSchema,
+	exerciseSourceSchema,
+	muscleGroupSchema,
+	workoutPlaceSchema,
+} from './enums.js'
 
 /** A tab of history reads a quarter at most. */
 export const WORKOUTS_RANGE_MAX_DAYS = 93
 
-export const workoutRecordTypeSchema = z.enum(['WEIGHT', 'DISTANCE'])
+export const workoutRecordTypeSchema = z.enum(['WEIGHT', 'DISTANCE', 'REPS'])
 
 export type WorkoutRecordType = z.infer<typeof workoutRecordTypeSchema>
 
@@ -28,9 +33,20 @@ export const workoutExerciseResponseSchema = z.object({
 	kind: exerciseKindSchema,
 	durationMin: z.number().nullable(),
 	distanceM: z.number().nullable(),
+	/** The main group of a strength exercise; null for cardio and when it is unknown. */
+	muscleGroup: muscleGroupSchema.nullable().default(null),
+	/**
+	 * ISO: when the exercise was logged (noon of the day for a past day). The backend always sends it;
+	 * null only in a response cached before 0.10.0.
+	 */
+	performedAt: z.iso.datetime().nullable().default(null),
 	sets: z.array(workoutSetResponseSchema),
-	/** WEIGHT: a heavier set than ever before; DISTANCE: a longer one. null: no record (a first result is none). */
-	record: workoutRecordTypeSchema.nullable().default(null),
+	/**
+	 * WEIGHT: a heavier set than ever before; DISTANCE: a longer one; REPS: more reps in a set without
+	 * weight. null: no record (a first result is none). A type this client does not know reads as
+	 * null, so a newer backend never breaks it.
+	 */
+	record: workoutRecordTypeSchema.nullable().catch(null),
 })
 
 export type WorkoutExerciseResponse = z.infer<typeof workoutExerciseResponseSchema>
@@ -52,6 +68,13 @@ export const workoutResponseSchema = z.object({
 	isEdited: z.boolean().default(false),
 	/** Deleted: the chat card turns into the line «Тренування 26.10 видалено.»; lists never contain it. */
 	isDeleted: z.boolean().default(false),
+	/** When the session was finished («все»); null while it is open. */
+	finishedAt: z.iso.datetime().nullable().default(null),
+	/**
+	 * Minutes from the first logged exercise to the finish (or the last exercise) when no duration was
+	 * named and the session spans at least 10 minutes — the UI shows «≈ N хв»; null otherwise.
+	 */
+	estimatedDurationMin: z.number().nullable().default(null),
 	exercises: z.array(workoutExerciseResponseSchema),
 })
 

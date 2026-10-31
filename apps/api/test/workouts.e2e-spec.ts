@@ -131,6 +131,73 @@ describe('workouts (e2e, real DB)', () => {
 		])
 	})
 
+	it('returns one workout with its groups and finish', async () => {
+		await start()
+		const owner = await registerUser('owner@kus.app')
+		const workout = await seedWorkout(owner.userId)
+		const finishedAt = new Date('2026-10-27T18:32:00Z')
+		await prisma.workout.update({ where: { id: workout.id }, data: { finishedAt } })
+		const pullUps = await prisma.exercise.create({
+			data: {
+				userId: owner.userId,
+				name: 'Підтягування',
+				nameNormalized: 'підтягування',
+				aliases: [],
+				kind: 'STRENGTH',
+				muscleGroup: 'BACK',
+			},
+		})
+		await prisma.exerciseEntry.create({
+			data: {
+				userId: owner.userId,
+				workoutId: workout.id,
+				exerciseId: pullUps.id,
+				name: 'Підтягування',
+				kind: 'STRENGTH',
+				muscleGroup: 'ARMS',
+				position: 3,
+				source: 'MANUAL',
+				performedAt: NOW,
+				localDate: workout.localDate,
+			},
+		})
+
+		const response = await owner.agent.get(`${WORKOUTS_URL}/${workout.id}`).expect(200)
+
+		const one = oneResponse.parse(response.body).data
+		expect(one).toMatchObject({
+			id: workout.id,
+			finishedAt: finishedAt.toISOString(),
+			durationMin: 55,
+			estimatedDurationMin: null,
+		})
+		expect(one.exercises.map((exercise) => [exercise.name, exercise.muscleGroup])).toEqual([
+			['Жим лежачи', 'CHEST'],
+			['Біг', null],
+			['Підтягування', 'BACK'],
+		])
+		expect(one.exercises[0]?.performedAt).toBe(NOW.toISOString())
+	})
+
+	it('answers 404 for a deleted workout, another user’s one and an unknown id', async () => {
+		await start()
+		const owner = await registerUser('owner@kus.app')
+		const stranger = await registerUser('stranger@kus.app')
+		const workout = await seedWorkout(owner.userId)
+		const deleted = await seedWorkout(owner.userId)
+		await prisma.workout.update({ where: { id: deleted.id }, data: { deletedAt: NOW } })
+
+		const foreign = await stranger.agent.get(`${WORKOUTS_URL}/${workout.id}`).expect(404)
+		const gone = await owner.agent.get(`${WORKOUTS_URL}/${deleted.id}`).expect(404)
+		const unknown = await owner.agent.get(`${WORKOUTS_URL}/${UNKNOWN_ID}`).expect(404)
+		const invalid = await owner.agent.get(`${WORKOUTS_URL}/not-a-uuid`).expect(422)
+
+		for (const body of [foreign.body, gone.body, unknown.body]) {
+			expect(apiErrorResponseSchema.parse(body).errorCode).toBe('WORKOUT_NOT_FOUND')
+		}
+		expect(apiErrorResponseSchema.parse(invalid.body).errorCode).toBe('VALIDATION_ERROR')
+	})
+
 	it('validates the period', async () => {
 		await start()
 		const owner = await registerUser('owner@kus.app')
@@ -208,6 +275,7 @@ describe('workouts (e2e, real DB)', () => {
 		await start()
 
 		await request(app.getHttpServer()).get(`${WORKOUTS_URL}/day/${DAY}`).expect(401)
+		await request(app.getHttpServer()).get(`${WORKOUTS_URL}/${UNKNOWN_ID}`).expect(401)
 		await request(app.getHttpServer()).delete(`${WORKOUTS_URL}/${UNKNOWN_ID}`).expect(401)
 	})
 })

@@ -232,6 +232,70 @@ describe('chat workouts (e2e, real DB, fake model)', () => {
 		expect(heavier.assistantMessage.workouts[0]?.exercises[0]?.record).toBe('WEIGHT')
 	})
 
+	it('marks more reps without weight as a REPS record; warm-ups and weighted sets never count', async () => {
+		await start()
+		const owner = await registerUser('owner@kus.app')
+		const pullUps = (sets: Record<string, unknown>[]) =>
+			workoutCall({ exercises: [{ name: 'Підтягування', kind: 'STRENGTH', sets }] })
+		fake.respond(
+			createCompletion([pullUps([{ reps: 10, weightKg: null, count: 2 }])]),
+			createCompletion([
+				pullUps([
+					{ reps: 20, weightKg: null, count: 1, isWarmup: true },
+					{ reps: 10, weightKg: 0, count: 2 },
+				]),
+			]),
+			createCompletion([pullUps([{ reps: 15, weightKg: 10, count: 1 }])]),
+			createCompletion([pullUps([{ reps: 12, weightKg: 0, count: 1 }])]),
+		)
+
+		const first = await send(owner, 'підтягування 2×10')
+		const warmUp = await send(owner, 'підтягування розминка 20, потім 2×10')
+		const weighted = await send(owner, 'підтягування з вагою 10 кг 15 разів')
+		const more = await send(owner, 'підтягування 12')
+
+		const recordOf = (sent: typeof first) => sent.assistantMessage.workouts[0]?.exercises[0]?.record
+		expect(recordOf(first)).toBeNull()
+		expect(recordOf(warmUp)).toBeNull()
+		// weighted: a first weight is no record, and its 15 reps are not a bodyweight result
+		expect(recordOf(weighted)).toBeNull()
+		expect(recordOf(more)).toBe('REPS')
+	})
+
+	it('writes the group to the dictionary and the entry; cardio has none', async () => {
+		await start()
+		const owner = await registerUser('owner@kus.app')
+		fake.respond(
+			createCompletion([
+				workoutCall({
+					exercises: [
+						{ name: 'Бігова доріжка', kind: 'CARDIO', durationMin: 15, distanceKm: 2.5 },
+						bench(80),
+					],
+				}),
+			]),
+		)
+
+		const sent = await send(owner, 'доріжка 15 хв, жим 80 3×8')
+
+		expect(
+			sent.assistantMessage.workouts[0]?.exercises.map((exercise) => exercise.muscleGroup),
+		).toEqual([null, 'CHEST'])
+		const exercises = await prisma.exercise.findMany({
+			where: { userId: owner.userId },
+			orderBy: { name: 'asc' },
+		})
+		expect(exercises.map((exercise) => [exercise.name, exercise.muscleGroup])).toEqual([
+			['Бігова доріжка', null],
+			['Жим лежачи', 'CHEST'],
+		])
+		const entries = await prisma.exerciseEntry.findMany({
+			where: { userId: owner.userId },
+			orderBy: { position: 'asc' },
+		})
+		expect(entries.map((entry) => entry.muscleGroup)).toEqual([null, 'CHEST'])
+	})
+
 	it('lets two parallel turns create the same new exercise without failing either', async () => {
 		await start()
 		const owner = await registerUser('owner@kus.app')

@@ -5,7 +5,7 @@ import { type AuthenticatedUser, CurrentUser } from '../../common/decorators'
 import { WorkoutDayParamsDto, WorkoutParamsDto, WorkoutsRangeQueryDto } from './dto'
 import { WorkoutsService } from './workouts.service'
 
-/** The «Тренування» tab and the chat card: read the workouts, delete one, bring it back. */
+/** The «Тренування» tab, the session screen and the chat card: read workouts, delete one, bring it back. */
 @Controller('workouts')
 export class WorkoutsController {
 	constructor(private readonly workoutsService: WorkoutsService) {}
@@ -24,6 +24,15 @@ export class WorkoutsController {
 		@Param() { localDate }: WorkoutDayParamsDto,
 	): Promise<WorkoutResponse[]> {
 		return this.workoutsService.getDay(user.sub, localDate)
+	}
+
+	// after the static routes above, so «day/…» never reads as an id
+	@Get(':id')
+	getOne(
+		@CurrentUser() user: AuthenticatedUser,
+		@Param() { id }: WorkoutParamsDto,
+	): Promise<WorkoutResponse> {
+		return this.workoutsService.getOne(user.sub, id)
 	}
 
 	@Delete(':id')

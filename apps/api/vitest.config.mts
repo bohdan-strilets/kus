@@ -5,7 +5,8 @@ export default defineConfig({
 	// esbuild can't emit decorator metadata, which Nest DI relies on — SWC can
 	plugins: [swc.vite({ module: { type: 'es6' } })],
 	test: {
-		include: ['src/**/*.spec.ts', 'test/**/*.e2e-spec.ts'],
+		// prisma/: the pure logic of the data scripts
+		include: ['src/**/*.spec.ts', 'prisma/**/*.spec.ts', 'test/**/*.e2e-spec.ts'],
 		// creates kus_test in the local docker DB (`pnpm db:up`) and applies migrations
 		globalSetup: ['test/db-global-setup.ts'],
 		// DB-backed e2e files share kus_test and TRUNCATE it before each test, so files run one by one

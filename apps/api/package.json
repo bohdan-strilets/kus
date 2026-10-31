@@ -13,7 +13,8 @@
 		"prisma:generate": "prisma generate",
 		"prisma:migrate": "prisma migrate dev",
 		"prisma:seed": "prisma db seed",
-		"prisma:studio": "prisma studio"
+		"prisma:studio": "prisma studio",
+		"db:backfill-muscle-groups": "tsx prisma/scripts/backfill-muscle-groups.ts"
 	},
 	"dependencies": {
 		"@kus/shared": "workspace:*",

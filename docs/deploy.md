@@ -4,12 +4,12 @@
 
 ## Прод
 
-| Що       | Де                                                                   |
-| -------- | -------------------------------------------------------------------- |
-| Web      | https://kus-psi.vercel.app (Vercel, `apps/web`)                      |
-| API      | https://kusapi-production.up.railway.app (Railway, сервіс `api`)     |
-| База     | PostgreSQL на Railway, лише приватна мережа                          |
-| Ланцюжок | телефон → Vercel (`/api/*` rewrite + секрет) → edge Railway → NestJS |
+| Що       | Де                                                                    |
+| -------- | --------------------------------------------------------------------- |
+| Web      | https://kus-psi.vercel.app (Vercel, `apps/web`)                       |
+| API      | https://kusapi-production.up.railway.app (Railway, сервіс `@kus/api`) |
+| База     | PostgreSQL на Railway, лише приватна мережа                           |
+| Ланцюжок | телефон → Vercel (`/api/*` rewrite + секрет) → edge Railway → NestJS  |
 
 Браузер ходить лише на домен Vercel. Прямий запит на домен Railway без секретного заголовка отримує `404` (крім `/api/v1/health`).
 
@@ -23,7 +23,7 @@
 2. Add → Database → **PostgreSQL**. Public Networking (TCP proxy) — **вимкнено**: API ходить у базу приватною мережею.
 3. У Postgres → **Backups** увімкнути **Daily** і **Weekly** (див. «Бекапи»).
 
-### Сервіс `api`
+### Сервіс `@kus/api`
 
 Add → GitHub Repo → цей репозиторій, гілка `main`.
 
@@ -46,7 +46,7 @@ Add → GitHub Repo → цей репозиторій, гілка `main`.
 - Healthcheck робить `SELECT 1`: без бази він повертає `503`, і такий деплой не стає живим.
 - Node 22 береться з `.nvmrc` / `engines`.
 
-### Змінні сервісу `api`
+### Змінні сервісу `@kus/api`
 
 Значення секретів не пишемо ні в репо, ні в чат. Генерація секрету: `node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"`.
 
@@ -98,7 +98,7 @@ New Project → цей репозиторій.
 
 ## Перший запуск з нуля
 
-1. Railway: проєкт, Postgres, бекапи, сервіс `api` з налаштуваннями й змінними вище. `ALLOW_REGISTRATION=true`.
+1. Railway: проєкт, Postgres, бекапи, сервіс `@kus/api` з налаштуваннями й змінними вище. `ALLOW_REGISTRATION=true`.
 2. Дочекатися деплою: у логах pre-deploy — застосовані міграції, далі `API listening on port …`.
 3. Перевірити напряму:
    - `curl https://kusapi-production.up.railway.app/api/v1/health` → `{"data":{"status":"ok"}}`;
@@ -110,7 +110,7 @@ New Project → цей репозиторій.
 
 ## Деплой змін
 
-Звичайна зміна: push у `main` → Railway збирає `api`, якщо зачеплено watch paths, а Vercel збирає web.
+Звичайна зміна: push у `main` → Railway збирає `@kus/api`, якщо зачеплено watch paths, а Vercel збирає web.
 
 ### Зміна з міграцією
 
@@ -131,7 +131,7 @@ New Project → цей репозиторій.
    SELECT count(*) FROM message_attachments WHERE storage_key IS NOT NULL;
    ```
    Має бути `0`. Міграція починається з `RAISE EXCEPTION`, якщо такі рядки є, а далі видаляє колонку; якщо запобіжник спрацював — див. «Якщо міграція впала на запобіжнику».
-4. **Змінні Railway** — з таблиці «Змінні сервісу `api`» вище (`STORAGE_PROVIDER`, `S3_*`, `STORAGE_KEY_PREFIX`, `PHOTOS_PER_MESSAGE_MAX`, `PHOTO_DAILY_UPLOAD_LIMIT`, `AI_DAILY_PHOTO_LIMIT`, `PHOTO_ORPHAN_TTL_HOURS`). Секрети не пишемо ні в репо, ні в чат.
+4. **Змінні Railway** — з таблиці «Змінні сервісу `@kus/api`» вище (`STORAGE_PROVIDER`, `S3_*`, `STORAGE_KEY_PREFIX`, `PHOTOS_PER_MESSAGE_MAX`, `PHOTO_DAILY_UPLOAD_LIMIT`, `AI_DAILY_PHOTO_LIMIT`, `PHOTO_ORPHAN_TTL_HOURS`). Секрети не пишемо ні в репо, ні в чат.
 5. **Деплой API** (push у `main` після `security-audit`): pre-deploy застосовує міграцію, healthcheck → нова версія.
 6. **Smoke сховища.** Проти **dev**-бакета, не prod: `S3_*` у `apps/api/.env`, потім `pnpm --filter api test:smoke:storage`.
 7. **Реальне завантаження** фото ≈ 2 МБ через домен Vercel (rewrite) після деплою API, до оголошення релізу.
@@ -142,7 +142,7 @@ New Project → цей репозиторій.
 ### Як перевірити, що міграції застосовані
 
 - **Логи деплою → Pre-deploy**: `All migrations have been successfully applied` або `No pending migrations to apply`.
-- **Railway CLI** (`railway link` до проєкту, сервіс `api`):
+- **Railway CLI** (`railway link` до проєкту, сервіс `@kus/api`):
   ```bash
   railway ssh -- pnpm --filter @kus/api exec prisma migrate status
   ```
@@ -259,7 +259,7 @@ New Project → цей репозиторій.
 - **З логічного дампу** (том втрачено):
   1. Створити новий сервіс PostgreSQL у тому ж проєкті й регіоні.
   2. Тимчасово увімкнути йому TCP proxy → `pg_restore --no-owner --dbname "<його публічний DATABASE_URL>" kus-<дата>.dump` → вимкнути TCP proxy.
-  3. У сервісі `api` змінити `DATABASE_URL` на посилання на нову базу → redeploy. Pre-deploy докатить міграції, новіші за дамп.
+  3. У сервісі `@kus/api` змінити `DATABASE_URL` на посилання на нову базу → redeploy. Pre-deploy докатить міграції, новіші за дамп.
   4. Перевірити `migrate status` і smoke-тест.
 
 ## Секрети

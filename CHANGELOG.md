@@ -6,6 +6,39 @@ All notable changes to Kusik are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.10.0] — 2026-10-31
+
+Training 2.0: a workout is a session that grows over several messages, every strength exercise has a muscle group, and the training screens are rebuilt around sessions (journal, session screen, a strip on «Сьогодні», session cards in the chat). One database migration (additive), one new endpoint, a new prompt version, no new environment variables.
+
+### Added
+
+- Muscle groups: `MuscleGroup` (chest, back, legs, shoulders, arms, core) on the exercise as the source of truth and as a snapshot on each entry; a shared dictionary maps unambiguous exercise names (uk / ru / en) to a group, ambiguous ones are left to the model ([5080835], [c0afe8f], [ebda116])
+- Sessions across messages: `log_workout` adds to a session of today (`appendRef`) when its last entry was ≤ 3 h ago and the place is the same or not named, otherwise starts a new one; `finish` («все», «закінчив» or a whole workout in one message) closes it; `exerciseGroups` fixes only the group of an exercise («присід — це ноги») ([2b7d633], [f9cef50])
+- REPS records for exercises without weight in any working set; warm-up sets never count; the record sound plays only for a record that is new in this message ([ebda116], [f9cef50], [ccedd42])
+- An estimated session duration («≈ 62 хв») when a session spans two or more messages at least 10 minutes apart; a named duration is shown as is ([ebda116])
+- `GET /api/v1/workouts/:id` — one live session of the user ([ebda116])
+- `/app/training/:id` — the session screen: tiles, sections in the fixed group order with the set notation («60×8 ×3», warm-up, record, bodyweight), cardio with stated kcal, «Видалити тренування» ([3f68bc3])
+- The journal at `/app/training`: «Цей тиждень» and sessions by month with group tags and records; an empty state with the warm-up hamster ([72a9623], [5531b94])
+- «Сьогодні»: a training strip above the meals, one per session ([2d827a3])
+- Chat: a session summary card when a session closes and an exercise card for each exercise added along the way, with «змінено» for additions after the close ([ccedd42])
+- `muscle-*` tokens (new names for existing values), `GroupTag`, `GroupDot`, `SetLine` ([5a3106b])
+- 16 eval cases for sessions ([b36e149])
+
+### Changed
+
+- Prompt 2026-10-31.1: appendRef next to replaceRef and «muscleGroup: what works most.» in «Workouts»; prefix 18 622 tokens under the 0.10.x ceiling of 18 700; full eval 302/308 (old cases without regressions, new 16/16) ([b2e21fd])
+- The workout context shows session time as HH:mm, the last entry time, closed sessions, a live session of the previous day within 3 h and exercise refs with groups ([2b7d633])
+- A correction of a session keeps each existing exercise's message and time ([f9cef50])
+- A «все» more than 30 minutes after the last entry ends the session at that entry, so a late «все» does not stretch the estimated duration ([761ea46])
+
+### Removed
+
+- The old workout card in the chat (and its «Видалити»: a session is deleted on its screen) and the workout row under the meals on «Сьогодні» ([ccedd42], [2d827a3])
+
+### Database
+
+- Migration `20261031120000_muscle_groups_and_session_finish`: enum `muscle_group`, `exercises.muscle_group`, `exercise_entries.muscle_group`, `workouts.finished_at`, `workouts.finished_message_id`; existing workouts are marked as finished by their own message. Groups of existing exercises are filled by `pnpm --filter @kus/api db:backfill-muscle-groups --apply` after the deploy ([c0afe8f], [ebda116])
+
 ## [0.9.3] — 2026-10-30
 
 Removes the temporary viewport diagnostic of 0.9.1 now that the keyboard fixes of 0.9.2 are confirmed on the iPhone. Nothing changes for the user (no release notes entry). No database migrations, no API changes, no new environment variables, no prompt change.
@@ -506,6 +539,20 @@ Design sync with `design/` v0.5.2. Web only: no API, shared-package or migration
 
 [Unreleased]: https://github.com/bohdan-strilets/kus/compare/v0.9.3...HEAD
 [0.9.3]: https://github.com/bohdan-strilets/kus/compare/v0.9.2...v0.9.3
+[5080835]: https://github.com/bohdan-strilets/kus/commit/50808358b87e412f99873e91ea9043e747b0e6a4
+[c0afe8f]: https://github.com/bohdan-strilets/kus/commit/c0afe8fd2e6b20f0b330792befcd202e19b30f9b
+[ebda116]: https://github.com/bohdan-strilets/kus/commit/ebda116372852fd798d09610e7b39dd494c5cb7d
+[2b7d633]: https://github.com/bohdan-strilets/kus/commit/2b7d6331b2dc96d4ae5fc4c885f1241d7a64d930
+[f9cef50]: https://github.com/bohdan-strilets/kus/commit/f9cef5048bb0206b12c8913f9858b4d873dd8d51
+[b36e149]: https://github.com/bohdan-strilets/kus/commit/b36e14900b4a47e0bc49899b36e84106c906c496
+[5a3106b]: https://github.com/bohdan-strilets/kus/commit/5a3106bab3cfe1e969622c8d006088d73b4edf88
+[5531b94]: https://github.com/bohdan-strilets/kus/commit/5531b945b5fa774b5acfe5d12151ff5dabb73ee4
+[2d827a3]: https://github.com/bohdan-strilets/kus/commit/2d827a36adde6a9f55877ac8ae1706a4d0dfa7f2
+[b2e21fd]: https://github.com/bohdan-strilets/kus/commit/b2e21fd32582abc6d939f346fbab581264a38210
+[3f68bc3]: https://github.com/bohdan-strilets/kus/commit/3f68bc3df886a86135533a0a29768b29152b2917
+[72a9623]: https://github.com/bohdan-strilets/kus/commit/72a9623acb392971ab0014f8ff848bc9a6c468cc
+[ccedd42]: https://github.com/bohdan-strilets/kus/commit/ccedd420c3dab75acd07b5e8da1b2bd9cfc0660f
+[761ea46]: https://github.com/bohdan-strilets/kus/commit/761ea46045f84465938069cf507b7ce20ee7f3dd
 [3abf377]: https://github.com/bohdan-strilets/kus/commit/3abf377fd623d6b5f9c4b063fce525b40bc0056f
 [0.9.2]: https://github.com/bohdan-strilets/kus/compare/v0.9.1...v0.9.2
 [e794fcf]: https://github.com/bohdan-strilets/kus/commit/e794fcf7b3477bb2955718a04e3fed62224bff27

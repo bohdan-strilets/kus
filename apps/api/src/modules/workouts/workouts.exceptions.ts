@@ -19,6 +19,13 @@ export class WorkoutNotFoundException extends AppException {
 	}
 }
 
+/** No such exercise for this user - another user's reads the same, never 403. */
+export class ExerciseNotFoundException extends AppException {
+	constructor() {
+		super({ status: HttpStatus.NOT_FOUND, errorCode: ErrorCodes.EXERCISE_NOT_FOUND })
+	}
+}
+
 /**
  * A ref or a group the parser already checked is not in the request context: a bug, never user
  * input. The turn rolls back.

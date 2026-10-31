@@ -1,1 +1,7 @@
-export { WorkoutDayParamsDto, WorkoutParamsDto, WorkoutsRangeQueryDto } from './workouts.dto'
+export {
+	ExerciseStatsParamsDto,
+	WorkoutDayParamsDto,
+	WorkoutParamsDto,
+	WorkoutsRangeQueryDto,
+	WorkoutStatsQueryDto,
+} from './workouts.dto'

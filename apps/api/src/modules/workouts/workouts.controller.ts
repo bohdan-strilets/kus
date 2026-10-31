@@ -1,14 +1,24 @@
 import { Controller, Delete, Get, HttpCode, HttpStatus, Param, Post, Query } from '@nestjs/common'
-import type { WorkoutResponse } from '@kus/shared'
+import type { ExerciseStatsResponse, WorkoutResponse, WorkoutStatsResponse } from '@kus/shared'
 
 import { type AuthenticatedUser, CurrentUser } from '../../common/decorators'
-import { WorkoutDayParamsDto, WorkoutParamsDto, WorkoutsRangeQueryDto } from './dto'
+import {
+	ExerciseStatsParamsDto,
+	WorkoutDayParamsDto,
+	WorkoutParamsDto,
+	WorkoutsRangeQueryDto,
+	WorkoutStatsQueryDto,
+} from './dto'
+import { WorkoutStatsService } from './workout-stats.service'
 import { WorkoutsService } from './workouts.service'
 
 /** The «Тренування» tab, the session screen and the chat card: read workouts, delete one, bring it back. */
 @Controller('workouts')
 export class WorkoutsController {
-	constructor(private readonly workoutsService: WorkoutsService) {}
+	constructor(
+		private readonly workoutsService: WorkoutsService,
+		private readonly statsService: WorkoutStatsService,
+	) {}
 
 	@Get()
 	getRange(
@@ -26,7 +36,24 @@ export class WorkoutsController {
 		return this.workoutsService.getDay(user.sub, localDate)
 	}
 
-	// after the static routes above, so «day/…» never reads as an id
+	@Get('stats')
+	getStats(
+		@CurrentUser() user: AuthenticatedUser,
+		@Query() { period }: WorkoutStatsQueryDto,
+	): Promise<WorkoutStatsResponse> {
+		return this.statsService.getStats(user.sub, period)
+	}
+
+	@Get('exercises/:exerciseId')
+	getExerciseStats(
+		@CurrentUser() user: AuthenticatedUser,
+		@Param() { exerciseId }: ExerciseStatsParamsDto,
+		@Query() { period }: WorkoutStatsQueryDto,
+	): Promise<ExerciseStatsResponse> {
+		return this.statsService.getExerciseStats(user.sub, exerciseId, period)
+	}
+
+	// after the static routes above, so «day/…» and «stats» never read as an id
 	@Get(':id')
 	getOne(
 		@CurrentUser() user: AuthenticatedUser,

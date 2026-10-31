@@ -72,6 +72,8 @@ export const ErrorCodes = {
 	// workouts
 	/** No workout with this id for this user (another user's is "not found" too). */
 	WORKOUT_NOT_FOUND: 'WORKOUT_NOT_FOUND',
+	/** No exercise with this id for this user (another user's is "not found" too). */
+	EXERCISE_NOT_FOUND: 'EXERCISE_NOT_FOUND',
 
 	// my foods
 	/** No active food with this id for this user (another user's is "not found" too). */

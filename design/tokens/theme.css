@@ -96,6 +96,14 @@
   --color-decor-peach: #f7c59a;
   --color-decor-mint: #d9efe2;
   --color-crumb: #e58a45;
+  /* Групи м'язів (тренування 0.10.x) — лише назви для наявних значень; docs/training-groups.md */
+  --color-muscle-cardio-bg: var(--color-carbs-bg);  --color-muscle-cardio-ink: var(--color-carbs-ink);
+  --color-muscle-chest-bg: var(--color-hint-food-bg);  --color-muscle-chest-ink: var(--color-hint-food-ink);
+  --color-muscle-back-bg: var(--color-hint-training-bg);  --color-muscle-back-ink: var(--color-hint-training-ink);
+  --color-muscle-legs-bg: var(--color-hint-measure-bg);  --color-muscle-legs-ink: var(--color-hint-measure-ink);
+  --color-muscle-shoulders-bg: var(--color-hint-advice-bg);  --color-muscle-shoulders-ink: var(--color-hint-advice-ink);
+  --color-muscle-arms-bg: var(--color-hint-day-bg);  --color-muscle-arms-ink: var(--color-hint-day-ink);
+  --color-muscle-core-bg: var(--color-secondary);  --color-muscle-core-ink: var(--color-muted-strong);
   /* Контекстні підказки над полем (0.8, після переходу на Kusik) — тло / текст і іконка, контраст 6,8–8:1 */
   --color-hint-food-bg: #fde6d3;  --color-hint-food-ink: #7a3a10;
   --color-hint-measure-bg: #e3f3ea;  --color-hint-measure-ink: #0f5e40;

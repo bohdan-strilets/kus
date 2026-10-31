@@ -10,6 +10,8 @@ const bench = (overrides: Partial<LoggedWorkout['exercises'][number]> = {}) => (
 	name: 'Жим лежачи',
 	kind: 'STRENGTH' as const,
 	exerciseRef: null,
+	muscleGroup: null,
+	dictionaryGroup: 'CHEST' as const,
 	sets: 3,
 	warmupSets: 0,
 	maxWeightKg: 80,
@@ -23,6 +25,8 @@ const run = {
 	name: 'Біг',
 	kind: 'CARDIO' as const,
 	exerciseRef: null,
+	muscleGroup: null,
+	dictionaryGroup: null,
 	sets: 0,
 	warmupSets: 0,
 	maxWeightKg: null,
@@ -32,10 +36,14 @@ const run = {
 }
 
 const workout = (overrides: Partial<LoggedWorkout> = {}): LoggedWorkout => ({
+	date: null,
 	place: null,
 	durationMin: null,
 	kcalBurned: null,
 	replaceRef: null,
+	appendRef: null,
+	finish: false,
+	exerciseGroups: [],
 	exercises: [bench()],
 	...overrides,
 })
@@ -111,6 +119,75 @@ describe('isWorkoutsCorrect', () => {
 	})
 })
 
+describe('isWorkoutsCorrect: sessions across messages', () => {
+	it('checks appendRef and finish when given; a finish needs no exercises', () => {
+		const done = expected({ appendRef: 'w1', finish: true, exercises: [] })
+
+		expect(
+			isWorkoutsCorrect([done], [workout({ appendRef: 'w1', finish: true, exercises: [] })]),
+		).toBe(true)
+		expect(isWorkoutsCorrect([done], [workout({ appendRef: 'w1', exercises: [] })])).toBe(false)
+		expect(isWorkoutsCorrect([done], [workout({ finish: true, exercises: [] })])).toBe(false)
+		expect(isWorkoutsCorrect([expected({ appendRef: null })], [workout({ appendRef: 'w1' })])).toBe(
+			false,
+		)
+	})
+
+	it('checks the date as sent: null is today', () => {
+		expect(
+			isWorkoutsCorrect([expected({ date: '2026-10-06' })], [workout({ date: '2026-10-06' })]),
+		).toBe(true)
+		expect(isWorkoutsCorrect([expected({ date: '2026-10-06' })], [workout()])).toBe(false)
+	})
+
+	it('needs exactly the expected group fixes, in any order', () => {
+		const fix = expected({ exerciseGroups: ['x1:LEGS', 'x2:BACK'], exercises: [] })
+		const got = (exerciseGroups: string[]) => [workout({ exerciseGroups, exercises: [] })]
+
+		expect(isWorkoutsCorrect([fix], got(['x2:BACK', 'x1:LEGS']))).toBe(true)
+		expect(isWorkoutsCorrect([fix], got(['x1:LEGS']))).toBe(false)
+		expect(isWorkoutsCorrect([fix], got(['x1:LEGS', 'x2:BACK', 'x3:CORE']))).toBe(false)
+		expect(isWorkoutsCorrect([fix], got(['x1:CORE', 'x2:BACK']))).toBe(false)
+	})
+
+	it('judges the stored group: the dictionary over the model, none for cardio', () => {
+		const chest = expected({ exercises: [{ nameIncludes: 'жим', muscleGroup: 'CHEST' }] })
+
+		expect(
+			isWorkoutsCorrect([chest], [workout({ exercises: [bench({ muscleGroup: 'SHOULDERS' })] })]),
+		).toBe(true)
+		expect(
+			isWorkoutsCorrect([chest], [workout({ exercises: [bench({ dictionaryGroup: 'ARMS' })] })]),
+		).toBe(false)
+		const noGroup = expected({ exercises: [{ nameIncludes: 'біг', muscleGroup: null }] })
+		expect(
+			isWorkoutsCorrect([noGroup], [workout({ exercises: [{ ...run, muscleGroup: 'LEGS' }] })]),
+		).toBe(true)
+	})
+
+	it('judges the model’s own group with isModelGroup', () => {
+		const back = expected({
+			exercises: [{ nameIncludes: 'спин', muscleGroup: 'BACK', isModelGroup: true }],
+		})
+		const extension = (muscleGroup: 'BACK' | 'CORE') =>
+			bench({ name: 'Розгинання спини', dictionaryGroup: null, muscleGroup })
+
+		expect(isWorkoutsCorrect([back], [workout({ exercises: [extension('BACK')] })])).toBe(true)
+		expect(isWorkoutsCorrect([back], [workout({ exercises: [extension('CORE')] })])).toBe(false)
+	})
+
+	it('weightKg null means no weight may be logged', () => {
+		const bodyweight = expected({ exercises: [{ nameIncludes: 'жим', weightKg: null }] })
+
+		expect(
+			isWorkoutsCorrect([bodyweight], [workout({ exercises: [bench({ maxWeightKg: null })] })]),
+		).toBe(true)
+		expect(
+			isWorkoutsCorrect([bodyweight], [workout({ exercises: [bench({ maxWeightKg: 0 })] })]),
+		).toBe(false)
+	})
+})
+
 describe('getLoggedWorkouts', () => {
 	const input: LogWorkoutInput = {
 		date: null,
@@ -150,6 +227,32 @@ describe('getLoggedWorkouts', () => {
 			maxWeightKg: 85,
 			reps: 8,
 		})
+	})
+
+	it('keeps the session fields and both groups: the model’s and the dictionary’s', () => {
+		const append: LogWorkoutInput = {
+			...input,
+			date: null,
+			appendRef: 'w1',
+			finish: true,
+			exerciseGroups: ['x1:LEGS'],
+			exercises: input.exercises.map((exercise) => ({
+				...exercise,
+				name: 'Станова тяга',
+				muscleGroup: 'BACK' as const,
+			})),
+		}
+		const decision = { kind: 'workout', workouts: [append] } as FoodParseDecision
+
+		const [logged] = getLoggedWorkouts(decision)
+
+		expect(logged).toMatchObject({
+			date: null,
+			appendRef: 'w1',
+			finish: true,
+			exerciseGroups: ['x1:LEGS'],
+		})
+		expect(logged?.exercises[0]).toMatchObject({ muscleGroup: 'BACK', dictionaryGroup: 'LEGS' })
 	})
 
 	it('reads the trainings of a food log too, and nothing from other decisions', () => {

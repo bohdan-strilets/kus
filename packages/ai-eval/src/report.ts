@@ -11,6 +11,7 @@ import {
 	getErrorPct,
 	isCallDetailsCorrect,
 	isCaseMeasurementsCorrect,
+	isCaseWorkoutsCorrect,
 	isDecisionCorrect,
 	isEditsCorrect,
 	isSourcesCorrect,
@@ -131,6 +132,11 @@ const describeMiss = (evalCase: EvalCase, result: CaseResult): Miss[] => {
 			issue: `рішення: виміри ${JSON.stringify(result.measurements)}`,
 			errorPct: null,
 		})
+	}
+	if (!isCaseWorkoutsCorrect(evalCase, result)) {
+		// exercise names of a private or hold-out case stay out of the terminal
+		const got = isHiddenCaseId(evalCase.id) ? '…' : JSON.stringify(result.workouts)
+		misses.push({ caseId: evalCase.id, issue: `рішення: тренування ${got}`, errorPct: null })
 	}
 	if (hasMemoryExpectations(evalCase) && !isCaseMemoryCorrect(evalCase, result)) {
 		const { savedFoods, facts, forgets } = result.calls

@@ -1,4 +1,9 @@
-import { countSets, type FoodParseDecision, type LogWorkoutInput } from '@kus/shared'
+import {
+	countSets,
+	type FoodParseDecision,
+	type LogWorkoutInput,
+	matchMuscleGroup,
+} from '@kus/shared'
 
 import type { LoggedWorkout } from './eval.types.js'
 
@@ -9,16 +14,22 @@ const toMaxWeight = (weights: (number | null)[]): number | null =>
 	)
 
 const toLoggedWorkout = (workout: LogWorkoutInput): LoggedWorkout => ({
+	date: workout.date,
 	place: workout.place,
 	durationMin: workout.durationMin,
 	kcalBurned: workout.kcalBurned,
 	replaceRef: workout.replaceRef,
+	appendRef: workout.appendRef,
+	finish: workout.finish,
+	exerciseGroups: workout.exerciseGroups,
 	exercises: workout.exercises.map((exercise) => {
 		const working = exercise.sets.filter((set) => !set.isWarmup)
 		return {
 			name: exercise.name,
 			kind: exercise.kind,
 			exerciseRef: exercise.exerciseRef,
+			muscleGroup: exercise.muscleGroup,
+			dictionaryGroup: matchMuscleGroup(exercise.name),
 			sets: countSets(exercise),
 			warmupSets: exercise.sets
 				.filter((set) => set.isWarmup)

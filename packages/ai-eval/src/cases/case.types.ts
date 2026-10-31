@@ -1,6 +1,7 @@
 import {
 	addressFormSchema,
 	COPY_REF_PATTERN,
+	EXERCISE_GROUP_FIX_PATTERN,
 	exerciseKindSchema,
 	FACT_REF_PATTERN,
 	factCategorySchema,
@@ -9,7 +10,9 @@ import {
 	loggableMealTypeSchema,
 	MEMORY_REF_PATTERN,
 	measurementKindSchema,
+	muscleGroupSchema,
 	statsDaysSchema,
+	WORKOUT_REF_PATTERN,
 	workoutPlaceSchema,
 } from '@kus/shared'
 import { z } from 'zod'
@@ -113,26 +116,48 @@ export const expectedWorkoutExerciseSchema = z.object({
 	/** Sets after the groups are expanded, warm-ups included. */
 	sets: z.int().nonnegative().optional(),
 	warmupSets: z.int().nonnegative().optional(),
-	/** The heaviest working (not warm-up) weight, kg. */
-	weightKg: z.number().nonnegative().optional(),
+	/** The heaviest working (not warm-up) weight, kg; null = no weight at all (body weight). */
+	weightKg: z.number().nonnegative().nullable().optional(),
 	/** Reps of the first working set. */
 	reps: z.int().positive().optional(),
 	durationMin: z.number().positive().optional(),
 	distanceKm: z.number().positive().optional(),
 	/** An "x1" of the case context, or null for a new exercise. */
 	exerciseRef: z.string().nullable().optional(),
+	/**
+	 * The group the backend would store: the shared dictionary's, else the model's (cardio = null).
+	 * With `isModelGroup` — the model's own value, for a name the dictionary has no group for.
+	 */
+	muscleGroup: muscleGroupSchema.nullable().optional(),
+	isModelGroup: z.literal(true).optional(),
 })
 
 /** One log_workout the answer must contain; its exercises are exactly these. */
-export const expectedWorkoutSchema = z.object({
-	place: workoutPlaceSchema.nullable().optional(),
-	durationMin: z.number().positive().nullable().optional(),
-	/** null = the user named no number, so none may be set. */
-	kcalBurned: z.number().positive().nullable().optional(),
-	/** The "w1" this call replaces; null = a new workout. */
-	replaceRef: z.string().nullable().optional(),
-	exercises: z.array(expectedWorkoutExerciseSchema).min(1),
-})
+export const expectedWorkoutSchema = z
+	.object({
+		/** `YYYY-MM-DD` as the model sends it; null = today. */
+		date: z.iso.date().nullable().optional(),
+		place: workoutPlaceSchema.nullable().optional(),
+		durationMin: z.number().positive().nullable().optional(),
+		/** null = the user named no number, so none may be set. */
+		kcalBurned: z.number().positive().nullable().optional(),
+		/** The "w1" this call replaces; null = a new workout. */
+		replaceRef: z.string().regex(WORKOUT_REF_PATTERN).nullable().optional(),
+		/** The "w1" this call adds to; null = not an append. */
+		appendRef: z.string().regex(WORKOUT_REF_PATTERN).nullable().optional(),
+		finish: z.boolean().optional(),
+		/** Exactly these group fixes (`x1:LEGS`), in any order; `[]` = none. */
+		exerciseGroups: z.array(z.string().regex(EXERCISE_GROUP_FIX_PATTERN)).optional(),
+		/** Empty only for a finish of a session or a group fix, as the parser allows. */
+		exercises: z.array(expectedWorkoutExerciseSchema),
+	})
+	.refine(
+		(workout) =>
+			workout.exercises.length > 0 ||
+			(workout.appendRef && workout.finish) ||
+			(workout.exerciseGroups?.length ?? 0) > 0,
+		{ message: 'no exercises: only for appendRef + finish or exerciseGroups' },
+	)
 
 /** One save_food the answer must contain; every field given is checked. */
 export const expectedSavedFoodSchema = z.object({

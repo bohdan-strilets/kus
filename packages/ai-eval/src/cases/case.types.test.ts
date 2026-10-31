@@ -1,8 +1,10 @@
+import { matchMuscleGroup } from '@kus/shared'
 import { describe, expect, it } from 'vitest'
 
 import { evalCaseSchema } from './case.types.js'
 import { HISTORY_CARD_CASES } from './history-cards.cases.js'
 import { REPO_CASES } from './index.js'
+import { WORKOUT_2_CASES } from './workout-2.cases.js'
 
 const base = { id: 'c', expect: { decision: 'log' }, reference: 'r' }
 
@@ -59,6 +61,37 @@ describe('evalCaseSchema day expectations', () => {
 			expect: { decision: 'log', logDate: '06.10.2026' },
 		})
 		expect(result.success).toBe(false)
+	})
+})
+
+describe('training 2.0 cases', () => {
+	it('are valid cases', () => {
+		for (const item of WORKOUT_2_CASES) {
+			expect(evalCaseSchema.safeParse(item).success, item.id).toBe(true)
+		}
+	})
+
+	it('check the model’s own group only where the dictionary has none', () => {
+		const modelGroupCases = WORKOUT_2_CASES.filter(({ expect: { workouts = [] } }) =>
+			workouts.some(({ exercises }) => exercises.some(({ isModelGroup }) => isModelGroup)),
+		)
+		expect(modelGroupCases.length).toBeGreaterThan(0)
+		for (const { text } of modelGroupCases) expect(matchMuscleGroup(text)).toBeNull()
+	})
+
+	it('allow a workout without exercises only for a finish or a group fix', () => {
+		const withWorkout = (workout: object) =>
+			evalCaseSchema.safeParse({
+				...base,
+				text: 'x',
+				expect: { decision: 'workout', workouts: [workout] },
+			}).success
+
+		expect(withWorkout({ exercises: [] })).toBe(false)
+		expect(withWorkout({ finish: true, exercises: [] })).toBe(false)
+		expect(withWorkout({ appendRef: 'w1', finish: true, exercises: [] })).toBe(true)
+		expect(withWorkout({ exerciseGroups: ['x1:LEGS'], exercises: [] })).toBe(true)
+		expect(withWorkout({ exerciseGroups: ['LEGS'], exercises: [] })).toBe(false)
 	})
 })
 

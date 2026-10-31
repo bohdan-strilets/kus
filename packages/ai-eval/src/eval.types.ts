@@ -3,6 +3,7 @@ import type {
 	ExerciseKind,
 	ForgetFactInput,
 	MeasurementKind,
+	MuscleGroup,
 	SaveFactInput,
 	SaveFoodInput,
 	WorkoutPlace,
@@ -115,6 +116,10 @@ export interface LoggedWorkoutExercise {
 	name: string
 	kind: ExerciseKind
 	exerciseRef: string | null
+	/** The group the model sent. */
+	muscleGroup: MuscleGroup | null
+	/** The group the shared dictionary gives the name; the backend takes it over the model's. */
+	dictionaryGroup: MuscleGroup | null
 	/** Sets after the groups are expanded, warm-ups included. */
 	sets: number
 	warmupSets: number
@@ -127,10 +132,17 @@ export interface LoggedWorkoutExercise {
 }
 
 export interface LoggedWorkout {
+	/** As the model sent it: null = today. */
+	date: string | null
 	place: WorkoutPlace | null
 	durationMin: number | null
 	kcalBurned: number | null
 	replaceRef: string | null
+	/** The w-ref this call adds to; null = a new workout or a replace. */
+	appendRef: string | null
+	finish: boolean
+	/** Group fixes of exercises from «Exercises»: `x1:LEGS`. */
+	exerciseGroups: string[]
 	exercises: LoggedWorkoutExercise[]
 }
 

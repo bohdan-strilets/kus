@@ -16,6 +16,7 @@ import { MEMORY_OVERRIDE_CASES } from './memory-override.cases.js'
 import { loadHoldoutCases, loadPrivateCases } from './private-cases.js'
 import { RANGE_CASES } from './range.cases.js'
 import { SAFETY_CASES } from './safety.cases.js'
+import { WORKOUT_2_CASES } from './workout-2.cases.js'
 import { WORKOUT_CASES } from './workout.cases.js'
 
 export type {
@@ -44,6 +45,7 @@ export const REPO_CASES: EvalCase[] = [
 	...FOREIGN_VOICE_CASES,
 	...SAFETY_CASES,
 	...WORKOUT_CASES,
+	...WORKOUT_2_CASES,
 	...MEMORY_FOOD_CASES,
 	...MEMORY_FACT_CASES,
 ]

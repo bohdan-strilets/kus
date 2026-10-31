@@ -1,22 +1,8 @@
 import { describe, expect, it } from 'vitest'
 
-import { isExerciseNamed, normalizeExerciseName } from './exercise-names'
+import { isExerciseNamed } from './exercise-names'
 
 const bench = { name: 'Жим лежачи', aliases: ['bench press'] }
-
-describe('normalizeExerciseName', () => {
-	it('ignores case, punctuation and spacing', () => {
-		expect(normalizeExerciseName('  Жим   лежачи. ')).toBe('жим лежачи')
-	})
-})
-
-describe('normalizeExerciseName of symbols only', () => {
-	it('keeps the name itself, so such names do not collapse into one row', () => {
-		expect(normalizeExerciseName('🏋️')).toBe('🏋️')
-		expect(normalizeExerciseName('!!!')).toBe('!!!')
-		expect(normalizeExerciseName('  ')).toBe('')
-	})
-})
 
 describe('isExerciseNamed', () => {
 	it('finds an exercise by one of its words, whatever the ending', () => {

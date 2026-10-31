@@ -6,13 +6,14 @@ import {
 	type LogWorkoutInput,
 	MAX_CONTEXT_DELETED_WORKOUTS,
 	MAX_CONTEXT_EXERCISES,
+	normalizeExerciseName,
 	type TodayWorkoutContext,
 	type WorkoutResponse,
 } from '@kus/shared'
 
 import { formatDbDate, formatLocalTime } from '../../common/time'
 import type { Prisma } from '../../generated/prisma/client'
-import { isExerciseNamed, normalizeExerciseName } from './exercise-names'
+import { isExerciseNamed } from './exercise-names'
 import { WorkoutDateOutOfRangeException, WorkoutNotFoundException } from './workouts.exceptions'
 import {
 	expandSets,

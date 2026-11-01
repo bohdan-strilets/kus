@@ -2,46 +2,27 @@ import { PROGRESS_RANGES } from '@kus/shared'
 import { useTranslation } from 'react-i18next'
 
 import type { ProgressRange } from '@/entities/progress'
-import { cn } from '@/shared/lib'
+import { SegmentedToggle } from '@/shared/ui'
 
 interface RangeToggleProps {
 	value: ProgressRange
 	onChange: (range: ProgressRange) => void
 }
 
-/**
- * mockups/progress.html «Період»: a segmented control of buttons (aria-pressed), the active one a
- * dark pill. The 34px pill gets a 44px tap area (height and width) through an invisible ::after.
- */
+/** mockups/progress.html «Період»: the shared segmented control with 7 / 30 / 90 days. */
 export const RangeToggle = ({ value, onChange }: RangeToggleProps) => {
 	const { t } = useTranslation()
 
 	return (
-		<div
-			role="group"
+		<SegmentedToggle
 			aria-label={t('progress.range.label')}
-			className="flex rounded-chip bg-surface/75 p-1"
-		>
-			{PROGRESS_RANGES.map((range) => {
-				const isSelected = range === value
-				return (
-					<button
-						key={range}
-						type="button"
-						aria-pressed={isSelected}
-						aria-label={t('progress.range.optionLabel', { days: range })}
-						onClick={() => {
-							onChange(range)
-						}}
-						className={cn(
-							'relative min-h-8.5 cursor-pointer rounded-tile-sm px-3 text-caption after:absolute after:-inset-y-1.25 after:left-1/2 after:w-full after:min-w-tap after:-translate-x-1/2',
-							isSelected ? 'bg-ink font-bold text-white' : 'font-semibold text-muted-strong',
-						)}
-					>
-						{t('progress.range.option', { days: range })}
-					</button>
-				)
-			})}
-		</div>
+			value={value}
+			onChange={onChange}
+			options={PROGRESS_RANGES.map((range) => ({
+				value: range,
+				label: t('progress.range.option', { days: range }),
+				ariaLabel: t('progress.range.optionLabel', { days: range }),
+			}))}
+		/>
 	)
 }

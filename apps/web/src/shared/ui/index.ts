@@ -67,7 +67,15 @@ export { type Option, OptionList, type OptionListProps } from './option-list'
 export { PageStub } from './page-stub'
 export { PasswordField, type PasswordFieldProps } from './password-field'
 export { ProgressBar, type ProgressBarProps } from './progress-bar'
+export { BarChart, type BarChartBar, type BarChartProps } from './bar-chart'
 export { ScreenHeader, type ScreenHeaderProps } from './screen-header'
+export {
+	SegmentedToggle,
+	segmentedToggleItemVariants,
+	segmentedToggleVariants,
+	type SegmentedToggleOption,
+	type SegmentedToggleProps,
+} from './segmented-toggle'
 export { Skeleton, type SkeletonProps } from './skeleton'
 export { StickyActions, type StickyActionsProps } from './sticky-actions'
 export { Sparkline, type SparklineMarks, type SparklineProps } from './sparkline'

@@ -13,6 +13,18 @@ describe('Sparkline', () => {
 		expect(screen.getByRole('img', { name: 'Вага за 5 тижнів' })).toBeTruthy()
 	})
 
+	it('mini size is 64x24 with a 2px line; the default keeps 2.5', () => {
+		const mini = render(<Sparkline values={[1, 2, 3]} label="x" size="mini" />)
+		expect(mini.container.firstElementChild?.className).toContain('h-6 w-16')
+		expect(mini.container.querySelectorAll('path')).toHaveLength(1)
+		expect(mini.container.querySelectorAll('path')[0]?.getAttribute('stroke-width')).toBe('2')
+		cleanup()
+
+		const normal = render(<Sparkline values={[1, 2, 3]} label="x" />)
+		expect(normal.container.firstElementChild?.className).toContain('h-16 w-full')
+		expect(normal.container.querySelectorAll('path')[1]?.getAttribute('stroke-width')).toBe('2.5')
+	})
+
 	it('draws the fill and the line for several points', () => {
 		const { container } = render(<Sparkline values={[84, 83, 82.4]} label="x" />)
 

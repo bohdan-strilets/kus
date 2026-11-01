@@ -11,6 +11,8 @@ export interface SparklineProps {
 	reference?: number
 	/** Value captions (already formatted) and the end dot: the Progress charts. */
 	marks?: SparklineMarks
+	/** `mini`: 64×24 with a 2px line, the inline trend in a list row (mockups/training-stats.html). */
+	size?: 'default' | 'mini'
 	className?: string
 }
 
@@ -23,7 +25,13 @@ export interface SparklineMarks {
 	endDot?: 'lg' | 'sm'
 }
 
+const SIZE_CLASS = {
+	default: 'h-16 w-full',
+	mini: 'h-6 w-16 shrink-0',
+} as const
+
 const LINE_WIDTH = 2.5
+const MINI_LINE_WIDTH = 2
 const REFERENCE_WIDTH = 1.5
 const REFERENCE_DASH = '4 4'
 
@@ -39,7 +47,14 @@ const toPercent = (part: number, whole: number): string => `${(part / whole) * 1
  * over a 10 % success fill. It stretches to the width of its box; the stroke does not. A lone
  * point is an HTML dot over the SVG: inside the stretched SVG it would be squashed into an oval.
  */
-export const Sparkline = ({ values, label, reference, marks, className }: SparklineProps) => {
+export const Sparkline = ({
+	values,
+	label,
+	reference,
+	marks,
+	size = 'default',
+	className,
+}: SparklineProps) => {
 	if (values.length === 0) return null
 	const { line, area, points, referenceY } = getSparklinePaths(values, reference)
 	const [single] = points
@@ -47,7 +62,7 @@ export const Sparkline = ({ values, label, reference, marks, className }: Sparkl
 	const firstPoint = points.length > 1 ? single : undefined
 
 	return (
-		<div className={cn('relative h-16 w-full', className)}>
+		<div className={cn('relative', SIZE_CLASS[size], className)}>
 			<svg
 				role="img"
 				aria-label={label}
@@ -67,12 +82,12 @@ export const Sparkline = ({ values, label, reference, marks, className }: Sparkl
 						className="stroke-muted-soft"
 					/>
 				)}
-				{area && <path d={area} className="fill-success/10" />}
+				{area && size !== 'mini' && <path d={area} className="fill-success/10" />}
 				{line && (
 					<path
 						d={line}
 						fill="none"
-						strokeWidth={LINE_WIDTH}
+						strokeWidth={size === 'mini' ? MINI_LINE_WIDTH : LINE_WIDTH}
 						strokeLinecap="round"
 						strokeLinejoin="round"
 						vectorEffect="non-scaling-stroke"

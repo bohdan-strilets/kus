@@ -44,6 +44,19 @@ describe('BottomNav', () => {
 		expect(screen.getByRole('link', { name: 'Чат' }).getAttribute('href')).toBe('/app')
 	})
 
+	it.each(['/app/training/stats', '/app/training/exercise/e1', '/app/training/w1'])(
+		'«Тренування» stays active on the nested %s and «Чат» does not',
+		(route) => {
+			renderWithProviders(<BottomNav hasTraining />, { route })
+
+			expect(screen.getByRole('link', { name: 'Тренування' }).getAttribute('aria-current')).toBe(
+				'page',
+			)
+			expect(screen.getByRole('link', { name: 'Чат' }).getAttribute('aria-current')).toBeNull()
+			expect(screen.getByRole('link', { name: 'Прогрес' }).getAttribute('aria-current')).toBeNull()
+		},
+	)
+
 	it('the five-tab labels are tighter and never wrap; four tabs keep the normal tracking', () => {
 		renderWithProviders(<BottomNav hasTraining />, { route: '/app' })
 		const training = screen.getByRole('link', { name: 'Тренування' })

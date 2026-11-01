@@ -1,5 +1,7 @@
 import { NavLink } from 'react-router'
 
+import { ROUTES } from '@/shared/config'
+
 import type { NavItem } from '../model/nav-items'
 import { navTabVariants } from './bottom-nav.variants'
 import { NavTabContent } from './NavTabContent'
@@ -28,8 +30,9 @@ export const BottomNavItem = ({
 		to={item.to}
 		// tabs switch in place, as in a native app: Back never flips between them
 		replace
-		// «Чат» is /app itself: without `end` it would be active under every /app/* tab
-		end
+		// «Чат» is /app itself: without `end` it would be active under every /app/* tab; the others
+		// stay active on their nested screens (/app/training/stats, /app/training/:id)
+		end={item.to === ROUTES.chat}
 		aria-label={hasUpdate ? updateLabel : undefined}
 		className={({ isActive }) => navTabVariants({ isActive, isCompact })}
 	>

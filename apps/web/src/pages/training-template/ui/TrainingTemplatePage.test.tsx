@@ -239,6 +239,26 @@ describe('TrainingTemplatePage', () => {
 		expect(screen.queryByText(/позиція/)).toBeNull()
 	})
 
+	it('does not steal the focus later after a move that was ignored at the edge', async () => {
+		mockProgram()
+		renderPage()
+		await startEditing()
+		const first = screen.getByRole('button', { name: 'Перетягнути: Жим ногами' })
+		const second = screen.getByRole('button', { name: 'Перетягнути: Підйоми ніг у висі' })
+		expect(first.getAttribute('aria-keyshortcuts')).toBe('ArrowUp ArrowDown')
+
+		fireEvent.keyDown(first, { key: 'ArrowUp' })
+		second.focus()
+		fireEvent.keyDown(second, { key: 'ArrowUp' })
+
+		expect(await screen.findByText('Підйоми ніг у висі: позиція 1 з 2')).toBeTruthy()
+		await waitFor(() => {
+			expect(document.activeElement).toBe(
+				screen.getByRole('button', { name: 'Перетягнути: Підйоми ніг у висі' }),
+			)
+		})
+	})
+
 	it('sets the target in the sheet and saves it with the list', async () => {
 		mockProgram()
 		postMock.mockResolvedValue(reply(makeProgram()))
@@ -332,7 +352,9 @@ describe('TrainingTemplatePage', () => {
 
 		fireEvent.click(screen.getByRole('button', { name: 'Готово' }))
 
-		expect(await screen.findByText('Програма вже змінилась — перерахуй зміни')).toBeTruthy()
+		expect(
+			await screen.findByText('Програму щойно змінено — відкрий шаблон і внеси правки ще раз.'),
+		).toBeTruthy()
 		expect(await screen.findByRole('button', { name: 'Змінити' })).toBeTruthy()
 		await waitFor(() => {
 			expect(getMock).toHaveBeenCalledWith('/programs/active')

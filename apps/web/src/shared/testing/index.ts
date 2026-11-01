@@ -9,6 +9,7 @@ export {
 export { stubMatchMedia } from './match-media'
 export { createWrapper, renderHookWithProviders, renderWithProviders } from './render'
 export { makeProgress } from './progress.fixture'
+export { makeChatMessage, makeProgram } from './program.fixture'
 export { makeExercise, makeWorkout } from './workout.fixture'
 export { makeWeightedStats, makeBodyweightStats } from './exercise-stats.fixture'
 export {

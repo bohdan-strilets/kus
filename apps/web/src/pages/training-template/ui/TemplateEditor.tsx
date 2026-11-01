@@ -29,9 +29,9 @@ export const TemplateEditor = ({ exercises, dispatch }: TemplateEditorProps) => 
 	const [announcement, setAnnouncement] = useState('')
 	const targetExercise = exercises.find((exercise) => exercise.key === targetKey) ?? null
 
-	const move = (exercise: DraftExercise, index: number, delta: -1 | 1): void => {
+	const move = (exercise: DraftExercise, index: number, delta: -1 | 1): boolean => {
 		const position = index + delta
-		if (position < 0 || position >= exercises.length) return
+		if (position < 0 || position >= exercises.length) return false
 		dispatch({ type: 'move', key: exercise.key, delta })
 		setAnnouncement(
 			t('program.editor.position', {
@@ -40,6 +40,7 @@ export const TemplateEditor = ({ exercises, dispatch }: TemplateEditorProps) => 
 				total: exercises.length,
 			}),
 		)
+		return true
 	}
 
 	return (
@@ -65,9 +66,7 @@ export const TemplateEditor = ({ exercises, dispatch }: TemplateEditorProps) => 
 							onRemove={() => {
 								dispatch({ type: 'remove', key: exercise.key })
 							}}
-							onMove={(delta) => {
-								move(exercise, index, delta)
-							}}
+							onMove={(delta) => move(exercise, index, delta)}
 						/>
 					))}
 				</Reorder.Group>

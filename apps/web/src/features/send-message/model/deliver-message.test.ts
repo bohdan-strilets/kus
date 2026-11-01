@@ -993,3 +993,58 @@ describe('deliverMessage sounds and fresh cards', () => {
 		expect(useFreshReplyStore.getState().freshAt).toEqual({})
 	})
 })
+
+describe('deliverMessage: training onboarding answer', () => {
+	const ANSWER = { messageId: '0199b3a4-0000-7000-8000-0000000000bb', values: ['GYM'] }
+
+	beforeEach(() => {
+		useOutboxStore.setState({ items: {} })
+		vi.mocked(postMessage).mockReset()
+	})
+
+	it('sends the answer in the body next to the label text', async () => {
+		vi.mocked(postMessage).mockResolvedValueOnce(turn)
+
+		await deliverMessage(createClient(), {
+			clientMessageId: CLIENT_ID,
+			text: 'Зал',
+			onboardingAnswer: ANSWER,
+		})
+
+		expect(vi.mocked(postMessage).mock.calls[0]?.[0]).toEqual({
+			clientMessageId: CLIENT_ID,
+			text: 'Зал',
+			onboardingAnswer: ANSWER,
+		})
+	})
+
+	it('keeps the answer in the failed draft and sends it again on «Спробувати ще» without it being passed', async () => {
+		const client = createClient()
+		vi.mocked(postMessage).mockRejectedValueOnce(networkError).mockResolvedValueOnce(turn)
+
+		await deliverMessage(client, {
+			clientMessageId: CLIENT_ID,
+			text: 'Зал',
+			onboardingAnswer: ANSWER,
+		})
+		expect(useOutboxStore.getState().items[CLIENT_ID]).toMatchObject({
+			status: 'failed',
+			onboardingAnswer: ANSWER,
+		})
+
+		await deliverMessage(client, { clientMessageId: CLIENT_ID, text: 'Зал', isRetry: true })
+
+		expect(vi.mocked(postMessage).mock.calls.map(([body]) => body)).toEqual([
+			{ clientMessageId: CLIENT_ID, text: 'Зал', onboardingAnswer: ANSWER },
+			{ clientMessageId: CLIENT_ID, text: 'Зал', onboardingAnswer: ANSWER },
+		])
+	})
+
+	it('does not add the field to a plain message', async () => {
+		vi.mocked(postMessage).mockResolvedValueOnce(turn)
+
+		await deliverMessage(createClient(), { clientMessageId: CLIENT_ID, text: 'привіт' })
+
+		expect(vi.mocked(postMessage).mock.calls[0]?.[0].onboardingAnswer).toBeUndefined()
+	})
+})

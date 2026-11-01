@@ -73,12 +73,14 @@ export const useTemplateEditor = ({
 				},
 				onError: (error) => {
 					const apiError = getApiError(error)
-					toast.show(getProgramActionError(apiError, t))
 					// somebody changed the program meanwhile: the draft was made on the old one, so the
-					// refreshed template is the truth
+					// refreshed template is the truth (the chat card's «перерахуй» does not fit here)
 					if (apiError.kind === 'http' && apiError.errorCode === VERSION_CONFLICT) {
+						toast.show(t('program.editor.conflict'))
 						setBaseVersionId(null)
+						return
 					}
+					toast.show(getProgramActionError(apiError, t))
 				},
 			},
 		)

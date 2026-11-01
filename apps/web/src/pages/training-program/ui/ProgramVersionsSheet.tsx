@@ -25,7 +25,7 @@ export const ProgramVersionsSheet = ({
 	program,
 }: ProgramVersionsSheetProps) => {
 	const { t } = useTranslation()
-	const versions = useProgramVersions()
+	const versions = useProgramVersions({ enabled: isOpen })
 	const items = versions.data
 
 	return (

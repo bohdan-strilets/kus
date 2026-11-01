@@ -1,14 +1,20 @@
 // @vitest-environment jsdom
 import type { TrainingOnboardingState } from '@kus/shared'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import '@/shared/i18n'
 
+import { useOutboxStore } from '@/features/send-message'
+
 import { TrainingQuestion } from './TrainingQuestion'
 
 const send = vi.fn()
-vi.mock('@/features/send-message', () => ({ useSendMessage: () => ({ send, retry: vi.fn() }) }))
+vi.mock('@/features/send-message', async (importOriginal) => ({
+	...(await importOriginal<Record<string, unknown>>()),
+	useSendMessage: () => ({ send, retry: vi.fn() }),
+}))
 
 const ID = '0199b3a4-0000-7000-8000-000000000011'
 
@@ -28,14 +34,43 @@ const renderQuestion = (
 		/>,
 	)
 
+interface SendInput {
+	text: string
+	onboardingAnswer: { messageId: string; values: string[] }
+}
+
+const CLIENT_ID = '0199b3a4-0000-7000-8000-000000000099'
+
+/** What the real send does: the answer sits in the outbox until the server has the turn. */
+const putAnswerInOutbox = () => {
+	act(() => {
+		useOutboxStore.getState().markSending({
+			clientMessageId: CLIENT_ID,
+			text: 'На вулиці',
+			createdAt: new Date().toISOString(),
+			onboardingAnswer: { messageId: ID, values: ['OUTDOOR'] },
+		})
+	})
+}
+
 afterEach(() => {
 	cleanup()
+	useOutboxStore.setState({ items: {} })
 	send.mockReset()
 })
 
 describe('TrainingQuestion', () => {
 	it('sends the label of a chip with its value on one tap, once', () => {
 		renderQuestion(1)
+		// the real send puts the answer in the outbox, which locks the options
+		send.mockImplementation(({ text, onboardingAnswer }: SendInput) => {
+			useOutboxStore.getState().markSending({
+				clientMessageId: CLIENT_ID,
+				text,
+				createdAt: new Date().toISOString(),
+				onboardingAnswer,
+			})
+		})
 
 		fireEvent.click(screen.getByRole('button', { name: 'На вулиці' }))
 		fireEvent.click(screen.getByRole('button', { name: 'Зал' }))
@@ -45,6 +80,38 @@ describe('TrainingQuestion', () => {
 			text: 'На вулиці',
 			onboardingAnswer: { messageId: ID, values: ['OUTDOOR'] },
 		})
+	})
+
+	it('locks the options while the answer is on its way', () => {
+		renderQuestion(1)
+		putAnswerInOutbox()
+
+		expect(screen.getByRole('button', { name: 'Зал' }).hasAttribute('disabled')).toBe(true)
+	})
+
+	it('unlocks the options when the answer failed (the question is still open)', () => {
+		renderQuestion(1)
+		putAnswerInOutbox()
+		act(() => {
+			useOutboxStore.getState().markFailed(CLIENT_ID, {
+				messageKey: 'chat.networkError',
+				canRetry: true,
+			})
+		})
+
+		expect(screen.getByRole('button', { name: 'Зал' }).hasAttribute('disabled')).toBe(false)
+		fireEvent.click(screen.getByRole('button', { name: 'Зал' }))
+		expect(send).toHaveBeenCalledOnce()
+	})
+
+	it('unlocks the options when the failed answer was removed', () => {
+		renderQuestion(1)
+		putAnswerInOutbox()
+		act(() => {
+			useOutboxStore.getState().remove(CLIENT_ID)
+		})
+
+		expect(screen.getByRole('button', { name: 'Зал' }).hasAttribute('disabled')).toBe(false)
 	})
 
 	it('shows the experience as rows with hints and sends the title', () => {

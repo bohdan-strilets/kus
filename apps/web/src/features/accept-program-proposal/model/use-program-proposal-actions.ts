@@ -3,6 +3,7 @@ import { useMutation, type UseMutationResult, useQueryClient } from '@tanstack/r
 
 import { MESSAGES_QUERY_KEY, replaceFeedMessage } from '@/entities/message'
 import { PROGRAM_QUERY_KEY, setActiveProgram } from '@/entities/program'
+import { EXERCISE_DICTIONARY_QUERY_KEY } from '@/entities/workout'
 
 import { acceptProgramProposal, rebaseProgramProposal } from '../api/program-proposal'
 
@@ -25,6 +26,8 @@ export const useProgramProposalActions = (): ProgramProposalActions => {
 		mutationFn: acceptProgramProposal,
 		onSuccess: (program) => {
 			setActiveProgram(queryClient, program)
+			// the accepted program may bring exercises the dictionary has not seen
+			void queryClient.invalidateQueries({ queryKey: EXERCISE_DICTIONARY_QUERY_KEY })
 			refreshFeed()
 		},
 		onError: () => {

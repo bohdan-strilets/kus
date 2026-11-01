@@ -16,7 +16,8 @@ interface EditorExerciseRowProps {
 	index: number
 	onOpen: () => void
 	onRemove: () => void
-	onMove: (delta: -1 | 1) => void
+	/** False when the move is not possible (the first row up, the last down). */
+	onMove: (delta: -1 | 1) => boolean
 }
 
 /**
@@ -46,8 +47,8 @@ export const EditorExerciseRow = ({
 	const handleKeyDown = (event: KeyboardEvent<HTMLButtonElement>): void => {
 		if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return
 		event.preventDefault()
-		isRefocusPending.current = true
-		onMove(event.key === 'ArrowUp' ? -1 : 1)
+		// an ignored move at an edge changes no index: the flag must not wait for a later one
+		isRefocusPending.current = onMove(event.key === 'ArrowUp' ? -1 : 1)
 	}
 
 	return (
@@ -73,6 +74,7 @@ export const EditorExerciseRow = ({
 				ref={handleRef}
 				type="button"
 				aria-label={t('program.editor.drag', { name: exercise.name })}
+				aria-keyshortcuts="ArrowUp ArrowDown"
 				onPointerDown={(event) => {
 					dragControls.start(event)
 				}}

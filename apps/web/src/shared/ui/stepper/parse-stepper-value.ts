@@ -16,8 +16,7 @@ export const parseStepperValue = (
 	if (!NUMBER_PATTERN.test(trimmed)) return null
 	const value = Number(trimmed.replace(',', '.'))
 	if (!Number.isFinite(value)) return null
-	const factor = 10 ** decimals
-	const rounded = Math.round(value * factor) / factor
-	if (decimals === 0 && !Number.isInteger(value)) return null
-	return rounded < min || rounded > max ? null : rounded
+	const fraction = trimmed.split(/[.,]/)[1] ?? ''
+	if (fraction.length > decimals) return null
+	return value < min || value > max ? null : value
 }

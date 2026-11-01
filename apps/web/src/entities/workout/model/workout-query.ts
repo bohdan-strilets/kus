@@ -55,10 +55,13 @@ export const exerciseStatsQueryOptions = (exerciseId: string, period: WorkoutSta
 		staleTime: WORKOUT_STATS_STALE_TIME_MS,
 	})
 
+/** Every dictionary list (any search, any group): a new exercise in a program makes them stale. */
+export const EXERCISE_DICTIONARY_QUERY_KEY = [...WORKOUTS_QUERY_KEY, 'dictionary'] as const
+
 /** The dictionary changes with the workouts, which invalidate the whole key; a typed query keeps the previous list meanwhile. */
 export const exerciseDictionaryQueryOptions = (query: ExerciseDictionaryQuery) =>
 	queryOptions({
-		queryKey: [...WORKOUTS_QUERY_KEY, 'dictionary', query.query ?? '', query.group ?? null],
+		queryKey: [...EXERCISE_DICTIONARY_QUERY_KEY, query.query ?? '', query.group ?? null],
 		queryFn: () => getExerciseDictionary(query),
 		staleTime: WORKOUT_STATS_STALE_TIME_MS,
 		placeholderData: keepPreviousData,

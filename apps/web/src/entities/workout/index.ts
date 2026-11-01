@@ -15,6 +15,7 @@ export {
 	getExerciseIcon,
 } from './lib/format-workout'
 export {
+	EXERCISE_DICTIONARY_QUERY_KEY,
 	WORKOUTS_QUERY_KEY,
 	exerciseDictionaryQueryOptions,
 	exerciseStatsQueryOptions,

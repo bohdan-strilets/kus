@@ -13,7 +13,7 @@ import {
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { useSendMessage } from '@/features/send-message'
+import { useOutboxStore, useSendMessage } from '@/features/send-message'
 import { cn } from '@/shared/lib'
 import { Button, Chip, Text } from '@/shared/ui'
 
@@ -43,9 +43,14 @@ export const TrainingQuestion = ({ messageId, onboarding, state }: TrainingQuest
 	const { send } = useSendMessage()
 	const { step, preselected, answer } = onboarding
 	const [selected, setSelected] = useState<string[]>(answer ?? preselected)
-	// the message turns ANSWERED only when the feed is read again: until then a second tap must not send
-	const [isSent, setIsSent] = useState(false)
-	const isLocked = state !== 'OPEN' || isSent
+	// the message turns ANSWERED only when the feed has the turn: until then a second tap must not
+	// send; a failed answer unlocks the options again (the question is still OPEN)
+	const isSending = useOutboxStore((store) =>
+		Object.values(store.items).some(
+			(item) => item.onboardingAnswer?.messageId === messageId && item.status !== 'failed',
+		),
+	)
+	const isLocked = state !== 'OPEN' || isSending
 	const isMulti = step === TRAINING_ONBOARDING_MULTI_STEP
 	const question = t(`trainingOnboarding.question.${step}`)
 	const options = TRAINING_ONBOARDING_OPTIONS[step]
@@ -55,7 +60,6 @@ export const TrainingQuestion = ({ messageId, onboarding, state }: TrainingQuest
 
 	const submit = (values: string[]): void => {
 		if (isLocked) return
-		setIsSent(true)
 		send({
 			text: values.map(getLabel).join(', '),
 			onboardingAnswer: { messageId, values },

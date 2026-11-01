@@ -30,8 +30,11 @@ export const programVersionsQueryOptions = queryOptions({
 export const useActiveProgram = (): UseQueryResult<ProgramResponse | null> =>
 	useQuery(activeProgramQueryOptions)
 
-export const useProgramVersions = (): UseQueryResult<ProgramVersionListResponse> =>
-	useQuery(programVersionsQueryOptions)
+/** The versions are read when the list is opened, not with the screen. */
+export const useProgramVersions = ({
+	enabled = true,
+}: { enabled?: boolean } = {}): UseQueryResult<ProgramVersionListResponse> =>
+	useQuery({ ...programVersionsQueryOptions, enabled })
 
 /** A mutation returned the whole program: the screen shows it at once, the versions are read again. */
 export const setActiveProgram = (

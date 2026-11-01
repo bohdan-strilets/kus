@@ -3,6 +3,7 @@ import { useMutation, type UseMutationResult, useQueryClient } from '@tanstack/r
 
 import { MESSAGES_QUERY_KEY } from '@/entities/message'
 import { PROGRAM_QUERY_KEY, setActiveProgram } from '@/entities/program'
+import { EXERCISE_DICTIONARY_QUERY_KEY } from '@/entities/workout'
 
 import { saveProgramTemplate } from '../api/save-program-template'
 
@@ -21,6 +22,8 @@ export const useSaveProgramTemplate = (): UseMutationResult<
 		onSuccess: (program) => {
 			setActiveProgram(queryClient, program)
 			void queryClient.invalidateQueries({ queryKey: MESSAGES_QUERY_KEY })
+			// a new exercise of the template joins the user's dictionary
+			void queryClient.invalidateQueries({ queryKey: EXERCISE_DICTIONARY_QUERY_KEY })
 		},
 		onError: () => {
 			void queryClient.invalidateQueries({ queryKey: PROGRAM_QUERY_KEY })

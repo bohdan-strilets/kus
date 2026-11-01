@@ -11,8 +11,10 @@ describe('parseStepperValue', () => {
 		expect(parseStepperValue('2.5', DECIMAL)).toBe(2.5)
 	})
 
-	it('rounds to the decimals', () => {
-		expect(parseStepperValue('2,56', DECIMAL)).toBe(2.6)
+	it('rejects more digits than the decimals instead of rounding', () => {
+		expect(parseStepperValue('2.55', DECIMAL)).toBeNull()
+		expect(parseStepperValue('2,56', DECIMAL)).toBeNull()
+		expect(parseStepperValue('2,50', { ...DECIMAL, decimals: 2 })).toBe(2.5)
 	})
 
 	it('rejects text, empty, negatives and out of range', () => {

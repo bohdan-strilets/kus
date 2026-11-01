@@ -19,6 +19,7 @@ results/
 # "**/" matters: a pattern with an inner slash is anchored to the repo root and would miss
 # packages/ai-eval/data/private (real meals and weight — never in git)
 **/data/private/
+**/data/private-backup-*.zip
 # hold-out eval cases are never in git, wherever they lie
 *.holdout.json
 

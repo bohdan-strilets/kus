@@ -11,6 +11,8 @@ interface FakeVisualViewport extends EventTarget {
 const FULL = { height: 873, offsetTop: 0 }
 const KEYBOARD = { height: 458, offsetTop: 415 }
 const PAST_GRACE_MS = 800
+// the first test pays the cold import of AppLayout: under a loaded full run it took over 5 s
+const COLD_IMPORT_TIMEOUT_MS = 15_000
 
 const installViewport = (viewport: FakeVisualViewport | undefined): void => {
 	Object.defineProperty(window, 'visualViewport', { configurable: true, value: viewport })
@@ -71,10 +73,14 @@ describe('AppLayout bottom nav and the keyboard', () => {
 		Reflect.deleteProperty(window, 'matchMedia')
 	})
 
-	it('shows the nav with no field focused', async () => {
-		await renderLayout()
-		expect(hasNav()).toBe(true)
-	})
+	it(
+		'shows the nav with no field focused',
+		async () => {
+			await renderLayout()
+			expect(hasNav()).toBe(true)
+		},
+		COLD_IMPORT_TIMEOUT_MS,
+	)
 
 	it('hides it on focus while the keyboard is coming, shows it if none follows within 700 ms', async () => {
 		await renderLayout()

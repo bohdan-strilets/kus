@@ -10,6 +10,9 @@ export interface RunBudget {
 	maxUsd: number
 	/** Reserves of the cases still in flight. */
 	reservedUsd: number
+	/** Stage soft stop: once spent + reserved reach it, no new case starts (the hard maxUsd still applies). */
+	softStopUsd?: number
+	isSoftStopped?: boolean
 }
 
 export interface RunOptions {
@@ -33,10 +36,18 @@ export interface ModelRun {
 	 * run pass --max-cost (by at most that overrun), so it is reported, never hidden.
 	 */
 	overReserve: string[]
+	/** The stage soft stop ended the run; `skipped` counts the cases left. */
+	isSoftStopped: boolean
 }
 
 export const canStartCase = (budget: RunBudget, reserveUsd: number): boolean =>
 	budget.spentUsd + budget.reservedUsd + reserveUsd <= budget.maxUsd
+
+export const hasReachedSoftStop = (budget: RunBudget): boolean => {
+	if (budget.isSoftStopped) return true
+	if (budget.softStopUsd === undefined) return false
+	return budget.spentUsd + budget.reservedUsd >= budget.softStopUsd
+}
 
 export const runModel = async (cases: EvalCase[], options: RunOptions): Promise<ModelRun> => {
 	const { budget, caseReserveUsd } = options
@@ -59,15 +70,25 @@ export const runModel = async (cases: EvalCase[], options: RunOptions): Promise<
 		}
 	}
 
+	const stopAtSoftLimit = (): boolean => {
+		if (!hasReachedSoftStop(budget)) return false
+		budget.isSoftStopped = true
+		skipped += cases.length - next + 1
+		next = cases.length
+		return true
+	}
+
 	const worker = async (): Promise<void> => {
 		while (next < cases.length) {
 			const evalCase = cases[next]
 			next += 1
 			if (!evalCase) return
+			if (stopAtSoftLimit()) return
 			// a case in flight may finish under its reserve and free room for this one
 			while (!canStartCase(budget, caseReserveUsd) && inFlight.size > 0) {
 				await Promise.race(inFlight)
 			}
+			if (stopAtSoftLimit()) return
 			if (!canStartCase(budget, caseReserveUsd)) {
 				// nothing in flight, so the budget only shrinks from here: skip the rest
 				skipped += cases.length - next + 1
@@ -93,5 +114,11 @@ export const runModel = async (cases: EvalCase[], options: RunOptions): Promise<
 	// keep the case order stable for the report and diffs between runs
 	const order = new Map(cases.map((evalCase, index) => [evalCase.id, index]))
 	pairs.sort((a, b) => (order.get(a.evalCase.id) ?? 0) - (order.get(b.evalCase.id) ?? 0))
-	return { model: options.model, pairs, skipped, overReserve }
+	return {
+		model: options.model,
+		pairs,
+		skipped,
+		overReserve,
+		isSoftStopped: budget.isSoftStopped === true,
+	}
 }

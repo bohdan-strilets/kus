@@ -333,6 +333,7 @@ pnpm --filter web exec vitest related --run src/…     # web / shared: тест
 pnpm test                             # повний, усі пакети — раз наприкінці етапу
 pnpm --filter api prisma migrate dev
 pnpm --filter ai-eval eval --only <id,...> --max-cost <ліміт>   # нові кейси; повний — раз на версію промпту
+pnpm --filter ai-eval eval --stage <етап> --stage-cap <usd>     # один раз: бюджет етапу; далі `--stage <етап>` у прогонах (стеля, зупинка на 80 %)
 pnpm --filter web icons               # зібрати іконки з SVG (UI + страви)
 ```
 

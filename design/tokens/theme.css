@@ -26,6 +26,7 @@
   --color-success-ink: #0F5E40;
   --color-over: #C25A1C;             /* перебір у даних — не помилка */
   --color-accent-on-dark: #FFD3A8;   /* посилання й іконки на bg-dark-card */
+  --color-success-on-dark: #7FD3A7;  /* 0.10.3–0.10.4: кільце таймера й крапка «іде тренування» на ink (8,9:1; success на темному лише 3,4:1) */
   --color-danger: #B42330;           /* помилки, видалення */
   --color-danger-soft: #FCE9EA;
   --color-scrim: rgb(42 33 24 / 0.4);

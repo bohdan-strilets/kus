@@ -6,6 +6,41 @@ All notable changes to Kusik are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.10.2] — 2026-11-01
+
+Workout programs: Kusik proposes a program in chat (five button questions or plain words), nothing is saved until «Прийняти», every change is a new version; program and template screens with a manual editor; the training tab shows the next workout. Two additive migrations, one new environment variable for the eval only (OPENROUTER_EVAL_API_KEY).
+
+### Added
+
+- Workout program schema: `WorkoutProgram` (one active per user), immutable `ProgramVersion` with its templates and exercises, `Workout.templateId` / `source`, `Message.programCard`, `UserProfile.trainingOnboardingAt`; the migration only adds ([2a80696])
+- Shared program draft, change and card schemas, `diffPrograms`, the next template for rotation, single and weekdays programs, and the template duration estimate ([a0ca042])
+- Programs API: `GET` / `PATCH` / `DELETE /programs/active`, version history, weekdays in place, and the template editor's «Готово» as a new version with a compare-and-swap (409 `PROGRAM_VERSION_CONFLICT`) ([07fe563])
+- `propose_program` AI tool (always the whole program, the backend computes the diff), `log_workout.templateRef`, a «Program» context section, program cards in chat with accept and rebase, and backend-led training onboarding with five questions ([411a5b8])
+- `GET /api/v1/workouts/exercises?query=&group=`: the exercise dictionary with the last result for the template editor; `GET /profile` returns `trainingOnboardingAt` ([dcd4b7e])
+- Exercises created from a program get the template's muscle group (an empty group is filled, a set one is kept); a removed exercise in a program diff keeps its target ([dcd4b7e])
+- Level 0 `Stepper` (typed input, 44 px), a 44 px `SegmentedToggle` size, `Chip` «choice», `Button` «frosted» and «header» sizes, an action slot in `ScreenHeader` ([8bfede5])
+- Program and template screens: the program with its versions sheet, mode, pinned template and weekdays; the template editor with drag reorder, exercise targets and «Готово» as a new version; program and change cards in chat; training onboarding questions with buttons ([727d335])
+- The training tab shows the next workout, my templates, the program tile and the onboarding invitation; journal rows show the template ([727d335])
+- Eval tooling for developers: program cases and checks, per-case `.jsonl` results, `--rescore`, `--smoke`, a separate `OPENROUTER_EVAL_API_KEY` ([411a5b8], [17a9ac6])
+- Eval stage ledger: `--stage` and `--stage-cap` cap the spend of all runs of a stage, with a soft stop at 80 % ([ba8c4b8])
+
+### Changed
+
+- Prompt 2026-11-01.1: the tool descriptions are cut (E2: intent instead of «; else null»); prefix 19 363 tokens under the ceiling of 19 400 ([411a5b8])
+- Eval policy: code-only changes run no eval, a few texts run only the affected cases, a full run only on the author's request; every run needs an estimate and `--stage` ([17a9ac6])
+- 35 hard duplicate eval cases removed: 321 → 285 cases with the private set ([8384491])
+- Design mockups for 0.10.2–0.10.4 (programs, templates, live mode, form and rest timer) and the success-on-dark token in the design tokens ([93dfc4b])
+- Docs: `architecture.md` describes `propose_program`, program cards, the programs routes, onboarding and the eval tooling; the private eval data is backed up before bulk changes ([a04f1ec], [a60723e])
+- lint-staged commands are chunked under the Windows command-line limit ([34ad99a])
+
+### Fixed
+
+- Review fixes: template save and proposal accept refresh the exercise dictionary; an editor version conflict has its own message; onboarding options unlock when the answer failed or was dismissed; keyboard moves at the edges no longer steal focus; the versions sheet loads only when open; a stepper rejects extra decimals; the template header says «Тренування» while loading; tests for program mutations, the chat program card and onboarding ([7e4e332])
+
+### Security
+
+- `follow-redirects` 1.16.1 → 1.16.2 via a scoped override (GHSA-mrwp-f3q8-3g9p: custom headers could follow a cross-realm redirect); `axios` is unchanged ([367d5d0])
+
 ## [0.10.1] — 2026-11-01
 
 Training statistics: a period overview, an exercise screen with all-time records, and a shared segmented toggle, bar chart and sparkline. Two new endpoints, no database migrations, no new environment variables, no prompt change.
@@ -556,7 +591,24 @@ Design sync with `design/` v0.5.2. Web only: no API, shared-package or migration
 
 ## 0.2.0 / 0.1.0 — see tags
 
-[Unreleased]: https://github.com/bohdan-strilets/kus/compare/v0.10.1...HEAD
+[Unreleased]: https://github.com/bohdan-strilets/kus/compare/v0.10.2...HEAD
+[0.10.2]: https://github.com/bohdan-strilets/kus/compare/v0.10.1...v0.10.2
+[2a80696]: https://github.com/bohdan-strilets/kus/commit/2a806965a809d9e3b263ea9232a32b16495be4f4
+[a0ca042]: https://github.com/bohdan-strilets/kus/commit/a0ca0429177d9a6436c98c5ef3deca5e5f767784
+[07fe563]: https://github.com/bohdan-strilets/kus/commit/07fe563f7503704fe535fbf85e6e19bf0458cc59
+[411a5b8]: https://github.com/bohdan-strilets/kus/commit/411a5b8be444c7d674439c1c11d51a6d5d86e731
+[dcd4b7e]: https://github.com/bohdan-strilets/kus/commit/dcd4b7e6d42bc0045f9dc23b6dec8a30098745da
+[8bfede5]: https://github.com/bohdan-strilets/kus/commit/8bfede54d055bacfbbbee9f69292b47c89c84ded
+[727d335]: https://github.com/bohdan-strilets/kus/commit/727d335255046493db8365dab992ef1a472e6858
+[ba8c4b8]: https://github.com/bohdan-strilets/kus/commit/ba8c4b8ecf108b98955a7ba4308cc2bf41561b19
+[17a9ac6]: https://github.com/bohdan-strilets/kus/commit/17a9ac6dbbb820be565dec16a160d1a46fa78ed7
+[8384491]: https://github.com/bohdan-strilets/kus/commit/8384491c6801dd4ab552f1227f950a79de06d9f2
+[93dfc4b]: https://github.com/bohdan-strilets/kus/commit/93dfc4b080a7a7b285532b10044c7283cbe58791
+[a04f1ec]: https://github.com/bohdan-strilets/kus/commit/a04f1ec2ab5f114d3468c12345107d611f31124e
+[a60723e]: https://github.com/bohdan-strilets/kus/commit/a60723eb05fb051612e274dc3ce05c737db28c15
+[34ad99a]: https://github.com/bohdan-strilets/kus/commit/34ad99a704f760795a290a6d2940ac567b99c5d0
+[7e4e332]: https://github.com/bohdan-strilets/kus/commit/7e4e332f786eca727e308e9d77cb43c6c643fbe1
+[367d5d0]: https://github.com/bohdan-strilets/kus/commit/367d5d0ee069fd1639b81816f499e28e0650a556
 [0.10.1]: https://github.com/bohdan-strilets/kus/compare/v0.10.0...v0.10.1
 [8c21d30]: https://github.com/bohdan-strilets/kus/commit/8c21d30a1624832617a0eefb3a05f434aa31ed87
 [20b16c6]: https://github.com/bohdan-strilets/kus/commit/20b16c647bd92fb774c367cbe89c0f7d53facddb

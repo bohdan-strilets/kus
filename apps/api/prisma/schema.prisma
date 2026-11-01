@@ -230,6 +230,24 @@ enum ExerciseSource {
   @@map("exercise_source")
 }
 
+// How the program picks the next workout: by turn, always one, or by weekday.
+enum ProgramMode {
+  ROTATE
+  SINGLE
+  WEEKDAYS
+
+  @@map("program_mode")
+}
+
+// Where a workout came from: a chat message, the live session screen or the retro form.
+enum WorkoutSource {
+  CHAT
+  LIVE
+  FORM
+
+  @@map("workout_source")
+}
+
 // Cardio is not a muscle group: it is ExerciseKind CARDIO and its exercises have none.
 enum MuscleGroup {
   CHEST
@@ -297,26 +315,26 @@ enum FoodCategory {
 // ───────────────────────── User & access ─────────────────────────
 
 model User {
-  id                  String    @id @default(uuid(7)) @db.Uuid
+  id                  String      @id @default(uuid(7)) @db.Uuid
   // stored lowercased by the backend
-  email               String    @unique
+  email               String      @unique
   name                String?
   // how Kusik greets the user («Богдане», «Бо»); null → the vocative of name, if one is safe
-  addressAs           String?   @map("address_as")
+  addressAs           String?     @map("address_as")
   // gender forms of the words about the user; NEUTRAL avoids them
   addressForm         AddressForm @default(NEUTRAL) @map("address_form")
-  locale              Locale    @default(uk)
+  locale              Locale      @default(uk)
   // IANA zone; defines the user's "day" for localDate
-  timezone            String    @default("Europe/Warsaw")
-  emailVerifiedAt     DateTime? @map("email_verified_at") @db.Timestamptz
+  timezone            String      @default("Europe/Warsaw")
+  emailVerifiedAt     DateTime?   @map("email_verified_at") @db.Timestamptz
   // when the user accepted processing of their food and weight data; set by the server at registration
-  consentAt           DateTime? @map("consent_at") @db.Timestamptz
+  consentAt           DateTime?   @map("consent_at") @db.Timestamptz
   // account deletion with a 30-day grace: set together; a daily job hard-deletes rows past purgeAt.
   // While set, every route except restore, logout and «who am I» answers 403 ACCOUNT_PENDING_DELETION
-  deletionRequestedAt DateTime? @map("deletion_requested_at") @db.Timestamptz
-  purgeAt             DateTime? @map("purge_at") @db.Timestamptz
-  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt           DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  deletionRequestedAt DateTime?   @map("deletion_requested_at") @db.Timestamptz
+  purgeAt             DateTime?   @map("purge_at") @db.Timestamptz
+  createdAt           DateTime    @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt           DateTime    @updatedAt @map("updated_at") @db.Timestamptz
 
   credentials        AuthCredentials?
   sessions           Session[]
@@ -340,6 +358,9 @@ model User {
   exercises          Exercise[]
   exerciseSets       ExerciseSet[]
   storedFiles        StoredFile[]
+  workoutPrograms    WorkoutProgram[]
+  programVersions    ProgramVersion[]
+  workoutTemplates   WorkoutTemplate[]
 
   // the daily purge job scans by purgeAt
   @@index([purgeAt])
@@ -399,17 +420,19 @@ model VerificationToken {
 // Inputs of the goal calculation (packages/shared calculateGoals). birthYear never leaves the API:
 // the client sends and reads an age, the service converts it with the user's local year
 model UserProfile {
-  userId         String         @id @map("user_id") @db.Uuid
-  heightCm       Float?         @map("height_cm")
-  birthYear      Int?           @map("birth_year")
-  sex            Sex?
-  activityLevel  ActivityLevel? @map("activity_level")
-  targetWeightKg Float?         @map("target_weight_kg")
-  goalType       GoalType?      @map("goal_type")
+  userId               String         @id @map("user_id") @db.Uuid
+  heightCm             Float?         @map("height_cm")
+  birthYear            Int?           @map("birth_year")
+  sex                  Sex?
+  activityLevel        ActivityLevel? @map("activity_level")
+  targetWeightKg       Float?         @map("target_weight_kg")
+  goalType             GoalType?      @map("goal_type")
   // 0.25 / 0.5 / 0.75 kg per week, always positive; null for MAINTAIN
-  paceKgPerWeek  Float?         @map("pace_kg_per_week")
-  createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt      DateTime       @updatedAt @map("updated_at") @db.Timestamptz
+  paceKgPerWeek        Float?         @map("pace_kg_per_week")
+  // when the training onboarding invitation was answered or shown, so it is asked once
+  trainingOnboardingAt DateTime?      @map("training_onboarding_at") @db.Timestamptz
+  createdAt            DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt            DateTime       @updatedAt @map("updated_at") @db.Timestamptz
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -501,6 +524,9 @@ model Message {
   dayCard         Json?         @map("day_card")
   // assistant reply to show_stats: the week or month card as it was when written (a snapshot, never refreshed)
   statsCard       Json?         @map("stats_card")
+  // assistant reply to propose_program: the proposed program and its diff as they were when written (a snapshot;
+  // the card state - open, accepted, replaced, outdated - is derived on read)
+  programCard     Json?         @map("program_card")
   createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz
   updatedAt       DateTime      @updatedAt @map("updated_at") @db.Timestamptz
 
@@ -519,9 +545,11 @@ model Message {
   finishedWorkouts   Workout[]           @relation("WorkoutFinish")
   measurements       Measurement[]
   achievements       Achievement[]
+  programVersions    ProgramVersion[]
 
   @@unique([userId, clientMessageId])
   @@index([userId, createdAt])
+  @@index([userId, createdAt], where: raw("program_card IS NOT NULL"), map: "messages_program_card_idx")
   @@index([replyToId])
   @@map("messages")
 }
@@ -907,18 +935,23 @@ model Workout {
   finishedAt        DateTime?       @map("finished_at") @db.Timestamptz
   finishedMessageId String?         @map("finished_message_id") @db.Uuid
   sourceMessageId   String?         @map("source_message_id") @db.Uuid
+  // the exact (immutable) template version this workout followed; null for a free workout
+  templateId        String?         @map("template_id") @db.Uuid
+  source            WorkoutSource   @default(CHAT)
   createdAt         DateTime        @default(now()) @map("created_at") @db.Timestamptz
   updatedAt         DateTime        @updatedAt @map("updated_at") @db.Timestamptz
   deletedAt         DateTime?       @map("deleted_at") @db.Timestamptz
 
-  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  sourceMessage   Message?        @relation(fields: [sourceMessageId], references: [id], onDelete: SetNull)
-  finishedMessage Message?        @relation("WorkoutFinish", fields: [finishedMessageId], references: [id], onDelete: SetNull)
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  template        WorkoutTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  sourceMessage   Message?         @relation(fields: [sourceMessageId], references: [id], onDelete: SetNull)
+  finishedMessage Message?         @relation("WorkoutFinish", fields: [finishedMessageId], references: [id], onDelete: SetNull)
   exercises       ExerciseEntry[]
 
   @@index([userId, localDate])
   @@index([sourceMessageId])
   @@index([finishedMessageId])
+  @@index([templateId])
   @@map("workouts")
 }
 
@@ -936,8 +969,9 @@ model Exercise {
   updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz
   deletedAt      DateTime?    @map("deleted_at") @db.Timestamptz
 
-  user    User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  entries ExerciseEntry[]
+  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  entries           ExerciseEntry[]
+  templateExercises TemplateExercise[]
 
   @@unique([userId, nameNormalized], where: raw("deleted_at IS NULL"))
   @@map("exercises")
@@ -997,4 +1031,101 @@ model ExerciseSet {
 
   @@index([userId, exerciseEntryId])
   @@map("exercise_sets")
+}
+
+// The training program of a user: one active per user. The content lives in immutable ProgramVersion rows.
+model WorkoutProgram {
+  id               String      @id @default(uuid(7)) @db.Uuid
+  userId           String      @map("user_id") @db.Uuid
+  // short name like «Все тіло»
+  title            String?
+  mode             ProgramMode @default(ROTATE)
+  perWeek          Int?        @map("per_week")
+  // null only inside the create transaction; SetNull (not Restrict) so the account cascade has no cycle
+  activeVersionId  String?     @unique @map("active_version_id") @db.Uuid
+  pinnedTemplateId String?     @map("pinned_template_id") @db.Uuid
+  createdAt        DateTime    @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt        DateTime    @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt        DateTime?   @map("deleted_at") @db.Timestamptz
+
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  activeVersion  ProgramVersion?  @relation("ProgramActiveVersion", fields: [activeVersionId], references: [id], onDelete: SetNull)
+  pinnedTemplate WorkoutTemplate? @relation(fields: [pinnedTemplateId], references: [id], onDelete: SetNull)
+  versions       ProgramVersion[] @relation("ProgramVersions")
+
+  @@unique([userId], where: raw("deleted_at IS NULL"), map: "workout_programs_one_active_per_user")
+  @@index([pinnedTemplateId])
+  @@map("workout_programs")
+}
+
+// One immutable state of a program. userId repeats the owner, so versions are found without joins.
+model ProgramVersion {
+  id              String   @id @default(uuid(7)) @db.Uuid
+  userId          String   @map("user_id") @db.Uuid
+  programId       String   @map("program_id") @db.Uuid
+  // the chat proposal this version accepted; null = made in the editor. Unique catches a repeated accept
+  sourceMessageId String?  @unique @map("source_message_id") @db.Uuid
+  // what changed against the previous version (the programChanges shape from packages/shared)
+  changes         Json
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  user          User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  program       WorkoutProgram    @relation("ProgramVersions", fields: [programId], references: [id], onDelete: Cascade)
+  sourceMessage Message?          @relation(fields: [sourceMessageId], references: [id], onDelete: SetNull)
+  activeFor     WorkoutProgram?   @relation("ProgramActiveVersion")
+  templates     WorkoutTemplate[]
+
+  @@index([programId, createdAt])
+  @@map("program_versions")
+}
+
+// A workout of a program version. Ids change with every version; key stays the same, so «next» survives edits.
+model WorkoutTemplate {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  versionId String   @map("version_id") @db.Uuid
+  key       String   @db.Uuid
+  name      String
+  position  Int
+  // ISO weekdays: 1 = Monday ... 7 = Sunday
+  weekdays  Int[]    @default([])
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  version   ProgramVersion     @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  exercises TemplateExercise[]
+  workouts  Workout[]
+  pinnedBy  WorkoutProgram[]
+
+  @@unique([versionId, key])
+  @@unique([versionId, position])
+  @@index([userId])
+  @@map("workout_templates")
+}
+
+// One exercise of a template with its target. No DB defaults for step and rest: they depend on kind and bodyweight.
+model TemplateExercise {
+  id             String       @id @default(uuid(7)) @db.Uuid
+  templateId     String       @map("template_id") @db.Uuid
+  exerciseId     String?      @map("exercise_id") @db.Uuid
+  name           String
+  kind           ExerciseKind
+  // snapshot of the group, the fallback once exerciseId is gone; null for cardio
+  muscleGroup    MuscleGroup? @map("muscle_group")
+  position       Int
+  sets           Int?
+  repsMin        Int?         @map("reps_min")
+  repsMax        Int?         @map("reps_max")
+  weightKg       Decimal?     @map("weight_kg") @db.Decimal(6, 2)
+  progressStepKg Decimal?     @map("progress_step_kg") @db.Decimal(4, 2)
+  restSec        Int?         @map("rest_sec")
+  durationMin    Int?         @map("duration_min")
+  distanceM      Int?         @map("distance_m")
+
+  template WorkoutTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  exercise Exercise?       @relation(fields: [exerciseId], references: [id], onDelete: SetNull)
+
+  @@unique([templateId, position])
+  @@index([exerciseId])
+  @@map("template_exercises")
 }

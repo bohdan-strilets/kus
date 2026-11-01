@@ -8,7 +8,7 @@ PostgreSQL + Prisma 7 (адаптер `PrismaPg`). Джерело правди �
 - **Назви** — моделі й поля в коді PascalCase/camelCase, таблиці, колонки й enum-типи в БД — snake_case (`@@map` / `@map`).
 - **Дати** — `timestamptz`. `localDate` (`date`) — календарний день користувача; рахує бекенд з моменту події й `User.timezone` (за замовчуванням `Europe/Warsaw`). Усі «денні» запити йдуть за `localDate`, не за UTC-датою.
 - **Числа** — харчові значення `Float` (г, ккал), гроші — `Decimal(12,8)` у USD.
-- **Soft delete** (`deletedAt`) — `Meal`, `FoodEntry`, `MyFood`, `Recipe`, `UserFact`, `Workout`, `Exercise`, `ExerciseEntry`, `Measurement`. Кожен запит до них — з фільтром `deletedAt: null`. Видалення = встановити `deletedAt`, «скасувати» в чаті = повернути `deletedAt = null`. Записи дня фільтруються **і** за `entry.deletedAt: null`, **і** за `meal.deletedAt: null`; видалення прийому ставить `deletedAt` прийому й усім його записам в одній транзакції.
+- **Soft delete** (`deletedAt`) — `Meal`, `FoodEntry`, `MyFood`, `Recipe`, `UserFact`, `Workout`, `Exercise`, `ExerciseEntry`, `Measurement`, `WorkoutProgram`. Версії, шаблони й вправи шаблону незмінні, soft delete для них не діє. Кожен запит до них — з фільтром `deletedAt: null`. Видалення = встановити `deletedAt`, «скасувати» в чаті = повернути `deletedAt = null`. Записи дня фільтруються **і** за `entry.deletedAt: null`, **і** за `meal.deletedAt: null`; видалення прийому ставить `deletedAt` прийому й усім його записам в одній транзакції.
 - **Ізоляція даних** — кожна сутність користувача має `userId` з `onDelete: Cascade`. Чисто дочірні таблиці (`MessageAttachment`, `AiToolCall`, `RecipeIngredient`, `ClarificationEntry`) `userId` не мають — до них ходимо лише через батька, який уже відфільтрований за `userId`.
 - **Чужі id (IDOR)** — БД не гарантує, що зв'язані сутності належать тому самому користувачу (`FoodEntry.mealId`, `myFoodId`, `recipeId`, `Correction.foodEntryId`, `Clarification.messageId` тощо). Тому **кожен id, отриманий від клієнта чи від AI-інструмента**, сервіс перевіряє через `findFirst({ where: { id, userId, deletedAt: null } })` перед тим, як використати чи прив'язати. Кожен такий ендпоінт чи AI-інструмент **обов'язково покривається IDOR-тестом**: другий користувач намагається прочитати, змінити чи прив'язати чужий id → `404`, дані не змінено. Складені FK `(id, userId)` у v0.1 свідомо не робимо — див. [Відкладено](#відкладено).
 - **Видалення акаунта** — жорстке `DELETE` користувача стирає всі його дані каскадом (RODO). Перевірено: після видалення demo-користувача всі таблиці порожні.
@@ -40,6 +40,15 @@ erDiagram
     User ||--o{ ExerciseEntry : "logs"
     User ||--o{ Workout : "trains"
     User ||--o{ Exercise : "names"
+    User ||--o{ WorkoutProgram : "plans"
+    WorkoutProgram ||--o{ ProgramVersion : "versions"
+    WorkoutProgram |o--o| ProgramVersion : "active"
+    WorkoutProgram |o--o{ WorkoutTemplate : "pinned"
+    ProgramVersion ||--o{ WorkoutTemplate : "contains"
+    WorkoutTemplate ||--o{ TemplateExercise : "has"
+    Exercise |o--o{ TemplateExercise : "is planned as"
+    WorkoutTemplate |o--o{ Workout : "followed by"
+    Message |o--o| ProgramVersion : "accepted as"
     Workout ||--o{ ExerciseEntry : "consists of"
     Exercise |o--o{ ExerciseEntry : "is done as"
     ExerciseEntry ||--o{ ExerciseSet : "has"
@@ -122,6 +131,13 @@ erDiagram
 - **ExerciseEntry** — одна вправа тренування (`workoutId`, `exerciseId?`, `kind`, `position`, `durationMin?`, `distanceM?`); `name` — як написала людина. `muscleGroup?` — знімок групи на момент запису: запасний варіант, коли `exerciseId` став `null` (`SetNull`) або вправи немає в словнику; кардіо — `null`. Може розходитися з `Exercise.muscleGroup` після виправлення — так задумано. `performedAt`, `localDate`, `source` повторюють тренування. До 0.8.1 таблиця була порожньою заготовкою — міграція має запобіжник і не запуститься над рядками.
 - **ExerciseSet** — підхід (`reps?`, `weightKg?`, `durationSec?`, `distanceM?`, `isWarmup`); `userId` дублює власника, щоб рекорди рахувались без з'єднань. Рекорди, встановлені під час запису, зберігаються на сесії в `Workout.records` і не перераховуються при видаленні чи відновленні тренування. Статистика (0.10.1, `GET /workouts/stats`, `GET /workouts/exercises/:exerciseId`) рахує рекорди за весь час наживо з робочих підходів (розминка й видалені тренування не враховуються) і позначає в історії вправи тренування, на якому рекорд був досягнутий уперше.
 
+- **WorkoutProgram** (0.10.2) — програма тренувань; одна активна на користувача (partial UNIQUE `user_id` WHERE `deleted_at IS NULL`, як `Exercise`; `upsert` і `findUnique` заборонені, як у розділі про партіальні unique). `title?`, `mode` (`ProgramMode`: ROTATE / SINGLE / WEEKDAYS), `perWeek?`, `activeVersionId?` (UNIQUE; null лише всередині транзакції створення; `SetNull`, а не `Restrict`, щоб каскад видалення акаунта не впирався в цикл програма ↔ версія), `pinnedTemplateId?` (шаблон для SINGLE; `SetNull`; при новій версії перепривʼязується за `key`).
+- **ProgramVersion** — незмінний стан програми. `userId` дублює власника (вибірки без з'єднань); `sourceMessageId?` UNIQUE — повідомлення-пропозиція, яку прийняли (null = версія з редактора; unique ловить повторне «Прийняти»); `changes` (Json) — що змінилось проти попередньої версії, форма `programChangesSchema` з `packages/shared`.
+- **WorkoutTemplate** — тренування версії («День А»). `id` змінюється з кожною версією, тому «наступне» тримається за `key` (uuid, стабільний між версіями). `position` і `weekdays` (ISO: 1 = Пн … 7 = Нд). UNIQUE `(version_id, key)` і `(version_id, position)`.
+- **TemplateExercise** — вправа шаблону з ціллю: `sets?`, `repsMin?`, `repsMax?`, `weightKg?`, `progressStepKg?`, `restSec?`, `durationMin?`, `distanceM?`. `name`, `kind`, `muscleGroup?` — знімок, як в `ExerciseEntry`; `exerciseId?` — `SetNull`. Значень за замовчуванням для кроку й відпочинку в БД немає (залежать від виду вправи й власної ваги): `DEFAULT_PROGRESS_STEP_KG` і `DEFAULT_REST_SEC` у `packages/shared`, ставить сервіс.
+- **Workout** (0.10.2): `templateId?` — точний незмінний шаблон, за яким тренувались (`SetNull`; ніколи не переписується), `source` (`WorkoutSource`: CHAT / LIVE / FORM, за замовчуванням CHAT).
+- **Message.programCard** (Json, nullable) — знімок пропозиції програми у відповіді на `propose_program` (форма `programCardSchema`, `v: 1`); стан картки (відкрита, прийнята, замінена, застаріла) похідний і рахується при читанні. **UserProfile.trainingOnboardingAt** — коли відповіли на запрошення онбордингу тренувань (питаємо один раз).
+
 ## Індекси
 
 | Таблиця               | Індекс                                                                                                      | Запит                                             |
@@ -150,6 +166,12 @@ erDiagram
 | workouts              | `(user_id, local_date)`; `source_message_id`; `finished_message_id`                                         | тренування дня й тижня                            |
 | exercises             | partial UNIQUE `(user_id, name_normalized)` WHERE не видалено                                               | словник вправ                                     |
 | exercise_sets         | `(user_id, exercise_entry_id)`                                                                              | підходи, рекорди                                  |
+| workout_programs      | partial UNIQUE `(user_id)` WHERE не видалено; `active_version_id` UNIQUE; `pinned_template_id`              | одна активна програма; прикріплений шаблон        |
+| program_versions      | `source_message_id` UNIQUE; `(program_id, created_at)`                                                      | ідемпотентне прийняття; історія версій            |
+| workout_templates     | `(version_id, key)` UNIQUE; `(version_id, position)` UNIQUE; `user_id`                                      | шаблон за key у версії; порядок                   |
+| template_exercises    | `(template_id, position)` UNIQUE; `exercise_id`                                                             | вправи шаблону                                    |
+| messages              | partial `(user_id, created_at)` WHERE `program_card IS NOT NULL`                                            | остання картка програми (стан «замінена»)         |
+| workouts              | `template_id`                                                                                               | останнє тренування за шаблоном                    |
 
 ## Відкладено
 

@@ -46,6 +46,8 @@ const makeWorkout = (overrides: Partial<WorkoutWithExercises> = {}): WorkoutWith
 	finishedAt: null,
 	finishedMessageId: null,
 	sourceMessageId: null,
+	templateId: null,
+	source: 'CHAT',
 	createdAt: at('17:30'),
 	updatedAt: at('17:30'),
 	deletedAt: null,

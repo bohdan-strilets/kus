@@ -22,11 +22,13 @@ import {
 	messageStatusSchema,
 	muscleGroupSchema,
 	myFoodSourceSchema,
+	programModeSchema,
 	sexSchema,
 	storedFileKindSchema,
 	toolCallStatusSchema,
 	verificationTokenTypeSchema,
 	workoutPlaceSchema,
+	workoutSourceSchema,
 } from '@kus/shared'
 import { describe, expect, it } from 'vitest'
 
@@ -57,6 +59,8 @@ const ENUM_PAIRS: [string, Record<string, string>, readonly string[]][] = [
 	['ExerciseKind', PrismaEnums.ExerciseKind, exerciseKindSchema.options],
 	['ExerciseSource', PrismaEnums.ExerciseSource, exerciseSourceSchema.options],
 	['MuscleGroup', PrismaEnums.MuscleGroup, muscleGroupSchema.options],
+	['ProgramMode', PrismaEnums.ProgramMode, programModeSchema.options],
+	['WorkoutSource', PrismaEnums.WorkoutSource, workoutSourceSchema.options],
 	['FoodCategory', PrismaEnums.FoodCategory, foodCategorySchema.options],
 	['MeasurementKind', PrismaEnums.MeasurementKind, measurementKindSchema.options],
 	['MeasurementSource', PrismaEnums.MeasurementSource, measurementSourceSchema.options],

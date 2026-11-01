@@ -81,6 +81,12 @@ export type ExerciseSource = z.infer<typeof exerciseSourceSchema>
 export const muscleGroupSchema = z.enum(['CHEST', 'BACK', 'LEGS', 'SHOULDERS', 'ARMS', 'CORE'])
 export type MuscleGroup = z.infer<typeof muscleGroupSchema>
 
+export const programModeSchema = z.enum(['ROTATE', 'SINGLE', 'WEEKDAYS'])
+export type ProgramMode = z.infer<typeof programModeSchema>
+
+export const workoutSourceSchema = z.enum(['CHAT', 'LIVE', 'FORM'])
+export type WorkoutSource = z.infer<typeof workoutSourceSchema>
+
 /**
  * Dish category — picks the icon only, never the numbers (design/docs/food-categories.md).
  * The single source of the list: the web icon pack and the AI tool take it from here.

@@ -25,6 +25,7 @@ import { PhotosModule } from './modules/photos/photos.module'
 import { ProgressModule } from './modules/progress/progress.module'
 import { StorageModule } from './modules/storage/storage.module'
 import { UsersModule } from './modules/users/users.module'
+import { ProgramsModule } from './modules/programs/programs.module'
 import { WorkoutsModule } from './modules/workouts/workouts.module'
 import { PrismaModule } from './prisma'
 
@@ -54,6 +55,7 @@ const DEFAULT_THROTTLE = { ttl: minutes(1), limit: 100 }
 		FactsModule,
 		MemoryModule,
 		WorkoutsModule,
+		ProgramsModule,
 		ProgressModule,
 		StorageModule,
 		PhotosModule,

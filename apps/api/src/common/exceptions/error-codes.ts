@@ -75,6 +75,22 @@ export const ErrorCodes = {
 	/** No exercise with this id for this user (another user's is "not found" too). */
 	EXERCISE_NOT_FOUND: 'EXERCISE_NOT_FOUND',
 
+	// workout programs
+	/** The user has no active program (another user's reads the same). */
+	PROGRAM_NOT_FOUND: 'PROGRAM_NOT_FOUND',
+	/** No template with this id in the active version of the user's program. */
+	PROGRAM_TEMPLATE_NOT_FOUND: 'PROGRAM_TEMPLATE_NOT_FOUND',
+	/** The active version is not the one the change was made against; details: { activeVersionId }. */
+	PROGRAM_VERSION_CONFLICT: 'PROGRAM_VERSION_CONFLICT',
+	/** No program proposal with this message id for this user (another user's reads the same). */
+	PROGRAM_PROPOSAL_NOT_FOUND: 'PROGRAM_PROPOSAL_NOT_FOUND',
+	/** The proposal was accepted already. */
+	PROGRAM_PROPOSAL_ALREADY_ACCEPTED: 'PROGRAM_PROPOSAL_ALREADY_ACCEPTED',
+	/** A newer proposal replaced this one. */
+	PROGRAM_PROPOSAL_REPLACED: 'PROGRAM_PROPOSAL_REPLACED',
+	/** The stored proposal does not pass validation any more. */
+	PROGRAM_PROPOSAL_INVALID: 'PROGRAM_PROPOSAL_INVALID',
+
 	// my foods
 	/** No active food with this id for this user (another user's is "not found" too). */
 	MY_FOOD_NOT_FOUND: 'MY_FOOD_NOT_FOUND',

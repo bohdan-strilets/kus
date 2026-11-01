@@ -5,12 +5,11 @@ import {
 	type LogWorkoutInput,
 	matchMuscleGroup,
 	muscleGroupSchema,
-	normalizeExerciseName,
 } from '@kus/shared'
 
 import { formatDbDate } from '../../common/time'
 import type { Prisma } from '../../generated/prisma/client'
-import type { ExerciseKind, MuscleGroup } from '../../generated/prisma/enums'
+import type { MuscleGroup } from '../../generated/prisma/enums'
 import { toId, type WorkoutRefIds } from './workout-refs'
 import {
 	findSessionToClose,
@@ -41,8 +40,7 @@ import {
 	WorkoutsRepository,
 	type WorkoutWrite,
 } from './workouts.repository'
-
-type ExerciseRow = { id: string; name: string; kind: ExerciseKind; muscleGroup: MuscleGroup | null }
+import { type ExerciseRow, WorkoutsService } from './workouts.service'
 
 /** What one log_workout call left: the session, its records before the turn, the cards it changed. */
 export interface SessionChange {
@@ -71,7 +69,10 @@ const GROUP_FIX_SEPARATOR = ':'
 export class WorkoutSessionsService {
 	private readonly logger = new Logger(WorkoutSessionsService.name)
 
-	constructor(private readonly workoutsRepository: WorkoutsRepository) {}
+	constructor(
+		private readonly workoutsRepository: WorkoutsRepository,
+		private readonly workoutsService: WorkoutsService,
+	) {}
 
 	/** The user's fixes of a group: the dictionary row only, the entries keep their snapshots. */
 	async applyGroupFixes(
@@ -400,13 +401,7 @@ export class WorkoutSessionsService {
 			// deleted from the dictionary after the context was built: the entry still points at it
 			return row ?? { id, name: exercise.name, kind: exercise.kind, muscleGroup: null }
 		}
-		const nameNormalized = normalizeExerciseName(exercise.name)
-		const known = await this.workoutsRepository.findExerciseByName({ userId, nameNormalized }, tx)
-		if (known) return known
-		return this.workoutsRepository.createExercise(
-			{ userId, name: exercise.name, nameNormalized, kind: exercise.kind },
-			tx,
-		)
+		return this.workoutsService.findOrCreateExercise(userId, exercise, tx)
 	}
 
 	/**

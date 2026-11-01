@@ -398,6 +398,50 @@ export class WorkoutsRepository {
 		})
 	}
 
+	/**
+	 * The latest live workout done by a program template (the template's key survives edits, its id does
+	 * not): the day of the program's turn. Null when none was.
+	 */
+	findLastTemplatedWorkout(
+		{ userId }: { userId: string },
+		tx?: Prisma.TransactionClient,
+	): Promise<{ localDate: Date; template: { key: string } | null } | null> {
+		return (tx ?? this.prisma).workout.findFirst({
+			where: { userId, deletedAt: null, templateId: { not: null } },
+			orderBy: [
+				{ localDate: 'desc' },
+				{ startedAt: { sort: 'desc', nulls: 'last' } },
+				{ createdAt: 'desc' },
+			],
+			select: { localDate: true, template: { select: { key: true } } },
+		})
+	}
+
+	/** For each exercise the most recent live entry with its sets (one batch query). */
+	findLastEntriesOfExercises(
+		{ userId, exerciseIds }: { userId: string; exerciseIds: string[] },
+		tx?: Prisma.TransactionClient,
+	) {
+		return (tx ?? this.prisma).exerciseEntry.findMany({
+			where: {
+				userId,
+				exerciseId: { in: exerciseIds },
+				deletedAt: null,
+				workout: { deletedAt: null },
+			},
+			distinct: ['exerciseId'],
+			orderBy: [{ exerciseId: 'asc' }, { performedAt: 'desc' }],
+			select: {
+				exerciseId: true,
+				performedAt: true,
+				sets: {
+					orderBy: { position: 'asc' },
+					select: { reps: true, weightKg: true, isWarmup: true },
+				},
+			},
+		})
+	}
+
 	/** The heaviest working (not warm-up) set of the exercise in other live workouts. */
 	async findMaxWeightKg(
 		{

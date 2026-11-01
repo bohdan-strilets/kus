@@ -1,10 +1,44 @@
 import { Injectable, Logger } from '@nestjs/common'
-import type { WorkoutResponse, WorkoutsRangeQuery } from '@kus/shared'
+import {
+	normalizeExerciseName,
+	type ProgramLastSet,
+	type WorkoutResponse,
+	type WorkoutsRangeQuery,
+} from '@kus/shared'
 
-import { toDbDate } from '../../common/time'
+import { formatDbDate, toDbDate } from '../../common/time'
+import type { Prisma } from '../../generated/prisma/client'
+import type { ExerciseKind, MuscleGroup } from '../../generated/prisma/enums'
 import { WorkoutNotFoundException } from './workouts.exceptions'
 import { toWorkoutResponse } from './workouts.mapper'
 import { WorkoutsRepository } from './workouts.repository'
+
+/** A row of the user's exercise dictionary, as much as the callers need. */
+export interface ExerciseRow {
+	id: string
+	name: string
+	kind: ExerciseKind
+	muscleGroup: MuscleGroup | null
+}
+
+export interface ExerciseToResolve {
+	name: string
+	kind: ExerciseKind
+	/** A dictionary id the caller holds; used only when it is the user's own live row. */
+	exerciseId?: string | null
+}
+
+/** The workout a program turn counts from: the template's key and the day. */
+export interface LastTemplatedWorkout {
+	templateKey: string
+	/** `YYYY-MM-DD` */
+	localDate: string
+}
+
+export interface LastExerciseResult {
+	sets: ProgramLastSet[]
+	performedAt: Date
+}
 
 @Injectable()
 export class WorkoutsService {
@@ -53,5 +87,75 @@ export class WorkoutsService {
 		const workout = await this.workoutsRepository.findOwned({ userId, id })
 		if (!workout) throw new WorkoutNotFoundException()
 		return toWorkoutResponse(workout)
+	}
+
+	/**
+	 * The dictionary row with this name or alias, else a new one (a parallel create returns the row it
+	 * lost to). Runs inside the caller's transaction.
+	 */
+	async findOrCreateExercise(
+		userId: string,
+		{ name, kind }: Pick<ExerciseToResolve, 'name' | 'kind'>,
+		tx: Prisma.TransactionClient,
+	): Promise<ExerciseRow> {
+		const nameNormalized = normalizeExerciseName(name)
+		const known = await this.workoutsRepository.findExerciseByName({ userId, nameNormalized }, tx)
+		if (known) return known
+		return this.workoutsRepository.createExercise({ userId, name, nameNormalized, kind }, tx)
+	}
+
+	/**
+	 * Dictionary rows for a list of exercises, in the same order: the user's own row by id when it is
+	 * still there, else by name (found or created). One at a time, so equal names meet one row.
+	 */
+	async findOrCreateExercises(
+		userId: string,
+		items: readonly ExerciseToResolve[],
+		tx: Prisma.TransactionClient,
+	): Promise<ExerciseRow[]> {
+		const ids = items.flatMap(({ exerciseId }) => exerciseId ?? [])
+		const owned = new Map<string, ExerciseRow>()
+		if (ids.length > 0) {
+			const rows = await this.workoutsRepository.findExercisesByIds({ userId, ids }, tx)
+			for (const row of rows) owned.set(row.id, row)
+		}
+		const rows: ExerciseRow[] = []
+		for (const item of items) {
+			const byId = item.exerciseId ? owned.get(item.exerciseId) : undefined
+			rows.push(byId ?? (await this.findOrCreateExercise(userId, item, tx)))
+		}
+		return rows
+	}
+
+	/** The last non-deleted workout done by a program template; null when there is none. */
+	async findLastTemplatedWorkout(userId: string): Promise<LastTemplatedWorkout | null> {
+		const workout = await this.workoutsRepository.findLastTemplatedWorkout({ userId })
+		if (!workout?.template) return null
+		return { templateKey: workout.template.key, localDate: formatDbDate(workout.localDate) }
+	}
+
+	/** Exercise id → the sets of the last time it was done; exercises never done are absent. */
+	async getLastSets(
+		userId: string,
+		exerciseIds: readonly string[],
+	): Promise<Map<string, LastExerciseResult>> {
+		const results = new Map<string, LastExerciseResult>()
+		if (exerciseIds.length === 0) return results
+		const entries = await this.workoutsRepository.findLastEntriesOfExercises({
+			userId,
+			exerciseIds: [...exerciseIds],
+		})
+		for (const { exerciseId, performedAt, sets } of entries) {
+			if (exerciseId === null) continue
+			results.set(exerciseId, {
+				performedAt,
+				sets: sets.map((set) => ({
+					reps: set.reps,
+					weightKg: set.weightKg === null ? null : set.weightKg.toNumber(),
+					isWarmup: set.isWarmup,
+				})),
+			})
+		}
+		return results
 	}
 }

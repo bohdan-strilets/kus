@@ -247,3 +247,33 @@ describe('BaseBottomSheet description layout', () => {
 		expect(getTitleRow().contains(screen.getByText('Explanation'))).toBe(true)
 	})
 })
+
+describe('BaseBottomSheet Escape in a local field', () => {
+	it('stays open when Escape comes from a field that cancels its own edit', async () => {
+		const onOpenChange = vi.fn()
+		render(
+			<BaseBottomSheet isOpen onOpenChange={onOpenChange} title="Title">
+				<input aria-label="weight" data-escape-local="" />
+			</BaseBottomSheet>,
+		)
+		screen.getByRole('textbox', { name: 'weight' }).focus()
+
+		await userEvent.keyboard('{Escape}')
+
+		expect(onOpenChange).not.toHaveBeenCalled()
+	})
+
+	it('closes on Escape from any other element', async () => {
+		const onOpenChange = vi.fn()
+		render(
+			<BaseBottomSheet isOpen onOpenChange={onOpenChange} title="Title">
+				<input aria-label="name" />
+			</BaseBottomSheet>,
+		)
+		screen.getByRole('textbox', { name: 'name' }).focus()
+
+		await userEvent.keyboard('{Escape}')
+
+		expect(onOpenChange).toHaveBeenCalledWith(false)
+	})
+})

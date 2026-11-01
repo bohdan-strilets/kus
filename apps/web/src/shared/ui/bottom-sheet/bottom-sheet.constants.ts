@@ -6,3 +6,6 @@ export const CLOSE_DRAG_VELOCITY = 500
 export const DRAG_ELASTIC = { top: 0, bottom: 0.5 } as const
 
 export const CLOSE_ICON_SIZE = 18
+
+/** A field that cancels its own edit on Escape carries this attribute. */
+export const ESCAPE_LOCAL_ATTRIBUTE = 'data-escape-local'

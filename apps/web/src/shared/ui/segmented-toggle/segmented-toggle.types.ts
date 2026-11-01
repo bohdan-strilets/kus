@@ -11,7 +11,7 @@ export interface SegmentedToggleProps<T extends string | number> {
 	onChange: (value: T) => void
 	/** Name of the group (translated by the caller). */
 	'aria-label': string
-	/** `compact`: the Progress period pill (34px); `wide`: segments share the row (40px, training stats). */
-	size?: 'compact' | 'wide'
+	/** `compact`: the Progress period pill (34px); `wide`: segments share the row (40px, training stats); `tall`: the same at 44px (program mode). */
+	size?: 'compact' | 'wide' | 'tall'
 	className?: string
 }

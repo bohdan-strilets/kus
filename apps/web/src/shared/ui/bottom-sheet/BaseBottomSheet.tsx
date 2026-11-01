@@ -28,6 +28,7 @@ import {
 	CLOSE_ICON_SIZE,
 	DRAG_ELASTIC,
 } from './bottom-sheet.constants'
+import { isLocalEscapeTarget } from './is-local-escape-target'
 
 export interface BaseBottomSheetProps {
 	isOpen: boolean
@@ -129,6 +130,11 @@ export const BaseBottomSheet = ({
 								asChild
 								onOpenAutoFocus={handleOpenAutoFocus}
 								onCloseAutoFocus={handleCloseAutoFocus}
+								// Radix catches Escape on the document before the field does: a field that
+								// cancels its own edit on Escape (data-escape-local) must not close the sheet
+								onEscapeKeyDown={(event) => {
+									if (isLocalEscapeTarget(event.target)) event.preventDefault()
+								}}
 								// without a description Radix wants the attribute explicitly empty
 								{...(description ? {} : { 'aria-describedby': undefined })}
 							>

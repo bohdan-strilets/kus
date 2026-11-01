@@ -77,6 +77,7 @@ export {
 	type SegmentedToggleProps,
 } from './segmented-toggle'
 export { Skeleton, type SkeletonProps } from './skeleton'
+export { Stepper, type StepperProps } from './stepper'
 export { StickyActions, type StickyActionsProps } from './sticky-actions'
 export { Sparkline, type SparklineMarks, type SparklineProps } from './sparkline'
 export { Surface, type SurfaceProps } from './surface'

@@ -23,7 +23,7 @@ export const Chip = ({
 	children,
 	...props
 }: ChipProps) => {
-	const isToggle = variant === 'select'
+	const isToggle = variant === 'select' || variant === 'choice'
 
 	return (
 		<motion.button

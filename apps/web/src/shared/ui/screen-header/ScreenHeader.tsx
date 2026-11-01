@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { useStackBack } from '@/shared/lib'
@@ -13,6 +14,8 @@ export interface ScreenHeaderProps {
 	subtitle?: string
 	/** The parent screen: where «Назад» lands when nothing of the app is behind (a deep link). */
 	backTo: string
+	/** A button at the end of the row (a screen's «Змінити» / «Готово»). */
+	action?: ReactNode
 }
 
 /**
@@ -20,7 +23,7 @@ export interface ScreenHeaderProps {
  * Back is a button, not a link — it walks the history (useStackBack), so a Link's push would leave
  * every tap as one more entry and the iOS swipe-back would reopen the screen just left.
  */
-export const ScreenHeader = ({ title, subtitle, backTo }: ScreenHeaderProps) => {
+export const ScreenHeader = ({ title, subtitle, backTo, action }: ScreenHeaderProps) => {
 	const { t } = useTranslation()
 	const goBack = useStackBack(backTo)
 
@@ -29,7 +32,7 @@ export const ScreenHeader = ({ title, subtitle, backTo }: ScreenHeaderProps) => 
 			<IconButton label={t('common.back')} variant="frosted" onClick={goBack}>
 				<Icon name="chevron-left" size={BACK_ICON_SIZE} />
 			</IconButton>
-			<div className="flex min-w-0 flex-col">
+			<div className="flex min-w-0 flex-1 flex-col">
 				<Heading as="h1">{title}</Heading>
 				{subtitle && (
 					<Text variant="caption" tone="muted">
@@ -37,6 +40,7 @@ export const ScreenHeader = ({ title, subtitle, backTo }: ScreenHeaderProps) => 
 					</Text>
 				)}
 			</div>
+			{action}
 		</header>
 	)
 }

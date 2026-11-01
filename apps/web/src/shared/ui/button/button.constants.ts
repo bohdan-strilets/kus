@@ -5,6 +5,7 @@ export const LOADER_TONE_BY_VARIANT = {
 	primary: 'onPrimary',
 	secondary: 'brand',
 	soft: 'brand',
+	frosted: 'brand',
 	dark: 'onPrimary',
 	danger: 'onPrimary',
 	text: 'brand',

@@ -4,6 +4,7 @@ export { RELEASE_NOTES, type ReleaseNote } from './release-notes'
 export {
 	AUTH_ROUTES,
 	DEV_ROUTES,
+	getTrainingExercisePath,
 	getTrainingSessionPath,
 	isProtectedPath,
 	MEMORY_FACTS_HREF,
@@ -12,6 +13,8 @@ export {
 	PROFILE_ROUTES,
 	ROUTES,
 	TAB_ROUTES,
+	TRAINING_EXERCISE_ROUTE,
 	TRAINING_SESSION_ROUTE,
+	TRAINING_STATS_ROUTE,
 	type TabRoutePath,
 } from './routes'

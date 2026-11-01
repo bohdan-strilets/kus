@@ -15,6 +15,7 @@ import { TrainingEmpty } from './TrainingEmpty'
 import { TrainingHeader } from './TrainingHeader'
 import { TrainingMonth } from './TrainingMonth'
 import { TrainingSkeleton } from './TrainingSkeleton'
+import { TrainingStatsTile } from './TrainingStatsTile'
 import { TrainingWeek } from './TrainingWeek'
 
 /** design/docs/screens.md → Тренування: the week in a card, the trainings by month and day, newest first. */
@@ -49,6 +50,7 @@ const TrainingScreen = ({ timeZone }: { timeZone: string }) => {
 					{workouts && (
 						<>
 							<TrainingWeek summary={getWeekSummary(workouts, today)} />
+							<TrainingStatsTile today={today} />
 							{groupWorkoutsByMonth(workouts).map((month) => (
 								<TrainingMonth key={month.monthKey} month={month} />
 							))}

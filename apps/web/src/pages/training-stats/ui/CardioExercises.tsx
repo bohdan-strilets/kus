@@ -1,0 +1,66 @@
+import type { WorkoutStatsResponse } from '@kus/shared'
+import { useTranslation } from 'react-i18next'
+
+import {
+	formatWorkoutDistance,
+	formatWorkoutTotal,
+	getExerciseIcon,
+	StatsPanel,
+	GroupIcon,
+} from '@/entities/workout'
+import { formatInteger } from '@/shared/lib'
+import { Text } from '@/shared/ui'
+
+import { EMPTY_VALUE } from '../lib/training-stats.constants'
+
+interface CardioExercisesProps {
+	exercises: WorkoutStatsResponse['cardio']['byExercise']
+	/** «4 год 10 хв · 26,4 км» beside the title. */
+	summary: string | null
+	kcal: WorkoutStatsResponse['overview']['kcal']
+}
+
+/** The machines of the period with time and distance; the kcal line only for numbers the person named. */
+export const CardioExercises = ({ exercises, summary, kcal }: CardioExercisesProps) => {
+	const { t } = useTranslation()
+
+	return (
+		<StatsPanel title={t('muscle.CARDIO')} aside={summary ?? undefined}>
+			<ul className="flex flex-col gap-2.5">
+				{exercises.map((exercise) => (
+					<li key={exercise.exerciseId} className="flex min-h-11 items-center gap-3">
+						<GroupIcon
+							icon={getExerciseIcon({ kind: 'CARDIO', name: exercise.name })}
+							group="CARDIO"
+						/>
+						<Text as="span" variant="cardTitle" weight="bold" className="min-w-0 flex-1 truncate">
+							{exercise.name}
+						</Text>
+						<Text as="span" variant="caption" weight="bold" isTabular>
+							{formatWorkoutTotal(exercise.durationMin, t)}
+						</Text>
+						<Text as="span" variant="caption" tone="muted" isTabular className="w-16 text-right">
+							{exercise.distanceM === null ? (
+								<>
+									<span aria-hidden="true">{EMPTY_VALUE}</span>
+									<span className="sr-only">{t('training.stats.cardio.noDistance')}</span>
+								</>
+							) : (
+								formatWorkoutDistance(exercise.distanceM, t)
+							)}
+						</Text>
+					</li>
+				))}
+			</ul>
+			{kcal.total !== null && (
+				<Text variant="small" tone="mutedStrong">
+					{t('training.stats.cardio.kcalNote', {
+						count: kcal.workoutsWithKcal,
+						total: kcal.workoutCount,
+						kcal: formatInteger(kcal.total),
+					})}
+				</Text>
+			)}
+		</StatsPanel>
+	)
+}

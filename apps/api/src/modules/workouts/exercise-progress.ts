@@ -1,4 +1,4 @@
-import type { WorkoutStatsTopSet } from '@kus/shared'
+import type { WorkoutRecordType, WorkoutStatsTopSet } from '@kus/shared'
 
 import type { StatsEntryRow } from './workout-stats.types'
 
@@ -95,6 +95,28 @@ export const getTopSet = (
 		...mostReps,
 		localDate: isBodyweight ? mostReps.localDate : (firstReached?.localDate ?? mostReps.localDate),
 	})
+}
+
+/**
+ * The workout where the all-time record was first reached: the heaviest working weight, or for a
+ * bodyweight exercise the most reps in a set. Same-day ties go to the smaller workoutId (the
+ * earlier one in the history order).
+ */
+export const getRecordWorkout = (
+	sets: readonly WorkingSet[],
+	isBodyweight: boolean,
+): { workoutId: string; record: WorkoutRecordType } | null => {
+	const topSets = getSetsAtTop(sets, isBodyweight)
+	const maxReps = Math.max(0, ...topSets.map((set) => set.reps))
+	const candidates = isBodyweight ? topSets.filter((set) => set.reps === maxReps) : topSets
+	const first = pickBy(
+		candidates,
+		(candidate, current) =>
+			candidate.localDate < current.localDate ||
+			(candidate.localDate === current.localDate && candidate.workoutId < current.workoutId),
+	)
+	if (first === null || (isBodyweight && maxReps === 0)) return null
+	return { workoutId: first.workoutId, record: isBodyweight ? 'REPS' : 'WEIGHT' }
 }
 
 /** Weighted: the most reps at the heaviest working weight; bodyweight: the most reps in a set. */

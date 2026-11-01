@@ -7,14 +7,31 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { SESSION_QUERY_KEY } from '@/entities/session'
 import { httpClient } from '@/shared/api'
-import { ROUTES } from '@/shared/config'
-import { makeExercise, makeWorkout, renderWithProviders } from '@/shared/testing'
+import { ROUTES, TRAINING_STATS_ROUTE } from '@/shared/config'
+import { makeExercise, makeWorkout, makeWorkoutStats, renderWithProviders } from '@/shared/testing'
 
 import { TrainingPage } from './TrainingPage'
 
 const getMock = vi.spyOn(httpClient, 'get')
 
 const TODAY = '2026-10-26'
+
+const statsReply = (workoutCount: number): AxiosResponse => ({
+	...reply([]),
+	data: { data: makeWorkoutStats({ overview: { ...makeWorkoutStats().overview, workoutCount } }) },
+})
+
+/** The journal and the stats tile ask different URLs: the journal gets `workouts`, the tile `stats`. */
+const mockApi = (workouts: WorkoutResponse[] | Error, statsCount: number | Error = 11) => {
+	getMock.mockImplementation((url: string) => {
+		if (url === '/workouts/stats') {
+			return statsCount instanceof Error
+				? Promise.reject(statsCount)
+				: Promise.resolve(statsReply(statsCount))
+		}
+		return workouts instanceof Error ? Promise.reject(workouts) : Promise.resolve(reply(workouts))
+	})
+}
 
 const reply = (workouts: WorkoutResponse[]): AxiosResponse => ({
 	data: { data: workouts },
@@ -66,22 +83,20 @@ describe('TrainingPage', () => {
 	})
 
 	it('shows the week card and the trainings by month, each row a link to its session', async () => {
-		getMock.mockResolvedValue(
-			reply([
-				makeWorkout({
-					id: '0199b3a4-0000-7000-8000-0000000000f2',
-					localDate: '2026-09-30',
-					place: 'HOME',
-					durationMin: 30,
-					exercises: [makeExercise({ muscleGroup: 'BACK' })],
-				}),
-				makeWorkout({
-					id: '0199b3a4-0000-7000-8000-0000000000f3',
-					localDate: TODAY,
-					exercises: [makeExercise({ muscleGroup: 'CHEST', record: 'WEIGHT' })],
-				}),
-			]),
-		)
+		mockApi([
+			makeWorkout({
+				id: '0199b3a4-0000-7000-8000-0000000000f2',
+				localDate: '2026-09-30',
+				place: 'HOME',
+				durationMin: 30,
+				exercises: [makeExercise({ muscleGroup: 'BACK' })],
+			}),
+			makeWorkout({
+				id: '0199b3a4-0000-7000-8000-0000000000f3',
+				localDate: TODAY,
+				exercises: [makeExercise({ muscleGroup: 'CHEST', record: 'WEIGHT' })],
+			}),
+		])
 
 		renderPage()
 
@@ -91,7 +106,9 @@ describe('TrainingPage', () => {
 		expect(screen.getByText('Вересень')).toBeTruthy()
 		expect(screen.getByText('Понеділок: було тренування')).toBeTruthy()
 		expect(screen.getByText('Вівторок: без тренування')).toBeTruthy()
-		const links = screen.getAllByRole('link')
+		const links = screen
+			.getAllByRole('link')
+			.filter((link) => link.getAttribute('href') !== TRAINING_STATS_ROUTE)
 		expect(links.map((link) => link.getAttribute('href'))).toEqual([
 			'/app/training/0199b3a4-0000-7000-8000-0000000000f3',
 			'/app/training/0199b3a4-0000-7000-8000-0000000000f2',
@@ -102,8 +119,28 @@ describe('TrainingPage', () => {
 		})
 	})
 
+	it('shows the stats tile under the week card with the month count, a link to the stats', async () => {
+		mockApi([makeWorkout({ localDate: TODAY })], 11)
+
+		renderPage()
+
+		const tile = await screen.findByRole('link', { name: /Статистика/ })
+		expect(tile.getAttribute('href')).toBe('/app/training/stats')
+		expect(await within(tile).findByText('11 тренувань за жовтень')).toBeTruthy()
+	})
+
+	it('keeps the tile with the title only when the count fails', async () => {
+		mockApi([makeWorkout({ localDate: TODAY })], new Error('network'))
+
+		renderPage()
+
+		const tile = await screen.findByRole('link', { name: 'Статистика' })
+		expect(tile.getAttribute('href')).toBe('/app/training/stats')
+		expect(screen.queryByText(/за жовтень/)).toBeNull()
+	})
+
 	it('says nothing was trained this week when only older days are there', async () => {
-		getMock.mockResolvedValue(reply([makeWorkout({ localDate: '2026-10-20' })]))
+		mockApi([makeWorkout({ localDate: '2026-10-20' })])
 
 		renderPage()
 
@@ -111,20 +148,21 @@ describe('TrainingPage', () => {
 	})
 
 	it('shows the empty state with a way to the chat', async () => {
-		getMock.mockResolvedValue(reply([]))
+		mockApi([])
 		const onPathname = vi.fn()
 
 		renderPage(onPathname)
 
 		expect(await screen.findByText('Тут будуть твої тренування')).toBeTruthy()
 		expect(screen.getByText('Цей тиждень: ще без тренувань')).toBeTruthy()
+		expect(screen.queryByRole('link', { name: /Статистика/ })).toBeNull()
 		fireEvent.click(screen.getByRole('button', { name: 'Написати в чат' }))
 		expect(onPathname).toHaveBeenLastCalledWith(ROUTES.chat)
 	})
 
 	it('shows the error in place of the journal and retries', async () => {
 		getMock.mockRejectedValueOnce(new Error('network'))
-		getMock.mockResolvedValue(reply([makeWorkout()]))
+		mockApi([makeWorkout()])
 
 		renderPage()
 

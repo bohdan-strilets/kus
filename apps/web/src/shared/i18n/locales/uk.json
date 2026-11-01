@@ -34,6 +34,9 @@
 		"training": {
 			"title": "Тренування"
 		},
+		"trainingStats": {
+			"title": "Статистика"
+		},
 		"profile": {
 			"title": "Профіль"
 		},
@@ -83,6 +86,7 @@
 			"ENTRY_NOT_FOUND": "Цього запису вже немає. Онови екран.",
 			"MEASUREMENT_NOT_FOUND": "Цього заміру вже немає. Онови екран.",
 			"WORKOUT_NOT_FOUND": "Цього тренування вже немає. Онови екран.",
+			"EXERCISE_NOT_FOUND": "Цієї вправи вже немає. Онови екран.",
 			"MY_FOOD_NOT_FOUND": "Цього продукту вже немає. Онови екран.",
 			"MY_FOOD_EXISTS": "Такий продукт уже є.",
 			"PASSWORD_INCORRECT": "Неправильний пароль.",
@@ -834,6 +838,7 @@
 		"km": "{{value}} км",
 		"sec": "{{value}} с",
 		"record": "рекорд",
+		"reps": "{{value}} повт.",
 		"repsUnit": "повт.",
 		"warmupShort": "розм.",
 		"bodyweight": "власна вага",
@@ -920,6 +925,110 @@
 				"text": "Можливо, його вже видалили. Усі тренування — на вкладці «Тренування».",
 				"action": "До тренувань"
 			}
+		},
+		"stats": {
+			"tile": {
+				"title": "Статистика",
+				"monthCount_one": "{{count}} тренування за {{month}}",
+				"monthCount_few": "{{count}} тренування за {{month}}",
+				"monthCount_many": "{{count}} тренувань за {{month}}",
+				"monthCount_other": "{{count}} тренування за {{month}}"
+			},
+			"tabs": {
+				"overview": "Огляд",
+				"exercises": "Вправи",
+				"cardio": "Кардіо",
+				"aria": "Розділи статистики"
+			},
+			"period": {
+				"week": "Тиждень",
+				"month": "Місяць",
+				"quarter": "3 місяці",
+				"aria": "Період",
+				"short": { "week": "тиждень", "month": "місяць", "quarter": "3 місяці" }
+			},
+			"overview": {
+				"sessions_one": "Тренування",
+				"sessions_few": "Тренування",
+				"sessions_many": "Тренувань",
+				"sessions_other": "Тренування",
+				"total": "Разом",
+				"avgPerWeek": "{{value}} на тиждень",
+				"avgPerSession": "{{duration}} за раз",
+				"avgPerSessionEstimated": "≈ {{duration}} за раз",
+				"weeklyChart": {
+					"title": "Тренувань на тиждень",
+					"titleDays": "Тренувань по днях",
+					"barAria_one": "{{label}}: {{count}} тренування",
+					"barAria_few": "{{label}}: {{count}} тренування",
+					"barAria_many": "{{label}}: {{count}} тренувань",
+					"barAria_other": "{{label}}: {{count}} тренування"
+				},
+				"groups": { "title": "Підходи за групами", "cardioHint": "кардіо — час", "other": "Інше" }
+			},
+			"exercises": {
+				"caption": "За {{period}}",
+				"sort": "останні вгорі",
+				"best": "рекорд <b>{{value}}</b>"
+			},
+			"delta": {
+				"kgUp": "+{{value}} кг",
+				"kgDown": "−{{value}} кг",
+				"repsUp": "+{{value}} повт.",
+				"repsDown": "−{{value}} повт.",
+				"noChange": "без змін"
+			},
+			"exercise": {
+				"subtitle": "{{workouts}} з {{from}}",
+				"metric": { "weight": "Вага", "reps": "Повтори", "aria": "Показник графіка" },
+				"progress": {
+					"title": "Прогрес вправи",
+					"change": "{{change}} за {{period}}",
+					"hintWeight": "Точка — найважчий робочий підхід тренування. Розминку не враховуємо.",
+					"hintReps": "Точка — найбільше повторів з робочою вагою тренування. Розминку не враховуємо.",
+					"hintBodyweight": "Точка — найбільше повторів в одному підході тренування. Розминку не враховуємо.",
+					"empty": "За {{period}} тренувань із цією вправою немає. Історія нижче.",
+					"aria": { "weight": "Графік ваги за {{period}}", "reps": "Графік повторів за {{period}}" }
+				},
+				"tiles": {
+					"heaviest": "Рекорд ваги",
+					"mostReps": "Найбільше повт.",
+					"mostRepsBodyweight": "Найбільше",
+					"perSession": "За тренування"
+				},
+				"history": { "title": "Історія" },
+				"bodyweightOnly": "Власна вага — лише повтори.",
+				"loadError": "Не вдалося завантажити вправу.",
+				"notFound": {
+					"title": "Такої вправи немає",
+					"text": "Можливо, її вже видалили. Усі вправи — на вкладці «Вправи».",
+					"action": "До статистики"
+				}
+			},
+			"cardio": {
+				"tiles": { "time": "Час", "distance": "Дистанція" },
+				"noDistance": "дистанції немає",
+				"weeklyChart": {
+					"title": "Хвилин кардіо на тиждень",
+					"titleDays": "Хвилин кардіо по днях"
+				},
+				"kcalNote_one": "ккал названо: {{kcal}} — у {{count}} тренуванні з {{total}} · на ціль не впливає",
+				"kcalNote_few": "ккал названо: {{kcal}} — у {{count}} тренуваннях з {{total}} · на ціль не впливає",
+				"kcalNote_many": "ккал названо: {{kcal}} — у {{count}} тренуваннях з {{total}} · на ціль не впливає",
+				"kcalNote_other": "ккал названо: {{kcal}} — у {{count}} тренуваннях з {{total}} · на ціль не впливає"
+			},
+			"empty": {
+				"title": "За цей період тренувань ще немає",
+				"text": "Вибери інший період або запиши тренування в чаті.",
+				"exercises": "За цей період вправ немає.",
+				"cardio": "За цей період кардіо немає."
+			},
+			"single": {
+				"overview": "За цей період лише одне тренування. Графік з'явиться з другим.",
+				"exercise": "Поки лише одне тренування з цією вправою. Графік з'явиться з другим."
+			},
+			"loading": "Завантажую статистику…",
+			"loadError": "Не вдалося завантажити статистику."
 		}
 	},
 	"measurement": {

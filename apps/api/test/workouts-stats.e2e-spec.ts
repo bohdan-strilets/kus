@@ -197,6 +197,7 @@ describe('workout stats (e2e, real DB)', () => {
 			kind: 'STRENGTH',
 			isBodyweight: false,
 		})
+		expect(data.from <= today && today <= data.to).toBe(true)
 		expect(data.best.topSet).toEqual({ weightKg: 85, reps: 6, localDate: today })
 		expect(data.best.maxSessionReps).toBeNull()
 		expect(data.points).toEqual([

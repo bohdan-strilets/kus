@@ -1,7 +1,11 @@
+export { getExerciseStats } from './api/get-exercise-stats'
 export { getWorkout } from './api/get-workout'
+export { getWorkoutStats } from './api/get-workout-stats'
 export { getWorkoutsInRange, getWorkoutsOfDay } from './api/get-workouts'
 export {
+	DETAIL_SEPARATOR,
 	formatCardioSummary,
+	formatNumber,
 	formatWorkoutKcalNote,
 	formatWorkoutDistance,
 	formatWorkoutKind,
@@ -11,7 +15,9 @@ export {
 } from './lib/format-workout'
 export {
 	WORKOUTS_QUERY_KEY,
+	exerciseStatsQueryOptions,
 	workoutQueryOptions,
+	workoutStatsQueryOptions,
 	workoutsDayQueryOptions,
 	workoutsRangeQueryOptions,
 } from './model/workout-query'
@@ -28,3 +34,8 @@ export { GroupTag, type GroupTagProps } from './ui/group-tag'
 export { SetLine, type SetLineProps } from './ui/set-line'
 export { getWorkoutCounts, type WorkoutCounts } from './lib/get-workout-counts'
 export { formatWorkoutDuration } from './lib/format-workout-duration'
+export { formatBestSet, formatChange } from './lib/format-exercise-stats'
+export { PeriodToggle } from './ui/period-toggle'
+export { StatsNote } from './ui/stats-note'
+export { StatTile } from './ui/stat-tile'
+export { StatsPanel } from './ui/stats-panel'

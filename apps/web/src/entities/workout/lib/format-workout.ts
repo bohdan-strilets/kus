@@ -11,7 +11,7 @@ import {
 	STRENGTH_ICON,
 } from './workout.constants'
 
-const SEPARATOR = ' · '
+export const DETAIL_SEPARATOR = ' · '
 
 /** «80», «77,5» — a decimal only when there is one. */
 export const formatNumber = (value: number): string =>
@@ -46,7 +46,7 @@ export const formatCardioSummary = (
 		exercise.durationMin === null ? null : formatWorkoutMinutes(exercise.durationMin, t),
 		exercise.distanceM === null ? null : formatWorkoutDistance(exercise.distanceM, t),
 	].filter((part): part is string => part !== null)
-	return parts.length > 0 ? parts.join(SEPARATOR) : null
+	return parts.length > 0 ? parts.join(DETAIL_SEPARATOR) : null
 }
 
 /** run for a run or a treadmill, bike, rowing, otherwise cardio; strength and the rest — training. */

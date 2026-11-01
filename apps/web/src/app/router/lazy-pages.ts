@@ -15,6 +15,12 @@ export const TrainingPage = lazy(() =>
 export const TrainingSessionPage = lazy(() =>
 	import('@/pages/training-session').then((m) => ({ default: m.TrainingSessionPage })),
 )
+export const TrainingExercisePage = lazy(() =>
+	import('@/pages/training-exercise').then((m) => ({ default: m.TrainingExercisePage })),
+)
+export const TrainingStatsPage = lazy(() =>
+	import('@/pages/training-stats').then((m) => ({ default: m.TrainingStatsPage })),
+)
 export const ProfilePage = lazy(() =>
 	import('@/pages/profile').then((m) => ({ default: m.ProfilePage })),
 )

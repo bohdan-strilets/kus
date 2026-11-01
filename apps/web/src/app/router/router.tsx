@@ -1,6 +1,12 @@
 import { createBrowserRouter, Navigate, type RouteObject } from 'react-router'
 
-import { DEV_ROUTES, ROUTES, TRAINING_SESSION_ROUTE } from '@/shared/config'
+import {
+	DEV_ROUTES,
+	ROUTES,
+	TRAINING_EXERCISE_ROUTE,
+	TRAINING_SESSION_ROUTE,
+	TRAINING_STATS_ROUTE,
+} from '@/shared/config'
 
 import {
 	AccountRestorePage,
@@ -16,8 +22,10 @@ import {
 	RegisterPage,
 	SettingsPage,
 	TodayPage,
+	TrainingExercisePage,
 	TrainingPage,
 	TrainingSessionPage,
+	TrainingStatsPage,
 } from './lazy-pages'
 import { RootLayout } from './RootLayout'
 import { RouterRoot } from './RouterRoot'
@@ -75,6 +83,8 @@ export const router = createBrowserRouter([
 									{ path: ROUTES.progress, element: <ProgressPage /> },
 									{ path: ROUTES.recipes, element: <RecipesPage /> },
 									{ path: ROUTES.training, element: <TrainingPage /> },
+									{ path: TRAINING_STATS_ROUTE, element: <TrainingStatsPage /> },
+									{ path: TRAINING_EXERCISE_ROUTE, element: <TrainingExercisePage /> },
 									{ path: TRAINING_SESSION_ROUTE, element: <TrainingSessionPage /> },
 									{ path: '*', element: <Navigate to={ROUTES.chat} replace /> },
 								],

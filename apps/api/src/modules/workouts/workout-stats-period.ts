@@ -8,13 +8,13 @@ export type StatsPeriodRange = DateRange & {
 	buckets: DateRange[]
 }
 
-const MS_IN_DAY = 24 * 60 * 60 * 1000
-const DAYS_IN_WEEK = 7
+export const MS_IN_DAY = 24 * 60 * 60 * 1000
+export const DAYS_IN_WEEK = 7
 const QUARTER_MONTHS = 3
 const MONTHS_BACK_QUARTER_START = 2
 
 // local dates are calendar days: all arithmetic is in UTC, so there are no DST or timezone jumps
-const toTime = (date: string): number => Date.parse(`${date}T00:00:00Z`)
+export const toTime = (date: string): number => Date.parse(`${date}T00:00:00Z`)
 
 const toDateString = (time: number): string => new Date(time).toISOString().slice(0, 10)
 

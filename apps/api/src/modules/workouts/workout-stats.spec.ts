@@ -181,6 +181,15 @@ describe('buildWorkoutStats duration and kcal', () => {
 		expect(stats.overview).toMatchObject({ durationMin: 0, avgDurationMin: null })
 	})
 
+	it('averages workouts per week over the days gone, at least one week', () => {
+		const sixInMonth = Array.from({ length: 6 }, (_, index) =>
+			makeWorkout({ id: `w${index}`, localDate: '2026-10-05' }),
+		)
+		expect(build(sixInMonth, [], [], 'month').overview.avgPerWeek).toBe(1.5)
+		expect(build([makeWorkout({})], [], [], 'week').overview.avgPerWeek).toBe(1)
+		expect(build([], [], [], 'month').overview.avgPerWeek).toBeNull()
+	})
+
 	it('counts only kcal the person named or a device showed', () => {
 		const stats = build(
 			[

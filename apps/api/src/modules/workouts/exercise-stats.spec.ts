@@ -28,6 +28,8 @@ describe('buildExerciseStats weighted', () => {
 
 	it('takes best from all time and points from the period only', () => {
 		const stats = build(entries)
+		expect([stats.from, stats.to]).toEqual(['2026-10-01', '2026-10-31'])
+		expect(stats.period).toBe('month')
 		expect(stats.exercise.isBodyweight).toBe(false)
 		expect(stats.best.topSet).toEqual({ weightKg: 80, reps: 5, localDate: '2026-08-10' })
 		expect(stats.best.maxReps).toEqual({ weightKg: 80, reps: 5, localDate: '2026-08-10' })
@@ -37,6 +39,7 @@ describe('buildExerciseStats weighted', () => {
 			{ localDate: '2026-10-20', workoutId: 'c', topWeightKg: 72.5, maxReps: 4 },
 		])
 		expect(stats.change).toBe(2.5)
+		expect(stats.changeReps).toBe(-4)
 	})
 
 	it('gives the most reps at the heaviest weight, not the most reps overall', () => {
@@ -53,6 +56,7 @@ describe('buildExerciseStats weighted', () => {
 		const one = build(entries.slice(2))
 		expect(one.points).toHaveLength(1)
 		expect(one.change).toBeNull()
+		expect(one.changeReps).toBeNull()
 		const warmupOnly = build([makeEntry({ sets: [makeSet({ isWarmup: true })] })])
 		expect(warmupOnly.best.topSet).toBeNull()
 		expect(warmupOnly.points).toEqual([])
@@ -93,6 +97,54 @@ describe('buildExerciseStats bodyweight', () => {
 			[null, 9],
 		])
 		expect(stats.change).toBe(1)
+		expect(stats.changeReps).toBe(1)
+	})
+})
+
+describe('buildExerciseStats history record', () => {
+	const records = (entries: StatsEntryRow[]) =>
+		build(entries).history.map((item) => [item.workoutId, item.record])
+
+	it('marks the first weighted workout that reached the max weight', () => {
+		expect(
+			records([
+				entryOn('a', '2026-09-01', [{ weightKg: 60, reps: 8 }]),
+				entryOn('b', '2026-09-10', [{ weightKg: 80, reps: 5 }]),
+				entryOn('c', '2026-09-20', [{ weightKg: 80, reps: 8 }]),
+			]),
+		).toEqual([
+			['c', null],
+			['b', 'WEIGHT'],
+			['a', null],
+		])
+	})
+
+	it('marks the first max-reps workout of a bodyweight exercise with REPS', () => {
+		expect(
+			records([
+				entryOn('a', '2026-09-01', [{ weightKg: null, reps: 8 }]),
+				entryOn('b', '2026-09-10', [{ weightKg: null, reps: 12 }]),
+				entryOn('c', '2026-09-20', [{ weightKg: null, reps: 12 }]),
+			]),
+		).toEqual([
+			['c', null],
+			['b', 'REPS'],
+			['a', null],
+		])
+	})
+
+	it('marks nothing when the record is older than the last 20 workouts', () => {
+		const old = entryOn('old', '2026-01-01', [{ weightKg: 100, reps: 3 }])
+		const recent = Array.from({ length: EXERCISE_HISTORY_LIMIT }, (_, index) =>
+			entryOn(
+				`w${String(index).padStart(2, '0')}`,
+				`2026-09-${String(index + 1).padStart(2, '0')}`,
+				[{ weightKg: 50, reps: 5 }],
+			),
+		)
+		const { history } = build([old, ...recent])
+		expect(history).toHaveLength(EXERCISE_HISTORY_LIMIT)
+		expect(history.every((item) => item.record === null)).toBe(true)
 	})
 })
 

@@ -9,7 +9,14 @@ import type {
 
 import { getWorkingSets } from './exercise-progress'
 import { buildExerciseList } from './workout-stats-exercises'
-import { type DateRange, getStatsPeriodRange, isInRange } from './workout-stats-period'
+import {
+	DAYS_IN_WEEK,
+	type DateRange,
+	getStatsPeriodRange,
+	isInRange,
+	MS_IN_DAY,
+	toTime,
+} from './workout-stats-period'
 import type { StatsEntryRow, StatsWorkoutRow } from './workout-stats.types'
 import { getEstimatedDurationMin, getMuscleGroup } from './workouts.mapper'
 
@@ -48,6 +55,17 @@ const getGroups = (entries: readonly StatsEntryRow[]): WorkoutStatsGroup[] => {
 	return [...MUSCLE_GROUP_ORDER, null]
 		.map((muscleGroup) => ({ muscleGroup, setCount: counts.get(muscleGroup) ?? 0 }))
 		.filter((group) => group.setCount > 0)
+}
+
+const AVG_DECIMALS_FACTOR = 10
+
+/** Per week over the days gone so far (the rest of the period has not happened yet), never less than one week. */
+const getAvgPerWeek = (count: number, range: DateRange, today: string): number | null => {
+	if (count === 0) return null
+	const end = today < range.to ? today : range.to
+	const days = (toTime(end) - toTime(range.from)) / MS_IN_DAY + 1
+	const weeks = Math.max(days / DAYS_IN_WEEK, 1)
+	return Math.round((count / weeks) * AVG_DECIMALS_FACTOR) / AVG_DECIMALS_FACTOR
 }
 
 const getDurations = (
@@ -165,6 +183,7 @@ export const buildWorkoutStats = ({
 		previous: range.previous,
 		overview: {
 			workoutCount: periodWorkouts.length,
+			avgPerWeek: getAvgPerWeek(periodWorkouts.length, range, today),
 			workoutCountPrev: workouts.filter((workout) => isInRange(workout.localDate, range.previous))
 				.length,
 			exerciseCount: countStrengthExercises(periodEntries),

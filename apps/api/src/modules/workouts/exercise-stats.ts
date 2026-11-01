@@ -11,6 +11,7 @@ import {
 	getMaxSessionReps,
 	getPointValue,
 	getProgressPoints,
+	getRecordWorkout,
 	getTopSet,
 	getWorkingSets,
 	isBodyweightExercise,
@@ -29,7 +30,10 @@ export type StatsExerciseRow = {
 
 type HistoryItem = ExerciseStatsResponse['history'][number]
 
-const toHistory = (entries: readonly StatsEntryRow[]): HistoryItem[] => {
+const toHistory = (
+	entries: readonly StatsEntryRow[],
+	recordWorkout: ReturnType<typeof getRecordWorkout>,
+): HistoryItem[] => {
 	const byWorkout = new Map<string, StatsEntryRow[]>()
 	for (const entry of entries) {
 		byWorkout.set(entry.workoutId, [...(byWorkout.get(entry.workoutId) ?? []), entry])
@@ -40,6 +44,7 @@ const toHistory = (entries: readonly StatsEntryRow[]): HistoryItem[] => {
 			return {
 				workoutId,
 				localDate: ordered[0]?.workoutLocalDate ?? '',
+				record: recordWorkout?.workoutId === workoutId ? recordWorkout.record : null,
 				// warm-ups are shown here, and only here
 				sets: ordered.flatMap((entry) =>
 					entry.sets.map((set) => ({
@@ -81,6 +86,9 @@ export const buildExerciseStats = ({
 		isBodyweight,
 	)
 	return {
+		period,
+		from: range.from,
+		to: range.to,
 		exercise: { ...exercise, isBodyweight },
 		best: {
 			topSet: getTopSet(sets, isBodyweight),
@@ -88,12 +96,13 @@ export const buildExerciseStats = ({
 			maxSessionReps: isBodyweight ? getMaxSessionReps(sets) : null,
 		},
 		change: getChange(points.map(getPointValue)),
+		changeReps: getChange(points.map((point) => point.maxReps)),
 		points: points.map(({ localDate, workoutId, topWeightKg, maxReps }) => ({
 			localDate,
 			workoutId,
 			topWeightKg,
 			maxReps,
 		})),
-		history: toHistory(entries),
+		history: toHistory(entries, getRecordWorkout(sets, isBodyweight)),
 	}
 }

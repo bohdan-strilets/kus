@@ -10,3 +10,11 @@ export { stubMatchMedia } from './match-media'
 export { createWrapper, renderHookWithProviders, renderWithProviders } from './render'
 export { makeProgress } from './progress.fixture'
 export { makeExercise, makeWorkout } from './workout.fixture'
+export { makeWeightedStats, makeBodyweightStats } from './exercise-stats.fixture'
+export {
+	BENCH_ID,
+	BIKE_ID,
+	makeWorkoutStats,
+	PULLUP_ID,
+	TREADMILL_ID,
+} from './workout-stats.fixture'

@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
 import { exerciseKindSchema, muscleGroupSchema } from './enums.js'
-import { workoutSetResponseSchema } from './workouts.js'
+import { workoutRecordTypeSchema, workoutSetResponseSchema } from './workouts.js'
 
 export const WORKOUT_STATS_PERIODS = ['week', 'month', 'quarter'] as const
 
@@ -51,6 +51,8 @@ export type WorkoutStatsGroup = z.infer<typeof workoutStatsGroupSchema>
 export const workoutStatsOverviewSchema = z.object({
 	workoutCount: z.number(),
 	workoutCountPrev: z.number(),
+	/** Workouts per week over the elapsed part of the period (at least one week), one decimal; null without workouts. */
+	avgPerWeek: z.number().nullable(),
 	/** Strength only, warm-up sets are not counted. */
 	exerciseCount: z.number(),
 	setCount: z.number(),
@@ -119,6 +121,9 @@ export const workoutStatsResponseSchema = z.object({
 export type WorkoutStatsResponse = z.infer<typeof workoutStatsResponseSchema>
 
 export const exerciseStatsResponseSchema = z.object({
+	period: workoutStatsPeriodSchema,
+	/** The calendar period of `points` and `change`. */
+	...dateRangeSchema.shape,
 	exercise: z.object({
 		id: z.uuid(),
 		name: z.string(),
@@ -137,6 +142,8 @@ export const exerciseStatsResponseSchema = z.object({
 	}),
 	/** Last point of the period minus the first; null with fewer than two points. */
 	change: z.number().nullable(),
+	/** The same by the reps at the top weight (by reps for a bodyweight exercise); null with fewer than two points. */
+	changeReps: z.number().nullable(),
 	points: z.array(
 		z.object({
 			localDate: z.iso.date(),
@@ -150,6 +157,8 @@ export const exerciseStatsResponseSchema = z.object({
 		z.object({
 			workoutId: z.uuid(),
 			localDate: z.iso.date(),
+			/** The all-time record first reached in this workout (WEIGHT or REPS); at most one item. */
+			record: workoutRecordTypeSchema.nullable(),
 			sets: z.array(workoutSetResponseSchema),
 		}),
 	),

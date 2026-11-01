@@ -47,3 +47,12 @@ export const TRAINING_SESSION_ROUTE = `${TAB_ROUTES.training}/:id`
 /** One training: the session screen opened from «Сьогодні» and the journal. */
 export const getTrainingSessionPath = (workoutId: string): string =>
 	`${TAB_ROUTES.training}/${workoutId}`
+
+/** The training stats screen (opened from the journal). */
+export const TRAINING_STATS_ROUTE = `${TAB_ROUTES.training}/stats`
+
+/** The pattern of the exercise screen in the router; links use getTrainingExercisePath. */
+export const TRAINING_EXERCISE_ROUTE = `${TAB_ROUTES.training}/exercise/:id`
+
+export const getTrainingExercisePath = (exerciseId: string): string =>
+	`${TAB_ROUTES.training}/exercise/${exerciseId}`

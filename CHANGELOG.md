@@ -6,6 +6,25 @@ All notable changes to Kusik are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.10.1] — 2026-11-01
+
+Training statistics: a period overview, an exercise screen with all-time records, and a shared segmented toggle, bar chart and sparkline. Two new endpoints, no database migrations, no new environment variables, no prompt change.
+
+### Added
+
+- `GET /api/v1/workouts/stats?period=week|month|quarter`: calendar periods compared with the previous period up to the same day; strength sets without warm-up, cardio apart, kcal only where named ([8c21d30])
+- `GET /api/v1/workouts/exercises/:exerciseId`: all-time records from live sets, progress points in the period, a change badge and the last 20 workouts; 404 for another user's or a deleted exercise ([8c21d30])
+- `SegmentedToggle` (the range switch on Progress now uses it), `BarChart` and `Sparkline` ([20b16c6])
+- `/app/training/stats` with «Огляд · Вправи · Кардіо», week / month / 3 months, muscle groups including «Інше», a trophy on records and «ккал названо» ([2db89a4])
+- `/app/training/exercise/:id`: record tiles, a Вага / Повтори chart, a change badge and the history with the record set ([2db89a4])
+- A «Статистика» tile on the training journal; API additions `avgPerWeek`, the period range, `changeReps` and the record flag in the exercise history ([2db89a4])
+
+### Fixed
+
+- The «Тренування» tab stays active on nested training routes, including the session screen of 0.10.0 ([20b16c6])
+- Developer docs: test paths for `pnpm --filter <pkg> exec vitest` are package-relative ([7619e35])
+- The AppLayout navigation test gets a longer timeout on a cold import ([8474b73])
+
 ## [0.10.0] — 2026-10-31
 
 Training 2.0: a workout is a session that grows over several messages, every strength exercise has a muscle group, and the training screens are rebuilt around sessions (journal, session screen, a strip on «Сьогодні», session cards in the chat). One database migration (additive), one new endpoint, a new prompt version, no new environment variables.
@@ -537,7 +556,14 @@ Design sync with `design/` v0.5.2. Web only: no API, shared-package or migration
 
 ## 0.2.0 / 0.1.0 — see tags
 
-[Unreleased]: https://github.com/bohdan-strilets/kus/compare/v0.9.3...HEAD
+[Unreleased]: https://github.com/bohdan-strilets/kus/compare/v0.10.1...HEAD
+[0.10.1]: https://github.com/bohdan-strilets/kus/compare/v0.10.0...v0.10.1
+[8c21d30]: https://github.com/bohdan-strilets/kus/commit/8c21d30a1624832617a0eefb3a05f434aa31ed87
+[20b16c6]: https://github.com/bohdan-strilets/kus/commit/20b16c647bd92fb774c367cbe89c0f7d53facddb
+[2db89a4]: https://github.com/bohdan-strilets/kus/commit/2db89a4abb4f15a478dc842b9ff73d858abd6a8a
+[7619e35]: https://github.com/bohdan-strilets/kus/commit/7619e35af94afe236638e683ce0da562fd8bdb88
+[8474b73]: https://github.com/bohdan-strilets/kus/commit/8474b73f30e137c2c8c0b168e2fe8f1eae3b5f3d
+[0.10.0]: https://github.com/bohdan-strilets/kus/compare/v0.9.3...v0.10.0
 [0.9.3]: https://github.com/bohdan-strilets/kus/compare/v0.9.2...v0.9.3
 [5080835]: https://github.com/bohdan-strilets/kus/commit/50808358b87e412f99873e91ea9043e747b0e6a4
 [c0afe8f]: https://github.com/bohdan-strilets/kus/commit/c0afe8fd2e6b20f0b330792befcd202e19b30f9b

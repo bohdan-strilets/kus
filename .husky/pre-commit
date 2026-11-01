@@ -1,2 +1,2 @@
 node scripts/check-staged-private.mjs
-pnpm exec lint-staged
+pnpm exec lint-staged --max-arg-length 4000

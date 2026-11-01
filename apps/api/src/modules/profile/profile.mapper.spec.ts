@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import type { AuthUser } from '@kus/shared'
 
+import type { UserProfile } from '../../generated/prisma/client'
 import { toProfileFields, toProfileResponse } from './profile.mapper'
 
 const user: AuthUser = {
@@ -41,5 +42,24 @@ describe('toProfileFields target weight', () => {
 	it('keeps null (clears the target) and leaves an absent one out', () => {
 		expect(toProfileFields({ targetWeightKg: null }, 2026).targetWeightKg).toBeNull()
 		expect(toProfileFields({}, 2026)).not.toHaveProperty('targetWeightKg')
+	})
+})
+
+describe('toProfileResponse trainingOnboardingAt', () => {
+	it('is null without a profile row', () => {
+		expect(build(null).trainingOnboardingAt).toBeNull()
+	})
+
+	it('is an ISO instant once the invitation was answered', () => {
+		const response = toProfileResponse({
+			user,
+			profile: { trainingOnboardingAt: new Date('2026-11-01T09:30:00Z') } as UserProfile,
+			weight: null,
+			waist: null,
+			goals: null,
+			year: 2026,
+		})
+
+		expect(response.trainingOnboardingAt).toBe('2026-11-01T09:30:00.000Z')
 	})
 })

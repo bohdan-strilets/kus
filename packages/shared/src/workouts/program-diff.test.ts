@@ -279,6 +279,20 @@ describe('diffPrograms — exercises', () => {
 		])
 	})
 
+	it('carries the target of a removed exercise in before', () => {
+		const base = single([exercise('Жим ногами', { sets: 3, weightKg: 120 }), exercise('Тяга')])
+		const next = single([exercise('Тяга')])
+		expect(diffPrograms(base, next).lines).toEqual([
+			expect.objectContaining({
+				op: 'REMOVE',
+				scope: 'EXERCISE',
+				name: 'Жим ногами',
+				before: { ...target, sets: 3, weightKg: 120 },
+				after: null,
+			}),
+		])
+	})
+
 	it('removes the extra duplicate when a duplicate is dropped', () => {
 		const base = single([exercise('Жим'), exercise('Жим')])
 		const next = single([exercise('Жим')])

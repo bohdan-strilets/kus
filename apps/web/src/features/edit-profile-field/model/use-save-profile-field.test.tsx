@@ -28,6 +28,7 @@ const profile = {
 	weight: { kg: 65, localDate: '2026-10-10' },
 	waist: null,
 	goals: null,
+	trainingOnboardingAt: null,
 }
 
 afterEach(() => {

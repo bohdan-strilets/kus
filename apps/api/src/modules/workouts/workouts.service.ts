@@ -1,5 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common'
 import {
+	EXERCISE_DICTIONARY_LIMIT,
+	type ExerciseDictionaryQuery,
+	type ExerciseDictionaryResponse,
+	matchMuscleGroup,
 	normalizeExerciseName,
 	type ProgramLastSet,
 	type WorkoutResponse,
@@ -27,6 +31,11 @@ export interface ExerciseToResolve {
 	kind: ExerciseKind
 	/** A dictionary id the caller holds; used only when it is the user's own live row. */
 	exerciseId?: string | null
+	/**
+	 * The group the caller holds (a program template's). Undefined: the caller sets none (the chat
+	 * resolves it itself); null: it has none. Fills a new or group-less dictionary row, never overwrites.
+	 */
+	muscleGroup?: MuscleGroup | null
 }
 
 /** The workout a program turn counts from: the template's key and the day. */
@@ -102,13 +111,42 @@ export class WorkoutsService {
 	 */
 	async findOrCreateExercise(
 		userId: string,
-		{ name, kind }: Pick<ExerciseToResolve, 'name' | 'kind'>,
+		item: Pick<ExerciseToResolve, 'name' | 'kind' | 'muscleGroup'>,
 		tx: Prisma.TransactionClient,
 	): Promise<ExerciseRow> {
+		const { name, kind } = item
 		const nameNormalized = normalizeExerciseName(name)
 		const known = await this.workoutsRepository.findExerciseByName({ userId, nameNormalized }, tx)
-		if (known) return known
-		return this.workoutsRepository.createExercise({ userId, name, nameNormalized, kind }, tx)
+		if (known) return this.fillMuscleGroup(userId, known, item, tx)
+		const muscleGroup = this.pickMuscleGroup(item)
+		return this.workoutsRepository.createExercise(
+			{ userId, name, nameNormalized, kind, muscleGroup },
+			tx,
+		)
+	}
+
+	/** The group a caller's item gives the dictionary: none for cardio and for callers that set none. */
+	private pickMuscleGroup({
+		name,
+		kind,
+		muscleGroup,
+	}: Pick<ExerciseToResolve, 'name' | 'kind' | 'muscleGroup'>): MuscleGroup | null {
+		if (kind === 'CARDIO' || muscleGroup === undefined) return null
+		return muscleGroup ?? matchMuscleGroup(name)
+	}
+
+	/** A group-less row takes the item's group; a row that has one keeps it. */
+	private async fillMuscleGroup(
+		userId: string,
+		row: ExerciseRow,
+		item: Pick<ExerciseToResolve, 'name' | 'kind' | 'muscleGroup'>,
+		tx: Prisma.TransactionClient,
+	): Promise<ExerciseRow> {
+		if (row.muscleGroup !== null || row.kind === 'CARDIO') return row
+		const muscleGroup = this.pickMuscleGroup(item)
+		if (muscleGroup === null) return row
+		await this.workoutsRepository.fillExerciseMuscleGroup({ userId, id: row.id, muscleGroup }, tx)
+		return { ...row, muscleGroup }
 	}
 
 	/** The dictionary rows with these names or aliases, in the same order; null where none. Never creates. */
@@ -149,7 +187,11 @@ export class WorkoutsService {
 		const rows: ExerciseRow[] = []
 		for (const item of items) {
 			const byId = item.exerciseId ? owned.get(item.exerciseId) : undefined
-			rows.push(byId ?? (await this.findOrCreateExercise(userId, item, tx)))
+			rows.push(
+				byId
+					? await this.fillMuscleGroup(userId, byId, item, tx)
+					: await this.findOrCreateExercise(userId, item, tx),
+			)
 		}
 		return rows
 	}
@@ -159,6 +201,31 @@ export class WorkoutsService {
 		const workout = await this.workoutsRepository.findLastTemplatedWorkout({ userId })
 		if (!workout?.template) return null
 		return { templateKey: workout.template.key, localDate: formatDbDate(workout.localDate) }
+	}
+
+	/** «Мої вправи» of the template editor: the owner's dictionary with the last result of each. */
+	async listExercises(
+		userId: string,
+		{ query, group }: ExerciseDictionaryQuery,
+	): Promise<ExerciseDictionaryResponse> {
+		const nameContains = query ? normalizeExerciseName(query) : undefined
+		const rows = await this.workoutsRepository.findExercisesFiltered({
+			userId,
+			nameContains,
+			group,
+			take: EXERCISE_DICTIONARY_LIMIT,
+		})
+		const lastSets = await this.getLastSets(
+			userId,
+			rows.map(({ id }) => id),
+		)
+		return rows.map(({ id, name, kind, muscleGroup }) => ({
+			id,
+			name,
+			kind,
+			muscleGroup,
+			lastSets: lastSets.get(id)?.sets ?? null,
+		}))
 	}
 
 	/** Exercise id → the sets of the last time it was done; exercises never done are absent. */

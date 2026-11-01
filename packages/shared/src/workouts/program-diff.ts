@@ -129,7 +129,15 @@ const diffExercises = (
 	const pairedBase = new Set(pairs.values())
 	base.exercises.forEach((exercise, index) => {
 		if (pairedBase.has(index)) return
-		lines.push(line({ op: 'REMOVE', scope: 'EXERCISE', templateName, name: exercise.name }))
+		lines.push(
+			line({
+				op: 'REMOVE',
+				scope: 'EXERCISE',
+				templateName,
+				name: exercise.name,
+				before: exercise.target,
+			}),
+		)
 	})
 	const baseOrder = next.exercises.flatMap((_, nextIndex) => pairs.get(nextIndex) ?? [])
 	if (baseOrder.some((baseIndex, index) => index > 0 && baseIndex < (baseOrder[index - 1] ?? 0))) {

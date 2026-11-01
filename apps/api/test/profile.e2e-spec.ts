@@ -105,6 +105,7 @@ describe('profile (e2e, real DB)', () => {
 			weight: null,
 			waist: null,
 			goals: null,
+			trainingOnboardingAt: null,
 		})
 	})
 

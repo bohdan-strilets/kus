@@ -87,6 +87,8 @@ export const profileResponseSchema = z.object({
 	/** The latest waist measurement («талія»). */
 	waist: z.object({ cm: z.number(), localDate: z.iso.date() }).nullable(),
 	goals: profileGoalsSchema.nullable(),
+	/** When the training onboarding was taken up or declined; null = the tab may still invite. */
+	trainingOnboardingAt: z.iso.datetime().nullable(),
 })
 
 export type ProfileResponse = z.infer<typeof profileResponseSchema>

@@ -1,4 +1,5 @@
 import {
+	exerciseDictionaryQuerySchema,
 	exerciseStatsParamsSchema,
 	workoutDayParamsSchema,
 	workoutParamsSchema,
@@ -16,3 +17,5 @@ export class WorkoutsRangeQueryDto extends createZodDto(workoutsRangeQuerySchema
 export class WorkoutStatsQueryDto extends createZodDto(workoutStatsQuerySchema) {}
 
 export class ExerciseStatsParamsDto extends createZodDto(exerciseStatsParamsSchema) {}
+
+export class ExerciseDictionaryQueryDto extends createZodDto(exerciseDictionaryQuerySchema) {}

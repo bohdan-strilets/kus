@@ -27,6 +27,7 @@ const profile: ProfileResponse = {
 	weight: { kg: 82.4, localDate: '2026-10-07' },
 	waist: null,
 	goals: null,
+	trainingOnboardingAt: null,
 }
 
 const reply = (data: ProfileResponse): AxiosResponse => ({

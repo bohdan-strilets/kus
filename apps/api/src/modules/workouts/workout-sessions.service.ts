@@ -412,7 +412,12 @@ export class WorkoutSessionsService {
 			// the x-ref is of another exercise than the name says: the name wins
 			this.logger.warn(`Exercise ref does not match its name user=${userId} exercise=${id}`)
 		}
-		return this.workoutsService.findOrCreateExercise(userId, exercise, tx)
+		// no group here: resolveExercise sets it (names dictionary first, then the model's)
+		return this.workoutsService.findOrCreateExercise(
+			userId,
+			{ name: exercise.name, kind: exercise.kind },
+			tx,
+		)
 	}
 
 	/**

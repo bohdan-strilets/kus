@@ -76,6 +76,7 @@ export const toProfileResponse = ({
 	weight: weight ? { kg: weight.value, localDate: formatDbDate(weight.localDate) } : null,
 	waist: waist ? { cm: waist.value, localDate: formatDbDate(waist.localDate) } : null,
 	goals,
+	trainingOnboardingAt: profile?.trainingOnboardingAt?.toISOString() ?? null,
 })
 
 /** The fields of «Мої дані» the calculation still lacks; names as the client sends them. */

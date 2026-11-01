@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common'
+import type { TrainingGroupKey } from '@kus/shared'
 
 import type { Prisma } from '../../generated/prisma/client'
 import type { ExerciseKind, MuscleGroup } from '../../generated/prisma/enums'
@@ -356,6 +357,29 @@ export class WorkoutsRepository {
 		})
 	}
 
+	/** The owner's live dictionary rows, filtered by a part of the name (normalized) and a group. */
+	findExercisesFiltered(
+		{
+			userId,
+			nameContains,
+			group,
+			take,
+		}: { userId: string; nameContains?: string; group?: TrainingGroupKey; take: number },
+		tx?: Prisma.TransactionClient,
+	) {
+		return (tx ?? this.prisma).exercise.findMany({
+			where: {
+				userId,
+				deletedAt: null,
+				...(nameContains ? { nameNormalized: { contains: nameContains } } : {}),
+				...(group === 'CARDIO' ? { kind: 'CARDIO' } : {}),
+				...(group !== undefined && group !== 'CARDIO' ? { muscleGroup: group } : {}),
+			},
+			orderBy: { nameNormalized: 'asc' },
+			take,
+		})
+	}
+
 	findExercisesByIds(
 		{ userId, ids }: { userId: string; ids: string[] },
 		tx?: Prisma.TransactionClient,
@@ -370,7 +394,13 @@ export class WorkoutsRepository {
 	 * on the partial unique: a failed insert would abort the whole turn's transaction), and returns it.
 	 */
 	async createExercise(
-		data: { userId: string; name: string; nameNormalized: string; kind: ExerciseKind },
+		data: {
+			userId: string
+			name: string
+			nameNormalized: string
+			kind: ExerciseKind
+			muscleGroup?: MuscleGroup | null
+		},
 		tx: Prisma.TransactionClient,
 	) {
 		await tx.exercise.createMany({ data: [{ ...data, aliases: [] }], skipDuplicates: true })

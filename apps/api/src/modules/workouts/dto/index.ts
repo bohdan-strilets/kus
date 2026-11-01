@@ -1,4 +1,5 @@
 export {
+	ExerciseDictionaryQueryDto,
 	ExerciseStatsParamsDto,
 	WorkoutDayParamsDto,
 	WorkoutParamsDto,

@@ -24,6 +24,7 @@ const makeProfile = (overrides: Partial<ProfileResponse['profile']> = {}): Profi
 	weight: { kg: 82.4, localDate: '2026-10-07' },
 	waist: { cm: 91.5, localDate: '2026-10-07' },
 	goals: null,
+	trainingOnboardingAt: null,
 })
 
 const NBSP = String.fromCharCode(160)

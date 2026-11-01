@@ -9,6 +9,7 @@ import {
 	chatMessageSchema,
 	createCursorPaginatedResponseSchema,
 	createDataResponseSchema,
+	exerciseDictionaryResponseSchema,
 	programResponseSchema,
 	rebaseProgramProposalResponseSchema,
 	sendMessageResponseSchema,
@@ -35,6 +36,7 @@ const sendResponse = createDataResponseSchema(sendMessageResponseSchema)
 const programResponse = createDataResponseSchema(programResponseSchema)
 const rebaseResponse = createDataResponseSchema(rebaseProgramProposalResponseSchema)
 const feedResponse = createCursorPaginatedResponseSchema(chatMessageSchema)
+const dictionaryResponse = createDataResponseSchema(exerciseDictionaryResponseSchema)
 const dayResponse = createDataResponseSchema(workoutResponseSchema.array())
 const fake = createFakeAiClient()
 
@@ -174,6 +176,41 @@ describe('program proposals in the chat (e2e, real DB, fake model)', () => {
 
 		const again = await accept(owner, assistantMessage.id, 409)
 		expect(errorCode(again.body)).toBe('PROGRAM_PROPOSAL_ALREADY_ACCEPTED')
+	})
+
+	it('puts the template exercises into the dictionary with their group, filling a group-less row', async () => {
+		await start()
+		const owner = await registerUser('groups@kus.app')
+		await prisma.exercise.create({
+			data: {
+				userId: owner.userId,
+				name: 'Підтягування',
+				nameNormalized: 'підтягування',
+				kind: 'STRENGTH',
+				aliases: [],
+			},
+		})
+		const { assistantMessage } = await send(
+			owner,
+			'склади програму',
+			proposeCall([
+				{
+					ref: null,
+					name: 'Тренування А',
+					exercises: [
+						{ name: 'Тяга верхнього блока', kind: 'STRENGTH', muscleGroup: 'BACK', sets: 3 },
+						{ name: 'Підтягування', kind: 'STRENGTH', muscleGroup: 'BACK', sets: 3 },
+					],
+				},
+				{ ref: null, name: 'Тренування Б', exercises: [squat] },
+			]),
+		)
+		await accept(owner, assistantMessage.id)
+
+		const back = dictionaryResponse.parse(
+			(await owner.agent.get('/api/v1/workouts/exercises?group=BACK').expect(200)).body,
+		).data
+		expect(back.map(({ name }) => name).sort()).toEqual(['Підтягування', 'Тяга верхнього блока'])
 	})
 
 	it('shows the program in the context and turns a change into − / + lines and a new version', async () => {

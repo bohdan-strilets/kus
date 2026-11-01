@@ -107,6 +107,7 @@ describe('toPlanProfile', () => {
 		weight: { kg: 82.4, localDate: '2026-01-01' },
 		waist: null,
 		goals: null,
+		trainingOnboardingAt: null,
 	}
 
 	it('narrows a full profile', () => {

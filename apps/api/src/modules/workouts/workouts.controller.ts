@@ -1,8 +1,14 @@
 import { Controller, Delete, Get, HttpCode, HttpStatus, Param, Post, Query } from '@nestjs/common'
-import type { ExerciseStatsResponse, WorkoutResponse, WorkoutStatsResponse } from '@kus/shared'
+import type {
+	ExerciseDictionaryResponse,
+	ExerciseStatsResponse,
+	WorkoutResponse,
+	WorkoutStatsResponse,
+} from '@kus/shared'
 
 import { type AuthenticatedUser, CurrentUser } from '../../common/decorators'
 import {
+	ExerciseDictionaryQueryDto,
 	ExerciseStatsParamsDto,
 	WorkoutDayParamsDto,
 	WorkoutParamsDto,
@@ -42,6 +48,14 @@ export class WorkoutsController {
 		@Query() { period }: WorkoutStatsQueryDto,
 	): Promise<WorkoutStatsResponse> {
 		return this.statsService.getStats(user.sub, period)
+	}
+
+	@Get('exercises')
+	listExercises(
+		@CurrentUser() user: AuthenticatedUser,
+		@Query() query: ExerciseDictionaryQueryDto,
+	): Promise<ExerciseDictionaryResponse> {
+		return this.workoutsService.listExercises(user.sub, query)
 	}
 
 	@Get('exercises/:exerciseId')

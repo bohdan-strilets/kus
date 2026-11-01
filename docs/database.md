@@ -137,6 +137,7 @@ erDiagram
 - **TemplateExercise** — вправа шаблону з ціллю: `sets?`, `repsMin?`, `repsMax?`, `weightKg?`, `progressStepKg?`, `restSec?`, `durationMin?`, `distanceM?`. `name`, `kind`, `muscleGroup?` — знімок, як в `ExerciseEntry`; `exerciseId?` — `SetNull`. Значень за замовчуванням для кроку й відпочинку в БД немає (залежать від виду вправи й власної ваги): `DEFAULT_PROGRESS_STEP_KG` і `DEFAULT_REST_SEC` у `packages/shared`, ставить сервіс.
 - **Workout** (0.10.2): `templateId?` — точний незмінний шаблон, за яким тренувались (`SetNull`; ніколи не переписується), `source` (`WorkoutSource`: CHAT / LIVE / FORM, за замовчуванням CHAT).
 - **Message.programCard** (Json, nullable) — знімок пропозиції програми у відповіді на `propose_program` (форма `programCardSchema`, `v: 1`); стан картки (відкрита, прийнята, замінена, застаріла) похідний і рахується при читанні. **UserProfile.trainingOnboardingAt** — коли відповіли на запрошення онбордингу тренувань (питаємо один раз).
+- **Message.trainingOnboarding** (Json, nullable) — повідомлення Kusik онбордингу тренувань, яке веде бекенд без моделі: запрошення (`step: 0`, на відповіді ходу з першим тренуванням) або питання 1–5 (форма `trainingOnboardingSchema`, `v: 1`: `step`, `preselected`, `answer`). Тексту в питання немає — web показує його за `step` через i18n. Зберігається лише `answer`; стан (відкрите, з відповіддю, закрите) похідний і рахується при читанні.
 
 ## Індекси
 

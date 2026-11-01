@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 
 import { MessageRole } from '../../generated/prisma/client'
+import { NO_TEMPLATE_REFS } from '../programs/program-chat-context'
 import { ChatContextService } from './chat-context.service'
 
 const TODAY = new Date('2026-10-18T00:00:00Z')
@@ -40,6 +41,10 @@ interface Mocks {
 	daysKcal?: Map<string, { kcal: number; entryCount: number }>
 	goalKcal?: Map<string, number | null>
 	range?: Record<string, unknown[]>
+	/** What the programs service returns for «Program». */
+	program?: unknown
+	/** The newest card while OPEN. */
+	openCard?: unknown
 }
 
 const createService = ({
@@ -48,7 +53,10 @@ const createService = ({
 	daysKcal = new Map(),
 	goalKcal = new Map(),
 	range = {},
+	program = { program: null, pendingProgram: null, refIds: NO_TEMPLATE_REFS },
+	openCard = null,
 }: Mocks = {}) => {
+	const getProgramContext = vi.fn().mockResolvedValue(program)
 	const findContextFacts = vi.fn().mockResolvedValue({ confirmed: [], proposal: null })
 	const getEditableEntries = vi.fn().mockResolvedValue(editable)
 	const getDaysKcal = vi.fn().mockResolvedValue(daysKcal)
@@ -84,15 +92,25 @@ const createService = ({
 			}),
 		} as never,
 		{ findContextFacts } as never,
+		{ getContext: getProgramContext } as never,
+		{ findOpenCard: vi.fn().mockResolvedValue(openCard) } as never,
 	)
-	return { service, getEditableEntries, getDaysKcal, findInRange, findContextFacts }
+	return {
+		service,
+		getEditableEntries,
+		getDaysKcal,
+		findInRange,
+		findContextFacts,
+		getProgramContext,
+	}
 }
 
-const build = (service: ChatContextService) =>
+const build = (service: ChatContextService, text = '') =>
 	service.buildContext({
 		userId: 'u1',
 		timezone: 'Europe/Warsaw',
-		message: toUserMessage('m3', 'ще') as never,
+		message: toUserMessage('m3', text) as never,
+		text,
 		now: new Date('2026-10-18T10:00:00Z'),
 		localDate: TODAY,
 		memory: [],
@@ -191,5 +209,67 @@ describe('ChatContextService.buildContext other days', () => {
 			['e1', undefined],
 			['e2', '2026-10-17'],
 		])
+	})
+})
+
+const toAssistantMessage = (id: string, content: string) => ({
+	id,
+	role: MessageRole.ASSISTANT,
+	content,
+	attachments: [],
+})
+
+const PENDING_PROGRAM = { mode: 'ROTATE', perWeek: 2, title: null, templates: [] }
+
+describe('ChatContextService.buildContext «Program»', () => {
+	it('hands the open card over as the proposal and returns its refs and base version', async () => {
+		const refIds = { keys: new Map([['t1', 'key-a']]), ids: new Map(), baseVersionId: null }
+		const openCard = { v: 1, baseVersionId: null, program: { templates: [] } }
+		const { service, getProgramContext } = createService({
+			openCard,
+			program: { program: null, pendingProgram: PENDING_PROGRAM, refIds },
+		})
+
+		const { context, templateRefIds } = await build(service, 'заміни жим ногами на присідання')
+
+		expect(getProgramContext).toHaveBeenCalledWith('u1', {
+			exerciseRefs: new Map(),
+			pending: openCard.program,
+		})
+		expect(context.pendingProgram).toEqual(PENDING_PROGRAM)
+		// the proposal brings the rules with the section: no separate flag
+		expect(context.hasProgramRules).toBeUndefined()
+		expect(templateRefIds).toBe(refIds)
+	})
+
+	it('gives the rules without a program for a talk about one in the last 4 turns', async () => {
+		const { service } = createService({
+			// newest first, as the repository returns them
+			history: [
+				toAssistantMessage('m2', 'Можна 3 рази на тиждень.'),
+				toUserMessage('m1', 'скільки разів тренуватись?'),
+			],
+		})
+
+		const { context } = await build(service, 'давай так')
+
+		expect(context.hasProgramRules).toBe(true)
+		expect(context.pendingProgram).toBeUndefined()
+	})
+
+	it('gives no rules when neither the message nor the last 4 turns talk about a program', async () => {
+		const { service } = createService({
+			history: [
+				toAssistantMessage('m5', 'Записав.'),
+				toUserMessage('m4', 'чай'),
+				toAssistantMessage('m3', 'Записав.'),
+				toUserMessage('m2', 'гречка'),
+				toUserMessage('m1', 'склади програму'),
+			],
+		})
+
+		const { context } = await build(service, 'давай так')
+
+		expect(context.hasProgramRules).toBeUndefined()
 	})
 })

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { isExerciseNamed } from './exercise-names'
+import { isExerciseNamed, isSameExercise } from './exercise-names'
 
 const bench = { name: 'Жим лежачи', aliases: ['bench press'] }
 
@@ -21,5 +21,23 @@ describe('isExerciseNamed', () => {
 
 	it('ignores words shorter than three letters in the name', () => {
 		expect(isExerciseNamed('на вулиці', { name: 'Біг на місці', aliases: [] })).toBe(false)
+	})
+})
+
+describe('isSameExercise', () => {
+	it('accepts the name, a shorter or longer wording and an alias', () => {
+		expect(isSameExercise('Жим лежачи', bench)).toBe(true)
+		expect(isSameExercise('жим', bench)).toBe(true)
+		expect(isSameExercise('Жим лежачи на лаві', bench)).toBe(true)
+		expect(isSameExercise('Bench Press', bench)).toBe(true)
+	})
+
+	it('rejects a name with nothing in common, and an empty one', () => {
+		expect(isSameExercise('Присідання', bench)).toBe(false)
+		expect(isSameExercise('  ', bench)).toBe(false)
+	})
+
+	it('works for a row without aliases', () => {
+		expect(isSameExercise('Присідання', { name: 'Жим лежачи' })).toBe(false)
 	})
 })

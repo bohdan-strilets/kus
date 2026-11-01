@@ -1,4 +1,4 @@
-import { type AiReasoningMode, PROMPT_VERSION } from '@kus/shared'
+import { PROMPT_VERSION } from '@kus/shared'
 
 import { isHiddenCaseId } from './cases/private-cases.js'
 import { summarize } from './metrics.js'
@@ -15,7 +15,7 @@ import type { ModelRun } from './runner.js'
 
 export const printReport = (
 	runs: ModelRun[],
-	reasoning: AiReasoningMode,
+	reasoning: string,
 	print: (text?: string) => void,
 ): void => {
 	const summaries = runs.map((run) => summarize(run.model, run.pairs))
@@ -33,7 +33,7 @@ export const printReport = (
 		if (retries) print(`\nПомилки валідації ${run.model}:\n${retries}`)
 		print(`\n${run.model}: ${formatMixedScript(run.pairs)}`)
 		print(`\nПеревірки reply ${run.model}:\n${formatReplyChecks(run.pairs)}`)
-		if (run.skipped > 0 && !run.isSoftStopped)
+		if (run.skipped > 0 && !run.isSoftStopped && !run.isInterrupted)
 			print(`\n⚠ ${run.model}: пропущено ${run.skipped} кейсів — резерв не вміщується в --max-cost`)
 		if (run.overReserve.length > 0)
 			print(

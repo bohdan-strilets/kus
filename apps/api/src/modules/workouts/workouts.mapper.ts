@@ -90,6 +90,7 @@ const toResponse = (
 	isEdited: workout.editedAt !== null,
 	isDeleted: workout.deletedAt !== null,
 	finishedAt: workout.finishedAt?.toISOString() ?? null,
+	templateName: workout.template?.name ?? null,
 	estimatedDurationMin: getEstimatedDurationMin({
 		durationMin: workout.durationMin,
 		finishedAt: workout.finishedAt,

@@ -16,7 +16,13 @@ import { dayVerdictSchema } from './day-verdict.js'
 import { factProposalSchema } from './facts.js'
 import { measurementCardSchema } from './measurements.js'
 import { PHOTOS_PER_MESSAGE_LIMIT } from './photo-limits.js'
+import { programCardSchema, programCardStateSchema } from './programs.js'
 import { statsCardSchema } from './stats-card.js'
+import {
+	onboardingAnswerRequestSchema,
+	trainingOnboardingSchema,
+	trainingOnboardingStateSchema,
+} from './training-onboarding.js'
 import { workoutCardSchema, workoutResponseSchema } from './workouts.js'
 
 export const MESSAGE_TEXT_MAX_LENGTH = 2000
@@ -44,6 +50,7 @@ export const sendMessagePhotoSchema = z.object({
 export type SendMessagePhoto = z.infer<typeof sendMessagePhotoSchema>
 
 export const PHOTO_AND_PHOTO_IDS_EXCLUSIVE = 'PHOTO_AND_PHOTO_IDS_EXCLUSIVE'
+export const ONBOARDING_ANSWER_TEXT_ONLY = 'ONBOARDING_ANSWER_TEXT_ONLY'
 
 /**
  * Body of POST /messages: words, photos, or both. `clientMessageId` makes a resend (double tap,
@@ -62,6 +69,8 @@ export const sendMessageRequestSchema = z
 			.transform((text) => (text === '' ? undefined : text)),
 		photo: sendMessagePhotoSchema.optional(),
 		photoIds: z.array(z.uuid()).min(1).max(PHOTOS_PER_MESSAGE_LIMIT).optional(),
+		/** A button of the training onboarding; `text` carries the label(s) the chat shows. */
+		onboardingAnswer: onboardingAnswerRequestSchema.optional(),
 	})
 	.refine(
 		(request) =>
@@ -72,6 +81,12 @@ export const sendMessageRequestSchema = z
 		message: PHOTO_AND_PHOTO_IDS_EXCLUSIVE,
 		path: ['photoIds'],
 	})
+	.refine(
+		(request) =>
+			request.onboardingAnswer === undefined ||
+			(request.text !== undefined && request.photo === undefined && request.photoIds === undefined),
+		{ message: ONBOARDING_ANSWER_TEXT_ONLY, path: ['onboardingAnswer'] },
+	)
 
 export type SendMessageRequest = z.infer<typeof sendMessageRequestSchema>
 
@@ -262,6 +277,20 @@ export const chatMessageSchema = z.object({
 	 * and when the card cannot be read (the message stays, with its reply text).
 	 */
 	statsCard: statsCardSchema.nullable().default(null).catch(null),
+	/**
+	 * propose_program replies and rebased cards only: the proposed program and what it changes. null
+	 * elsewhere, in payloads of older servers and when the card cannot be read.
+	 */
+	programCard: programCardSchema.nullable().default(null).catch(null),
+	/** With programCard only: what became of the card, derived when the chat is read. */
+	programCardState: programCardStateSchema.nullable().default(null).catch(null),
+	/**
+	 * Kusik's training onboarding messages only: the invitation or a question (its text comes from
+	 * i18n by `step`, `content` is null). null elsewhere and in payloads of older servers.
+	 */
+	trainingOnboarding: trainingOnboardingSchema.nullable().default(null).catch(null),
+	/** With trainingOnboarding only: open, answered or passed by, derived when the chat is read. */
+	trainingOnboardingState: trainingOnboardingStateSchema.nullable().default(null).catch(null),
 	/**
 	 * Replies only, live (the response of the turn): the foods this turn saved to memory. Not stored:
 	 * after a reload only the reply text remains. Empty in payloads of older servers.

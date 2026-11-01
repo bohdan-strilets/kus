@@ -510,25 +510,28 @@ model Achievement {
 
 // One continuous chat per user, so there is no Conversation model
 model Message {
-  id              String        @id @default(uuid(7)) @db.Uuid
-  userId          String        @map("user_id") @db.Uuid
-  role            MessageRole
+  id                 String        @id @default(uuid(7)) @db.Uuid
+  userId             String        @map("user_id") @db.Uuid
+  role               MessageRole
   // null for a photo-only message
-  content         String?
-  status          MessageStatus
+  content            String?
+  status             MessageStatus
   // set by the client for idempotency; assistant messages have none (NULLs don't collide in the unique index)
-  clientMessageId String?       @map("client_message_id")
+  clientMessageId    String?       @map("client_message_id")
   // assistant reply → user message it answers
-  replyToId       String?       @map("reply_to_id") @db.Uuid
+  replyToId          String?       @map("reply_to_id") @db.Uuid
   // assistant reply to show_day: the day card as it was when written (a snapshot, never refreshed)
-  dayCard         Json?         @map("day_card")
+  dayCard            Json?         @map("day_card")
   // assistant reply to show_stats: the week or month card as it was when written (a snapshot, never refreshed)
-  statsCard       Json?         @map("stats_card")
+  statsCard          Json?         @map("stats_card")
   // assistant reply to propose_program: the proposed program and its diff as they were when written (a snapshot;
   // the card state - open, accepted, replaced, outdated - is derived on read)
-  programCard     Json?         @map("program_card")
-  createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt       DateTime      @updatedAt @map("updated_at") @db.Timestamptz
+  programCard        Json?         @map("program_card")
+  // Kusik's training onboarding message: the invitation (step 0) or a question (1-5) and the stored answer
+  // (form trainingOnboardingSchema in packages/shared); open / answered / closed is derived on read
+  trainingOnboarding Json?         @map("training_onboarding")
+  createdAt          DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime      @updatedAt @map("updated_at") @db.Timestamptz
 
   user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   replyTo            Message?            @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)

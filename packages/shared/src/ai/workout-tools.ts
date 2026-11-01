@@ -8,6 +8,8 @@ import { exerciseKindSchema, muscleGroupSchema } from '../schemas/enums.js'
 /** Refs the backend gives today's workouts and the dictionary exercises named in the message. */
 export const WORKOUT_REF_PATTERN = /^w\d{1,3}$/
 export const EXERCISE_REF_PATTERN = /^x\d{1,3}$/
+/** Refs the backend gives the templates of the active program, by position («Program»). */
+export const TEMPLATE_REF_PATTERN = /^t\d{1,2}$/
 
 /** A group fix of an exercise from «Exercises»: `x1:LEGS`. Only the format, to keep the prefix short; the parser checks the group. */
 export const EXERCISE_GROUP_FIX_PATTERN = /^x\d+:[A-Z]+$/
@@ -29,20 +31,14 @@ const MAX_SET_COUNT = 30
 const MAX_EXERCISE_NAME_LENGTH = 80
 
 export const workoutSetSchema = z.object({
-	reps: z
-		.int()
-		.min(1)
-		.max(MAX_SET_REPS)
-		.nullable()
-		.default(null)
-		.describe('Per set; null if not said'),
+	reps: z.int().min(1).max(MAX_SET_REPS).nullable().default(null).describe('Per set, if said'),
 	weightKg: z
 		.number()
 		.min(0)
 		.max(MAX_SET_WEIGHT_KG)
 		.nullable()
 		.default(null)
-		.describe('Bar or machine kg, not food; null if none'),
+		.describe('Bar or machine kg, not food; none for bodyweight exercises'),
 	count: z.int().min(1).max(MAX_SET_COUNT).default(1).describe('Sets in this group'),
 	isWarmup: z.boolean().default(false).describe('Warm-up set'),
 })
@@ -61,7 +57,7 @@ export const workoutExerciseSchema = z.object({
 		.regex(EXERCISE_REF_PATTERN)
 		.nullable()
 		.default(null)
-		.describe('x-ref from "Exercises" if the same exercise; else null'),
+		.describe('x-ref from "Exercises", only if the same exercise'),
 	kind: exerciseKindSchema.describe(
 		'STRENGTH: sets. CARDIO: minutes or distance. OTHER: anything else',
 	),
@@ -78,14 +74,14 @@ export const workoutExerciseSchema = z.object({
 		.max(MAX_WORKOUT_MINUTES)
 		.nullable()
 		.default(null)
-		.describe('Cardio minutes; else null'),
+		.describe('Cardio minutes, if said'),
 	distanceKm: z
 		.number()
 		.positive()
 		.max(MAX_DISTANCE_KM)
 		.nullable()
 		.default(null)
-		.describe('Km; else null'),
+		.describe('Km, if said'),
 })
 
 export type WorkoutExerciseInput = z.infer<typeof workoutExerciseSchema>

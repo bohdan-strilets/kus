@@ -20,6 +20,11 @@ import { AchievementsService } from '../achievements/achievements.service'
 import { EntriesService } from '../entries/entries.service'
 import { FactsService } from '../facts/facts.service'
 import { ChatMeasurementCardsService } from './chat-measurement-cards.service'
+import { ChatProgramCardsService, type ProgramCardView } from './chat-program-cards.service'
+import {
+	ChatTrainingOnboardingViewsService,
+	type OnboardingView,
+} from './chat-training-onboarding-views.service'
 import { InvalidCursorException } from './chat.exceptions'
 import {
 	type ClarificationWithEntries,
@@ -62,6 +67,10 @@ interface ChatMessageExtras {
 	statsCards: Map<string, StatsCard>
 	/** By the user message whose reply proposed or saved the fact. */
 	factProposals: Map<string, FactProposal>
+	/** By the assistant message that holds them. */
+	programCards: Map<string, ProgramCardView>
+	/** By the assistant message that holds them. */
+	onboarding: Map<string, OnboardingView>
 }
 
 const toChatMessage = (
@@ -75,6 +84,8 @@ const toChatMessage = (
 		dayCards,
 		statsCards,
 		factProposals,
+		programCards,
+		onboarding,
 	}: ChatMessageExtras,
 ): ChatMessage => {
 	const isAssistant = message.role === MessageRole.ASSISTANT
@@ -110,6 +121,10 @@ const toChatMessage = (
 		achievements: isAssistant ? (achievements.get(message.id) ?? []) : [],
 		dayCard: dayCards.get(message.id) ?? null,
 		statsCard: statsCards.get(message.id) ?? null,
+		programCard: programCards.get(message.id)?.card ?? null,
+		programCardState: programCards.get(message.id)?.state ?? null,
+		trainingOnboarding: onboarding.get(message.id)?.payload ?? null,
+		trainingOnboardingState: onboarding.get(message.id)?.state ?? null,
 		// saved foods are live only (the response of the turn adds them)
 		savedFoods: [],
 		factProposal:
@@ -130,28 +145,40 @@ export class ChatFeedService {
 		private readonly achievementsService: AchievementsService,
 		private readonly workoutsTurn: WorkoutsTurnService,
 		private readonly factsService: FactsService,
+		private readonly programCards: ChatProgramCardsService,
+		private readonly trainingOnboarding: ChatTrainingOnboardingViewsService,
 	) {}
 
 	async toChatMessages(userId: string, messages: MessageWithAttachments[]): Promise<ChatMessage[]> {
 		const replies = messages.filter((message) => message.role === MessageRole.ASSISTANT)
 		const sourceIds = replies.flatMap((message) => (message.replyToId ? [message.replyToId] : []))
-		const [meals, workouts, clarifications, measurements, achievements, factProposals] =
-			await Promise.all([
-				this.entriesService.getLoggedMealsByMessage(userId, sourceIds),
-				this.workoutsTurn.getByMessages(userId, sourceIds),
-				replies.length > 0
-					? this.clarificationsRepository.findClarifications({
-							userId,
-							messageIds: replies.map((message) => message.id),
-						})
-					: Promise.resolve([]),
-				this.measurementCards.getCardsByMessage(userId, sourceIds),
-				this.achievementsService.findByMessages(
-					userId,
-					replies.map((message) => message.id),
-				),
-				this.findFactProposals(userId, sourceIds),
-			])
+		const [
+			meals,
+			workouts,
+			clarifications,
+			measurements,
+			achievements,
+			factProposals,
+			programCards,
+			onboarding,
+		] = await Promise.all([
+			this.entriesService.getLoggedMealsByMessage(userId, sourceIds),
+			this.workoutsTurn.getByMessages(userId, sourceIds),
+			replies.length > 0
+				? this.clarificationsRepository.findClarifications({
+						userId,
+						messageIds: replies.map((message) => message.id),
+					})
+				: Promise.resolve([]),
+			this.measurementCards.getCardsByMessage(userId, sourceIds),
+			this.achievementsService.findByMessages(
+				userId,
+				replies.map((message) => message.id),
+			),
+			this.findFactProposals(userId, sourceIds),
+			this.programCards.getByMessages(userId, replies),
+			this.trainingOnboarding.getViews(userId, replies),
+		])
 		const dayCards = this.readDayCards(replies)
 		const statsCards = this.readStatsCards(replies)
 		return messages.map((message) =>
@@ -164,6 +191,8 @@ export class ChatFeedService {
 				dayCards,
 				statsCards,
 				factProposals,
+				programCards,
+				onboarding,
 			}),
 		)
 	}

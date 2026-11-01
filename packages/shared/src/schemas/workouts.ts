@@ -70,6 +70,8 @@ export const workoutResponseSchema = z.object({
 	isDeleted: z.boolean().default(false),
 	/** When the session was finished («все»); null while it is open. */
 	finishedAt: z.iso.datetime().nullable().default(null),
+	/** The program template it was done by, its name in that version («· Тренування А»); null when none. */
+	templateName: z.string().nullable().default(null),
 	/**
 	 * Minutes from the first logged exercise to the finish (or the last exercise) when no duration was
 	 * named and the session spans at least 10 minutes — the UI shows «≈ N хв»; null otherwise.

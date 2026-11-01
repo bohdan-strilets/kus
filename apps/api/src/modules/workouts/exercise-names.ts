@@ -3,6 +3,23 @@ import { normalizeExerciseName } from '@kus/shared'
 const STEM_LENGTH = 5
 const MIN_WORD_LENGTH = 3
 
+/**
+ * Whether the name the model wrote can be the dictionary exercise it pointed at by x-ref: the name
+ * or an alias contains it or is contained in it («жим» for «Жим лежачи»). Nothing in common = the
+ * model took the wrong ref, and the name decides.
+ */
+export const isSameExercise = (
+	givenName: string,
+	{ name, aliases }: { name: string; aliases?: readonly string[] },
+): boolean => {
+	const given = normalizeExerciseName(givenName)
+	if (!given) return false
+	return [name, ...(aliases ?? [])].some((candidate) => {
+		const known = normalizeExerciseName(candidate)
+		return known !== '' && (known.includes(given) || given.includes(known))
+	})
+}
+
 const tokenize = (text: string): string[] => normalizeExerciseName(text).split(' ').filter(Boolean)
 
 /**

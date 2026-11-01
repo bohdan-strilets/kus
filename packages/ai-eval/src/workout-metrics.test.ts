@@ -42,6 +42,7 @@ const workout = (overrides: Partial<LoggedWorkout> = {}): LoggedWorkout => ({
 	kcalBurned: null,
 	replaceRef: null,
 	appendRef: null,
+	templateRef: null,
 	finish: false,
 	exerciseGroups: [],
 	exercises: [bench()],
@@ -54,6 +55,14 @@ const expected = (overrides: Partial<ExpectedWorkout> = {}): ExpectedWorkout => 
 })
 
 describe('isWorkoutsCorrect', () => {
+	it('checks the template binding: a t-ref, or null for none', () => {
+		const bound = workout({ templateRef: 't2' })
+		expect(isWorkoutsCorrect([expected({ templateRef: 't2' })], [bound])).toBe(true)
+		expect(isWorkoutsCorrect([expected({ templateRef: 't1' })], [bound])).toBe(false)
+		expect(isWorkoutsCorrect([expected({ templateRef: null })], [bound])).toBe(false)
+		expect(isWorkoutsCorrect([expected({ templateRef: null })], [workout()])).toBe(true)
+	})
+
 	it('accepts exactly the expected workout', () => {
 		expect(isWorkoutsCorrect([expected()], [workout()])).toBe(true)
 	})
@@ -196,6 +205,7 @@ describe('getLoggedWorkouts', () => {
 		kcalBurned: null,
 		replaceRef: null,
 		appendRef: null,
+		templateRef: null,
 		finish: false,
 		exerciseGroups: [],
 		reply: 'ок',

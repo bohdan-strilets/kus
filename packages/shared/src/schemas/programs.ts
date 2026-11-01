@@ -75,6 +75,8 @@ export const programDraftSchema = z.object({
 	mode: programModeSchema,
 	perWeek: optionalInt(1, PROGRAM_PER_WEEK_MAX),
 	templates: z.array(programTemplateSchema).min(1).max(PROGRAM_TEMPLATES_MAX),
+	/** The key of the template mode SINGLE always offers; not part of the diff. */
+	pinnedKey: z.uuid().nullable().default(null),
 })
 export type ProgramDraft = z.infer<typeof programDraftSchema>
 
@@ -129,3 +131,17 @@ export const programCardSchema = z.object({
 	changes: programChangesSchema,
 })
 export type ProgramCard = z.infer<typeof programCardSchema>
+
+/**
+ * Derived when the chat is read, never stored: ACCEPTED — a version came from this card; REPLACED —
+ * a newer card exists; OUTDATED — the program moved on (or was removed) since the card was made.
+ */
+export const programCardStatusSchema = z.enum(['OPEN', 'ACCEPTED', 'REPLACED', 'OUTDATED'])
+export type ProgramCardStatus = z.infer<typeof programCardStatusSchema>
+
+export const programCardStateSchema = z.object({
+	status: programCardStatusSchema,
+	/** ACCEPTED only: when the version was made («✓ Прийнято · версія від 31.10»). */
+	versionCreatedAt: z.iso.datetime().nullable(),
+})
+export type ProgramCardState = z.infer<typeof programCardStateSchema>

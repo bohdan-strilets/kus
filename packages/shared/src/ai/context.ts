@@ -10,6 +10,11 @@ import {
 import { type EarlierEntryContext, formatEarlierEntries } from './history-context.js'
 import type { MeasurementPoint } from './measurements.js'
 import { type FactContext, formatFacts, toContextText } from './memory-context.js'
+import {
+	formatProgramSection,
+	type ProgramContext,
+	type ProgramProposalContext,
+} from './program-context.js'
 import { SYSTEM_PROMPT } from './prompt.js'
 import type { ExerciseContext, TodayWorkoutContext } from './workout-context.js'
 
@@ -145,6 +150,14 @@ export interface FoodParseContext {
 	proposedFact?: string | null
 	/** Only for a message that points back («як вчора»); no section when omitted or empty. */
 	earlier?: EarlierEntryContext[]
+	/** The active program; with it the «Program» section is always there. */
+	program?: ProgramContext | null
+	/** The open card's proposal (not accepted yet); changes are built on it. */
+	pendingProgram?: ProgramProposalContext | null
+	/** No program, but the message talks about one: the «Program» rules alone. */
+	hasProgramRules?: boolean
+	/** The last step of the training onboarding: its answers, formatted; asks for a program. */
+	programOnboarding?: string | null
 	/** Oldest first. */
 	history: HistoryTurn[]
 }
@@ -284,6 +297,7 @@ export const formatContext = (context: FoodParseContext): string => {
 		...formatRecentMeasurements(context.measurements.recent ?? []),
 		memory,
 		...formatFacts(context.facts ?? [], context.proposedFact ?? null),
+		...formatProgramSection(context),
 		...formatEarlierEntries(context.earlier ?? []),
 	].join('\n')
 }

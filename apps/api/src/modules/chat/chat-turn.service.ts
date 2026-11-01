@@ -32,6 +32,12 @@ import type { LogEntriesParams, MealEntryInput, NewFoodEntry } from '../entries/
 import { MemoryService, type RelevantFoods } from '../memory/memory.service'
 import { ChatTurnMemoryService, type SavedFoodRef } from './chat-turn-memory.service'
 import { ProgressStatsService } from '../progress/progress-stats.service'
+import { NO_TEMPLATE_REFS, type TemplateRefIds } from '../programs/program-chat-context'
+import {
+	ProgramProposalsService,
+	type ProposalCardResult,
+} from '../programs/program-proposals.service'
+import { PROGRAM_BASE_CHANGED_REPLY, PROGRAM_UNCHANGED_REPLY } from './chat.constants'
 import { ChatCloseDayService } from './chat-close-day.service'
 import { ChatDayCardService } from './chat-day-card.service'
 import { ChatEditsService, type EditedMessages, NO_EDITED_MESSAGES } from './chat-edits.service'
@@ -43,6 +49,8 @@ import {
 import { ChatTurnMeasurementsService } from './chat-turn-measurements.service'
 import { ChatRepository, type MessageWithAttachments } from './chat.repository'
 import type { PhotoPayload } from '../../common/photo'
+import { ChatTrainingOnboardingAnswersService } from './chat-training-onboarding-answers.service'
+import type { OnboardingAnswer } from './training-onboarding-question'
 import { ClarificationsRepository } from './clarifications.repository'
 import type { EditRefIds } from './edit-context'
 import type { CopyRefIds } from './history-context'
@@ -58,6 +66,8 @@ export interface TurnParams {
 	photo?: PhotoPayload
 	now: Date
 	localDate: Date
+	/** The last answer of the training onboarding: stored with the turn, its five answers go to «Program». */
+	onboardingAnswer?: OnboardingAnswer
 }
 
 /** What an edited turn changed, and the messages whose measurement card a new value replaced. */
@@ -96,6 +106,8 @@ const getReplyText = (decision: FoodParseDecision): string => {
 			return decision.reply
 		case 'reply':
 			return decision.text
+		case 'program':
+			return decision.program.reply
 	}
 }
 
@@ -156,10 +168,12 @@ export class ChatTurnService {
 		private readonly progressStats: ProgressStatsService,
 		private readonly workoutsTurn: WorkoutsTurnService,
 		private readonly turnMemory: ChatTurnMemoryService,
+		private readonly programProposals: ProgramProposalsService,
+		private readonly trainingOnboarding: ChatTrainingOnboardingAnswersService,
 	) {}
 
 	async saveDecision(
-		{ userId, timezone, message, photo, now, localDate }: TurnParams,
+		{ userId, timezone, message, photo, now, localDate, onboardingAnswer }: TurnParams,
 		decision: FoodParseDecision,
 		{
 			memory,
@@ -167,6 +181,7 @@ export class ChatTurnService {
 			workoutRefIds = NO_WORKOUT_REFS,
 			copyRefIds,
 			factRefIds = NO_FACT_REFS,
+			templateRefIds = NO_TEMPLATE_REFS,
 		}: {
 			memory: RelevantFoods
 			refIds: EditRefIds
@@ -175,14 +190,30 @@ export class ChatTurnService {
 			copyRefIds: CopyRefIds
 			/** `f1…` → fact ids; omitted where the context had no facts. */
 			factRefIds?: ReadonlyMap<string, string>
+			/** `t1…` of «Program»; omitted where the context had no program. */
+			templateRefIds?: TemplateRefIds
 		},
 	): Promise<TurnResult> {
 		// the numbers of the card are counted before the turn is written; a card is a snapshot anyway
 		const dayCard = await this.buildDayCard({ userId, message, now, localDate }, decision)
 		const statsCard = await this.buildStatsCard({ userId, localDate }, decision)
-		// nothing logged in the period: the model's text would talk about a card that is not there
+		const proposal = await this.buildProgramCard(userId, decision, {
+			templateRefIds,
+			workoutRefIds,
+		})
+		const programCard = proposal?.status === 'CARD' ? proposal.card : undefined
+		const templateIds = await this.resolveTemplateIds(userId, decision, templateRefIds)
+		// nothing logged in the period: the model's text would talk about a card that is not there;
+		// a program that already is what the model proposed, or that changed in the editor since the
+		// model saw it, gets no card and a sentence of our own
 		const replyText =
-			decision.kind === 'stats' && !statsCard ? STATS_EMPTY_REPLY : getReplyText(decision)
+			decision.kind === 'stats' && !statsCard
+				? STATS_EMPTY_REPLY
+				: proposal?.status === 'UNCHANGED'
+					? PROGRAM_UNCHANGED_REPLY
+					: proposal?.status === 'BASE_CHANGED'
+						? PROGRAM_BASE_CHANGED_REPLY
+						: getReplyText(decision)
 		const memoryTurn: MemoryTurn | null =
 			(decision.kind === 'log' || decision.kind === 'reply' || decision.kind === 'edit') &&
 			hasMemoryActions(decision.memory)
@@ -196,11 +227,13 @@ export class ChatTurnService {
 					replyText,
 					dayCard,
 					statsCard,
+					programCard,
 				},
 				tx,
 			)
 			// a resend of a stale turn finished it meanwhile; roll back instead of logging food twice
 			if (!reply) throw new MessageInProgressException()
+			if (onboardingAnswer) await this.trainingOnboarding.storeAnswer(userId, onboardingAnswer, tx)
 			if (photo) {
 				await this.chatRepository.setAttachmentStatus(
 					{
@@ -255,9 +288,11 @@ export class ChatTurnService {
 						localDate,
 						workouts: decision.workouts,
 						refIds: workoutRefIds,
+						templateIds,
 					},
 					tx,
 				)
+				await this.trainingOnboarding.offerAfterWorkout({ userId, replyId: reply.id }, tx)
 				return {
 					...NO_EDITED_MESSAGES,
 					sourceMessageIds,
@@ -343,10 +378,14 @@ export class ChatTurnService {
 								localDate,
 								workouts: decision.workouts,
 								refIds: workoutRefIds,
+								templateIds,
 							},
 							tx,
 						)
 					: { sourceMessageIds: [], hasNewRecord: false }
+			if (decision.workouts.length > 0) {
+				await this.trainingOnboarding.offerAfterWorkout({ userId, replyId: reply.id }, tx)
+			}
 			const replaced = await this.saveMeasurements(
 				{ userId, timezone, message, now, localDate },
 				decision,
@@ -413,6 +452,52 @@ export class ChatTurnService {
 			await this.chatRepository.setReplyContent({ userId, id: replyId, content }, tx)
 		}
 		return result.savedFoods
+	}
+
+	/** propose_program only (undefined otherwise), against the version the turn's context showed. */
+	private async buildProgramCard(
+		userId: string,
+		decision: FoodParseDecision,
+		{
+			templateRefIds,
+			workoutRefIds,
+		}: { templateRefIds: TemplateRefIds; workoutRefIds: WorkoutRefIds },
+	): Promise<ProposalCardResult | undefined> {
+		if (decision.kind !== 'program') return undefined
+		return this.programProposals.buildProposalCard(userId, decision.program, {
+			refs: { templateKeys: templateRefIds.keys, exerciseIds: workoutRefIds.exercises },
+			contextVersionId: templateRefIds.baseVersionId,
+		})
+	}
+
+	/**
+	 * log_workout.templateRef → the template id the turn's context gave it, only while it is still in
+	 * the active version (workouts never read programs: the chat hands the checked id over).
+	 */
+	private async resolveTemplateIds(
+		userId: string,
+		decision: FoodParseDecision,
+		{ ids }: TemplateRefIds,
+	): Promise<ReadonlyMap<string, string>> {
+		const workouts = decision.kind === 'workout' || decision.kind === 'log' ? decision.workouts : []
+		const refs = [...new Set(workouts.flatMap(({ templateRef }) => templateRef ?? []))]
+		const byRef = refs.flatMap((ref) => {
+			const id = ids.get(ref)
+			return id ? [[ref, id] as const] : []
+		})
+		// a t-ref of the open proposal only: no template of the active version stands behind it
+		const unbound = refs.filter((ref) => !ids.has(ref))
+		if (unbound.length > 0) {
+			this.logger.warn(
+				`Template ref not in the active program user=${userId} refs=${unbound.join(',')}`,
+			)
+		}
+		if (byRef.length === 0) return new Map()
+		const live = await this.programProposals.resolveTemplateIds(
+			userId,
+			byRef.map(([, id]) => id),
+		)
+		return new Map(byRef.filter(([, id]) => live.has(id)))
 	}
 
 	/** show_day only; null when the day is empty (the reply stays a text). */

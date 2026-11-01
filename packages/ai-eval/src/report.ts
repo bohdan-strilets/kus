@@ -11,6 +11,7 @@ import {
 	getErrorPct,
 	isCallDetailsCorrect,
 	isCaseMeasurementsCorrect,
+	isCaseProgramCorrect,
 	isCaseWorkoutsCorrect,
 	isDecisionCorrect,
 	isEditsCorrect,
@@ -37,8 +38,8 @@ const formatRate = ({ correct, total }: RateStats): string =>
 
 export const formatSummaryTable = (summaries: ModelSummary[]): string => {
 	const header = [
-		'| Модель | ккал точні: сер / мед | ккал діапазон | білок точні | білок діапазон | категорії | прийоми | правки | виміри | тренування | пам’ять | дні й деталі | джерела | рішення | без інструмента | повтор / збій / обрізано | $/запит | мс p50 / p95 | токени in / out | cached/запит |',
-		'|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|',
+		'| Модель | ккал точні: сер / мед | ккал діапазон | білок точні | білок діапазон | категорії | прийоми | правки | виміри | тренування | програми | пам’ять | дні й деталі | джерела | рішення | без інструмента | повтор / збій / обрізано | $/запит | мс p50 / p95 | токени in / out | cached/запит |',
+		'|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|',
 	]
 	const rows = summaries.map((summary) => {
 		const { inputPerCase, outputPerCase, cachedPerCase } = summary.tokens
@@ -54,6 +55,7 @@ export const formatSummaryTable = (summaries: ModelSummary[]): string => {
 			formatRate(summary.edits),
 			formatRate(summary.measurements),
 			formatRate(summary.workouts),
+			formatRate(summary.program),
 			formatRate(summary.memory),
 			formatRate(summary.details),
 			formatRate(summary.sources),
@@ -137,6 +139,13 @@ const describeMiss = (evalCase: EvalCase, result: CaseResult): Miss[] => {
 		// exercise names of a private or hold-out case stay out of the terminal
 		const got = isHiddenCaseId(evalCase.id) ? '…' : JSON.stringify(result.workouts)
 		misses.push({ caseId: evalCase.id, issue: `рішення: тренування ${got}`, errorPct: null })
+	}
+	if (!isCaseProgramCorrect(evalCase, result)) {
+		misses.push({
+			caseId: evalCase.id,
+			issue: `рішення: програма ${JSON.stringify(result.program)}`,
+			errorPct: null,
+		})
 	}
 	if (hasMemoryExpectations(evalCase) && !isCaseMemoryCorrect(evalCase, result)) {
 		const { savedFoods, facts, forgets } = result.calls

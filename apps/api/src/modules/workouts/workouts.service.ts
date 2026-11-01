@@ -19,6 +19,7 @@ export interface ExerciseRow {
 	name: string
 	kind: ExerciseKind
 	muscleGroup: MuscleGroup | null
+	aliases?: readonly string[]
 }
 
 export interface ExerciseToResolve {
@@ -53,6 +54,12 @@ export class WorkoutsService {
 			localDate: toDbDate(localDate),
 		})
 		return workouts.map(toWorkoutResponse)
+	}
+
+	/** Exactly one live workout: the one just logged is the user's first ever. */
+	async hasOnlyOneWorkout(userId: string, tx?: Prisma.TransactionClient): Promise<boolean> {
+		const count = await this.workoutsRepository.countLive({ userId, upTo: 2 }, tx)
+		return count === 1
 	}
 
 	/** The workouts of the days `from … to`, newest first: the tab groups them by day. */
@@ -102,6 +109,26 @@ export class WorkoutsService {
 		const known = await this.workoutsRepository.findExerciseByName({ userId, nameNormalized }, tx)
 		if (known) return known
 		return this.workoutsRepository.createExercise({ userId, name, nameNormalized, kind }, tx)
+	}
+
+	/** The dictionary rows with these names or aliases, in the same order; null where none. Never creates. */
+	async findExercisesByNames(
+		userId: string,
+		names: readonly string[],
+	): Promise<(ExerciseRow | null)[]> {
+		return Promise.all(
+			names.map((name) =>
+				this.workoutsRepository.findExerciseByName({
+					userId,
+					nameNormalized: normalizeExerciseName(name),
+				}),
+			),
+		)
+	}
+
+	/** The user's own live dictionary rows among `ids`; others' and deleted ones are absent. */
+	findExercisesByIds(userId: string, ids: string[]): Promise<ExerciseRow[]> {
+		return this.workoutsRepository.findExercisesByIds({ userId, ids })
 	}
 
 	/**

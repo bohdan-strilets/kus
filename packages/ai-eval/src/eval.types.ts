@@ -4,6 +4,8 @@ import type {
 	ForgetFactInput,
 	MeasurementKind,
 	MuscleGroup,
+	ProgramMode,
+	RawToolCall,
 	SaveFactInput,
 	SaveFoodInput,
 	WorkoutPlace,
@@ -20,6 +22,7 @@ export type ActualDecision =
 	| 'close_day'
 	| 'stats'
 	| 'workout'
+	| 'program'
 	| 'error'
 
 export interface ValidationAttempt {
@@ -28,6 +31,16 @@ export interface ValidationAttempt {
 	callNames: string[]
 	/** parseToolCalls error texts (code-generated, cut to 200 chars; no user message content). */
 	errors: string[]
+}
+
+/** One model answer as returned: the input of --rescore (no request, no prompt). */
+export interface RawAttempt {
+	/** Name + the raw JSON arguments string, exactly as the model sent them. */
+	toolCalls: RawToolCall[]
+	/** The text content of the answer, if any. */
+	text: string | null
+	/** Cut at max_tokens: such an answer is never retried or parsed. */
+	isTruncated: boolean
 }
 
 /** What the raw tool calls say about days; the newer tools are matched by name, not by shared types. */
@@ -72,6 +85,8 @@ export interface CaseResult {
 	measurements: MeasuredItem[]
 	/** What log_workout recorded; empty when nothing was. */
 	workouts: LoggedWorkout[]
+	/** What propose_program carried; null when it was not called. */
+	program: LoggedProgram | null
 	/** Days named by log_food, show_day and delete_measurement. */
 	calls: CallFacts
 	costUsd: number
@@ -91,6 +106,8 @@ export interface CaseResult {
 	validationErrors: ValidationAttempt[]
 	/** Words in the reply that mix Cyrillic and Latin letters. */
 	mixedScriptWords: string[]
+	/** Every model answer of the case, in order; absent in results saved before --rescore existed. */
+	rawAttempts?: RawAttempt[]
 }
 
 export interface ClarifyCall {
@@ -140,10 +157,32 @@ export interface LoggedWorkout {
 	replaceRef: string | null
 	/** The w-ref this call adds to; null = a new workout or a replace. */
 	appendRef: string | null
+	/** The t-ref of «Program» the workout is bound to; null = not bound. */
+	templateRef: string | null
 	finish: boolean
 	/** Group fixes of exercises from «Exercises»: `x1:LEGS`. */
 	exerciseGroups: string[]
 	exercises: LoggedWorkoutExercise[]
+}
+
+export interface LoggedProgramExercise {
+	name: string
+	weightKg: number | null
+}
+
+export interface LoggedProgramTemplate {
+	/** The t-ref the model kept; null = a new template. */
+	ref: string | null
+	name: string
+	weekdays: number[]
+	exercises: LoggedProgramExercise[]
+}
+
+/** What propose_program carried, as the model sent it. */
+export interface LoggedProgram {
+	mode: ProgramMode
+	pinnedRef: string | null
+	templates: LoggedProgramTemplate[]
 }
 
 export interface EditResult {
@@ -204,6 +243,8 @@ export interface ModelSummary {
 	measurements: RateStats
 	/** Cases with expected trainings whose logged set matched exactly (none expected = none logged). */
 	workouts: RateStats
+	/** Cases with an expected program whose proposal matched in every field. */
+	program: RateStats
 	/** Cases with expected memory calls or items from a saved food whose calls all matched. */
 	memory: RateStats
 	/** Cases with expected log/item/card/deleted days or item count whose calls all matched. */

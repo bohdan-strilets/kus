@@ -14,3 +14,13 @@ export const EARLIER_YESTERDAY_FETCH_ENTRIES = 50
 
 /** Newest entries of the last month scanned for the food a message names; the name match narrows them. */
 export const EARLIER_RECENT_SCAN_MAX_ENTRIES = 400
+
+/** Kusik's reply when a proposed program is exactly the active one (no card). */
+export const PROGRAM_UNCHANGED_REPLY = 'Це вже так у програмі.'
+
+/** Kusik's message with a card recounted against the current program («Перерахувати»). */
+export const PROGRAM_REBASED_REPLY = 'Перерахував від поточної програми.'
+
+/** Kusik's reply, no card: the program changed in the editor after the model read it. */
+export const PROGRAM_BASE_CHANGED_REPLY =
+	'Програму щойно змінено в редакторі — напиши ще раз, що змінити.'

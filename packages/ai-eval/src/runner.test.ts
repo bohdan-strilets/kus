@@ -65,6 +65,25 @@ describe('runModel with a hard budget', () => {
 		expect(result.skipped).toBe(3)
 	})
 
+	it('starts 2 cases under 0.1 with a history-based reserve (cold first case, then cached)', async () => {
+		runCaseMock.mockResolvedValue(costing(0.008))
+		const budget = { spentUsd: 0, maxUsd: 0.1, reservedUsd: 0 }
+
+		const result = await run(makeCases(2), budget, 0.02)
+
+		expect(runCaseMock).toHaveBeenCalledTimes(2)
+		expect(result.skipped).toBe(0)
+	})
+
+	it('reserves the cold start for the first case only', async () => {
+		const budget = { spentUsd: 0, maxUsd: 0.06, reservedUsd: 0 }
+
+		const result = await run(makeCases(2), budget, 0.02)
+
+		expect(runCaseMock).not.toHaveBeenCalled()
+		expect(result.skipped).toBe(2)
+	})
+
 	it('never lets parallel cases reserve more than the limit', async () => {
 		let running = 0
 		let peak = 0
@@ -171,5 +190,38 @@ describe('createProgressReporter', () => {
 		expect(lines[0]).toContain('25 %')
 		expect(lines[1]).toContain('50 %')
 		expect(lines[2]).toContain('80 %')
+	})
+})
+
+describe('runModel with Ctrl+C', () => {
+	it('starts no new case after the interrupt, and awaits the case-done hook of finished ones', async () => {
+		const budget: RunBudget = { spentUsd: 0, maxUsd: 10, reservedUsd: 0 }
+		runCaseMock.mockImplementation(() => {
+			budget.isInterrupted = true
+			return Promise.resolve(costing(0.1))
+		})
+		const done: string[] = []
+
+		const result = await runModel(makeCases(5), {
+			apiKey: 'key',
+			model: 'm',
+			reasoning: 'low',
+			concurrency: 1,
+			budget,
+			caseReserveUsd: 0.1,
+			onCaseDone: () =>
+				new Promise<void>((resolve) => {
+					setTimeout(() => {
+						done.push('written')
+						resolve()
+					}, 5)
+				}),
+		})
+
+		expect(result.pairs).toHaveLength(1)
+		expect(done).toEqual(['written'])
+		expect(result.skipped).toBe(4)
+		expect(result.isInterrupted).toBe(true)
+		expect(budget.spentUsd).toBeCloseTo(0.1)
 	})
 })

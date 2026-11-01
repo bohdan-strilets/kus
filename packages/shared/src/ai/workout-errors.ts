@@ -26,6 +26,9 @@ const getRefErrors = (workout: LogWorkoutInput, refs: ParseRefs): string[] => {
 	if (workout.appendRef !== null && !refs.workouts?.has(workout.appendRef)) {
 		errors.push(`log_workout: appendRef "${workout.appendRef}" is not in "Today's workouts"`)
 	}
+	if (workout.templateRef !== null && !refs.templateRefs?.has(workout.templateRef)) {
+		errors.push(`log_workout: templateRef "${workout.templateRef}" is not in "Program"`)
+	}
 	workout.exercises.forEach((exercise, index) => {
 		if (exercise.exerciseRef !== null && !refs.exerciseRefs?.has(exercise.exerciseRef)) {
 			errors.push(

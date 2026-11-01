@@ -45,8 +45,15 @@ const template = (
 
 const program = (
 	templates: ProgramTemplateDraft[],
-	overrides: Partial<Omit<ProgramDraft, 'templates'>> = {},
-): ProgramDraft => ({ title: null, mode: 'ROTATE', perWeek: null, templates, ...overrides })
+	overrides: Partial<Omit<ProgramDraft, 'templates' | 'pinnedKey'>> = {},
+): ProgramDraft => ({
+	title: null,
+	mode: 'ROTATE',
+	perWeek: null,
+	pinnedKey: null,
+	templates,
+	...overrides,
+})
 
 const single = (exercises: TemplateExerciseDraft[]): ProgramDraft =>
 	program([template(KEY_A, 'День А', exercises)])

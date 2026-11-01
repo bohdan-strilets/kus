@@ -1,5 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common'
-import type { SendMessageResponse } from '@kus/shared'
+import {
+	type OnboardingAnswerRequest,
+	type SendMessageResponse,
+	TRAINING_ONBOARDING_LAST_QUESTION,
+} from '@kus/shared'
 
 import { formatDbDate, getLocalDate } from '../../common/time'
 import { MeasurementKind, MessageStatus, Prisma } from '../../generated/prisma/client'
@@ -11,9 +15,18 @@ import { UsersService } from '../users/users.service'
 import { ChatContextService } from './chat-context.service'
 import { NO_EDITED_MESSAGES } from './chat-edits.service'
 import { ChatResponseService } from './chat-response.service'
+import {
+	ChatTrainingOnboardingService,
+	type OnboardingRoute,
+} from './chat-training-onboarding.service'
+import { ChatTrainingOnboardingAnswersService } from './chat-training-onboarding-answers.service'
 import { ChatTurnService, type TurnParams, type TurnResult } from './chat-turn.service'
 import { STALE_PENDING_MS } from './chat.constants'
-import { ClientMessageIdReusedException, MessageInProgressException } from './chat.exceptions'
+import {
+	ClientMessageIdReusedException,
+	MessageInProgressException,
+	TrainingOnboardingClosedException,
+} from './chat.exceptions'
 import { ChatPhotosService, type StoredPhotos } from './chat-photos.service'
 import { ChatRepository, type MessageWithAttachments } from './chat.repository'
 import { PhotoInUseException, PhotoNotFoundException } from '../photos/photos.exceptions'
@@ -31,6 +44,8 @@ export interface SendMessageParams {
 	photo?: PhotoPayload
 	/** Earlier POST /photos uploads; excludes `photo`. */
 	photoIds?: string[]
+	/** A button of the training onboarding; `text` holds its label(s). */
+	onboardingAnswer?: OnboardingAnswerRequest
 }
 
 /** One chat turn: user message → AI → entries / questions / answer, idempotent by clientMessageId. */
@@ -49,6 +64,8 @@ export class ChatService {
 		private readonly memoryService: MemoryService,
 		private readonly usersService: UsersService,
 		private readonly measurementsService: MeasurementsService,
+		private readonly trainingOnboarding: ChatTrainingOnboardingService,
+		private readonly onboardingAnswers: ChatTrainingOnboardingAnswersService,
 	) {}
 
 	async sendMessage(userId: string, params: SendMessageParams): Promise<SendMessageResponse> {
@@ -67,7 +84,12 @@ export class ChatService {
 				edited: NO_EDITED_MESSAGES,
 			})
 		}
-		// before the message exists: an unreadable photo must leave nothing to resend around
+		// before the message exists: a closed question or an unreadable photo must leave nothing to resend
+		const route = await this.trainingOnboarding.route(userId, {
+			text,
+			hasPhotos: params.photo !== undefined || photoIds !== undefined,
+			button: params.onboardingAnswer,
+		})
 		const stored = photoIds ? await this.chatPhotos.load(userId, photoIds) : undefined
 		const photo = stored?.payload ?? params.photo
 		const message = existing
@@ -77,10 +99,11 @@ export class ChatService {
 		// user saw it when sending. A new message is as old as now (the app clock, not the DB's)
 		const now = existing ? message.createdAt : new Date()
 		const localDate = getLocalDate(now, timezone)
-		const edited = await this.processTurn(
+		const edited = await this.runTurn(
 			{ userId, timezone, addressForm, message, text, photo, now, localDate },
 			// the daily budget is spent on the day the model is actually called
 			getLocalDate(new Date(), timezone),
+			route,
 		)
 		// the day of the turn, even if the resend happened after midnight
 		return this.chatResponse.build({
@@ -160,19 +183,67 @@ export class ChatService {
 		return { ...existing, status: MessageStatus.PENDING }
 	}
 
-	private async processTurn(params: TurnParams, usageDate: Date): Promise<TurnResult> {
-		const { userId, message, photo } = params
+	/**
+	 * An answer to questions 1–4 is the backend's alone (no model, no daily AI budget); the last
+	 * answer and anything else is a model turn. The question it answered or passed by comes back
+	 * among the updated messages, with its new state.
+	 */
+	private async runTurn(
+		params: TurnParams,
+		usageDate: Date,
+		{ answer, passedQuestionId }: OnboardingRoute,
+	): Promise<TurnResult> {
+		if (answer && answer.step !== TRAINING_ONBOARDING_LAST_QUESTION) {
+			await this.answerOnboarding(params, answer)
+			return {
+				...NO_EDITED_MESSAGES,
+				replyIds: [answer.questionId],
+				replacedMeasurementMessageIds: [],
+			}
+		}
+		const result = await this.processTurn(
+			{ ...params, onboardingAnswer: answer ?? undefined },
+			usageDate,
+		)
+		const questionId = answer?.questionId ?? passedQuestionId
+		return questionId ? { ...result, replyIds: [...result.replyIds, questionId] } : result
+	}
+
+	private async answerOnboarding(
+		{ userId, message }: TurnParams,
+		answer: NonNullable<OnboardingRoute['answer']>,
+	): Promise<void> {
 		try {
+			await this.onboardingAnswers.answerWithoutModel({ userId, userMessageId: message.id }, answer)
+			this.logger.log(
+				`Training onboarding answer step=${answer.step} user=${userId} message=${message.id}`,
+			)
+		} catch (error) {
+			await this.markFailed(message)
+			throw error
+		}
+	}
+
+	private async processTurn(params: TurnParams, usageDate: Date): Promise<TurnResult> {
+		const { userId, message, photo, onboardingAnswer } = params
+		try {
+			// the last onboarding answer asks the model for a program from all five; before the usage is
+			// reserved and before any model call, a run with a missing answer ends as closed
+			const programOnboarding = onboardingAnswer
+				? await this.onboardingAnswers.formatAnswers(userId, onboardingAnswer)
+				: undefined
+			if (programOnboarding === null) throw new TrainingOnboardingClosedException()
 			await this.aiUsage.reserveUsage({
 				userId,
 				localDate: usageDate,
 				hasPhoto: photo !== undefined,
 			})
 			const memory = await this.memoryService.findRelevantFoods(userId, params.text ?? '')
-			const { context, refIds, workoutRefIds, copyRefIds, factRefIds } =
+			const { context, refIds, workoutRefIds, copyRefIds, factRefIds, templateRefIds } =
 				await this.chatContext.buildContext({
 					...params,
 					memory: memory.context,
+					...(programOnboarding ? { programOnboarding } : {}),
 				})
 			const decision = await this.aiService.parseFood({
 				userId,
@@ -201,18 +272,21 @@ export class ChatService {
 				workoutRefIds,
 				copyRefIds,
 				factRefIds,
+				templateRefIds,
 			})
 			this.logger.log(`Chat turn ${decision.kind} user=${userId} message=${message.id}`)
 			return edited
 		} catch (error) {
-			// the client shows "Не надіслано" and resends the same clientMessageId
-			await this.chatRepository
-				.markFailed({ id: message.id, userId })
-				.catch((markError: unknown) => {
-					// keep the original error for the client; the message stays PENDING until it goes stale
-					this.logger.error(`Could not mark message FAILED message=${message.id}`, markError)
-				})
+			await this.markFailed(message)
 			throw error
 		}
+	}
+
+	/** The client shows "Не надіслано" and resends the same clientMessageId. */
+	private async markFailed({ id, userId }: MessageWithAttachments): Promise<void> {
+		await this.chatRepository.markFailed({ id, userId }).catch((markError: unknown) => {
+			// keep the original error for the client; the message stays PENDING until it goes stale
+			this.logger.error(`Could not mark message FAILED message=${id}`, markError)
+		})
 	}
 }

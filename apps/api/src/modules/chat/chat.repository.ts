@@ -1,12 +1,12 @@
 import { Injectable } from '@nestjs/common'
-import type { DayCard, StatsCard } from '@kus/shared'
+import type { DayCard, ProgramCard, StatsCard, TrainingOnboarding } from '@kus/shared'
 
 import {
 	AttachmentStatus,
 	type Message,
 	MessageRole,
 	MessageStatus,
-	type Prisma,
+	Prisma,
 } from '../../generated/prisma/client'
 import { PrismaService } from '../../prisma'
 import type { MessageCursor } from './message-cursor'
@@ -21,6 +21,15 @@ const WITH_ATTACHMENTS = {
 } as const
 
 export type MessageWithAttachments = Prisma.MessageGetPayload<{ include: typeof WITH_ATTACHMENTS }>
+
+/**
+ * Kusik's next onboarding question (steps 2–5) as the reply: the user message behind it answered
+ * questions 1–4. Not the invitation (step 0), which rides on an ordinary reply.
+ */
+const IS_ONBOARDING_QUESTION = {
+	trainingOnboarding: { not: Prisma.DbNull },
+	NOT: { trainingOnboarding: { path: ['step'], equals: 0 } },
+} satisfies Prisma.MessageWhereInput
 
 /** The stored copy a message binds: the attachment repeats its type and size. */
 export interface StoredPhotoRef {
@@ -177,12 +186,17 @@ export class ChatRepository {
 			replyText,
 			dayCard,
 			statsCard,
+			programCard,
+			trainingOnboarding,
 		}: {
 			userId: string
 			userMessageId: string
-			replyText: string
+			/** null for an onboarding question: the web shows its text by step. */
+			replyText: string | null
 			dayCard?: DayCard
 			statsCard?: StatsCard
+			programCard?: ProgramCard
+			trainingOnboarding?: TrainingOnboarding
 		},
 		tx: Prisma.TransactionClient,
 	): Promise<Message | null> {
@@ -200,6 +214,8 @@ export class ChatRepository {
 				replyToId: userMessageId,
 				...(dayCard ? { dayCard } : {}),
 				...(statsCard ? { statsCard } : {}),
+				...(programCard ? { programCard } : {}),
+				...(trainingOnboarding ? { trainingOnboarding } : {}),
 			},
 		})
 	}
@@ -264,6 +280,8 @@ export class ChatRepository {
 				status: MessageStatus.COMPLETED,
 				// a photo-only message has no text but still happened
 				OR: [{ content: { not: null } }, { attachments: { some: {} } }],
+				// the answers to onboarding questions 1–4 reach the model only as «Onboarding answers»
+				NOT: { replies: { some: IS_ONBOARDING_QUESTION } },
 				id: { lt: beforeId },
 			},
 			// uuid v7 ids grow with time, see message-cursor.ts

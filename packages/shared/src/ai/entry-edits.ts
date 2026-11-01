@@ -25,6 +25,8 @@ export interface ParseRefs extends MeasurementRefs {
 	exerciseRefs?: ReadonlySet<string>
 	/** `f1…` of «User facts». */
 	factRefs?: ReadonlySet<string>
+	/** `t1…` of the templates in «Program», the open proposal's included. */
+	templateRefs?: ReadonlySet<string>
 	/** Saved food name (see toFoodNameKey) → its `m1…` ref: a new save_food of such a name must update it. */
 	memoryRefByName?: ReadonlyMap<string, string>
 }
@@ -39,6 +41,12 @@ export const getParseRefs = (context: FoodParseContext): ParseRefs => ({
 	deletedWorkoutRefs: new Set((context.deletedWorkouts ?? []).map((workout) => workout.ref)),
 	exerciseRefs: new Set((context.exercises ?? []).map((exercise: ExerciseContext) => exercise.ref)),
 	factRefs: new Set((context.facts ?? []).map((fact) => fact.ref)),
+	// with the open proposal's: a proposal-only t-ref binds no workout (the backend checks)
+	templateRefs: new Set(
+		[...(context.program?.templates ?? []), ...(context.pendingProgram?.templates ?? [])].map(
+			(template) => template.ref,
+		),
+	),
 	memoryRefByName: new Map(context.memory.map((food) => [toFoodNameKey(food.name), food.ref])),
 	today: context.measurements.today,
 	measurementDays: new Set(

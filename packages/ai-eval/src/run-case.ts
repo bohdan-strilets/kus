@@ -1,31 +1,26 @@
 import {
 	AI_VALIDATION_RETRY_COUNT,
-	type AiFoodItem,
 	type AiRequestMessage,
 	buildFoodParseMessages,
 	buildRetryMessages,
-	type EarlierEntryContext,
 	type FoodParseContext,
-	type FoodParseDecision,
-	getParseRefs,
 	getRawToolCalls,
 	isOutputTruncated,
-	type MemoryFoodContext,
-	parseToolCalls,
+	shouldShowProgramRules,
 } from '@kus/shared'
 
 import { toFoodContext } from './case-context.js'
 import { EVAL_TODAY } from './cases/case-builders.js'
 import { withDayContext } from './day-context.js'
 import type { EvalCase } from './cases/index.js'
-import type { ActualDecision, CaseResult, LoggedItem, ValidationAttempt } from './eval.types.js'
-import { EMPTY_CALL_FACTS, getCallFacts } from './call-facts.js'
-import { getClarifyCalls } from './clarify-calls.js'
-import { getEditResult } from './edit-result.js'
-import { getLoggedWorkouts } from './workout-result.js'
-import { getMeasuredItems } from './measurement-result.js'
-import { findMixedScriptWords } from './mixed-script.js'
+import type { CaseResult, RawAttempt, ValidationAttempt } from './eval.types.js'
 import { type EvalModelOptions, requestFoodParse } from './openrouter.js'
+import {
+	failedResult,
+	OUTPUT_TRUNCATED,
+	scoreAttempt,
+	toValidationAttempt,
+} from './score-attempt.js'
 
 /** Fixed clock, so meal-type guesses and reruns compare like for like. */
 export const BASE_CONTEXT: FoodParseContext = {
@@ -43,139 +38,23 @@ export const BASE_CONTEXT: FoodParseContext = {
 	history: [],
 }
 
-const GRAMS_PER_100 = 100
-const OUTPUT_TRUNCATED = 'OUTPUT_TRUNCATED'
-const MAX_VALIDATION_ERROR_LENGTH = 200
-
-const toValidationAttempt = (
-	attempt: number,
-	callNames: string[],
-	errors: string[],
-): ValidationAttempt => ({
-	attempt,
-	callNames,
-	errors: errors.map((text) => text.slice(0, MAX_VALIDATION_ERROR_LENGTH)),
-})
-
-interface ItemSources {
-	memory: MemoryFoodContext[]
-	earlier: EarlierEntryContext[]
+/** The model context of a case, as the backend builds it (the «Program» rules decided the same way). */
+export const buildCaseContext = (evalCase: EvalCase): FoodParseContext => {
+	const context = withDayContext({ ...BASE_CONTEXT, ...toFoodContext(evalCase.context) })
+	const hasProgramRules = shouldShowProgramRules({
+		text: evalCase.text,
+		history: context.history,
+		hasProgram: Boolean(context.program) || Boolean(context.pendingProgram),
+	})
+	return hasProgramRules ? { ...context, hasProgramRules } : context
 }
-
-/**
- * Per item: a memory item's numbers come from the saved food, scaled by grams; a copy takes the
- * earlier entry's kcal (the model's own number is ignored) — as the backend does.
- */
-const getItemTotals = (
-	item: AiFoodItem,
-	{ memory, earlier }: ItemSources,
-): { kcal: number; protein: number } => {
-	const copied = earlier.find((entry) => entry.ref === item.copyRef)
-	if (copied) return { kcal: copied.kcal, protein: item.protein }
-	const food = memory.find((saved) => saved.ref === item.memoryRef)
-	if (!food) return { kcal: item.kcal, protein: item.protein }
-	const factor = item.grams / GRAMS_PER_100
-	return { kcal: food.per100g.kcal * factor, protein: food.per100g.protein * factor }
-}
-
-const toLoggedItem = (
-	item: AiFoodItem,
-	sources: ItemSources,
-	messageMealType: string | null,
-): LoggedItem => ({
-	name: item.name,
-	mealType: item.mealType ?? messageMealType,
-	grams: item.grams,
-	quantity: item.quantity,
-	...getItemTotals(item, sources),
-	source: item.source,
-	memoryRef: item.memoryRef,
-	copyRef: item.copyRef,
-	assumption: item.assumption,
-})
-
-const sumItems = (items: AiFoodItem[], sources: ItemSources) =>
-	items.reduce(
-		(sum, item) => {
-			const totals = getItemTotals(item, sources)
-			return { kcal: sum.kcal + totals.kcal, protein: sum.protein + totals.protein }
-		},
-		{ kcal: 0, protein: 0 },
-	)
-
-const toActualDecision = (decision: FoodParseDecision): ActualDecision => {
-	if (decision.kind === 'day') return 'day_card'
-	if (decision.kind !== 'log') return decision.kind
-	return decision.clarifications.length > 0 ? 'clarify' : 'log'
-}
-
-const getLoggedItems = (decision: FoodParseDecision) =>
-	decision.kind === 'log' ? decision.log.items : []
-
-const getReplyText = (decision: FoodParseDecision): string => {
-	switch (decision.kind) {
-		case 'log':
-			return [decision.log.reply, ...decision.workouts.map(({ reply }) => reply)].join(' ')
-		case 'workout':
-			return decision.workouts.map(({ reply }) => reply).join(' ')
-		case 'not_food':
-		case 'photo_unusable':
-			return decision.reply
-		case 'edit':
-		case 'reply':
-		case 'day':
-		case 'close_day':
-		case 'stats':
-			return decision.text
-	}
-}
-
-const failedResult = (
-	base: { caseId: string; model: string },
-	usage: Pick<
-		CaseResult,
-		'costUsd' | 'latencyMs' | 'inputTokens' | 'outputTokens' | 'cachedTokens' | 'textOnlyAnswers'
-	>,
-	{
-		error,
-		attempts,
-		validationErrors = [],
-	}: {
-		error: string
-		attempts: number
-		validationErrors?: ValidationAttempt[]
-	},
-): CaseResult => ({
-	...base,
-	...usage,
-	attempts,
-	decision: 'error',
-	error,
-	truncated: error === OUTPUT_TRUNCATED,
-	items: [],
-	clarifyCalls: [],
-	kcal: null,
-	protein: null,
-	categories: [],
-	replyText: null,
-	edits: null,
-	measurements: [],
-	workouts: [],
-	calls: EMPTY_CALL_FACTS,
-	wasRetried: attempts > 1,
-	validationErrors,
-	mixedScriptWords: [],
-})
 
 export const runCase = async (
 	evalCase: EvalCase,
 	options: EvalModelOptions,
 ): Promise<CaseResult> => {
-	const context = withDayContext({ ...BASE_CONTEXT, ...toFoodContext(evalCase.context) })
-	const sources: ItemSources = { memory: context.memory, earlier: context.earlier ?? [] }
-	const refs = getParseRefs(context)
+	const context = buildCaseContext(evalCase)
 	let messages: AiRequestMessage[] = buildFoodParseMessages(context, evalCase.text, evalCase.photo)
-	const hasImage = evalCase.photo !== undefined
 	const usage = {
 		costUsd: 0,
 		latencyMs: 0,
@@ -188,6 +67,7 @@ export const runCase = async (
 
 	let attemptsMade = 0
 	const validationErrors: ValidationAttempt[] = []
+	const rawAttempts: RawAttempt[] = []
 	try {
 		for (let attempt = 1; attempt <= 1 + AI_VALIDATION_RETRY_COUNT; attempt += 1) {
 			attemptsMade = attempt
@@ -198,68 +78,54 @@ export const runCase = async (
 			usage.outputTokens += completion.usage?.completion_tokens ?? 0
 			usage.cachedTokens += completion.usage?.prompt_tokens_details?.cached_tokens ?? 0
 
+			const rawCalls = getRawToolCalls(completion)
+			const isTruncated = isOutputTruncated(completion)
+			rawAttempts.push({
+				toolCalls: rawCalls,
+				text: completion.choices[0]?.message.content ?? null,
+				isTruncated,
+			})
 			// same rule as the backend: a cut-off answer is not retried
-			if (isOutputTruncated(completion))
+			if (isTruncated)
 				return failedResult(base, usage, {
 					error: OUTPUT_TRUNCATED,
 					attempts: attempt,
 					validationErrors,
+					rawAttempts,
 				})
-			const rawCalls = getRawToolCalls(completion)
 			if (rawCalls.length === 0) usage.textOnlyAnswers += 1
-			const result = parseToolCalls(rawCalls, refs, { hasImage })
-			if (result.ok) {
-				const replyText = getReplyText(result.decision)
-				const items = getLoggedItems(result.decision)
-				const totals = items.length > 0 ? sumItems(items, sources) : null
-				const calls = getCallFacts(rawCalls, context.measurements.today)
-				return {
-					...base,
-					...usage,
-					attempts: attempt,
-					decision: toActualDecision(result.decision),
-					error: null,
-					kcal: totals?.kcal ?? null,
-					protein: totals?.protein ?? null,
-					categories: items.map((item) => item.category),
-					replyText,
-					edits: getEditResult(result.decision, context),
-					measurements: getMeasuredItems(result.decision, context.measurements.today),
-					workouts: getLoggedWorkouts(result.decision),
-					calls,
-					items: items.map((item) =>
-						toLoggedItem(
-							item,
-							sources,
-							result.decision.kind === 'log' ? result.decision.log.mealType : null,
-						),
-					),
-					clarifyCalls: getClarifyCalls(rawCalls, result.decision),
-					truncated: false,
-					wasRetried: attempt > 1,
-					validationErrors,
-					mixedScriptWords: findMixedScriptWords(replyText),
-				}
-			}
+			const outcome = scoreAttempt({
+				evalCase,
+				context,
+				base,
+				usage,
+				attempt,
+				rawCalls,
+				validationErrors,
+				rawAttempts,
+			})
+			if ('result' in outcome) return outcome.result
 			validationErrors.push(
 				toValidationAttempt(
 					attempt,
 					rawCalls.map((call) => call.name),
-					result.errors,
+					outcome.errors,
 				),
 			)
-			messages = [...messages, ...buildRetryMessages(completion, result.errors)]
+			messages = [...messages, ...buildRetryMessages(completion, outcome.errors)]
 		}
 		return failedResult(base, usage, {
 			error: 'INVALID_TOOL_CALLS',
 			attempts: 1 + AI_VALIDATION_RETRY_COUNT,
 			validationErrors,
+			rawAttempts,
 		})
 	} catch (error) {
 		return failedResult(base, usage, {
 			error: error instanceof Error ? error.message.slice(0, 200) : 'UNKNOWN',
 			attempts: attemptsMade,
 			validationErrors,
+			rawAttempts,
 		})
 	}
 }

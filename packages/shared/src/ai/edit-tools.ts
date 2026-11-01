@@ -33,13 +33,13 @@ const entryRefsSchema = z
 
 /** Whole-portion values, judged like a logged item (density, kcal vs macros). */
 const portionValuesSchema = z.object({
-	kcal: foodEntryBaseSchema.shape.kcal.describe('Energy of the whole portion, kcal'),
-	protein: foodEntryBaseSchema.shape.protein.describe('Protein of the whole portion, g'),
-	fat: foodEntryBaseSchema.shape.fat.describe('Fat of the whole portion, g'),
+	kcal: foodEntryBaseSchema.shape.kcal,
+	protein: foodEntryBaseSchema.shape.protein,
+	fat: foodEntryBaseSchema.shape.fat,
 	carbs: foodEntryBaseSchema.shape.carbs.describe(
 		'Carbohydrates of the whole portion excluding fiber, g',
 	),
-	fiber: foodEntryBaseSchema.shape.fiber.describe('Fiber of the whole portion, g; null if unknown'),
+	fiber: foodEntryBaseSchema.shape.fiber,
 })
 
 export type PortionValues = z.infer<typeof portionValuesSchema>
@@ -50,24 +50,22 @@ export const entryChangeSchema = z
 		name: foodEntryBaseSchema.shape.name
 			.nullable()
 			.default(null)
-			.describe(
-				'New name only if the food itself is different ("Суп курячий" instead of "Борщ"); else null',
-			),
+			.describe('New name, only if the food itself is different ("Суп курячий" instead of "Борщ")'),
 		category: foodEntryBaseSchema.shape.category
 			.nullable()
 			.default(null)
-			.describe('New category only together with a new name; else null'),
+			.describe('New category, only together with a new name'),
 		grams: foodEntryBaseSchema.shape.grams
 			.nullable()
 			.default(null)
 			.describe(
-				'New weight of the whole portion. With values null the backend rescales kcal and macros from the entry; else null',
+				'New weight of the whole portion. Without values the backend rescales kcal and macros from the entry',
 			),
 		values: portionValuesSchema
 			.nullable()
 			.default(null)
 			.describe(
-				'New values of the whole portion — only when the user gives numbers or the food itself is different; else null',
+				'New values of the whole portion, only when the user gives numbers or the food itself is different',
 			),
 	})
 	.refine(
@@ -116,18 +114,18 @@ export const resolveClarificationInputSchema = z
 			.nonnegative()
 			.nullable()
 			.default(null)
-			.describe('0-based option the answer matches; else null'),
+			.describe('0-based option the answer matches, if any'),
 		values: portionValuesSchema
 			.extend({
 				grams: foodEntryBaseSchema.shape.grams
 					.nullable()
 					.default(null)
-					.describe('Total grams only if the answer changes the portion weight; else null'),
+					.describe('Total grams, only if the answer changes the portion weight'),
 			})
 			.nullable()
 			.default(null)
 			.describe(
-				"Totals of the question's entries for an answer between two options (kcal between the options' kcal); else null",
+				"Totals of the question's entries for an answer between two options (kcal between the options' kcal)",
 			),
 	})
 	.refine((input) => input.optionIndex === null || input.values === null, {

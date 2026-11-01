@@ -66,11 +66,13 @@ const toDraftTemplate = (row: TemplateRow): ProgramTemplateDraft => {
 /** The program as the draft the diff compares against; null while it has no active version. */
 export const toProgramDraft = (program: ActiveProgram): ProgramDraft | null => {
 	if (!program.activeVersion) return null
+	const { templates } = program.activeVersion
 	return {
 		title: program.title,
 		mode: program.mode,
 		perWeek: program.perWeek,
-		templates: program.activeVersion.templates.map(toDraftTemplate),
+		templates: templates.map(toDraftTemplate),
+		pinnedKey: templates.find(({ id }) => id === program.pinnedTemplateId)?.key ?? null,
 	}
 }
 

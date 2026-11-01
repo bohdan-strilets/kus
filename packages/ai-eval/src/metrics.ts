@@ -11,6 +11,7 @@ import type {
 } from './eval.types.js'
 import { hasMemoryExpectations, isCaseMemoryCorrect } from './memory-metrics.js'
 import { detectLanguage } from './reply-checks.js'
+import { isProgramCorrect } from './program-metrics.js'
 import { isWorkoutsCorrect } from './workout-metrics.js'
 
 /** Floors for the % base, so 0.5 g of protein in an apple doesn't turn 1 g into a 100 % error. */
@@ -36,6 +37,7 @@ export const isDecisionCorrect = (
 ): boolean => {
 	const expected = evalCase.expect.decision
 	if (expected === 'log_or_clarify') return actual === 'log' || actual === 'clarify'
+	if (expected === 'workout_or_reply') return actual === 'workout' || actual === 'reply'
 	if (expected !== actual) return false
 	const text = (replyText ?? '').toLowerCase()
 	const mustInclude = evalCase.expect.replyIncludes ?? []
@@ -109,9 +111,23 @@ export const isMeasurementsCorrect = (
 		),
 	)
 
+export const hasWorkoutExpectations = ({ expect }: EvalCase): boolean =>
+	expect.workouts !== undefined || expect.noAppend !== undefined
+
 export const isCaseWorkoutsCorrect = (evalCase: EvalCase, result: CaseResult): boolean =>
-	evalCase.expect.workouts === undefined ||
-	isWorkoutsCorrect(evalCase.expect.workouts, result.workouts)
+	(evalCase.expect.workouts === undefined ||
+		isWorkoutsCorrect(evalCase.expect.workouts, result.workouts)) &&
+	(evalCase.expect.noAppend === undefined ||
+		result.workouts.every((workout) => workout.appendRef === null))
+
+export const isCaseProgramCorrect = (evalCase: EvalCase, result: CaseResult): boolean =>
+	evalCase.expect.program === undefined ||
+	isProgramCorrect(
+		evalCase.expect.program,
+		result.program,
+		// a change is built on the open proposal when there is one (its t-refs)
+		evalCase.context?.pendingProgram ?? evalCase.context?.program,
+	)
 
 export const isCaseMeasurementsCorrect = (evalCase: EvalCase, result: CaseResult): boolean =>
 	evalCase.expect.measurements === undefined ||
@@ -316,9 +332,16 @@ export const summarize = (model: string, pairs: Pair[]): ModelSummary => {
 		workouts: {
 			correct: pairs.filter(
 				({ evalCase, result }) =>
-					evalCase.expect.workouts !== undefined && isCaseWorkoutsCorrect(evalCase, result),
+					hasWorkoutExpectations(evalCase) && isCaseWorkoutsCorrect(evalCase, result),
 			).length,
-			total: pairs.filter(({ evalCase }) => evalCase.expect.workouts !== undefined).length,
+			total: pairs.filter(({ evalCase }) => hasWorkoutExpectations(evalCase)).length,
+		},
+		program: {
+			correct: pairs.filter(
+				({ evalCase, result }) =>
+					evalCase.expect.program !== undefined && isCaseProgramCorrect(evalCase, result),
+			).length,
+			total: pairs.filter(({ evalCase }) => evalCase.expect.program !== undefined).length,
 		},
 		memory: {
 			correct: pairs.filter(

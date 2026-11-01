@@ -45,6 +45,7 @@ const validProgram = {
 	mode: 'WEEKDAYS',
 	perWeek: 3,
 	templates: [validTemplate(1)],
+	pinnedKey: null,
 }
 
 const isTargetValid = (overrides: Record<string, unknown>): boolean =>

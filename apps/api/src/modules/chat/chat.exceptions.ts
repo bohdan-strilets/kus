@@ -1,4 +1,5 @@
 import { HttpStatus } from '@nestjs/common'
+import { TRAINING_ONBOARDING_ANSWER_INVALID } from '@kus/shared'
 
 import { AppException, ErrorCodes } from '../../common/exceptions'
 
@@ -83,5 +84,30 @@ export class TurnDateOutOfRangeException extends AppException {
 export class TurnCopySourceMissingException extends AppException {
 	constructor() {
 		super({ status: HttpStatus.CONFLICT, errorCode: ErrorCodes.TURN_COPY_SOURCE_MISSING })
+	}
+}
+
+/** No onboarding question with this id for this user; another user's reads the same. */
+export class TrainingOnboardingNotFoundException extends AppException {
+	constructor() {
+		super({ status: HttpStatus.NOT_FOUND, errorCode: ErrorCodes.TRAINING_ONBOARDING_NOT_FOUND })
+	}
+}
+
+/** The question was answered, passed by or followed by a newer one. */
+export class TrainingOnboardingClosedException extends AppException {
+	constructor() {
+		super({ status: HttpStatus.CONFLICT, errorCode: ErrorCodes.TRAINING_ONBOARDING_CLOSED })
+	}
+}
+
+/** The values are not this question's (the request schema only knows they are some question's). */
+export class TrainingOnboardingAnswerInvalidException extends AppException {
+	constructor() {
+		super({
+			status: HttpStatus.UNPROCESSABLE_ENTITY,
+			errorCode: ErrorCodes.VALIDATION_ERROR,
+			details: { fields: { onboardingAnswer: TRAINING_ONBOARDING_ANSWER_INVALID } },
+		})
 	}
 }

@@ -72,6 +72,7 @@ describe('normalizeDraft', () => {
 			{ key: KEY, name: 'А', weekdays: [5, 1], exercises: [exercise()], estimatedMin: 0 },
 			{ key: KEY, name: 'Б', weekdays: [], exercises: [], estimatedMin: 99 },
 		],
+		pinnedKey: null,
 	}
 
 	it('sorts weekdays, counts the estimate and fills defaults', () => {

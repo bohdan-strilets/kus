@@ -37,6 +37,7 @@ export const makeWorkout = (overrides: Partial<WorkoutResponse> = {}): WorkoutRe
 	isDeleted: false,
 	finishedAt: null,
 	estimatedDurationMin: null,
+	templateName: null,
 	exercises: [makeExercise()],
 	...overrides,
 })

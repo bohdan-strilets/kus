@@ -62,6 +62,7 @@ const isWorkoutRight = (want: ExpectedWorkout, got: LoggedWorkout): boolean =>
 	(want.kcalBurned === undefined || got.kcalBurned === want.kcalBurned) &&
 	(want.replaceRef === undefined || got.replaceRef === want.replaceRef) &&
 	(want.appendRef === undefined || got.appendRef === want.appendRef) &&
+	(want.templateRef === undefined || got.templateRef === want.templateRef) &&
 	(want.finish === undefined || got.finish === want.finish) &&
 	isSameSet(want.exerciseGroups, got.exerciseGroups) &&
 	matchAll(want.exercises, got.exercises, isExerciseRight)

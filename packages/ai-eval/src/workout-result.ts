@@ -20,6 +20,7 @@ const toLoggedWorkout = (workout: LogWorkoutInput): LoggedWorkout => ({
 	kcalBurned: workout.kcalBurned,
 	replaceRef: workout.replaceRef,
 	appendRef: workout.appendRef,
+	templateRef: workout.templateRef,
 	finish: workout.finish,
 	exerciseGroups: workout.exerciseGroups,
 	exercises: workout.exercises.map((exercise) => {

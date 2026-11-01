@@ -252,3 +252,16 @@ describe('formatContext days and recent measurements', () => {
 		expect(formatContext(empty)).not.toContain('Recent measurements')
 	})
 })
+
+describe('formatContext program', () => {
+	it('adds «Program» only with a program, the rules flag or the onboarding', () => {
+		expect(formatContext(baseContext)).not.toContain('# Program')
+		expect(formatContext({ ...baseContext, hasProgramRules: true })).toContain('# Program')
+		expect(
+			formatContext({
+				...baseContext,
+				program: { mode: 'ROTATE', perWeek: null, title: null, nextRef: null, templates: [] },
+			}),
+		).toContain('Active: ROTATE.')
+	})
+})

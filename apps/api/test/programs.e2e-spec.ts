@@ -89,6 +89,7 @@ const makeDraft = (): ProgramDraft => ({
 		},
 		{ key: KEY_B, name: 'Тренування Б', weekdays: [], exercises: [squat, run], estimatedMin: 0 },
 	],
+	pinnedKey: null,
 })
 
 describe('programs (e2e, real DB)', () => {

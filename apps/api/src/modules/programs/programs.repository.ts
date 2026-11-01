@@ -24,6 +24,13 @@ const WITH_ACTIVE_VERSION = {
 
 export type ActiveProgram = Prisma.WorkoutProgramGetPayload<{ include: typeof WITH_ACTIVE_VERSION }>
 
+export type ProgramWithVersion = ActiveProgram & {
+	activeVersion: NonNullable<ActiveProgram['activeVersion']>
+}
+
+export const hasActiveVersion = (program: ActiveProgram | null): program is ProgramWithVersion =>
+	program?.activeVersion != null
+
 export interface ProgramSettingsWrite {
 	mode?: ProgramMode
 	perWeek?: number | null

@@ -94,6 +94,8 @@
 			"PROGRAM_PROPOSAL_ALREADY_ACCEPTED": "Цю програму вже прийнято",
 			"PROGRAM_PROPOSAL_REPLACED": "З'явилась новіша пропозиція",
 			"PROGRAM_PROPOSAL_INVALID": "Цю пропозицію вже не можна прийняти — попроси нову",
+			"TRAINING_ONBOARDING_NOT_FOUND": "Не знайшов це питання. Онови чат.",
+			"TRAINING_ONBOARDING_CLOSED": "Це питання вже закрите — напиши, що хочеш змінити",
 			"MY_FOOD_NOT_FOUND": "Цього продукту вже немає. Онови екран.",
 			"MY_FOOD_EXISTS": "Такий продукт уже є.",
 			"PASSWORD_INCORRECT": "Неправильний пароль.",

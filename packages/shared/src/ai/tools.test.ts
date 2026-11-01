@@ -16,6 +16,7 @@ describe('getAiFunctionTools', () => {
 		expect(tools.map((tool) => tool.function.name)).toEqual([
 			'log_food',
 			'log_workout',
+			'propose_program',
 			'log_measurement',
 			'delete_measurement',
 			'clarify',

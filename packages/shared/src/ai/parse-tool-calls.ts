@@ -23,6 +23,8 @@ import {
 	type PhotoUnusableInput,
 	type PhotoUnusableReason,
 	photoUnusableInputSchema,
+	type ProposeProgramInput,
+	proposeProgramInputSchema,
 	type ReplyInput,
 	replyInputSchema,
 	type ShowDayInput,
@@ -74,6 +76,7 @@ import {
 } from './memory-tools.js'
 import { MAX_WORKOUTS_PER_MESSAGE } from './workout-tools.js'
 import { normalizeFoodName } from './normalize-food-name.js'
+import { getProgramErrors } from './program-errors.js'
 import { getWorkoutErrors } from './workout-errors.js'
 
 /** Hints appended to validation errors so the model can fix them on the retry. */
@@ -130,6 +133,8 @@ export type FoodParseDecision =
 	| { kind: 'day'; date: string | null; text: string }
 	| { kind: 'close_day'; date: string | null; estimatedTotalKcal: number | null; text: string }
 	| { kind: 'stats'; days: ShowStatsInput['days']; endDate: string | null; text: string }
+	/** A new or changed training program: a card to accept, nothing saved. */
+	| { kind: 'program'; program: ProposeProgramInput }
 
 export type FoodParseResult =
 	| { ok: true; decision: FoodParseDecision; calls: ParsedToolCall[] }
@@ -146,6 +151,7 @@ export interface ParseMessageOptions {
 type ValidatedCall =
 	| { name: typeof AI_TOOL_NAMES.logFood; data: LogFoodInput }
 	| { name: typeof AI_TOOL_NAMES.logWorkout; data: LogWorkoutInput }
+	| { name: typeof AI_TOOL_NAMES.proposeProgram; data: ProposeProgramInput }
 	| { name: typeof AI_TOOL_NAMES.logMeasurement; data: LogMeasurementInput }
 	| { name: typeof AI_TOOL_NAMES.deleteMeasurement; data: DeleteMeasurementInput }
 	| { name: typeof AI_TOOL_NAMES.showDay; data: ShowDayInput }
@@ -179,6 +185,8 @@ const parseInput = (name: AiToolName, value: unknown): InputParse => {
 			return toInputParse(logFoodInputSchema.safeParse(value), (data) => ({ name, data }))
 		case AI_TOOL_NAMES.logWorkout:
 			return toInputParse(logWorkoutInputSchema.safeParse(value), (data) => ({ name, data }))
+		case AI_TOOL_NAMES.proposeProgram:
+			return toInputParse(proposeProgramInputSchema.safeParse(value), (data) => ({ name, data }))
 		case AI_TOOL_NAMES.logMeasurement:
 			return toInputParse(logMeasurementInputSchema.safeParse(value), (data) => ({ name, data }))
 		case AI_TOOL_NAMES.deleteMeasurement:
@@ -356,6 +364,8 @@ const CARD_ALONE_ERROR =
 const WORKOUT_ANSWER_ERROR = `log_workout goes alone or with one log_food (each reply covers its own part) — not with reply, not_food, photo_unusable, show_day, close_day, show_stats or measurement tools, and at most ${MAX_WORKOUTS_PER_MESSAGE} per message`
 const WORKOUT_ALONE_ERROR =
 	'log_workout without log_food takes no clarify and no edit tools — fix a workout with its replaceRef, remove one with delete_entry and a reply'
+const PROGRAM_ALONE_ERROR =
+	'propose_program is the whole answer — exactly one call and no other tool, not even reply'
 const NO_PHOTO_ERROR =
 	'photo_unusable: this message has no photo — answer with reply (or not_food) instead'
 
@@ -404,6 +414,19 @@ const collectEdits = (valid: ValidatedCall[]): EntryEdits => ({
 	),
 })
 
+/** propose_program carries the whole program and goes alone (c6 §1.1). */
+const decideProgram = (
+	proposals: ProposeProgramInput[],
+	callCount: number,
+	refs: ParseRefs,
+): Decision => {
+	const [program] = proposals
+	if (!program || callCount !== 1) return { decision: null, errors: [PROGRAM_ALONE_ERROR] }
+	const errors = getProgramErrors(program, refs)
+	if (errors.length > 0) return { decision: null, errors }
+	return { decision: { kind: 'program', program }, errors: [] }
+}
+
 const decide = (
 	valid: ValidatedCall[],
 	refs: ParseRefs,
@@ -440,6 +463,10 @@ const decide = (
 		fact: saveFacts[0] ?? null,
 		forgets: valid.flatMap((call) => (call.name === AI_TOOL_NAMES.forgetFact ? [call.data] : [])),
 	}
+	const proposals = valid.flatMap((call) =>
+		call.name === AI_TOOL_NAMES.proposeProgram ? [call.data] : [],
+	)
+	if (proposals.length > 0) return decideProgram(proposals, valid.length, refs)
 	const edits = collectEdits(valid)
 	const isEditing = hasEdits(edits)
 	const [log] = logs

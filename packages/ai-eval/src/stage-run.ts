@@ -2,6 +2,7 @@ import {
 	addRun,
 	getEffectiveCapUsd,
 	getLedgerFile,
+	LEDGER_DIR,
 	getSoftStopUsd,
 	loadLedger,
 	saveLedger,
@@ -38,10 +39,42 @@ export const requireLedger = async (stage: string): Promise<StageLedger> => {
 	)
 }
 
-export const recordStageRun = async (
+export interface LedgerRecorder {
+	/** Adds a finished case to the ledger and resolves once the file is written. */
+	recordCase: (costUsd: number) => Promise<void>
+	/** Final write: marks the soft stop; also the only write of a run that finished no case. */
+	finish: (options: { isStoppedAt80: boolean }) => Promise<void>
+}
+
+/**
+ * The stage total equals the sum of the finished cases at every moment, so Ctrl+C or a crash loses
+ * nothing: each case rewrites the ledger atomically (writes are queued, never concurrent).
+ */
+export const createLedgerRecorder = (
 	stage: string,
 	ledger: StageLedger,
-	run: LedgerRun,
-): Promise<void> => {
-	await saveLedger(stage, addRun(ledger, run))
+	start: { at: string; only?: number },
+	dir: URL = LEDGER_DIR,
+): LedgerRecorder => {
+	const run: LedgerRun = {
+		at: start.at,
+		...(start.only === undefined ? {} : { only: start.only }),
+		cases: 0,
+		spentUsd: 0,
+	}
+	let chain: Promise<void> = Promise.resolve()
+	const write = (snapshot: LedgerRun): Promise<void> => {
+		const saved = chain.then(() => saveLedger(stage, addRun(ledger, snapshot), dir))
+		chain = saved.catch(() => undefined)
+		return saved
+	}
+	return {
+		recordCase: (costUsd) => {
+			run.cases += 1
+			run.spentUsd += costUsd
+			return write({ ...run })
+		},
+		finish: ({ isStoppedAt80 }) =>
+			write({ ...run, ...(isStoppedAt80 ? { stoppedAt80: true } : {}) }),
+	}
 }

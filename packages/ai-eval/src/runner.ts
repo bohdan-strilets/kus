@@ -1,5 +1,6 @@
 import type { AiReasoningMode } from '@kus/shared'
 
+import { getStartReserveUsd } from './case-reserve.js'
 import type { EvalCase } from './cases/index.js'
 import type { CaseResult } from './eval.types.js'
 import { runCase } from './run-case.js'
@@ -13,6 +14,8 @@ export interface RunBudget {
 	/** Stage soft stop: once spent + reserved reach it, no new case starts (the hard maxUsd still applies). */
 	softStopUsd?: number
 	isSoftStopped?: boolean
+	/** Ctrl+C: cases in flight finish (and are paid for), no new one starts. */
+	isInterrupted?: boolean
 }
 
 export interface RunOptions {
@@ -21,9 +24,10 @@ export interface RunOptions {
 	reasoning: AiReasoningMode
 	concurrency: number
 	budget: RunBudget
-	/** Reserved before each case starts (see getCaseReserveUsd), so the run stops before --max-cost. */
+	/** Reserved before each case starts (see getCaseReserveFromHistory), so the run stops before --max-cost. */
 	caseReserveUsd: number
-	onCaseDone?: (result: CaseResult) => void
+	/** Awaited: a case counts as done only after its result is written. */
+	onCaseDone?: (result: CaseResult) => void | Promise<void>
 }
 
 export interface ModelRun {
@@ -38,6 +42,8 @@ export interface ModelRun {
 	overReserve: string[]
 	/** The stage soft stop ended the run; `skipped` counts the cases left. */
 	isSoftStopped: boolean
+	/** Ctrl+C ended the run; `skipped` counts the cases left. */
+	isInterrupted?: boolean
 }
 
 export const canStartCase = (budget: RunBudget, reserveUsd: number): boolean =>
@@ -56,27 +62,36 @@ export const runModel = async (cases: EvalCase[], options: RunOptions): Promise<
 	const inFlight = new Set<Promise<void>>()
 	let next = 0
 	let skipped = 0
+	let started = 0
 
-	const runReserved = async (evalCase: EvalCase): Promise<void> => {
-		budget.reservedUsd += caseReserveUsd
+	const runReserved = async (evalCase: EvalCase, reserveUsd: number): Promise<void> => {
+		budget.reservedUsd += reserveUsd
 		try {
 			const result = await runCase(evalCase, options)
 			budget.spentUsd += result.costUsd
 			if (result.costUsd > caseReserveUsd) overReserve.push(evalCase.id)
 			pairs.push({ evalCase, result })
-			options.onCaseDone?.(result)
+			await options.onCaseDone?.(result)
 		} finally {
-			budget.reservedUsd -= caseReserveUsd
+			budget.reservedUsd -= reserveUsd
 		}
 	}
 
 	const stopAtSoftLimit = (): boolean => {
+		if (budget.isInterrupted) {
+			skipped += cases.length - next + 1
+			next = cases.length
+			return true
+		}
 		if (!hasReachedSoftStop(budget)) return false
 		budget.isSoftStopped = true
 		skipped += cases.length - next + 1
 		next = cases.length
 		return true
 	}
+
+	// the first case of the run pays for the cold prompt prefix; read it again until that case starts
+	const getReserveUsd = (): number => getStartReserveUsd(caseReserveUsd, started === 0)
 
 	const worker = async (): Promise<void> => {
 		while (next < cases.length) {
@@ -85,17 +100,19 @@ export const runModel = async (cases: EvalCase[], options: RunOptions): Promise<
 			if (!evalCase) return
 			if (stopAtSoftLimit()) return
 			// a case in flight may finish under its reserve and free room for this one
-			while (!canStartCase(budget, caseReserveUsd) && inFlight.size > 0) {
+			while (!canStartCase(budget, getReserveUsd()) && inFlight.size > 0) {
 				await Promise.race(inFlight)
 			}
 			if (stopAtSoftLimit()) return
-			if (!canStartCase(budget, caseReserveUsd)) {
+			if (!canStartCase(budget, getReserveUsd())) {
 				// nothing in flight, so the budget only shrinks from here: skip the rest
 				skipped += cases.length - next + 1
 				next = cases.length
 				return
 			}
-			const task = runReserved(evalCase)
+			const reserveUsd = getReserveUsd()
+			started += 1
+			const task = runReserved(evalCase, reserveUsd)
 			// waiters only need to know it settled; this worker still sees the error
 			const settled = task.then(
 				() => undefined,
@@ -120,5 +137,6 @@ export const runModel = async (cases: EvalCase[], options: RunOptions): Promise<
 		skipped,
 		overReserve,
 		isSoftStopped: budget.isSoftStopped === true,
+		isInterrupted: budget.isInterrupted === true,
 	}
 }

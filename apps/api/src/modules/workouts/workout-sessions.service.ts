@@ -10,6 +10,7 @@ import {
 import { formatDbDate } from '../../common/time'
 import type { Prisma } from '../../generated/prisma/client'
 import type { MuscleGroup } from '../../generated/prisma/enums'
+import { isSameExercise } from './exercise-names'
 import { toId, type WorkoutRefIds } from './workout-refs'
 import {
 	findSessionToClose,
@@ -59,6 +60,8 @@ export interface WriteParams {
 	localDate: Date
 	input: LogWorkoutInput
 	refIds: WorkoutRefIds
+	/** The program template the call binds to, checked by the chat; null when none or unknown. */
+	templateId: string | null
 }
 
 /** `x1:LEGS` → the ref and the group. */
@@ -133,6 +136,8 @@ export class WorkoutSessionsService {
 		})
 		const write: WorkoutWrite = {
 			...draft,
+			// a fix keeps the binding unless it names a template itself
+			templateId: params.templateId ?? before.templateId,
 			// a fix keeps the session's day and start; only a named day moves it
 			...(isSameDay ? { localDate: before.localDate, startedAt: before.startedAt } : {}),
 			exercises: draft.exercises.map((exercise, index) => {
@@ -199,6 +204,8 @@ export class WorkoutSessionsService {
 			...(input.place === null ? {} : { place: input.place }),
 			...(input.durationMin === null ? {} : { durationMin: input.durationMin }),
 			...(input.kcalBurned === null ? {} : { kcalBurned: input.kcalBurned }),
+			// an addition keeps the session's binding unless it names a template
+			...(params.templateId === null ? {} : { templateId: params.templateId }),
 			...(input.finish
 				? {
 						finishedAt: getFinishedAt({
@@ -277,7 +284,7 @@ export class WorkoutSessionsService {
 
 	/** A new session from one call; told for another day, it is finished by the same message. */
 	private async toWrite(
-		{ userId, sourceMessageId, now, localDate, input, refIds }: WriteParams,
+		{ userId, sourceMessageId, now, localDate, input, refIds, templateId }: WriteParams,
 		tx: Prisma.TransactionClient,
 	): Promise<WorkoutWrite> {
 		const day = input.date === null ? localDate : new Date(`${input.date}T00:00:00Z`)
@@ -291,6 +298,7 @@ export class WorkoutSessionsService {
 			durationMin: input.durationMin,
 			place: input.place,
 			kcalBurned: input.kcalBurned,
+			templateId,
 			sourceMessageId,
 			finishedAt: isFinished ? now : null,
 			finishedMessageId: isFinished ? sourceMessageId : null,
@@ -399,7 +407,10 @@ export class WorkoutSessionsService {
 			const id = toId(refIds.exercises, exercise.exerciseRef)
 			const [row] = await this.workoutsRepository.findExercisesByIds({ userId, ids: [id] }, tx)
 			// deleted from the dictionary after the context was built: the entry still points at it
-			return row ?? { id, name: exercise.name, kind: exercise.kind, muscleGroup: null }
+			if (!row) return { id, name: exercise.name, kind: exercise.kind, muscleGroup: null }
+			if (isSameExercise(exercise.name, row)) return row
+			// the x-ref is of another exercise than the name says: the name wins
+			this.logger.warn(`Exercise ref does not match its name user=${userId} exercise=${id}`)
 		}
 		return this.workoutsService.findOrCreateExercise(userId, exercise, tx)
 	}

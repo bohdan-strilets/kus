@@ -2,13 +2,23 @@
 // After any change here: run `pnpm --filter ai-eval eval` and add a line to PROMPT_CHANGELOG.md.
 import { z } from 'zod'
 
-import { mealTypeSchema, measurementKindSchema, workoutPlaceSchema } from '../schemas/enums.js'
+import {
+	mealTypeSchema,
+	measurementKindSchema,
+	programModeSchema,
+	workoutPlaceSchema,
+} from '../schemas/enums.js'
 import {
 	foodEntryBaseSchema,
 	MAX_ENTRY_GRAMS,
 	MIN_ENTRY_GRAMS,
 	refineFoodEntry,
 } from '../schemas/food-entry.js'
+import {
+	PROGRAM_PER_WEEK_MAX,
+	PROGRAM_TEMPLATES_MAX,
+	PROGRAM_TITLE_MAX_LENGTH,
+} from '../schemas/programs.js'
 import { STATS_DAYS_MAX, STATS_DAYS_MIN, statsDaysSchema } from '../schemas/stats-card.js'
 import { MAX_ESTIMATED_DAY_KCAL } from './close-day.js'
 import { CATEGORY_DESCRIPTION } from './category-description.js'
@@ -21,11 +31,13 @@ import {
 import { COPY_REF_PATTERN } from './history-context.js'
 import { forgetFactInputSchema, saveFactInputSchema, saveFoodInputSchema } from './memory-tools.js'
 import { toModelParameters } from './model-schema.js'
+import { programTemplateInputSchema } from './program-tools.js'
 import {
 	MAX_EXERCISES_PER_WORKOUT,
 	MAX_WORKOUT_KCAL,
 	MAX_WORKOUT_MINUTES,
 	EXERCISE_GROUP_FIX_PATTERN,
+	TEMPLATE_REF_PATTERN,
 	WORKOUT_REF_PATTERN,
 	workoutExerciseSchema,
 } from './workout-tools.js'
@@ -33,6 +45,7 @@ import {
 export const AI_TOOL_NAMES = {
 	logFood: 'log_food',
 	logWorkout: 'log_workout',
+	proposeProgram: 'propose_program',
 	logMeasurement: 'log_measurement',
 	deleteMeasurement: 'delete_measurement',
 	clarify: 'clarify',
@@ -76,7 +89,7 @@ export const aiFoodItemSchema = foodEntryBaseSchema
 			'Edible weight of the whole portion in grams (for drinks: ml ≈ g)',
 		),
 		quantity: foodEntryBaseSchema.shape.quantity.describe(
-			'Number of pieces when the user counted them ("3 яйця" → 3), else null',
+			'Number of pieces, only when the user counted them ("3 яйця" → 3)',
 		),
 		kcal: foodEntryBaseSchema.shape.kcal.describe('Energy of the whole portion, kcal'),
 		protein: foodEntryBaseSchema.shape.protein.describe('Protein of the whole portion, g'),
@@ -84,9 +97,7 @@ export const aiFoodItemSchema = foodEntryBaseSchema
 		carbs: foodEntryBaseSchema.shape.carbs.describe(
 			'Carbohydrates of the whole portion excluding fiber, g',
 		),
-		fiber: foodEntryBaseSchema.shape.fiber.describe(
-			'Fiber of the whole portion, g; null if unknown',
-		),
+		fiber: foodEntryBaseSchema.shape.fiber.describe('Fiber of the whole portion, g, if known'),
 		category: foodEntryBaseSchema.shape.category.describe(CATEGORY_DESCRIPTION),
 		source: foodEntryBaseSchema.shape.source.describe(
 			'LABEL: values the user gave from a package label. MEMORY: taken from a saved food (set memoryRef). REFERENCE: a standard product with well-known values. ESTIMATE: a dish or portion you had to guess',
@@ -95,10 +106,10 @@ export const aiFoodItemSchema = foodEntryBaseSchema
 			'0..1 — how sure you are about kcal (weighed product ~0.9, "a plate of soup" ~0.4)',
 		),
 		assumption: foodEntryBaseSchema.shape.assumption.describe(
-			'What you assumed, in the language of the user, at most ~60 characters ("варена, без олії"); null if nothing',
+			'What you assumed, in the language of the user, at most ~60 characters ("варена, без олії"), if anything',
 		),
 		memoryRef: foodEntryBaseSchema.shape.memoryRef.describe(
-			'Ref of the saved food used ("m1"), only when source is MEMORY; else null',
+			'Ref of the saved food used ("m1"), only when source is MEMORY',
 		),
 		copyRef: z
 			.string()
@@ -106,19 +117,19 @@ export const aiFoodItemSchema = foodEntryBaseSchema
 			.nullable()
 			.default(null)
 			.describe(
-				'Ref of an entry from "Earlier entries" ("y1" yesterday, "h1" older) when the user says the food is the same as then; the backend copies its values and scales them to grams. Else null; never together with memoryRef',
+				'Ref of an entry from "Earlier entries" ("y1" yesterday, "h1" older) when the user says the food is the same as then; the backend copies its values and scales them to grams. Never together with memoryRef',
 			),
 		mealType: loggableMealTypeSchema
 			.nullable()
 			.default(null)
 			.describe(
-				'Meal of this item when this message names several ("сніданок: …, обід: …"); else null — the message-level mealType or the clock decides. Never from earlier messages or the day so far',
+				'Meal of this item, only when this message names several ("сніданок: …, обід: …"). Never from earlier messages or the day so far',
 			),
 		date: z.iso
 			.date()
 			.nullable()
 			.default(null)
-			.describe('Day of this item when one message has food of different days; else null'),
+			.describe('Day of this item, only when one message has food of different days'),
 	})
 	// a copyRef item takes its numbers from the copied entry on the backend; the model's own
 	// macros are never stored, so only the bounds are checked (the parser rejects an unknown ref)
@@ -135,13 +146,13 @@ export const logFoodInputSchema = z.object({
 		.nullable()
 		.default(null)
 		.describe(
-			'YYYY-MM-DD from "Days" when the user names another day ("вчора", "на завтра", "у п\'ятницю"); null for today',
+			'Only for another day the user names ("вчора", "на завтра", "у п\'ятницю"): YYYY-MM-DD from "Days"',
 		),
 	mealType: loggableMealTypeSchema
 		.nullable()
 		.default(null)
 		.describe(
-			'Only if this message names one meal for the whole message ("на обід") — else null, the clock decides; never from earlier messages or the day so far. Items may name their own',
+			'Only if this message names one meal for the whole message ("на обід"); never from earlier messages or the day so far. Items may name their own',
 		),
 	reply: replyTextSchema.describe(
 		`1–2 short warm sentences for the chat in the language of the user's message, in your own words. No totals or day sums — the app shows them`,
@@ -163,30 +174,15 @@ export const clarifyOptionSchema = z.object({
 		.nonnegative()
 		.max(MAX_OPTION_KCAL)
 		.describe('Total kcal of the referenced items if this answer is true'),
-	protein: optionMacroSchema.describe('Total protein of the referenced items for this answer, g'),
-	fat: optionMacroSchema.describe('Total fat of the referenced items for this answer, g'),
+	protein: optionMacroSchema,
+	fat: optionMacroSchema,
 	carbs: optionMacroSchema.describe(
 		'Total carbohydrates excluding fiber of the referenced items for this answer, g',
 	),
-	fiber: optionMacroSchema
-		.nullable()
-		.default(null)
-		.describe('Total fiber of the referenced items for this answer, g; null if unknown'),
-	grams: z
-		.number()
-		.min(MIN_ENTRY_GRAMS)
-		.max(MAX_OPTION_GRAMS)
-		.nullable()
-		.default(null)
-		.describe(
-			'Total grams of the referenced items only if this answer changes the portion weight ("маленька / велика тарілка"); else null',
-		),
-	name: foodEntryBaseSchema.shape.name
-		.nullable()
-		.default(null)
-		.describe(
-			'New item name if this answer changes what the item is ("Макарони сухі" for "Макарони варені"); only for a question about one item; else null',
-		),
+	// fiber, grams and name: the rules live in "Clarify" of the prompt
+	fiber: optionMacroSchema.nullable().default(null),
+	grams: z.number().min(MIN_ENTRY_GRAMS).max(MAX_OPTION_GRAMS).nullable().default(null),
+	name: foodEntryBaseSchema.shape.name.nullable().default(null),
 })
 
 export type ClarifyOption = z.infer<typeof clarifyOptionSchema>
@@ -263,7 +259,7 @@ export const logMeasurementInputSchema = z.object({
 		.nullable()
 		.default(null)
 		.describe(
-			'YYYY-MM-DD from "Days" for another day, never tomorrow; up to 3 days back, or an earlier listed value to fix it; null for today',
+			'Only for another day: YYYY-MM-DD from "Days", never tomorrow; up to 3 days back, or an earlier listed value to fix it',
 		),
 	confirmedJump: z
 		.boolean()
@@ -285,7 +281,7 @@ export const showDayInputSchema = z.object({
 		.date()
 		.nullable()
 		.default(null)
-		.describe('YYYY-MM-DD from "Days"; null for today. Any earlier day or tomorrow'),
+		.describe('Only for another day: YYYY-MM-DD from "Days", any earlier day or tomorrow'),
 	reply: replyTextSchema.describe(
 		'One short sentence in the language of the user next to the card. Numbers only from the context, never added up; often none — the card shows the totals.',
 	),
@@ -298,7 +294,7 @@ export const closeDayInputSchema = z.object({
 		.date()
 		.nullable()
 		.default(null)
-		.describe('YYYY-MM-DD from "Days" of the day to close; null for today. Never tomorrow'),
+		.describe('Only for another day: YYYY-MM-DD from "Days" of the day to close, never tomorrow'),
 	estimatedTotalKcal: z
 		.number()
 		.positive()
@@ -306,7 +302,7 @@ export const closeDayInputSchema = z.object({
 		.nullable()
 		.default(null)
 		.describe(
-			'Total kcal of the whole day, only when the user named it ("закрий вчора десь на 4000"); else null. Never calculate or subtract: the backend logs the missing difference',
+			'Total kcal of the whole day, only when the user named it ("закрий вчора десь на 4000"). Never calculate or subtract: the backend logs the missing difference',
 		),
 	reply: replyTextSchema.describe(
 		'One short sentence in the language of the user next to the card. No totals, no verdict words — the card shows them; a date as dd.mm is fine.',
@@ -323,7 +319,7 @@ export const showStatsInputSchema = z.object({
 		.date()
 		.nullable()
 		.default(null)
-		.describe('YYYY-MM-DD the period ends on, never later than today; null for today'),
+		.describe('Only if the period ends before today: YYYY-MM-DD'),
 	reply: replyTextSchema.describe(
 		'One short sentence in the language of the user next to the card. No numbers — the card shows them.',
 	),
@@ -332,25 +328,22 @@ export const showStatsInputSchema = z.object({
 export type ShowStatsInput = z.infer<typeof showStatsInputSchema>
 
 export const logWorkoutInputSchema = z.object({
-	date: z.iso.date().nullable().default(null).describe('From "Days"; null for today'),
-	place: workoutPlaceSchema
-		.nullable()
-		.default(null)
-		.describe('GYM, HOME, OUTDOOR or OTHER if said; else null'),
+	date: z.iso.date().nullable().default(null).describe('Only for another day: from "Days"'),
+	place: workoutPlaceSchema.nullable().default(null).describe('Only if the user said where'),
 	durationMin: z
 		.int()
 		.min(1)
 		.max(MAX_WORKOUT_MINUTES)
 		.nullable()
 		.default(null)
-		.describe('Total minutes if said; else null'),
+		.describe('Total minutes, only if said'),
 	kcalBurned: z
 		.int()
 		.min(1)
 		.max(MAX_WORKOUT_KCAL)
 		.nullable()
 		.default(null)
-		.describe('Only a number the user said; else null'),
+		.describe('Only a number the user said'),
 	// may be empty only with appendRef + finish or with exerciseGroups (the parser checks)
 	exercises: z.array(workoutExerciseSchema).max(MAX_EXERCISES_PER_WORKOUT),
 	replaceRef: z
@@ -358,13 +351,21 @@ export const logWorkoutInputSchema = z.object({
 		.regex(WORKOUT_REF_PATTERN)
 		.nullable()
 		.default(null)
-		.describe('w-ref from "Today\'s workouts" to replace that whole workout; else null'),
+		.describe('w-ref from "Today\'s workouts", only to replace that whole workout'),
 	appendRef: z
 		.string()
 		.regex(WORKOUT_REF_PATTERN)
 		.nullable()
 		.default(null)
-		.describe('w-ref from "Today\'s workouts" to add to; else null'),
+		.describe('w-ref from "Today\'s workouts", only to add to that workout'),
+	templateRef: z
+		.string()
+		.regex(TEMPLATE_REF_PATTERN)
+		.nullable()
+		.default(null)
+		.describe(
+			't-ref from "Program", only when the user names the template ("зробив Б") or logs the same exercises as it; merely similar → null',
+		),
 	finish: z
 		.boolean()
 		.default(false)
@@ -374,17 +375,48 @@ export const logWorkoutInputSchema = z.object({
 	exerciseGroups: z
 		.array(z.string().regex(EXERCISE_GROUP_FIX_PATTERN))
 		.default([])
-		.describe(
-			'"x1:LEGS" when the user corrects the group of an exercise from "Exercises"; else []',
-		),
+		.describe('"x1:LEGS" when the user corrects the group of an exercise from "Exercises"'),
 	reply: replyTextSchema.describe("Short chat reply in the language of the user's message"),
 })
 
 export type LogWorkoutInput = z.infer<typeof logWorkoutInputSchema>
 
+export const proposeProgramInputSchema = z.object({
+	title: z
+		.string()
+		.trim()
+		.min(1)
+		.max(PROGRAM_TITLE_MAX_LENGTH)
+		.nullable()
+		.default(null)
+		.describe('Short name, e.g. "Все тіло"'),
+	// no description: the rule lives in "Program" of the context
+	mode: programModeSchema,
+	perWeek: z
+		.int()
+		.min(1)
+		.max(PROGRAM_PER_WEEK_MAX)
+		.nullable()
+		.default(null)
+		.describe('Workouts per week, if known'),
+	pinnedRef: z
+		.string()
+		.regex(TEMPLATE_REF_PATTERN)
+		.nullable()
+		.default(null)
+		.describe('t-ref of the template for mode SINGLE'),
+	templates: z.array(programTemplateInputSchema).min(1).max(PROGRAM_TEMPLATES_MAX),
+	reply: replyTextSchema.describe(
+		'One or two sentences about the idea of the program, in the language of the user. Never list exercises, changes or minutes — the card shows them',
+	),
+})
+
+export type ProposeProgramInput = z.infer<typeof proposeProgramInputSchema>
+
 export const AI_TOOL_SCHEMAS: Record<AiToolName, z.ZodType> = {
 	log_food: logFoodInputSchema,
 	log_workout: logWorkoutInputSchema,
+	propose_program: proposeProgramInputSchema,
 	log_measurement: logMeasurementInputSchema,
 	delete_measurement: deleteMeasurementInputSchema,
 	clarify: clarifyInputSchema,
@@ -405,8 +437,10 @@ export const AI_TOOL_SCHEMAS: Record<AiToolName, z.ZodType> = {
 
 const AI_TOOL_DESCRIPTIONS: Record<AiToolName, string> = {
 	log_workout: 'Log a workout or part of it. See "Workouts".',
+	propose_program:
+		'Propose a new or changed training program, always the whole program. Nothing is saved until the user accepts the card. See "Program".',
 	log_food:
-		'Log everything the user says they ate or drank in this message. Always log your best estimate, even when you also ask a clarify question. For today or another day from "Days". Never to fix something already logged.',
+		'Log everything the user says they ate or drank in this message. Always log your best estimate, even when you also ask a clarify question. See "Logging food". Never to fix something already logged.',
 	log_measurement:
 		'Log body weight (kg) or waist (cm) the user reports. Fix a wrong value of a day by logging it again for that date. confirmedJump only after the user confirmed an unusual change in a later message.',
 	delete_measurement:
@@ -418,20 +452,19 @@ const AI_TOOL_DESCRIPTIONS: Record<AiToolName, string> = {
 	save_fact: 'Remember one lasting thing about the user. See "Memory".',
 	forget_fact: 'Forget a fact from "User facts". See "Memory".',
 	clarify:
-		'Ask about logged items only when the answer changes their kcal a lot (by 80+ kcal and 15%+), or with kind "rename" which real food a strange name was (no kcal threshold). Call together with log_food, at most 2 per message.',
+		'Ask about logged items, together with log_food. See "Clarify"; kind "rename" has no kcal threshold.',
 	correct_entry:
 		'Change entries already logged today (by ref): portion weight, values or what the food is. Use instead of logging the food again.',
 	delete_entry:
 		'Delete entries ("e1") or workouts ("w1") logged today that the user wants removed.',
 	restore_entry: 'Bring back entries or workouts deleted today (by ref), e.g. "поверни".',
-	resolve_clarification:
-		'The user answers an open question in words: close it with the option that matches, with values between two options, or (both null) without values — then change the entry with correct_entry.',
+	resolve_clarification: 'The user answers an open question in words. See "Fixing what is logged".',
 	not_food:
 		'The user claims to have eaten something inedible ("з\'їв камінь", "з\'їв телефон"). Nothing is logged.',
 	photo_unusable:
 		'Only for a message with a photo: there is no food on it, or the label cannot be read. Nothing is logged. Never for a text-only message.',
 	reply:
-		'Conversation and answers: greetings, questions about food, training or the day. Nothing is logged. Also the chat answer next to correct_entry, delete_entry, restore_entry, resolve_clarification, save_food, save_fact or forget_fact.',
+		'Conversation and answers; nothing is logged. Also the chat answer next to correct_entry, delete_entry, restore_entry, resolve_clarification, save_food, save_fact or forget_fact.',
 }
 
 /** OpenAI-compatible tool definition, as OpenRouter expects it. */

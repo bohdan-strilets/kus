@@ -187,6 +187,40 @@ describe('chat workouts (e2e, real DB, fake model)', () => {
 		expect(await prisma.exerciseSet.count()).toBe(3)
 	})
 
+	it('binds an x-ref only to the exercise it names: another name decides, a short one keeps the ref', async () => {
+		await start()
+		const owner = await registerUser('owner@kus.app')
+		fake.respond(
+			createCompletion([workoutCall({})]),
+			createCompletion([
+				workoutCall({
+					exercises: [
+						{ ...bench(60), name: 'Присідання', exerciseRef: 'x1' },
+						{ ...bench(85), name: 'Жим', exerciseRef: 'x1' },
+					],
+				}),
+			]),
+		)
+		await send(owner, 'жим 80 3×8')
+
+		await send(owner, 'присідання 60 і жим 85')
+
+		const bound = await prisma.exerciseEntry.findMany({
+			where: { userId: owner.userId },
+			orderBy: { createdAt: 'asc' },
+			select: { name: true, exerciseId: true },
+		})
+		const exercises = await prisma.exercise.findMany({ where: { userId: owner.userId } })
+		const benchId = exercises.find(({ name }) => name === 'Жим лежачи')?.id
+		const squatId = exercises.find(({ name }) => name === 'Присідання')?.id
+		expect(squatId).toBeDefined()
+		expect(bound.map(({ name, exerciseId }) => [name, exerciseId])).toEqual([
+			['Жим лежачи', benchId],
+			['Присідання', squatId],
+			['Жим', benchId],
+		])
+	})
+
 	it('deletes a workout by its w-ref and brings it back', async () => {
 		await start()
 		const owner = await registerUser('owner@kus.app')

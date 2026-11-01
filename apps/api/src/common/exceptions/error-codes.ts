@@ -91,6 +91,12 @@ export const ErrorCodes = {
 	/** The stored proposal does not pass validation any more. */
 	PROGRAM_PROPOSAL_INVALID: 'PROGRAM_PROPOSAL_INVALID',
 
+	// training onboarding
+	/** No onboarding question with this message id for this user (another user's reads the same). */
+	TRAINING_ONBOARDING_NOT_FOUND: 'TRAINING_ONBOARDING_NOT_FOUND',
+	/** The question was answered or passed by already, or a newer one was asked. */
+	TRAINING_ONBOARDING_CLOSED: 'TRAINING_ONBOARDING_CLOSED',
+
 	// my foods
 	/** No active food with this id for this user (another user's is "not found" too). */
 	MY_FOOD_NOT_FOUND: 'MY_FOOD_NOT_FOUND',

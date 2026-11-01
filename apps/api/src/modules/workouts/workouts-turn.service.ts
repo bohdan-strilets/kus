@@ -26,6 +26,8 @@ export { NO_WORKOUT_REFS, type WorkoutRefIds } from './workout-refs'
 /** The dictionary rows a message is matched against; a user with more has older ones forgotten. */
 const DICTIONARY_SCAN_LIMIT = 300
 
+const NO_TEMPLATE_IDS: ReadonlyMap<string, string> = new Map()
+
 export interface WorkoutsContext {
 	workouts: TodayWorkoutContext[]
 	deletedWorkouts: TodayWorkoutContext[]
@@ -149,6 +151,7 @@ export class WorkoutsTurnService {
 			localDate,
 			workouts,
 			refIds,
+			templateIds = NO_TEMPLATE_IDS,
 		}: {
 			userId: string
 			sourceMessageId: string
@@ -157,6 +160,8 @@ export class WorkoutsTurnService {
 			localDate: Date
 			workouts: LogWorkoutInput[]
 			refIds: WorkoutRefIds
+			/** templateRef → the template id the chat checked against the active program. */
+			templateIds?: ReadonlyMap<string, string>
 		},
 		tx: Prisma.TransactionClient,
 	): Promise<{ sourceMessageIds: string[]; hasNewRecord: boolean }> {
@@ -166,7 +171,16 @@ export class WorkoutsTurnService {
 			// first: an exercise of this same call then takes the fixed group
 			await this.sessions.applyGroupFixes({ userId, fixes: input.exerciseGroups, refIds }, tx)
 			const change = await this.sessions.writeSession(
-				{ userId, sourceMessageId, now, localDate, input, refIds },
+				{
+					userId,
+					sourceMessageId,
+					now,
+					localDate,
+					input,
+					refIds,
+					templateId:
+						input.templateRef === null ? null : (templateIds.get(input.templateRef) ?? null),
+				},
 				tx,
 			)
 			if (change === null) continue

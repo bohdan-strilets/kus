@@ -1,6 +1,7 @@
 import { z } from 'zod'
 
 import { exerciseKindSchema, muscleGroupSchema, programModeSchema } from './enums.js'
+import { chatMessageSchema } from './messages.js'
 import {
 	PROGRAM_EXERCISES_PER_TEMPLATE_MAX,
 	PROGRAM_PER_WEEK_MAX,
@@ -100,3 +101,12 @@ export const saveTemplateRequestSchema = z.object({
 	exercises: z.array(templateExerciseSchema).max(PROGRAM_EXERCISES_PER_TEMPLATE_MAX),
 })
 export type SaveTemplateRequest = z.infer<typeof saveTemplateRequestSchema>
+
+export const programProposalParamsSchema = z.object({ messageId: z.uuid() })
+
+/** «Перерахувати»: Kusik's new message (with the recounted card, or without one when nothing changes) and the card it replaced, as it is now. */
+export const rebaseProgramProposalResponseSchema = z.object({
+	message: chatMessageSchema,
+	previousMessage: chatMessageSchema,
+})
+export type RebaseProgramProposalResponse = z.infer<typeof rebaseProgramProposalResponseSchema>

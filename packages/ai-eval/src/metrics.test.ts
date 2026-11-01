@@ -14,6 +14,7 @@ import {
 	countMealMatches,
 	getErrorPct,
 	isCallDetailsCorrect,
+	isCaseWorkoutsCorrect,
 	isDecisionCorrect,
 	isEditsCorrect,
 	isMeasurementsCorrect,
@@ -34,6 +35,7 @@ const result = (overrides: Partial<CaseResult>): CaseResult => ({
 	edits: null,
 	measurements: [],
 	workouts: [],
+	program: null,
 	calls: EMPTY_CALL_FACTS,
 	costUsd: 0.001,
 	latencyMs: 1000,
@@ -190,9 +192,11 @@ describe('repo cases', () => {
 			'log',
 			'log_or_clarify',
 			'not_food',
+			'program',
 			'reply',
 			'stats',
 			'workout',
+			'workout_or_reply',
 		])
 	})
 })
@@ -433,5 +437,42 @@ describe('countMealMatches', () => {
 
 	it('does not count a missing item or one left to the clock', () => {
 		expect(countMealMatches(day, result({ items: [logged('Борщ', null)] }))).toBe(0)
+	})
+})
+
+describe('workout_or_reply and noAppend', () => {
+	const late = evalCase({ decision: 'workout_or_reply', noAppend: true })
+	const workout = { appendRef: null } as CaseResult['workouts'][number]
+
+	it('accepts a workout or a reply, nothing else', () => {
+		expect(isDecisionCorrect(late, 'workout', null)).toBe(true)
+		expect(isDecisionCorrect(late, 'reply', 'Що саме додати?')).toBe(true)
+		expect(isDecisionCorrect(late, 'log', null)).toBe(false)
+		expect(isDecisionCorrect(late, 'program', null)).toBe(false)
+	})
+
+	it('fails a workout that appends, passes a new one or none', () => {
+		expect(isCaseWorkoutsCorrect(late, result({ workouts: [workout] }))).toBe(true)
+		expect(isCaseWorkoutsCorrect(late, result({ workouts: [] }))).toBe(true)
+		expect(
+			isCaseWorkoutsCorrect(late, result({ workouts: [{ ...workout, appendRef: 'w1' }] })),
+		).toBe(false)
+	})
+
+	it('counts noAppend and program cases in the summary', () => {
+		const programCase = evalCase({ decision: 'program', program: { mode: 'SINGLE' } })
+		const summary = summarize('m', [
+			{ evalCase: late, result: result({ decision: 'reply', workouts: [] }) },
+			{
+				evalCase: programCase,
+				result: result({
+					decision: 'program',
+					program: { mode: 'SINGLE', pinnedRef: 't1', templates: [] },
+				}),
+			},
+			{ evalCase: programCase, result: result({ decision: 'reply' }) },
+		])
+		expect(summary.workouts).toEqual({ correct: 1, total: 1 })
+		expect(summary.program).toEqual({ correct: 1, total: 2 })
 	})
 })

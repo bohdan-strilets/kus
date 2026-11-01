@@ -36,10 +36,10 @@ export const addRun = (ledger: StageLedger, run: LedgerRun): StageLedger => ({
 	runs: [...ledger.runs, run],
 })
 
-export const getLedgerFile = (stage: string): URL => {
+export const getLedgerFile = (stage: string, dir: URL = LEDGER_DIR): URL => {
 	if (!STAGE_NAME_PATTERN.test(stage))
 		throw new Error('--stage may contain only letters, digits, . _ -')
-	return new URL(`eval-budget-${stage}.json`, LEDGER_DIR)
+	return new URL(`eval-budget-${stage}.json`, dir)
 }
 
 export const writeFileAtomic = async (file: URL, content: string): Promise<void> => {
@@ -62,8 +62,11 @@ const isLedger = (value: unknown): value is StageLedger =>
 	'runs' in value &&
 	Array.isArray(value.runs)
 
-export const loadLedger = async (stage: string): Promise<StageLedger | null> => {
-	const file = getLedgerFile(stage)
+export const loadLedger = async (
+	stage: string,
+	dir: URL = LEDGER_DIR,
+): Promise<StageLedger | null> => {
+	const file = getLedgerFile(stage, dir)
 	const text = await readFile(file, 'utf8').catch((error: unknown) => {
 		if (isNotFound(error)) return null
 		throw error
@@ -74,9 +77,13 @@ export const loadLedger = async (stage: string): Promise<StageLedger | null> => 
 	return json
 }
 
-export const saveLedger = async (stage: string, ledger: StageLedger): Promise<void> => {
-	await mkdir(LEDGER_DIR, { recursive: true })
-	await writeFileAtomic(getLedgerFile(stage), JSON.stringify(ledger, null, '\t'))
+export const saveLedger = async (
+	stage: string,
+	ledger: StageLedger,
+	dir: URL = LEDGER_DIR,
+): Promise<void> => {
+	await mkdir(dir, { recursive: true })
+	await writeFileAtomic(getLedgerFile(stage, dir), JSON.stringify(ledger, null, '\t'))
 }
 
 export const createLedger = async (stage: string, capUsd: number): Promise<StageLedger> => {

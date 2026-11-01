@@ -18,6 +18,8 @@ const WITH_EXERCISES = {
 			exercise: { select: { muscleGroup: true } },
 		},
 	},
+	// the name in the version it was done by: the journal's «· Тренування А»
+	template: { select: { name: true } },
 } satisfies Prisma.WorkoutInclude
 
 export type WorkoutWithExercises = Prisma.WorkoutGetPayload<{ include: typeof WITH_EXERCISES }>
@@ -30,6 +32,8 @@ export interface WorkoutWrite {
 	durationMin: number | null
 	place: Prisma.WorkoutUncheckedCreateInput['place']
 	kcalBurned: number | null
+	/** The program template it is done by; null when none. */
+	templateId: string | null
 	sourceMessageId: string | null
 	/** Set when the message finishes the session (or tells it whole); a replace leaves them as they are. */
 	finishedAt: Date | null
@@ -50,6 +54,7 @@ export interface SessionFields {
 	kcalBurned?: number
 	finishedAt?: Date
 	finishedMessageId?: string
+	templateId?: string
 }
 
 export interface ExerciseWrite {
@@ -184,6 +189,14 @@ export class WorkoutsRepository {
 		})
 	}
 
+	/** How many live workouts the owner has, counting no further than `upTo`. */
+	countLive(
+		{ userId, upTo }: { userId: string; upTo: number },
+		tx?: Prisma.TransactionClient,
+	): Promise<number> {
+		return (tx ?? this.prisma).workout.count({ where: { userId, deletedAt: null }, take: upTo })
+	}
+
 	/** The owner's workout, deleted or not; null when it is not theirs. */
 	findOwned(
 		{ userId, id }: { userId: string; id: string },
@@ -229,6 +242,7 @@ export class WorkoutsRepository {
 				place: write.place,
 				kcalBurned: write.kcalBurned,
 				kcalSource: write.kcalBurned === null ? null : 'MANUAL',
+				templateId: write.templateId,
 				sourceMessageId: write.sourceMessageId,
 				finishedAt: write.finishedAt,
 				finishedMessageId: write.finishedMessageId,
@@ -296,6 +310,7 @@ export class WorkoutsRepository {
 				place: write.place,
 				kcalBurned: write.kcalBurned,
 				kcalSource: write.kcalBurned === null ? null : 'MANUAL',
+				templateId: write.templateId,
 				editedAt: new Date(),
 			},
 		})
@@ -330,9 +345,9 @@ export class WorkoutsRepository {
 	/** The dictionary row of the owner by name or alias (both already normalized). */
 	findExerciseByName(
 		{ userId, nameNormalized }: { userId: string; nameNormalized: string },
-		tx: Prisma.TransactionClient,
+		tx?: Prisma.TransactionClient,
 	) {
-		return tx.exercise.findFirst({
+		return (tx ?? this.prisma).exercise.findFirst({
 			where: {
 				userId,
 				deletedAt: null,

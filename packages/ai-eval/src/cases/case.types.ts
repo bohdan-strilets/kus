@@ -11,7 +11,9 @@ import {
 	MEMORY_REF_PATTERN,
 	measurementKindSchema,
 	muscleGroupSchema,
+	programModeSchema,
 	statsDaysSchema,
+	TEMPLATE_REF_PATTERN,
 	WORKOUT_REF_PATTERN,
 	workoutPlaceSchema,
 } from '@kus/shared'
@@ -26,7 +28,8 @@ import type { EvalPhoto } from './photo.js'
  * fine; `edit` = only changed what was logged before (edit tools + reply), nothing new logged;
  * `day_card` = showed a day's card (show_day) instead of answering in words;
  * `close_day` / `stats` = closed the day or showed the stats card, nothing logged next to it;
- * `workout` = logged a training (log_workout), no food.
+ * `workout` = logged a training (log_workout), no food; `workout_or_reply` = a training or only a
+ * reply, either is fine (the case judges the rest, e.g. `noAppend`); `program` = propose_program.
  */
 export const expectedDecisionSchema = z.enum([
 	'log',
@@ -40,6 +43,8 @@ export const expectedDecisionSchema = z.enum([
 	'close_day',
 	'stats',
 	'workout',
+	'workout_or_reply',
+	'program',
 ])
 
 export type ExpectedDecision = z.infer<typeof expectedDecisionSchema>
@@ -145,6 +150,8 @@ export const expectedWorkoutSchema = z
 		replaceRef: z.string().regex(WORKOUT_REF_PATTERN).nullable().optional(),
 		/** The "w1" this call adds to; null = not an append. */
 		appendRef: z.string().regex(WORKOUT_REF_PATTERN).nullable().optional(),
+		/** The `t1` of «Program» the workout is bound to; null = not bound to a template. */
+		templateRef: z.string().regex(TEMPLATE_REF_PATTERN).nullable().optional(),
 		finish: z.boolean().optional(),
 		/** Exactly these group fixes (`x1:LEGS`), in any order; `[]` = none. */
 		exerciseGroups: z.array(z.string().regex(EXERCISE_GROUP_FIX_PATTERN)).optional(),
@@ -195,6 +202,46 @@ export const expectedMemorySchema = z.object({
 	forgets: z.array(z.string().regex(FACT_REF_PATTERN)).optional(),
 })
 
+const countRangeSchema = z
+	.object({ min: z.int().nonnegative(), max: z.int().nonnegative() })
+	.refine(({ min, max }) => min <= max, 'min > max')
+
+/** One exercise a template must (or, with `absent`, must not) contain. */
+export const expectedProgramExerciseSchema = z.object({
+	/** Lower-case stem of the exercise name ("присід"). */
+	nameIncludes: z.string().min(1),
+	absent: z.literal(true).optional(),
+})
+
+/** One template of the proposed program; found by its name, every field given is checked. */
+export const expectedProgramTemplateSchema = z.object({
+	/** Lower-case stem of the template name ("тренування б"). */
+	nameIncludes: z.string().min(1).optional(),
+	/** Exactly these ISO weekdays. */
+	weekdays: z.array(z.int().min(1).max(7)).optional(),
+	exercises: z.array(expectedProgramExerciseSchema).optional(),
+	exerciseCount: countRangeSchema.optional(),
+})
+
+/** What propose_program must carry; every field given is checked, the whole program at once. */
+export const expectedProgramSchema = z.object({
+	/** One mode or any of several. */
+	mode: z.union([programModeSchema, z.array(programModeSchema).min(1)]).optional(),
+	templateCount: countRangeSchema.optional(),
+	/** Each is matched to its own template of the answer. */
+	templates: z.array(expectedProgramTemplateSchema).optional(),
+	/** The name of a template of the case's program; pinnedRef must be its t-ref. */
+	pinnedRefOf: z.string().min(1).optional(),
+	/** No weight on any exercise: nothing was said and there is no history. */
+	noInventedWeights: z.literal(true).optional(),
+	/** Every template of the case's program comes back under its own t-ref. */
+	keepsRefs: z.literal(true).optional(),
+	/** Every template of the answer has this many exercises. */
+	exerciseCount: countRangeSchema.optional(),
+})
+
+export type ExpectedProgram = z.infer<typeof expectedProgramSchema>
+export type ExpectedProgramTemplate = z.infer<typeof expectedProgramTemplateSchema>
 export type ExpectedSavedFood = z.infer<typeof expectedSavedFoodSchema>
 export type ExpectedFact = z.infer<typeof expectedFactSchema>
 export type ExpectedMemory = z.infer<typeof expectedMemorySchema>
@@ -238,6 +285,10 @@ export const evalCaseSchema = z
 			measurements: z.array(expectedMeasurementSchema).optional(),
 			/** Exactly these log_workout calls; `[]` = none. */
 			workouts: z.array(expectedWorkoutSchema).optional(),
+			/** No log_workout may add to an open workout (appendRef); nothing else about workouts is judged. */
+			noAppend: z.literal(true).optional(),
+			/** The propose_program call. */
+			program: expectedProgramSchema.optional(),
 			/** Some kept clarify option renames the item ("Макарони сухі"). */
 			clarifyRenames: z.boolean().optional(),
 			/** Whole-day cases: an item (name stem) must land in this meal. */

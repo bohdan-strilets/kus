@@ -2,11 +2,13 @@ import { Logger } from '@nestjs/common'
 import { STATS_EMPTY_REPLY } from '@kus/shared'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import type { TemplateRefIds } from '../programs/program-chat-context'
 import { TurnCopySourceMissingException, TurnDateOutOfRangeException } from './chat.exceptions'
 import { ChatTurnService } from './chat-turn.service'
 
 beforeEach(() => {
 	vi.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined)
+	vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined)
 })
 
 const TIMEZONE = 'Europe/Warsaw'
@@ -58,6 +60,8 @@ const createService = () => {
 	const findActiveEntriesByIds = vi.fn().mockResolvedValue([])
 	const recordForTurn = vi.fn()
 	const logWorkouts = vi.fn().mockResolvedValue({ sourceMessageIds: [], hasNewRecord: false })
+	const buildProposalCard = vi.fn().mockResolvedValue({ status: 'UNCHANGED' })
+	const resolveTemplateIds = vi.fn().mockResolvedValue(new Set())
 	const service = new ChatTurnService(
 		{ $transaction: (callback: (tx: unknown) => unknown) => callback({}) } as never,
 		{ completeTurn, setDayCard } as never,
@@ -72,8 +76,14 @@ const createService = () => {
 		{ build: buildStats } as never,
 		{ logWorkouts } as never,
 		{ apply: vi.fn() } as never,
+		{ buildProposalCard, resolveTemplateIds } as never,
+		{ storeAnswer: vi.fn(), offerAfterWorkout: vi.fn() } as never,
 	)
-	const save = (decision: never, copyRefIds: Map<string, string> = new Map()) =>
+	const save = (
+		decision: never,
+		copyRefIds: Map<string, string> = new Map(),
+		templateRefIds?: TemplateRefIds,
+	) =>
 		service.saveDecision(
 			{
 				userId: 'u1',
@@ -83,7 +93,12 @@ const createService = () => {
 				localDate: TODAY,
 			},
 			decision,
-			{ memory: { byRef: new Map(), context: [] }, refIds: {}, copyRefIds } as never,
+			{
+				memory: { byRef: new Map(), context: [] },
+				refIds: {},
+				copyRefIds,
+				...(templateRefIds ? { templateRefIds } : {}),
+			} as never,
 		)
 	return {
 		save,
@@ -97,6 +112,9 @@ const createService = () => {
 		setDayCard,
 		findActiveEntriesByIds,
 		recordForTurn,
+		buildProposalCard,
+		resolveTemplateIds,
+		logWorkouts,
 	}
 }
 
@@ -524,5 +542,78 @@ describe('ChatTurnService.saveDecision copyRef', () => {
 		).rejects.toBeInstanceOf(TurnCopySourceMissingException)
 
 		expect(logEntries).not.toHaveBeenCalled()
+	})
+})
+
+const PROGRAM_DECISION = {
+	kind: 'program',
+	program: {
+		mode: 'ROTATE',
+		perWeek: 2,
+		title: null,
+		pinnedRef: null,
+		templates: [],
+		reply: 'Ось.',
+	},
+} as never
+
+/** t1 is the active version's template; t2 lives only in the open proposal. */
+const PENDING_REFS: TemplateRefIds = {
+	keys: new Map([
+		['t1', 'key-a'],
+		['t2', 'key-new'],
+	]),
+	ids: new Map([['t1', 'template-a']]),
+	baseVersionId: 'version-1',
+}
+
+describe('ChatTurnService.saveDecision programs', () => {
+	it('builds the card against the version the context showed, with the refs of the proposal', async () => {
+		const { save, buildProposalCard } = createService()
+
+		await save(PROGRAM_DECISION, new Map(), PENDING_REFS)
+
+		expect(buildProposalCard).toHaveBeenCalledWith('u1', expect.anything(), {
+			refs: { templateKeys: PENDING_REFS.keys, exerciseIds: new Map() },
+			contextVersionId: 'version-1',
+		})
+	})
+
+	it('answers with its own sentence and no card when the program changed meanwhile', async () => {
+		const { save, buildProposalCard, completeTurn } = createService()
+		buildProposalCard.mockResolvedValue({ status: 'BASE_CHANGED' })
+
+		await save(PROGRAM_DECISION, new Map(), PENDING_REFS)
+
+		expect(completeTurn).toHaveBeenCalledWith(
+			expect.objectContaining({
+				replyText: 'Програму щойно змінено в редакторі — напиши ще раз, що змінити.',
+				programCard: undefined,
+			}),
+			expect.anything(),
+		)
+	})
+
+	it('binds a workout only to a template of the active version, never to a proposal-only ref', async () => {
+		const { save, resolveTemplateIds, logWorkouts } = createService()
+		resolveTemplateIds.mockResolvedValue(new Set(['template-a']))
+		const workout = (templateRef: string) => ({
+			appendRef: null,
+			replaceRef: null,
+			templateRef,
+			exercises: [],
+			reply: 'ok',
+		})
+
+		await save(
+			{ kind: 'workout', workouts: [workout('t2'), workout('t1')] } as never,
+			new Map(),
+			PENDING_REFS,
+		)
+
+		expect(resolveTemplateIds).toHaveBeenCalledWith('u1', ['template-a'])
+		expect(logWorkouts.mock.calls[0]?.[0]).toMatchObject({
+			templateIds: new Map([['t1', 'template-a']]),
+		})
 	})
 })

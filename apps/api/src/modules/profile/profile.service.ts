@@ -74,6 +74,28 @@ export class ProfileService {
 		}
 	}
 
+	/** When the training onboarding was taken up or declined; null = it may still be offered. */
+	async findTrainingOnboardingAt(
+		userId: string,
+		tx?: Prisma.TransactionClient,
+	): Promise<Date | null> {
+		const profile = await this.profileRepository.findProfile(userId, tx)
+		return profile?.trainingOnboardingAt ?? null
+	}
+
+	/** Serializes the user's training onboarding starts; call after markTrainingOnboarding made the row. */
+	lockProfile(userId: string, tx: Prisma.TransactionClient): Promise<void> {
+		return this.profileRepository.lockProfile(userId, tx)
+	}
+
+	/** «Налаштувати в чаті», «Так» or «Пізніше»: the invitation is not offered again. */
+	markTrainingOnboarding(
+		{ userId, at }: { userId: string; at: Date },
+		tx?: Prisma.TransactionClient,
+	): Promise<void> {
+		return this.profileRepository.markTrainingOnboarding({ userId, at }, tx)
+	}
+
 	async getProfile(userId: string): Promise<ProfileResponse> {
 		const user = await this.usersService.getMe(userId)
 		const { today, year } = getClock(user.timezone)

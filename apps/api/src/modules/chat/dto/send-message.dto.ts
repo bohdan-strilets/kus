@@ -1,4 +1,4 @@
-import { sendMessageRequestSchema } from '@kus/shared'
+import { type OnboardingAnswerRequest, sendMessageRequestSchema } from '@kus/shared'
 import { createZodDto } from 'nestjs-zod'
 import { z } from 'zod'
 
@@ -11,6 +11,7 @@ interface SendMessageBody {
 	text: string | undefined
 	photo: PhotoPayload | undefined
 	photoIds: string[] | undefined
+	onboardingAnswer?: OnboardingAnswerRequest
 }
 
 /**

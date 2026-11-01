@@ -34,8 +34,8 @@ export const saveFoodInputSchema = z.object({
 		.nullable()
 		.default(null)
 		.describe("Values per 100 g from the label or the user's words; null with fromItemIndex"),
-	pieceGrams: gramsSchema.nullable().default(null).describe('Grams of one piece; else null'),
-	defaultGrams: gramsSchema.nullable().default(null).describe('Usual portion in grams; else null'),
+	pieceGrams: gramsSchema.nullable().default(null).describe('Grams of one piece, if known'),
+	defaultGrams: gramsSchema.nullable().default(null).describe('Usual portion in grams, if known'),
 	// the model sees no list here (it has log_food's); an unknown category costs only an icon
 	category: withOpenEnumForModel(
 		foodCategorySchema.catch(FALLBACK_FOOD_CATEGORY).nullable().default(null),
@@ -46,13 +46,15 @@ export const saveFoodInputSchema = z.object({
 		.min(0)
 		.nullable()
 		.default(null)
-		.describe('Index of the log_food item in this answer to take the values from; else null'),
+		.describe(
+			'Index (from 0) of the log_food item in this answer to take the values from: always when saving a food logged in this same answer',
+		),
 	updateRef: z
 		.string()
 		.regex(MEMORY_REF_PATTERN)
 		.nullable()
 		.default(null)
-		.describe('m-ref from "Saved foods" when the user agreed to update it; else null'),
+		.describe('m-ref from "Saved foods" when the user agreed to update it'),
 })
 
 export type SaveFoodInput = z.infer<typeof saveFoodInputSchema>

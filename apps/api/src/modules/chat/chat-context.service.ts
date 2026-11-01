@@ -17,6 +17,7 @@ import {
 	type MemoryFoodContext,
 	type RecentMeasurementContext,
 	shiftDate,
+	shouldShowProgramRules,
 } from '@kus/shared'
 
 import { addDays, formatDbDate, formatLocalTime, getZonedMoment } from '../../common/time'
@@ -26,9 +27,12 @@ import { FactsService } from '../facts/facts.service'
 import { GoalsService } from '../goals/goals.service'
 import { MeasurementsService } from '../measurements/measurements.service'
 import { ProfileService } from '../profile/profile.service'
+import type { TemplateRefIds } from '../programs/program-chat-context'
+import { ProgramProposalsService } from '../programs/program-proposals.service'
 import { type WorkoutRefIds, WorkoutsTurnService } from '../workouts/workouts-turn.service'
 import { ChatRepository, type MessageWithAttachments } from './chat.repository'
 import { ChatEarlierService } from './chat-earlier.service'
+import { ChatProgramCardsService } from './chat-program-cards.service'
 import { ClarificationsRepository } from './clarifications.repository'
 import { buildDaysContext } from './days-context'
 import { buildEditContext, type EditRefIds } from './edit-context'
@@ -51,6 +55,8 @@ interface BuildContextParams {
 	now: Date
 	localDate: Date
 	memory: MemoryFoodContext[]
+	/** The last step of the training onboarding: its answers, formatted for «Program». */
+	programOnboarding?: string
 }
 
 /** Message id → ids of the entries it logged; built from the day already loaded, no extra query. */
@@ -89,6 +95,8 @@ export class ChatContextService {
 		private readonly profileService: ProfileService,
 		private readonly workoutsTurn: WorkoutsTurnService,
 		private readonly factsService: FactsService,
+		private readonly programProposals: ProgramProposalsService,
+		private readonly programCards: ChatProgramCardsService,
 	) {}
 
 	/** Day totals vs goal; the remainder is computed here, never by the model. */
@@ -176,6 +184,7 @@ export class ChatContextService {
 		now,
 		localDate,
 		memory,
+		programOnboarding,
 	}: BuildContextParams): Promise<{
 		context: FoodParseContext
 		refIds: EditRefIds
@@ -183,6 +192,8 @@ export class ChatContextService {
 		copyRefIds: CopyRefIds
 		/** `f1…` → the id of the fact the model saw under that ref. */
 		factRefIds: ReadonlyMap<string, string>
+		/** `t1…` of «Program» → template keys and ids, and the version the section showed. */
+		templateRefIds: TemplateRefIds
 	}> {
 		const today = formatDbDate(localDate)
 		const [
@@ -194,6 +205,7 @@ export class ChatContextService {
 			earlier,
 			workouts,
 			facts,
+			openCard,
 		] = await Promise.all([
 			this.getDayOverview(userId, localDate),
 			this.chatRepository.findHistory({
@@ -212,7 +224,13 @@ export class ChatContextService {
 			this.chatEarlier.getContext({ userId, text, today }),
 			this.workoutsTurn.getContext({ userId, localDate, timezone, text, now }),
 			this.factsService.findContextFacts(userId),
+			this.programCards.findOpenCard(userId),
 		])
+		// after the workouts: an exercise of the program shows its x-ref when «Exercises» lists it
+		const programContext = await this.programProposals.getContext(userId, {
+			exerciseRefs: new Map([...workouts.refIds.exercises].map(([ref, id]) => [id, ref])),
+			pending: openCard?.program ?? null,
+		})
 		const clarifications = await this.clarificationsRepository.findOpenClarifications({
 			userId,
 			entryIds: editable.active.map((entry) => entry.id),
@@ -238,6 +256,14 @@ export class ChatContextService {
 			ref: `${FACT_REF_PREFIX}${index + 1}`,
 			text,
 		}))
+		const historyTurns = history
+			.reverse()
+			.flatMap((turn) => toHistoryTurns(turn, refByEntryId, entryIdsBySourceMessageId))
+		const hasProgramRules = shouldShowProgramRules({
+			text,
+			history: historyTurns,
+			hasProgram: programContext.program !== null || programContext.pendingProgram !== null,
+		})
 		const goalContext: GoalContext | null =
 			goal && totals.remainingKcal !== null
 				? {
@@ -271,14 +297,19 @@ export class ChatContextService {
 				...(facts.proposal ? { proposedFact: facts.proposal.text } : {}),
 				// no section at all unless the message points back
 				...(earlier.earlier.length > 0 ? { earlier: earlier.earlier } : {}),
-				history: history
-					.reverse()
-					.flatMap((turn) => toHistoryTurns(turn, refByEntryId, entryIdsBySourceMessageId)),
+				// «Program»: always with a program or an open proposal; without them only for a talk about
+				// one or the onboarding
+				...(programContext.program ? { program: programContext.program } : {}),
+				...(programContext.pendingProgram ? { pendingProgram: programContext.pendingProgram } : {}),
+				...(hasProgramRules ? { hasProgramRules: true } : {}),
+				...(programOnboarding ? { programOnboarding } : {}),
+				history: historyTurns,
 			},
 			refIds,
 			workoutRefIds: workouts.refIds,
 			copyRefIds: earlier.copyRefIds,
 			factRefIds: new Map(factContexts.map(({ ref }, index) => [ref, confirmedIds[index] ?? ''])),
+			templateRefIds: programContext.refIds,
 		}
 	}
 }

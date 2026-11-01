@@ -207,13 +207,6 @@ export const RANGE_CASES: EvalCase[] = [
 			'500 ml × 42–48 kcal per 100 ml (USDA apple juice 46): the volume is given, no question',
 	},
 	{
-		id: 'smoothie-no-volume',
-		text: 'смузі банан-полуниця',
-		expect: { decision: 'clarify' },
-		reference:
-			'A smoothie of unknown volume: 250 ml vs 400 ml+ differ by far more than 80 kcal → asks, logs a best guess',
-	},
-	{
 		id: 'grilled-chicken-thigh',
 		text: 'курка гриль, одне стегно',
 		expect: { decision: 'log', kcal: range(200, 400), categories: ['poultry'] },

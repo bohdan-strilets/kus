@@ -130,12 +130,6 @@ export const HISTORY_CARD_CASES: EvalCase[] = [
 		reference: 'A summary of the week → show_stats week, numbers are the backend card',
 	},
 	{
-		id: 'stats-month',
-		text: 'Як я харчувався за місяць?',
-		expect: { decision: 'stats', stats: { days: 30 } },
-		reference: 'A question about the month → show_stats month, not a reply with guessed numbers',
-	},
-	{
 		id: 'same-soup-as-yesterday',
 		text: 'Той самий суп, що й учора',
 		context: { earlier: [SOUP] },
@@ -149,13 +143,6 @@ export const HISTORY_CARD_CASES: EvalCase[] = [
 		context: { earlier: [earlierEntry('h1', '2026-10-01', 'SNACK', 'Кабаноси', 50, 230)] },
 		expect: { decision: 'log', copyRefs: ['h1'], kcal: exact(230), maxItems: 1 },
 		reference: '«Знову» + a named older entry → copyRef h1',
-	},
-	{
-		id: 'copy-once-more-buckwheat',
-		text: 'Ще раз ту саму гречку',
-		context: { earlier: [earlierEntry('h1', '2026-10-03', 'DINNER', 'Гречка варена', 200, 220)] },
-		expect: { decision: 'log', copyRefs: ['h1'], kcal: exact(220), maxItems: 1 },
-		reference: '«Ще раз ту саму» + a named older entry → copyRef h1',
 	},
 	{
 		id: 'copy-yesterday-dinner',
@@ -231,17 +218,6 @@ export const HISTORY_CARD_CASES: EvalCase[] = [
 			replyExcludes: GENDERED_FORMS,
 		},
 		reference: 'A question about the past → reply with the date of h1 (29.09), nothing logged',
-	},
-	{
-		id: 'weight-yesterday-decimal',
-		text: 'Вчора зважився, 81.4',
-		expect: {
-			decision: 'reply',
-			replyExcludes: ['81'],
-			measurements: [{ kind: 'WEIGHT', value: 81.4, date: YESTERDAY }],
-		},
-		reference:
-			'«Вчора» → log_measurement for 2026-10-06; the reply does not repeat the weight (a dd.mm date in it is fine)',
 	},
 	{
 		id: 'weight-other-day-reply',

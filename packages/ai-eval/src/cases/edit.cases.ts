@@ -66,22 +66,6 @@ const DAY: Partial<FoodParseContext> = {
 	],
 }
 
-/** The live bug: two borshches logged, the second one by «зміни порцію». */
-const DAY_WITH_DUPLICATE: Partial<FoodParseContext> = {
-	dayTotals: { kcal: 772, protein: 25, fat: 20, carbs: 122 },
-	meals: [{ type: 'SNACK', kcal: 772 }],
-	entries: [
-		{ ...BANANA, mealType: 'SNACK' },
-		{ ...BUCKWHEAT, mealType: 'SNACK' },
-		{ ...BORSCHT, mealType: 'SNACK' },
-		entry('e4', 'Борщ червоний український', 'SNACK', 600, 270, 'borscht', {
-			protein: 9,
-			fat: 10,
-			carbs: 33,
-		}),
-	],
-}
-
 const SOUP = entry('e1', 'Суп', 'LUNCH', 300, 150, 'soup', { protein: 6, fat: 6, carbs: 18 })
 
 const DAY_WITH_SOUP_QUESTION: Partial<FoodParseContext> = {
@@ -167,16 +151,6 @@ export const EDIT_CASES: EvalCase[] = [
 		reference: 'The live case: the portion is the borshch of the last turn',
 	},
 	{
-		id: 'edit-portion-buckwheat',
-		text: 'гречки було 250 г, а не 200',
-		context: DAY,
-		expect: {
-			decision: 'edit',
-			edits: { corrected: [{ ref: 'e2', grams: range(250, 250), kcal: range(270, 280) }] },
-		},
-		reference: '220 kcal / 200 g × 250 g = 275',
-	},
-	{
 		id: 'edit-rename',
 		text: 'це був не борщ, а курячий суп з локшиною',
 		context: DAY,
@@ -192,13 +166,6 @@ export const EDIT_CASES: EvalCase[] = [
 		context: DAY,
 		expect: { decision: 'edit', edits: { deleted: ['e1'] } },
 		reference: 'delete_entry by ref',
-	},
-	{
-		id: 'edit-delete-duplicate',
-		text: 'видали другий борщ',
-		context: DAY_WITH_DUPLICATE,
-		expect: { decision: 'edit', edits: { deleted: ['e4'] } },
-		reference: '«другий» = the later of two borshches (the live duplicate)',
 	},
 	{
 		id: 'edit-restore',

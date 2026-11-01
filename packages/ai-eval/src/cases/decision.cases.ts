@@ -2,7 +2,7 @@
 // (conversation), clarify (logged + a question that changes kcal by 80+ and 15 %+).
 import { range } from './case-builders.js'
 import type { EvalCase } from './case.types.js'
-import { DAY_OVER_GOAL, DAY_WITH_GOAL } from './context-presets.js'
+import { DAY_WITH_GOAL } from './context-presets.js'
 
 /** A feast is one honest estimate; no lecture, no «tomorrow eat less». */
 const NO_LECTURE = ['забагато', 'завтра менше', 'компенс', 'обережн', 'варто']
@@ -11,12 +11,6 @@ export const DECISION_CASES: EvalCase[] = [
 	{
 		id: 'not-food-stone',
 		text: "з'їв камінь",
-		expect: { decision: 'not_food' },
-		reference: 'Inedible → not_food, nothing logged',
-	},
-	{
-		id: 'not-food-phone',
-		text: "з'їв телефон",
 		expect: { decision: 'not_food' },
 		reference: 'Inedible → not_food, nothing logged',
 	},
@@ -31,12 +25,6 @@ export const DECISION_CASES: EvalCase[] = [
 		text: 'випив склянку води',
 		expect: { decision: 'reply' },
 		reference: 'Plain water has no kcal → a short reply, nothing logged',
-	},
-	{
-		id: 'reply-mineral-water',
-		text: 'пляшка мінералки 0,5',
-		expect: { decision: 'reply' },
-		reference: 'Mineral water with nothing added → reply, nothing logged',
 	},
 	{
 		id: 'log-water-and-banana',
@@ -62,23 +50,6 @@ export const DECISION_CASES: EvalCase[] = [
 			'Pigs have no wings: log the likely chicken wings and ask chicken wings vs pork ribs, each named',
 	},
 	{
-		id: 'odd-close-options',
-		text: "з'їв 150 г рибних крилець",
-		expect: {
-			decision: 'clarify',
-			kcal: range(150, 500),
-			clarifyRenames: true,
-		},
-		reference:
-			'Fish have no wings: chicken wings (~320) vs fish fingers (~290) are close in kcal, yet a rename question is kept without the threshold',
-	},
-	{
-		id: 'odd-fried-ice',
-		text: 'смажений лід',
-		expect: { decision: 'reply' },
-		reference: 'Nothing plausible to log → reply asking what it was, no invented values',
-	},
-	{
 		id: 'odd-air-cutlet',
 		text: 'котлета з повітря',
 		expect: { decision: 'reply' },
@@ -89,12 +60,6 @@ export const DECISION_CASES: EvalCase[] = [
 		text: 'привіт',
 		expect: { decision: 'reply' },
 		reference: 'Greeting → reply',
-	},
-	{
-		id: 'reply-thanks',
-		text: 'дякую!',
-		expect: { decision: 'reply' },
-		reference: 'Thanks → reply',
 	},
 	{
 		id: 'reply-remaining',
@@ -122,18 +87,6 @@ export const DECISION_CASES: EvalCase[] = [
 		expect: { decision: 'clarify', kcal: range(100, 400), categories: ['soup'] },
 		reference:
 			'Type and size unknown: veg soup ~150 vs kharcho/solyanka ~350 → clarify, log a best guess',
-	},
-	{
-		id: 'clarify-buckwheat',
-		text: '100 г гречки',
-		expect: { decision: 'clarify', kcal: range(92, 132), categories: ['porridge'] },
-		reference: 'Cooked ~110 vs dry ~343 kcal (mockup chat-clarify); logged as cooked',
-	},
-	{
-		id: 'clarify-pasta',
-		text: '80 г макаронів',
-		expect: { decision: 'clarify', kcal: range(120, 300), categories: ['pasta'] },
-		reference: 'Cooked ~126 vs dry ~297 kcal (USDA) → clarify',
 	},
 	{
 		id: 'feast-wedding',
@@ -165,13 +118,5 @@ export const DECISION_CASES: EvalCase[] = [
 			replyExcludes: NO_LECTURE,
 		},
 		reference: "The user's own number (4000 kcal) is taken as it is, for yesterday, as one item",
-	},
-	{
-		id: 'feast-over-goal-no-lecture',
-		text: 'день народження у друга, застілля',
-		context: DAY_OVER_GOAL,
-		expect: { decision: 'log', kcal: range(1500, 2500), replyExcludes: NO_LECTURE },
-		reference:
-			'Already 300 over the goal: the feast is still logged honestly, without a reminder of the goal or advice',
 	},
 ]

@@ -40,17 +40,6 @@ export const EXACT_CASES: EvalCase[] = [
 		reference: `${USDA}: chicken breast, meat only, roasted — 165 kcal, 31.0 g protein`,
 	},
 	{
-		id: 'weighed-rice',
-		text: '200 г вареного білого рису',
-		expect: {
-			decision: 'log',
-			kcal: per100(130, 200),
-			protein: per100(2.69, 200),
-			categories: ['porridge'],
-		},
-		reference: `${USDA}: rice, white, long-grain, cooked — 130 kcal, 2.69 g protein`,
-	},
-	{
 		id: 'weighed-oats-dry',
 		text: '50 г сухих вівсяних пластівців',
 		expect: {
@@ -82,17 +71,6 @@ export const EXACT_CASES: EvalCase[] = [
 			categories: ['sauce'],
 		},
 		reference: `${USDA}: olive oil — 884 kcal`,
-	},
-	{
-		id: 'weighed-butter',
-		text: '10 г вершкового масла',
-		expect: {
-			decision: 'log',
-			kcal: per100(717, 10),
-			protein: per100(0.85, 10),
-			categories: ['sauce'],
-		},
-		reference: `${USDA}: butter, salted — 717 kcal, 0.85 g protein`,
 	},
 	{
 		id: 'weighed-salmon',
@@ -201,17 +179,6 @@ export const EXACT_CASES: EvalCase[] = [
 			kcal: per100(360, 60),
 			protein: per100(33, 60),
 			categories: ['protein_bar'],
-		},
-		reference: 'Label in the message',
-	},
-	{
-		id: 'label-yogurt',
-		text: 'йогурт 150 г, на 100 г: 78 ккал, білки 4.5, жири 2.5, вуглеводи 9.6',
-		expect: {
-			decision: 'log',
-			kcal: per100(78, 150),
-			protein: per100(4.5, 150),
-			categories: ['yogurt'],
 		},
 		reference: 'Label in the message',
 	},

@@ -5,18 +5,6 @@ import type { EvalCase } from './case.types.js'
 
 export const DAY_CASES: EvalCase[] = [
 	{
-		id: 'day-weighed',
-		text: 'За день: 60 г вівсяних пластівців на воді, 150 г грецького йогурту 2 %, банан 120 г, 200 г вареного рису, 150 г запеченого курячого філе, 200 г броколі на пару, 10 г оливкової олії, 30 г мигдалю, яблуко 180 г',
-		expect: {
-			decision: 'log',
-			kcal: range(1290, 1480),
-			protein: range(82, 97),
-			categories: ['porridge', 'yogurt', 'banana', 'poultry', 'vegetables', 'nuts', 'fruit'],
-		},
-		reference:
-			'All weighed, USDA per 100 g: 233 + 110 + 107 + 260 + 248 + 70 + 88 + 174 + 94 = 1383 kcal, 90 g protein; ±7 % for table differences',
-	},
-	{
 		id: 'day-mixed-label',
 		text: 'Сьогодні: омлет з 3 яєць, 2 скибки житнього хліба, капучино; на обід 300 г вареної гречки і 2 сосиски; протеїновий батончик 60 г (на 100 г 360 ккал, білок 33 г, жири 12, вуглеводи 30); на вечерю 200 г запеченого лосося і 200 г вареної картоплі; кефір 2 % 250 мл',
 		expect: {

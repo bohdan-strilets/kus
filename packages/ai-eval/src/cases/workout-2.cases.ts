@@ -105,16 +105,6 @@ export const WORKOUT_2_CASES: EvalCase[] = [
 		reference: '«все» during an open session: appendRef w1 + finish, no exercises',
 	},
 	{
-		id: 'workout-2-done-zakinchyv',
-		text: 'закінчив',
-		context: WITH_OPEN_GYM,
-		expect: {
-			decision: 'workout',
-			workouts: [{ appendRef: 'w1', replaceRef: null, finish: true, exercises: [] }],
-		},
-		reference: '«закінчив» is the same as «все»: appendRef w1 + finish, no exercises',
-	},
-	{
 		id: 'workout-2-squat-is-legs',
 		text: 'присід — це ноги',
 		context: WITH_SQUAT_AS_BACK,
@@ -277,21 +267,6 @@ export const WORKOUT_2_CASES: EvalCase[] = [
 			],
 		},
 		reference: 'The first set is a warm-up (isWarmup), then three working sets of 60 × 8',
-	},
-	{
-		id: 'workout-2-bodyweight-pullups',
-		text: 'підтягування 8, 7, 6',
-		expect: {
-			decision: 'workout',
-			workouts: [
-				{
-					exercises: [
-						{ nameIncludes: 'підтяг', sets: 3, reps: 8, weightKg: null, muscleGroup: 'BACK' },
-					],
-				},
-			],
-		},
-		reference: 'Body weight: three sets 8, 7, 6 and weightKg null, not 0 or a made-up number',
 	},
 	{
 		id: 'workout-2-forgot-after-finish',

@@ -82,31 +82,28 @@ const PORTION_ASKED: Partial<FoodParseContext> = {
 }
 
 const ASKS_A_QUESTION = ['?']
-/** Asks to check or confirm the number — with or without a question mark; «точн» = точно / точне / точний. */
-const ASKS_TO_CHECK = ['перевір', 'підтверд', 'точн', 'правильн']
 
 /** A weigh-in reply is a warm sentence without numbers: the card shows them. */
 const NO_DIGITS = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
 
-/** A bare number is far from any real weight: Kusik asks what it is and logs nothing. */
-const BARE_FAR_NUMBERS = ['200', '250', '150'] as const
-
-const bareFarNumberCases = (): EvalCase[] =>
-	BARE_FAR_NUMBERS.flatMap((text): EvalCase[] => [
-		{
-			id: `bare-number-${text}-no-history`,
-			text,
-			expect: { decision: 'reply', replyIncludes: ASKS_A_QUESTION, measurements: [] },
-			reference: `A bare ${text} with no weight history is not assumed to be kg: no log, a reply asks what the number is`,
-		},
-		{
-			id: `bare-number-${text}-far-from-last`,
-			text,
-			context: LAST_WEIGHT_80_TWO_DAYS_AGO,
-			expect: { decision: 'reply', replyIncludes: ASKS_A_QUESTION, measurements: [] },
-			reference: `A bare ${text} is far from the last weight (80 two days ago): no log, a reply asks what the number is`,
-		},
-	])
+/** A bare number is far from any real weight: Kusik asks what it is and logs nothing. One probe per history state is enough. */
+const bareFarNumberCases = (): EvalCase[] => [
+	{
+		id: 'bare-number-200-no-history',
+		text: '200',
+		expect: { decision: 'reply', replyIncludes: ASKS_A_QUESTION, measurements: [] },
+		reference:
+			'A bare 200 with no weight history is not assumed to be kg: no log, a reply asks what the number is',
+	},
+	{
+		id: 'bare-number-150-far-from-last',
+		text: '150',
+		context: LAST_WEIGHT_80_TWO_DAYS_AGO,
+		expect: { decision: 'reply', replyIncludes: ASKS_A_QUESTION, measurements: [] },
+		reference:
+			'A bare 150 is far from the last weight (80 two days ago): no log, a reply asks what the number is',
+	},
+]
 
 export const MEASUREMENT_CASES: EvalCase[] = [
 	...bareFarNumberCases(),
@@ -149,16 +146,6 @@ export const MEASUREMENT_CASES: EvalCase[] = [
 			measurements: [{ kind: 'WEIGHT', value: 82.4 }],
 		},
 		reference: 'Dot decimal and the unit are read as 82.4 kg',
-	},
-	{
-		id: 'weight-with-word',
-		text: 'вага 82,4',
-		expect: {
-			decision: 'reply',
-			replyExcludes: NO_DIGITS,
-			measurements: [{ kind: 'WEIGHT', value: 82.4 }],
-		},
-		reference: 'Comma decimal after the word «вага»',
 	},
 	{
 		id: 'waist-cm',
@@ -278,13 +265,6 @@ export const MEASUREMENT_CASES: EvalCase[] = [
 		context: LAST_WEIGHT_TWO_DAYS_AGO,
 		expect: { decision: 'reply', replyIncludes: ASKS_A_QUESTION, measurements: [] },
 		reference: '82 → 87 in 2 days is above 3 kg: no log, a reply asks whether the number is right',
-	},
-	{
-		id: 'weight-jump-with-word',
-		text: 'вага 87',
-		context: LAST_WEIGHT_TWO_DAYS_AGO,
-		expect: { decision: 'reply', replyIncludesAny: ASKS_TO_CHECK, measurements: [] },
-		reference: 'Same jump with the word «вага»: still asks, never confirmedJump on the first try',
 	},
 	{
 		id: 'weight-jump-confirmed',

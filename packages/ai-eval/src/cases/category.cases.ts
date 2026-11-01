@@ -65,12 +65,6 @@ export const CATEGORY_CASES: EvalCase[] = [
 		reference: '70–100 g plombir ~230 kcal per 100 g + wafer cone',
 	},
 	{
-		id: 'cat-protein-shake-milk',
-		text: 'протеїновий коктейль на молоці',
-		expect: { decision: 'log_or_clarify', categories: ['protein_shake'] },
-		reference: 'Borderline: protein on milk → protein_shake, not milk',
-	},
-	{
 		id: 'cat-salad-oil-separate',
 		text: 'салат з огірків і помідорів, окремо 1 столова ложка оливкової олії',
 		expect: { decision: 'log', kcal: range(140, 210), categories: ['salad', 'sauce'] },

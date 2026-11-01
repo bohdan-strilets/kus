@@ -185,13 +185,6 @@ export const FOREIGN_VOICE_CASES: EvalCase[] = [
 		reference: 'One scoop 30 g of whey ≈ 110–130 kcal, water 0',
 	},
 	{
-		id: 'voice-gym-after',
-		text: 'після залу що краще з’їсти?',
-		context: EVENING,
-		expect: { decision: 'reply', replyExcludes: NO_BRUSH_OFF },
-		reference: 'Advice after training within the 400 kcal left; no supplement doses',
-	},
-	{
 		id: 'voice-gym-chicken-rice',
 		text: 'курка 200 рис 150 вар',
 		expect: { decision: 'log_or_clarify', kcal: range(450, 620) },

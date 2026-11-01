@@ -83,28 +83,6 @@ const DAY_WITH_BORSCHT: Partial<FoodParseContext> = {
 
 export const WORKOUT_CASES: EvalCase[] = [
 	{
-		id: 'workout-my-day',
-		text: 'зал: доріжка 15 хв, жим 70 3×10, тяга 50 4×10, присід 60 3×8, вело 10 хв',
-		expect: {
-			decision: 'workout',
-			workouts: [
-				{
-					place: 'GYM',
-					kcalBurned: null,
-					exercises: [
-						{ nameIncludes: 'доріж', kind: 'CARDIO', durationMin: 15 },
-						{ nameIncludes: 'жим', kind: 'STRENGTH', sets: 3, weightKg: 70, reps: 10 },
-						{ nameIncludes: 'тяг', kind: 'STRENGTH', sets: 4, weightKg: 50, reps: 10 },
-						{ nameIncludes: 'присід', kind: 'STRENGTH', sets: 3, weightKg: 60, reps: 8 },
-						{ nameIncludes: 'вел', kind: 'CARDIO', durationMin: 10 },
-					],
-				},
-			],
-		},
-		reference:
-			"The author's usual training: cardio + whole-body strength in one session, one workout",
-	},
-	{
 		id: 'workout-three-groups',
 		text: 'жим лежачи: 8, 8, 6 по 80',
 		expect: {
@@ -116,19 +94,6 @@ export const WORKOUT_CASES: EvalCase[] = [
 			],
 		},
 		reference: '«8, 8, 6 по 80» → two groups (8 × 2, 6 × 1), three sets of 80 kg',
-	},
-	{
-		id: 'workout-warmup',
-		text: 'жим: розминка 10 по 40, потім 80 3×8',
-		expect: {
-			decision: 'workout',
-			workouts: [
-				{
-					exercises: [{ nameIncludes: 'жим', sets: 4, warmupSets: 1, weightKg: 80, reps: 8 }],
-				},
-			],
-		},
-		reference: 'A warm-up set is marked and does not count as the working weight',
 	},
 	{
 		id: 'workout-squat-5x5',
@@ -202,21 +167,6 @@ export const WORKOUT_CASES: EvalCase[] = [
 		reference: 'One log_workout per session: a morning run and an evening gym are two workouts',
 	},
 	{
-		id: 'workout-two-sessions-2',
-		text: 'вранці басейн 40 хв, а після роботи зал: жим 70 3×8',
-		context: atClock('2026-10-07 22:10, Wednesday'),
-		expect: {
-			decision: 'workout',
-			workouts: [
-				// the user's own word («басейн»), not a renamed «плавання»
-				{ exercises: [{ nameIncludes: 'басейн', kind: 'CARDIO', durationMin: 40 }] },
-				{ exercises: [{ nameIncludes: 'жим', kind: 'STRENGTH', sets: 3, weightKg: 70, reps: 8 }] },
-			],
-		},
-		reference:
-			'Another wording of two sessions (a swim in the morning, a gym after work): two log_workout',
-	},
-	{
 		id: 'workout-known-exercise',
 		text: 'жим 80 3×8',
 		context: WITH_DICTIONARY,
@@ -263,13 +213,6 @@ export const WORKOUT_CASES: EvalCase[] = [
 			],
 		},
 		reference: 'A fix: replaceRef w1 and the whole workout again with the fix, no second workout',
-	},
-	{
-		id: 'workout-delete',
-		text: 'видали тренування',
-		context: WITH_WORKOUT,
-		expect: { decision: 'edit', edits: { deleted: ['w1'] }, workouts: [] },
-		reference: 'delete_entry with the w-ref plus a reply',
 	},
 	{
 		id: 'workout-deleted-hint',

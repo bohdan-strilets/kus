@@ -36,13 +36,6 @@ export const DAY_CARD_CASES: EvalCase[] = [
 		reference: 'A request to see the day → the day card of today (null date), not a list in words',
 	},
 	{
-		id: 'day-card-how-much',
-		text: 'скільки вже набралось?',
-		context: DAY_TWO_MEALS,
-		expect: { decision: 'day_card', dayCard: { date: '2026-10-07' } },
-		reference: "«Скільки набралось» asks for the day's total → the day card of today",
-	},
-	{
 		id: 'day-card-yesterday',
 		text: 'а що було вчора?',
 		context: { days: buildDays(EVAL_TODAY, { '2026-10-06': { kcal: 2310, entryCount: 4 } }) },

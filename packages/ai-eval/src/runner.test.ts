@@ -113,6 +113,16 @@ describe('runModel with a hard budget', () => {
 
 		expect(result.overReserve).toEqual(['case-1'])
 	})
+
+	it('compares the first case with the cold-start reserve it actually got', async () => {
+		runCaseMock.mockResolvedValueOnce(costing(0.06)).mockResolvedValueOnce(costing(0.06))
+		const budget = { spentUsd: 0, maxUsd: 1, reservedUsd: 0 }
+
+		const result = await run(makeCases(2), budget, 0.02)
+
+		// 0.06 is under the cold reserve (0.07) of the first case, but over the 0.02 of the second
+		expect(result.overReserve).toEqual(['case-1'])
+	})
 })
 
 describe('runModel with a stage soft stop', () => {

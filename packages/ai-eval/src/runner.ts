@@ -69,7 +69,7 @@ export const runModel = async (cases: EvalCase[], options: RunOptions): Promise<
 		try {
 			const result = await runCase(evalCase, options)
 			budget.spentUsd += result.costUsd
-			if (result.costUsd > caseReserveUsd) overReserve.push(evalCase.id)
+			if (result.costUsd > reserveUsd) overReserve.push(evalCase.id)
 			pairs.push({ evalCase, result })
 			await options.onCaseDone?.(result)
 		} finally {

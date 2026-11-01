@@ -1,29 +1,149 @@
 // @vitest-environment jsdom
-import type { AuthUser, WorkoutResponse } from '@kus/shared'
+import type {
+	AuthUser,
+	ProgramResponse,
+	ProgramTemplateResponse,
+	WorkoutResponse,
+} from '@kus/shared'
 import { QueryClient } from '@tanstack/react-query'
-import { cleanup, fireEvent, screen, within } from '@testing-library/react'
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { AxiosHeaders, type AxiosResponse } from 'axios'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { SESSION_QUERY_KEY } from '@/entities/session'
 import { httpClient } from '@/shared/api'
-import { ROUTES, TRAINING_STATS_ROUTE } from '@/shared/config'
+import {
+	ROUTES,
+	TRAINING_PROGRAM_ROUTE,
+	TRAINING_STATS_ROUTE,
+	getTrainingTemplatePath,
+} from '@/shared/config'
 import { makeExercise, makeWorkout, makeWorkoutStats, renderWithProviders } from '@/shared/testing'
 
 import { TrainingPage } from './TrainingPage'
 
+const onboardingMock = vi.hoisted(() => ({ start: vi.fn(), dismiss: vi.fn() }))
+vi.mock('@/features/training-onboarding/api/training-onboarding', () => ({
+	startTrainingOnboarding: onboardingMock.start,
+	dismissTrainingOnboarding: onboardingMock.dismiss,
+}))
+
 const getMock = vi.spyOn(httpClient, 'get')
+
+const ANSWERED_AT = '2026-10-30T10:00:00.000Z'
+const TEMPLATE_A = '0199b3a4-0000-7000-8000-0000000000a0'
+const TEMPLATE_B = '0199b3a4-0000-7000-8000-0000000000b0'
+const VERSION_ID = '0199b3a4-0000-7000-8000-0000000000c1'
+
+const makeTemplate = (id: string, name: string): ProgramTemplateResponse => ({
+	id,
+	key: id,
+	name,
+	position: 0,
+	weekdays: [],
+	estimatedMin: 55,
+	muscleGroups: ['CHEST'],
+	hasCardio: true,
+	exercises: [
+		{
+			id: `${id.slice(0, -1)}1`,
+			exerciseId: null,
+			name: 'Жим гантелей',
+			kind: 'STRENGTH',
+			muscleGroup: 'CHEST',
+			position: 0,
+			target: {
+				sets: 3,
+				repsMin: 8,
+				repsMax: 12,
+				weightKg: 20,
+				progressStepKg: null,
+				restSec: null,
+				durationMin: null,
+				distanceM: null,
+			},
+			lastSets: null,
+			lastPerformedAt: null,
+		},
+		{
+			id: `${id.slice(0, -1)}2`,
+			exerciseId: null,
+			name: 'Доріжка',
+			kind: 'CARDIO',
+			muscleGroup: null,
+			position: 1,
+			target: {
+				sets: null,
+				repsMin: null,
+				repsMax: null,
+				weightKg: null,
+				progressStepKg: null,
+				restSec: null,
+				durationMin: 10,
+				distanceM: null,
+			},
+			lastSets: null,
+			lastPerformedAt: null,
+		},
+	],
+})
+
+const makeProgram = (): ProgramResponse => ({
+	id: VERSION_ID,
+	title: null,
+	mode: 'ROTATE',
+	perWeek: 2,
+	pinnedTemplateId: null,
+	version: { id: VERSION_ID, createdAt: '2026-10-31T19:15:00.000Z' },
+	templates: [makeTemplate(TEMPLATE_A, 'Тренування А'), makeTemplate(TEMPLATE_B, 'Тренування Б')],
+	next: { templateId: TEMPLATE_B, weekday: null, date: null, isToday: false },
+})
+
+const makeProfileBody = (trainingOnboardingAt: string | null) => ({
+	email: 'user@example.com',
+	name: null,
+	addressAs: null,
+	profile: {
+		sex: null,
+		age: null,
+		heightCm: null,
+		activityLevel: null,
+		targetWeightKg: null,
+		goalType: null,
+		paceKgPerWeek: null,
+	},
+	weight: null,
+	waist: null,
+	goals: null,
+	trainingOnboardingAt,
+})
+
+interface ApiExtras {
+	/** null = no program; an Error = the program request fails. */
+	program?: ProgramResponse | null | Error
+	trainingOnboardingAt?: string | null
+}
 
 const TODAY = '2026-10-26'
 
 const statsReply = (workoutCount: number): AxiosResponse => ({
-	...reply([]),
+	...reply(null),
 	data: { data: makeWorkoutStats({ overview: { ...makeWorkoutStats().overview, workoutCount } }) },
 })
 
 /** The journal and the stats tile ask different URLs: the journal gets `workouts`, the tile `stats`. */
-const mockApi = (workouts: WorkoutResponse[] | Error, statsCount: number | Error = 11) => {
+const mockApi = (
+	workouts: WorkoutResponse[] | Error,
+	statsCount: number | Error = 11,
+	{ program = null, trainingOnboardingAt = ANSWERED_AT }: ApiExtras = {},
+) => {
 	getMock.mockImplementation((url: string) => {
+		if (url === '/programs/active') {
+			return program instanceof Error ? Promise.reject(program) : Promise.resolve(reply(program))
+		}
+		if (url === '/profile') {
+			return Promise.resolve(reply(makeProfileBody(trainingOnboardingAt)))
+		}
 		if (url === '/workouts/stats') {
 			return statsCount instanceof Error
 				? Promise.reject(statsCount)
@@ -33,8 +153,8 @@ const mockApi = (workouts: WorkoutResponse[] | Error, statsCount: number | Error
 	})
 }
 
-const reply = (workouts: WorkoutResponse[]): AxiosResponse => ({
-	data: { data: workouts },
+const reply = (data: unknown): AxiosResponse => ({
+	data: { data },
 	status: 200,
 	statusText: 'OK',
 	headers: {},
@@ -120,13 +240,23 @@ describe('TrainingPage', () => {
 	})
 
 	it('shows the stats tile under the week card with the month count, a link to the stats', async () => {
-		mockApi([makeWorkout({ localDate: TODAY })], 11)
+		mockApi([makeWorkout({ localDate: TODAY })], 11, { program: new Error('network') })
 
 		renderPage()
 
 		const tile = await screen.findByRole('link', { name: /Статистика/ })
 		expect(tile.getAttribute('href')).toBe('/app/training/stats')
 		expect(await within(tile).findByText('11 тренувань за жовтень')).toBeTruthy()
+	})
+
+	it('shortens the month count when the program tile sits beside the stats tile', async () => {
+		mockApi([makeWorkout({ localDate: TODAY })], 11)
+
+		renderPage()
+
+		const tile = await screen.findByRole('link', { name: /Статистика/ })
+		expect(await within(tile).findByText('11 за жовтень')).toBeTruthy()
+		expect(within(tile).queryByText(/тренувань/)).toBeNull()
 	})
 
 	it('keeps the tile with the title only when the count fails', async () => {
@@ -170,5 +300,131 @@ describe('TrainingPage', () => {
 		expect(screen.getByRole('alert')).toBeTruthy()
 		fireEvent.click(screen.getByRole('button', { name: 'Повторити' }))
 		expect(await screen.findByText('Цей тиждень')).toBeTruthy()
+	})
+
+	it('puts the next template, the templates and the program tile on top when there is a program', async () => {
+		mockApi([makeWorkout({ localDate: TODAY, templateName: 'Тренування А' })], 11, {
+			program: makeProgram(),
+		})
+
+		renderPage()
+
+		const next = await screen.findByRole('region', { name: 'Наступне' })
+		const nextLink = within(next).getByRole('link', {
+			name: 'Тренування Б · 1 вправа + кардіо · ~55 хв',
+		})
+		expect(nextLink.getAttribute('href')).toBe(getTrainingTemplatePath(TEMPLATE_B))
+		expect(within(next).getByText('Жим гантелей')).toBeTruthy()
+		expect(within(next).getByText('Доріжка')).toBeTruthy()
+
+		expect(screen.getByText('Мої шаблони')).toBeTruthy()
+		expect(screen.getByRole('link', { name: /програма/ }).getAttribute('href')).toBe(
+			TRAINING_PROGRAM_ROUTE,
+		)
+		const rowA = screen.getByRole('link', {
+			name: 'Тренування А. 1 вправа + кардіо · ~55 хв. Кардіо, Груди',
+		})
+		expect(rowA.getAttribute('href')).toBe(getTrainingTemplatePath(TEMPLATE_A))
+
+		const tile = screen.getByRole('link', { name: /Програма/ })
+		expect(tile.getAttribute('href')).toBe(TRAINING_PROGRAM_ROUTE)
+		expect(within(tile).getByText('Версія від 31.10')).toBeTruthy()
+		const statsTile = screen.getByRole('link', { name: /Статистика/ })
+		expect(await within(statsTile).findByText('11 за жовтень')).toBeTruthy()
+		expect(screen.queryByText('Налаштуємо тренування?')).toBeNull()
+	})
+
+	it('shows the template name small after the title of a program day, and speaks it', async () => {
+		mockApi([makeWorkout({ localDate: TODAY, templateName: 'Тренування А' })])
+
+		renderPage()
+
+		const name = await screen.findByText('Тренування А', { selector: 'span' })
+		expect(name.className).toContain('text-muted')
+		expect(name.className).not.toContain('font-bold')
+		expect(screen.getByText('Зал · 55 хв').className).toContain('font-bold')
+		expect(screen.getByRole('link', { name: /Зал · 55 хв · Тренування А/ })).toBeTruthy()
+	})
+
+	it('hides the program blocks when the program fails, the journal keeps working', async () => {
+		mockApi([makeWorkout({ localDate: TODAY })], 11, { program: new Error('network') })
+
+		renderPage()
+
+		expect(await screen.findByText('Цей тиждень')).toBeTruthy()
+		expect(screen.queryByText('Мої шаблони')).toBeNull()
+		expect(screen.queryByText('Програма')).toBeNull()
+		expect(screen.queryByRole('region', { name: 'Наступне' })).toBeNull()
+	})
+
+	it('shows the program skeleton while the program loads', async () => {
+		getMock.mockImplementation((url: string) =>
+			url === '/programs/active'
+				? new Promise(() => undefined)
+				: Promise.resolve(reply([makeWorkout({ localDate: TODAY })])),
+		)
+
+		renderPage()
+
+		expect(await screen.findByText('Цей тиждень')).toBeTruthy()
+		expect(screen.getByRole('status', { name: 'Завантаження' })).toBeTruthy()
+	})
+
+	it('invites to the setup on a first visit without a program and a training', async () => {
+		mockApi([], 0, { trainingOnboardingAt: null })
+		onboardingMock.start.mockResolvedValue({})
+		const onPathname = vi.fn()
+
+		renderPage(onPathname)
+
+		expect(await screen.findByText('Налаштуємо тренування?')).toBeTruthy()
+		expect(screen.queryByText('Тут будуть твої тренування')).toBeNull()
+		expect(screen.queryByText('Цей тиждень: ще без тренувань')).toBeNull()
+		fireEvent.click(screen.getByRole('button', { name: 'Налаштувати в чаті' }))
+		await waitFor(() => {
+			expect(onPathname).toHaveBeenLastCalledWith(ROUTES.chat)
+		})
+		expect(onboardingMock.start).toHaveBeenCalledTimes(1)
+	})
+
+	it('falls back to the empty state after «Пізніше» and keeps the setup as a tile', async () => {
+		mockApi([], 0, { trainingOnboardingAt: null })
+		onboardingMock.dismiss.mockImplementation(() => {
+			mockApi([], 0, { trainingOnboardingAt: ANSWERED_AT })
+			return Promise.resolve()
+		})
+
+		renderPage()
+
+		fireEvent.click(await screen.findByRole('button', { name: 'Пізніше' }))
+
+		expect(await screen.findByText('Тут будуть твої тренування')).toBeTruthy()
+		expect(screen.queryByText('Налаштуємо тренування?')).toBeNull()
+		expect(screen.getByRole('button', { name: /Програма/ })).toBeTruthy()
+	})
+
+	it('offers «Налаштувати» as a tile without a program once the invitation is answered', async () => {
+		mockApi([makeWorkout({ localDate: TODAY })])
+		onboardingMock.start.mockResolvedValue({})
+		const onPathname = vi.fn()
+
+		renderPage(onPathname)
+
+		const tile = await screen.findByRole('button', { name: /Програма/ })
+		expect(within(tile).getByText('Налаштувати')).toBeTruthy()
+		fireEvent.click(tile)
+		await waitFor(() => {
+			expect(onPathname).toHaveBeenLastCalledWith(ROUTES.chat)
+		})
+	})
+
+	it('keeps the journal and no invitation when there are trainings but no program and no answer', async () => {
+		mockApi([makeWorkout({ localDate: TODAY })], 11, { trainingOnboardingAt: null })
+
+		renderPage()
+
+		expect(await screen.findByText('Цей тиждень')).toBeTruthy()
+		expect(screen.queryByText('Налаштуємо тренування?')).toBeNull()
+		expect(screen.getByRole('button', { name: /Програма/ })).toBeTruthy()
 	})
 })

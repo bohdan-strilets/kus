@@ -1,4 +1,4 @@
-import type { SendMessageResponse } from '@kus/shared'
+import type { OnboardingAnswerRequest, SendMessageResponse } from '@kus/shared'
 import type { QueryClient } from '@tanstack/react-query'
 
 import { DAY_QUERY_KEY } from '@/entities/day'
@@ -11,6 +11,7 @@ import {
 } from '@/entities/message'
 import { MY_FOODS_QUERY_KEY } from '@/entities/my-food'
 import { useGoalCelebrationStore } from '@/entities/stats'
+import { PROGRAM_QUERY_KEY } from '@/entities/program'
 import { WORKOUTS_QUERY_KEY } from '@/entities/workout'
 import { type ApiError, getApiError, HTTP_STATUS } from '@/shared/api'
 import { playSound } from '@/shared/lib'
@@ -33,6 +34,8 @@ interface DeliverParams {
 	photo?: OutboxPhoto
 	/** The photo is already on the server (step 1 done on an earlier try): only the message is sent. */
 	photoId?: string
+	/** A button of the training onboarding: `text` is its label; never together with a photo. */
+	onboardingAnswer?: OnboardingAnswerRequest
 	/**
 	 * «Спробувати ще»: the server may replay a finished turn, without the cards it changed. The
 	 * request is always made, whatever navigator.onLine says.
@@ -82,16 +85,25 @@ const postWithPhoto = async (
  */
 export const deliverMessage = async (
 	queryClient: QueryClient,
-	{ clientMessageId, text, photo, photoId: knownPhotoId, isRetry = false }: DeliverParams,
+	{
+		clientMessageId,
+		text,
+		photo,
+		photoId: knownPhotoId,
+		onboardingAnswer: knownAnswer,
+		isRetry = false,
+	}: DeliverParams,
 ): Promise<void> => {
 	const outbox = useOutboxStore.getState()
 	const session = usePhotoSessionStore.getState()
 	const photoId = knownPhotoId ?? outbox.items[clientMessageId]?.photoId
+	const onboardingAnswer = knownAnswer ?? outbox.items[clientMessageId]?.onboardingAnswer
 	outbox.markSending({
 		clientMessageId,
 		text,
 		photo,
 		photoId,
+		onboardingAnswer,
 		createdAt: new Date().toISOString(),
 	})
 	// a photo is too heavy to wait in a queue: say so at once instead of a spinner that ends in a failure.
@@ -106,7 +118,7 @@ export const deliverMessage = async (
 		const id = photoId ?? (photo ? await uploadOutboxPhoto(clientMessageId, photo) : undefined)
 		const turn = id
 			? await postWithPhoto(clientMessageId, text, photo, id)
-			: await postMessage({ clientMessageId, text: text || undefined })
+			: await postMessage({ clientMessageId, text: text || undefined, onboardingAnswer })
 		if (!turn) {
 			playSound('oops')
 			return
@@ -126,6 +138,8 @@ export const deliverMessage = async (
 		if (sound) playSound(sound)
 		void queryClient.invalidateQueries({ queryKey: DAY_QUERY_KEY })
 		void queryClient.invalidateQueries({ queryKey: WORKOUTS_QUERY_KEY })
+		// a logged training moves the «next» template of the program
+		void queryClient.invalidateQueries({ queryKey: PROGRAM_QUERY_KEY })
 		// «запам'ятай …» / «забудь, що …» change «Пам'ять»; a closed screen is only marked stale
 		void queryClient.invalidateQueries({ queryKey: FACTS_QUERY_KEY })
 		void queryClient.invalidateQueries({ queryKey: MY_FOODS_QUERY_KEY })

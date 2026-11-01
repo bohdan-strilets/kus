@@ -1,6 +1,7 @@
-import type { WorkoutStatsPeriod } from '@kus/shared'
+import type { ExerciseDictionaryQuery, WorkoutStatsPeriod } from '@kus/shared'
 import { keepPreviousData, queryOptions } from '@tanstack/react-query'
 
+import { getExerciseDictionary } from '../api/get-exercise-dictionary'
 import { getExerciseStats } from '../api/get-exercise-stats'
 import { getWorkout } from '../api/get-workout'
 import { getWorkoutStats } from '../api/get-workout-stats'
@@ -52,4 +53,13 @@ export const exerciseStatsQueryOptions = (exerciseId: string, period: WorkoutSta
 		queryKey: [...WORKOUTS_QUERY_KEY, 'exercise', exerciseId, period],
 		queryFn: () => getExerciseStats({ exerciseId, period }),
 		staleTime: WORKOUT_STATS_STALE_TIME_MS,
+	})
+
+/** The dictionary changes with the workouts, which invalidate the whole key; a typed query keeps the previous list meanwhile. */
+export const exerciseDictionaryQueryOptions = (query: ExerciseDictionaryQuery) =>
+	queryOptions({
+		queryKey: [...WORKOUTS_QUERY_KEY, 'dictionary', query.query ?? '', query.group ?? null],
+		queryFn: () => getExerciseDictionary(query),
+		staleTime: WORKOUT_STATS_STALE_TIME_MS,
+		placeholderData: keepPreviousData,
 	})

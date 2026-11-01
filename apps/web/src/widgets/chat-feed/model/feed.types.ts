@@ -1,4 +1,4 @@
-import type { ChatMessage } from '@kus/shared'
+import type { ChatMessage, OnboardingAnswerRequest } from '@kus/shared'
 
 import type { OutboxPhoto, SendError } from '@/features/send-message'
 
@@ -11,6 +11,7 @@ export interface RetryParams {
 	photo?: OutboxPhoto
 	/** Already uploaded: the resend only sends the message. */
 	photoId?: string
+	onboardingAnswer?: OnboardingAnswerRequest
 }
 
 /**
@@ -48,7 +49,14 @@ export type FeedItem =
 			/** 0..1 of the photo uploaded, while sending. */
 			uploadProgress?: number
 	  }
-	| { kind: 'kusik'; key: string; message: ChatMessage; photoStatus?: FeedPhotoStatus }
+	| {
+			kind: 'kusik'
+			key: string
+			message: ChatMessage
+			photoStatus?: FeedPhotoStatus
+			/** A program card that came right after the last answer of the training onboarding. */
+			isFromOnboarding?: boolean
+	  }
 	/** Kusik's «ой» under a message that didn't go through; no retry when resending can't help. */
 	| {
 			kind: 'failure'

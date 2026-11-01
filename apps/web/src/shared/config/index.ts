@@ -6,6 +6,7 @@ export {
 	DEV_ROUTES,
 	getTrainingExercisePath,
 	getTrainingSessionPath,
+	getTrainingTemplatePath,
 	isProtectedPath,
 	MEMORY_FACTS_HREF,
 	MEMORY_FACTS_TAB,
@@ -14,7 +15,9 @@ export {
 	ROUTES,
 	TAB_ROUTES,
 	TRAINING_EXERCISE_ROUTE,
+	TRAINING_PROGRAM_ROUTE,
 	TRAINING_SESSION_ROUTE,
 	TRAINING_STATS_ROUTE,
+	TRAINING_TEMPLATE_ROUTE,
 	type TabRoutePath,
 } from './routes'

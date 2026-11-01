@@ -1,4 +1,4 @@
-import type { ChatMessage } from '@kus/shared'
+import { type ChatMessage, isTrainingOnboardingQuestion } from '@kus/shared'
 
 import { pickAchievement } from '@/entities/achievement'
 import { StatsCard, useGoalCelebrationStore } from '@/entities/stats'
@@ -14,6 +14,9 @@ import { AchievementCard } from './AchievementCard'
 import { DayCard } from './DayCard'
 import { MealCard } from './MealCard'
 import { MeasurementCard } from './MeasurementCard'
+import { TrainingOnboardingInvite } from './onboarding/TrainingOnboardingInvite'
+import { TrainingQuestion } from './onboarding/TrainingQuestion'
+import { ProgramReplyCard } from './ProgramReplyCard'
 import { WorkoutReplyCard } from './WorkoutReplyCard'
 
 interface KusikReplyProps {
@@ -23,6 +26,8 @@ interface KusikReplyProps {
 	today: string
 	/** How the photo of the message this answers went. */
 	photoStatus?: FeedPhotoStatus
+	/** A program card that ends the training onboarding. */
+	isFromOnboarding?: boolean
 }
 
 interface ReplyKindParams {
@@ -40,6 +45,8 @@ const getReplyKind = ({
 	isAchievementReached,
 }: ReplyKindParams): KusikReplyKind => {
 	const { replyToId, meals, measurements, clarifications } = message
+	// Kusik's own onboarding questions and a rebased card have no user turn, but are no welcome back
+	if (message.programCard || message.trainingOnboarding) return 'reply'
 	// the only message Kusik writes on his own, without a user turn: the welcome back after a restore
 	if (replyToId === null) return 'welcomeBack'
 	if (photoStatus === 'FAILED') return 'photoFail'
@@ -58,7 +65,13 @@ const ATTACHMENTS_CLASS = 'flex flex-col gap-1.5 pr-4 pl-10.5'
  * Workout cards follow the same way. A closing card hides his words: only the card stays. Without words the card itself sits next to the head (mockups/chat.html). A bare weigh-in has no
  * bubble: his words sit inside the card (mockups/chat-weight.html).
  */
-export const KusikReply = ({ message, isLatest, today, photoStatus }: KusikReplyProps) => {
+export const KusikReply = ({
+	message,
+	isLatest,
+	today,
+	photoStatus,
+	isFromOnboarding = false,
+}: KusikReplyProps) => {
 	const placement = getClarificationPlacement(message)
 	const isGoalReached = useGoalCelebrationStore((state) => state.celebratedReplyId === message.id)
 	const isAchievementReached = useAchievementFace(message)
@@ -151,10 +164,49 @@ export const KusikReply = ({ message, isLatest, today, photoStatus }: KusikReply
 		)
 	}
 
+	// a question of the training onboarding: Kusik's own bubble with the buttons inside
+	const onboarding = message.trainingOnboarding
+	if (onboarding && isTrainingOnboardingQuestion(onboarding.step)) {
+		return (
+			<KusikRow kind={kind}>
+				<MessageBubble>
+					<TrainingQuestion
+						messageId={message.id}
+						onboarding={{ ...onboarding, step: onboarding.step }}
+						state={message.trainingOnboardingState ?? 'OPEN'}
+					/>
+				</MessageBubble>
+			</KusikRow>
+		)
+	}
+
+	// a program card: his words above, indented, the card next to his head (mockups/chat-program.html)
+	if (message.programCard) {
+		return (
+			<div className="flex flex-col gap-1.5 self-stretch">
+				{content && (
+					<div className={ATTACHMENTS_CLASS}>
+						<MessageBubble>
+							<Text>{content}</Text>
+						</MessageBubble>
+					</div>
+				)}
+				<KusikRow kind={kind}>
+					<ProgramReplyCard message={message} isFromOnboarding={isFromOnboarding} />
+				</KusikRow>
+			</div>
+		)
+	}
+
 	// a fact to remember sits inside the bubble under his words (mockups/memory-facts.html)
 	const factPlaque = message.factProposal && <FactProposalPlaque proposal={message.factProposal} />
+	// the invitation to set up the training sits there too, after the first workout (mockups/training-onboarding.html)
+	const invitation =
+		onboarding?.step === 0 && message.trainingOnboardingState === 'OPEN' ? (
+			<TrainingOnboardingInvite />
+		) : null
 
-	if (!content && !factPlaque) {
+	if (!content && !factPlaque && !invitation) {
 		return (
 			<KusikRow kind={kind}>
 				<div className="flex flex-col gap-1.5">
@@ -174,6 +226,7 @@ export const KusikReply = ({ message, isLatest, today, photoStatus }: KusikReply
 					<div className="flex flex-col gap-2.5">
 						{content && <Text>{content}</Text>}
 						{factPlaque}
+						{invitation}
 					</div>
 				</MessageBubble>
 			</KusikRow>

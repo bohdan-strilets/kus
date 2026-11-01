@@ -1,3 +1,4 @@
+import type { OnboardingAnswerRequest } from '@kus/shared'
 import { useQueryClient } from '@tanstack/react-query'
 
 import { createSessionObjectUrl, createUuid, unlockSound } from '@/shared/lib'
@@ -8,7 +9,12 @@ import type { PhotoDraftPhoto } from './photo-draft-store'
 
 export interface SendMessageActions {
 	/** A new message: a fresh clientMessageId. */
-	send: (params: { text: string; photo?: PhotoDraftPhoto | null }) => void
+	send: (params: {
+		text: string
+		photo?: PhotoDraftPhoto | null
+		/** A button of the training onboarding; `text` is its label. */
+		onboardingAnswer?: OnboardingAnswerRequest
+	}) => void
 	/** «Спробувати ще»: the same id, text and photo as the failed try. */
 	retry: (params: {
 		clientMessageId: string
@@ -16,6 +22,7 @@ export interface SendMessageActions {
 		photo?: OutboxPhoto
 		/** Already uploaded: the resend only sends the message. */
 		photoId?: string
+		onboardingAnswer?: OnboardingAnswerRequest
 	}) => void
 }
 
@@ -42,11 +49,12 @@ const toOutboxPhoto = ({
 export const useSendMessage = (): SendMessageActions => {
 	const queryClient = useQueryClient()
 	return {
-		send: ({ text, photo }) => {
+		send: ({ text, photo, onboardingAnswer }) => {
 			unlockSound()
 			void deliverMessage(queryClient, {
 				clientMessageId: createUuid(),
 				text: text.trim(),
+				onboardingAnswer,
 				// its own blob URL: the draft revokes its one the moment it is cleared
 				photo: photo ? toOutboxPhoto(photo) : undefined,
 			})

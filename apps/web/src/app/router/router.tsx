@@ -4,8 +4,10 @@ import {
 	DEV_ROUTES,
 	ROUTES,
 	TRAINING_EXERCISE_ROUTE,
+	TRAINING_PROGRAM_ROUTE,
 	TRAINING_SESSION_ROUTE,
 	TRAINING_STATS_ROUTE,
+	TRAINING_TEMPLATE_ROUTE,
 } from '@/shared/config'
 
 import {
@@ -24,8 +26,10 @@ import {
 	TodayPage,
 	TrainingExercisePage,
 	TrainingPage,
+	TrainingProgramPage,
 	TrainingSessionPage,
 	TrainingStatsPage,
+	TrainingTemplatePage,
 } from './lazy-pages'
 import { RootLayout } from './RootLayout'
 import { RouterRoot } from './RouterRoot'
@@ -84,6 +88,8 @@ export const router = createBrowserRouter([
 									{ path: ROUTES.recipes, element: <RecipesPage /> },
 									{ path: ROUTES.training, element: <TrainingPage /> },
 									{ path: TRAINING_STATS_ROUTE, element: <TrainingStatsPage /> },
+									{ path: TRAINING_PROGRAM_ROUTE, element: <TrainingProgramPage /> },
+									{ path: TRAINING_TEMPLATE_ROUTE, element: <TrainingTemplatePage /> },
 									{ path: TRAINING_EXERCISE_ROUTE, element: <TrainingExercisePage /> },
 									{ path: TRAINING_SESSION_ROUTE, element: <TrainingSessionPage /> },
 									{ path: '*', element: <Navigate to={ROUTES.chat} replace /> },

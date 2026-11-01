@@ -16,6 +16,8 @@ export interface JournalRow {
 	day: string
 	/** «Зал · 62 хв», «Зал · ≈ 62 хв», just «Зал» without a duration. */
 	title: string
+	/** The template of a program day, «Тренування А»: shown small and muted after the title. */
+	templateName: string | null
 	groups: TrainingGroupKey[]
 	/** Groups that did not fit into the row: «+5». */
 	hiddenGroupCount: number
@@ -45,6 +47,14 @@ const getTitle = (workout: WorkoutResponse, t: TFunction, isSpoken: boolean): st
 	return duration === null ? kind : t('training.journal.rowTitle', { kind, duration })
 }
 
+// the spoken label keeps the template in the line: «Зал · 62 хв · Тренування А»
+const getSpokenTitle = (workout: WorkoutResponse, t: TFunction): string => {
+	const title = getTitle(workout, t, true)
+	return workout.templateName === null
+		? title
+		: t('training.journal.rowWithTemplate', { title, template: workout.templateName })
+}
+
 /** Everything a row of the journal shows, as text: the view stays presentational. */
 export const getJournalRow = (workout: WorkoutResponse, t: TFunction): JournalRow => {
 	const groups = getWorkoutGroups(workout)
@@ -53,7 +63,7 @@ export const getJournalRow = (workout: WorkoutResponse, t: TFunction): JournalRo
 	const date = toCalendarDate(workout.localDate)
 	const ariaLabel = [
 		t('training.journal.rowDate', { weekday: formatWeekdayLong(date), date: formatDayMonth(date) }),
-		getTitle(workout, t, true),
+		getSpokenTitle(workout, t),
 		groups.map((group) => t(`muscle.${group}`)).join(', '),
 		recordCount > 0 ? t('training.journal.records', { count: recordCount }) : '',
 	]
@@ -66,6 +76,7 @@ export const getJournalRow = (workout: WorkoutResponse, t: TFunction): JournalRo
 		weekday: formatWeekdayShort(date),
 		day: String(date.getDate()),
 		title: getTitle(workout, t, false),
+		templateName: workout.templateName,
 		groups: groups.slice(0, limit),
 		hiddenGroupCount: Math.max(0, groups.length - limit),
 		recordCount,

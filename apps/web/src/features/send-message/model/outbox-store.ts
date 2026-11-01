@@ -1,4 +1,8 @@
-import { MESSAGE_TEXT_MAX_LENGTH } from '@kus/shared'
+import {
+	MESSAGE_TEXT_MAX_LENGTH,
+	type OnboardingAnswerRequest,
+	onboardingAnswerRequestSchema,
+} from '@kus/shared'
 import { z } from 'zod'
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
@@ -34,6 +38,8 @@ export interface OutboxItem {
 	photoId?: string
 	/** Back from storage after a reload: the words are here, the photo is not. */
 	photoLost?: boolean
+	/** A button of the training onboarding: `text` is its label, the values go along for the server. */
+	onboardingAnswer?: OnboardingAnswerRequest
 	/** ISO; places the bubble in the feed until the server copy arrives. */
 	createdAt: string
 	status: OutboxStatus
@@ -52,7 +58,10 @@ interface OutboxState {
 	/** The signed-in user (null after logout); a different one drops the drafts of the previous. */
 	claim: (userId: string | null) => void
 	markSending: (
-		item: Pick<OutboxItem, 'clientMessageId' | 'text' | 'createdAt' | 'photo' | 'photoId'>,
+		item: Pick<
+			OutboxItem,
+			'clientMessageId' | 'text' | 'createdAt' | 'photo' | 'photoId' | 'onboardingAnswer'
+		>,
 	) => void
 	markFailed: (clientMessageId: string, error: SendError) => void
 	/** Step 1 is done: the id survives a failed step 2, so a resend never uploads twice. */
@@ -79,6 +88,7 @@ const storedItemSchema = z
 		createdAt: z.iso.datetime(),
 		photoLost: z.literal(true).optional(),
 		photoId: z.uuid().optional(),
+		onboardingAnswer: onboardingAnswerRequestSchema.optional(),
 	})
 	// an empty text is only the leftover of a photo message
 	.refine((item) => item.text.length > 0 || item.photoLost === true || item.photoId !== undefined)
@@ -106,10 +116,11 @@ const toStoredState = ({ ownerId, items, hiddenIds }: OutboxState): StoredState 
 	ownerId,
 	items: Object.values(items)
 		.filter((item) => item.status === 'failed')
-		.map(({ clientMessageId, text, createdAt, photo, photoId, photoLost }) => ({
+		.map(({ clientMessageId, text, createdAt, photo, photoId, photoLost, onboardingAnswer }) => ({
 			clientMessageId,
 			text,
 			createdAt,
+			...(onboardingAnswer ? { onboardingAnswer } : {}),
 			...(photoId ? { photoId } : {}),
 			...((photo || photoLost) && !photoId ? { photoLost: true as const } : {}),
 		})),

@@ -31,9 +31,16 @@ export const TrainingRow = ({ row, isDateShown }: TrainingRowProps) => (
 			)}
 		</span>
 		<span aria-hidden="true" className="flex min-w-0 flex-1 flex-col gap-1.25">
-			<Text as="span" variant="body" weight="bold">
-				{row.title}
-			</Text>
+			<span className="flex flex-wrap items-baseline gap-x-1.5">
+				<Text as="span" variant="body" weight="bold">
+					{row.title}
+				</Text>
+				{row.templateName !== null && (
+					<Text as="span" variant="small" weight="regular" tone="muted">
+						{row.templateName}
+					</Text>
+				)}
+			</span>
 			{row.groups.length > 0 && (
 				<span className="flex flex-wrap items-center gap-1.25">
 					{row.groups.map((group) => (

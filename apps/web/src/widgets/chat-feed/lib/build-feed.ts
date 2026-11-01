@@ -1,4 +1,4 @@
-import type { ChatMessage } from '@kus/shared'
+import { type ChatMessage, TRAINING_ONBOARDING_LAST_QUESTION } from '@kus/shared'
 
 import { isLostTurn } from '@/entities/message'
 import {
@@ -100,6 +100,7 @@ const fromOutbox = (item: OutboxItem, params: BuildFeedParams): UserEntry => ({
 				text: item.text,
 				photo: item.photo,
 				photoId: item.photoId,
+				...(item.onboardingAnswer ? { onboardingAnswer: item.onboardingAnswer } : {}),
 			},
 	// a final photo failure is a dead end otherwise: «Прибрати» is the only way out
 	dismiss:
@@ -221,10 +222,17 @@ export const buildFeed = (params: BuildFeedParams): FeedItem[] => {
 	const items: FeedItem[] = []
 	const photoStatusByUserId = getPhotoStatuses(params)
 	// mutated by openDay, so an object: TS would narrow a plain `let` to its initial value
-	const cursor: { day: string | null; previousAt: number | null; hasUserMessage: boolean } = {
+	const cursor: {
+		day: string | null
+		previousAt: number | null
+		hasUserMessage: boolean
+		/** The last Kusik message before this one: the fifth question tells where a program card comes from. */
+		previousKusik: ChatMessage | null
+	} = {
 		day: null,
 		previousAt: null,
 		hasUserMessage: false,
+		previousKusik: null,
 	}
 
 	const openDay = (localDate: string): void => {
@@ -250,12 +258,17 @@ export const buildFeed = (params: BuildFeedParams): FeedItem[] => {
 
 		if (entry.kind === 'kusik') {
 			const photoStatus = photoStatusByUserId.get(entry.message.replyToId ?? '')
+			const isFromOnboarding =
+				entry.message.programCard?.changes.initial === true &&
+				cursor.previousKusik?.trainingOnboarding?.step === TRAINING_ONBOARDING_LAST_QUESTION
 			items.push({
 				kind: 'kusik',
 				key: entry.message.id,
 				message: entry.message,
 				...(photoStatus ? { photoStatus } : {}),
+				...(isFromOnboarding ? { isFromOnboarding } : {}),
 			})
+			cursor.previousKusik = entry.message
 		} else {
 			const isGap = cursor.previousAt !== null && at - cursor.previousAt >= TIME_GAP_MS
 			if (!cursor.hasUserMessage || isGap) {

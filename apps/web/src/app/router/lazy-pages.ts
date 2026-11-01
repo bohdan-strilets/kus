@@ -46,3 +46,9 @@ export const AccountRestorePage = lazy(() =>
 export const MemoryPage = lazy(() =>
 	import('@/pages/memory').then((m) => ({ default: m.MemoryPage })),
 )
+export const TrainingProgramPage = lazy(() =>
+	import('@/pages/training-program').then((m) => ({ default: m.TrainingProgramPage })),
+)
+export const TrainingTemplatePage = lazy(() =>
+	import('@/pages/training-template').then((m) => ({ default: m.TrainingTemplatePage })),
+)

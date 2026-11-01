@@ -559,4 +559,43 @@ describe('buildFeed with photos', () => {
 		const hidden = buildFeed({ ...params([failed]), hiddenIds: new Set([failed.id]) })
 		expect(hidden.some((item) => item.kind === 'user' || item.kind === 'failure')).toBe(false)
 	})
+
+	describe('program card from the onboarding', () => {
+		const card = (isInitial: boolean): ChatMessage['programCard'] =>
+			// only `changes.initial` is read by the feed
+			({ v: 1, baseVersionId: null, program: {}, changes: { initial: isInitial } }) as never
+		const question = (step: 4 | 5) =>
+			message({
+				role: 'ASSISTANT',
+				content: null,
+				clientMessageId: null,
+				createdAt: '2026-10-07T06:40:00Z',
+				trainingOnboarding: { v: 1, step, preselected: [], answer: null },
+				trainingOnboardingState: 'ANSWERED',
+			})
+		const proposal = (isInitial: boolean) =>
+			message({
+				role: 'ASSISTANT',
+				clientMessageId: null,
+				createdAt: '2026-10-07T06:41:00Z',
+				programCard: card(isInitial),
+			})
+		const lastKusik = (feed: ReturnType<typeof buildFeed>): unknown =>
+			feed.findLast((item) => item.kind === 'kusik')
+
+		it('marks the first card that follows the fifth answer', () => {
+			expect(lastKusik(buildFeed(params([question(5), proposal(true)])))).toMatchObject({
+				isFromOnboarding: true,
+			})
+		})
+
+		it('does not mark a card after another question, or a diff card', () => {
+			expect(lastKusik(buildFeed(params([question(4), proposal(true)])))).not.toHaveProperty(
+				'isFromOnboarding',
+			)
+			expect(lastKusik(buildFeed(params([question(5), proposal(false)])))).not.toHaveProperty(
+				'isFromOnboarding',
+			)
+		})
+	})
 })

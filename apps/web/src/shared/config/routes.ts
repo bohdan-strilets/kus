@@ -56,3 +56,12 @@ export const TRAINING_EXERCISE_ROUTE = `${TAB_ROUTES.training}/exercise/:id`
 
 export const getTrainingExercisePath = (exerciseId: string): string =>
 	`${TAB_ROUTES.training}/exercise/${exerciseId}`
+
+/** The workout program screen (opened from the training tab). */
+export const TRAINING_PROGRAM_ROUTE = `${TAB_ROUTES.training}/program`
+
+/** The pattern of one program day in the router; links use getTrainingTemplatePath. */
+export const TRAINING_TEMPLATE_ROUTE = `${TAB_ROUTES.training}/template/:id`
+
+export const getTrainingTemplatePath = (templateId: string): string =>
+	`${TAB_ROUTES.training}/template/${templateId}`

@@ -205,3 +205,20 @@ describe('getJournalRow', () => {
 		expect(row.ariaLabel).toBe("П'ятниця, 23 жовтня. Зал · 55 хв. Груди, Спина. 1 рекорд")
 	})
 })
+
+describe('getJournalRow template name', () => {
+	it('gives the template apart from the title and keeps it in the spoken label', () => {
+		const row = getJournalRow(makeWorkout({ templateName: 'Тренування А' }), t)
+
+		expect(row.title).toBe('Зал · 55 хв')
+		expect(row.templateName).toBe('Тренування А')
+		expect(row.ariaLabel).toContain('Зал · 55 хв · Тренування А')
+	})
+
+	it('keeps the title without a template', () => {
+		const row = getJournalRow(makeWorkout({ templateName: null }), t)
+
+		expect(row.title).toBe('Зал · 55 хв')
+		expect(row.templateName).toBeNull()
+	})
+})

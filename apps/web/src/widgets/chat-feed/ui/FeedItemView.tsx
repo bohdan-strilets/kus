@@ -57,6 +57,7 @@ export const FeedItemView = ({
 					isLatest={isLatestReply}
 					today={today}
 					photoStatus={item.photoStatus}
+					isFromOnboarding={item.isFromOnboarding}
 				/>
 			)
 		case 'failure':

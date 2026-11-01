@@ -1,3 +1,4 @@
+export { getExerciseDictionary } from './api/get-exercise-dictionary'
 export { getExerciseStats } from './api/get-exercise-stats'
 export { getWorkout } from './api/get-workout'
 export { getWorkoutStats } from './api/get-workout-stats'
@@ -15,6 +16,7 @@ export {
 } from './lib/format-workout'
 export {
 	WORKOUTS_QUERY_KEY,
+	exerciseDictionaryQueryOptions,
 	exerciseStatsQueryOptions,
 	workoutQueryOptions,
 	workoutStatsQueryOptions,
@@ -29,6 +31,8 @@ export {
 	type SetSegmentKind,
 } from './lib/format-sets'
 export { GroupIcon, type GroupIconProps } from './ui/group-icon'
+export { formatLastSets } from './lib/format-last-sets'
+export { GroupChip, type GroupChipProps } from './ui/group-chip'
 export { GroupDot, type GroupDotProps } from './ui/group-dot'
 export { GroupTag, type GroupTagProps } from './ui/group-tag'
 export { SetLine, type SetLineProps } from './ui/set-line'

@@ -412,3 +412,40 @@ describe('hidden server messages', () => {
 		expect(useOutboxStore.getState().hiddenIds).toEqual([])
 	})
 })
+
+describe('outbox onboarding answers', () => {
+	const ANSWER = { messageId: PHOTO_ID, values: ['GYM'] }
+
+	beforeEach(() => {
+		localStorage.clear()
+		useOutboxStore.setState({ ownerId: OWNER_ID, items: {}, hiddenIds: [] })
+	})
+
+	it('a failed answer survives a reload with its values', () => {
+		useOutboxStore.getState().markSending({
+			clientMessageId: FAILED_ID,
+			text: 'Зал',
+			createdAt: CREATED_AT,
+			onboardingAnswer: ANSWER,
+		})
+		useOutboxStore.getState().markFailed(FAILED_ID, RESTORED_FAILURE)
+
+		const { items } = restoreOutbox(readStored() && (readStored() as { state: unknown }).state)
+		expect(items[FAILED_ID]).toMatchObject({ text: 'Зал', onboardingAnswer: ANSWER })
+	})
+
+	it('drops a stored answer with an unknown value', () => {
+		const { items } = restoreOutbox({
+			ownerId: OWNER_ID,
+			items: [
+				{
+					clientMessageId: FAILED_ID,
+					text: 'Зал',
+					createdAt: CREATED_AT,
+					onboardingAnswer: { messageId: PHOTO_ID, values: ['<script>'] },
+				},
+			],
+		})
+		expect(items).toEqual({})
+	})
+})

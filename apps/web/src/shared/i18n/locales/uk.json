@@ -37,6 +37,12 @@
 		"trainingStats": {
 			"title": "Статистика"
 		},
+		"trainingProgram": {
+			"title": "Програма"
+		},
+		"trainingTemplate": {
+			"title": "День програми"
+		},
 		"profile": {
 			"title": "Профіль"
 		},
@@ -895,6 +901,180 @@
 		},
 		"kcalNote": "{{kcal}} ккал · {{source}} · на ціль не впливає"
 	},
+	"program": {
+		"versionFrom": "Версія від {{date}}",
+		"meta": {
+			"withCardio": "{{exercises}} + кардіо",
+			"duration": "~{{duration}}"
+		},
+		"target": {
+			"setsReps": "{{sets}} × {{reps}}",
+			"weight": "{{value}} кг",
+			"progressStep": "+{{value}} кг"
+		},
+		"mode": {
+			"ROTATE": "По черзі",
+			"SINGLE": "Завжди одне",
+			"WEEKDAYS": "За днями тижня"
+		},
+		"templateCount_one": "{{count}} тренування",
+		"templateCount_few": "{{count}} тренування",
+		"templateCount_many": "{{count}} тренувань",
+		"templateCount_other": "{{count}} тренування",
+		"screen": {
+			"whatChanged": "що змінилось",
+			"modeLabel": "Як чергувати",
+			"hint": {
+				"ROTATE": "А → Б → А… Наступне — те, що йде після останнього зробленого.",
+				"WEEKDAYS": "Наступне — за сьогоднішнім днем; у день без шаблону — найближче.",
+				"SINGLE": "Щоразу те саме тренування — обери, яке."
+			},
+			"next": "наступне",
+			"pin": "Обрати: {{name}}",
+			"weekdays": "Дні тижня: {{name}}",
+			"remove": "Прибрати програму",
+			"removeConfirm": {
+				"title": "Прибрати програму?",
+				"body": "Шаблони зникнуть з вкладки. Журнал тренувань лишиться.",
+				"cancel": "Скасувати",
+				"confirm": "Прибрати"
+			},
+			"loadError": "Не вдалося завантажити програму.",
+			"actionError": "Не вийшло. Спробуй ще раз."
+		},
+		"versions": {
+			"title": "Що змінилось",
+			"description": "Історія версій.",
+			"when": "{{date}}, {{time}}",
+			"currentWhen": "{{when}} · поточна",
+			"created": "Програму створено: {{templates}}, {{mode}}.",
+			"createdPlain": "Програму створено.",
+			"note": "Тренування, записані раніше, лишаються як були — версія впливає лише на наступні.",
+			"loadError": "Не вдалося завантажити історію."
+		},
+		"perWeek_one": "{{count}} раз на тиждень",
+		"perWeek_few": "{{count}} рази на тиждень",
+		"perWeek_many": "{{count}} разів на тиждень",
+		"perWeek_other": "{{count}} рази на тиждень",
+		"card": {
+			"title_one": "Програма: {{count}} тренування",
+			"title_few": "Програма: {{count}} тренування",
+			"title_many": "Програма: {{count}} тренувань",
+			"title_other": "Програма: {{count}} тренування",
+			"note": "Поки не збережено — лише після «Прийняти».",
+			"noteOnboarding": "Складено з 5 відповідей. Поки не збережено.",
+			"accept": "Прийняти",
+			"modify": "Змінити в чаті",
+			"accepted": "Прийнято",
+			"acceptedVersion": "Прийнято · версія від {{date}}",
+			"open": "Відкрити програму",
+			"outdated": "Програма вже змінилась — перерахуй зміни",
+			"rebase": "Перерахувати",
+			"actionError": "Не вийшло. Спробуй ще раз."
+		},
+		"diff": {
+			"title": "Зміни в програмі",
+			"note": "Решта без змін. Поки не збережено.",
+			"beforeAfter": "було {{before}} · стало {{after}}",
+			"programGroup": "Програма",
+			"mode": "Режим",
+			"perWeek": "Разів на тиждень",
+			"weekdays": "Дні тижня",
+			"templateName": "Назва тренування",
+			"reorder": "Змінено порядок вправ",
+			"sr": {
+				"removed": "Прибрано",
+				"added": "Додано",
+				"changed": "Змінено"
+			},
+			"programTitle": "Назва програми"
+		},
+		"template": {
+			"legend": "Ціль: підходи × повтори · робоча вага · крок прогресу · відпочинок.",
+			"loadError": "Не вдалося завантажити тренування."
+		},
+		"editor": {
+			"edit": "Змінити",
+			"done": "Готово",
+			"saving": "Зберігаю…",
+			"drag": "Перетягнути: {{name}}",
+			"remove": "Прибрати: {{name}}",
+			"position": "{{name}}: позиція {{position}} з {{total}}",
+			"addExercise": "Вправа",
+			"hint": "Перетягни за ≡, щоб змінити порядок. Тап по вправі — ціль. «Готово» зберігає нову версію програми.",
+			"lastTime": "Минулого разу:",
+			"sets": "Підходи",
+			"weight": "Робоча вага",
+			"repsFrom": "Повтори від",
+			"repsTo": "до",
+			"minutes": "Хвилини",
+			"distance": "Дистанція",
+			"progressStep": "Крок прогресу",
+			"rest": "Відпочинок",
+			"less": "Менше: {{label}}",
+			"more": "Більше: {{label}}",
+			"editValue": "{{label}}: {{value}}, змінити",
+			"unitKg": "кг",
+			"unitMin": "хв",
+			"unitKm": "км",
+			"save": "Зберегти",
+			"removeFromWorkout": "Прибрати з тренування",
+			"addTitle": "Вправа",
+			"add": "Додати: {{name}}",
+			"neverDone": "ще не було",
+			"newExercise": "Нова вправа «{{name}}»",
+			"search": {
+				"label": "Пошук вправи",
+				"clear": "Очистити",
+				"loadError": "Не вдалося завантажити вправи.",
+				"empty": "Тут з'являться вправи з твоїх тренувань."
+			}
+		}
+	},
+	"trainingOnboarding": {
+		"invite": {
+			"title": "Це перше тренування в Kusik.",
+			"text": "Налаштувати тренування? 5 питань — і буде програма під твій режим.",
+			"yes": "Так",
+			"later": "Пізніше"
+		},
+		"question": {
+			"1": "Почнімо. Де тренуєшся?",
+			"2": "А що зазвичай робиш на тренуванні?",
+			"3": "Зрозумів. Який досвід?",
+			"4": "Скільки разів на тиждень?",
+			"5": "Що є з обладнання? Можна кілька."
+		},
+		"options": {
+			"2": "2",
+			"3": "3",
+			"4": "4",
+			"GYM": "Зал",
+			"HOME": "Вдома",
+			"OUTDOOR": "На вулиці",
+			"MIXED": "По-різному",
+			"STRENGTH": "Силові",
+			"CARDIO": "Кардіо",
+			"STRENGTH_AND_CARDIO": "Силові й кардіо",
+			"NOTHING_YET": "Поки нічого",
+			"BEGINNER": "Без досвіду",
+			"EXPERIENCED": "Є досвід",
+			"CONFIDENT": "Впевнено",
+			"5+": "5+",
+			"FULL_GYM": "Повний зал",
+			"DUMBBELLS": "Гантелі",
+			"PULL_UP_BAR": "Турнік",
+			"BANDS": "Гумки",
+			"NONE": "Нічого"
+		},
+		"hints": {
+			"BEGINNER": "до пів року або після довгої перерви",
+			"EXPERIENCED": "від пів року, знаю базові вправи",
+			"CONFIDENT": "кілька років, знаю техніку"
+		},
+		"done": "Готово",
+		"actionError": "Не вийшло. Спробуй ще раз."
+	},
 	"training": {
 		"journal": {
 			"week": {
@@ -909,6 +1089,7 @@
 				"dayRest": "{{day}}: без тренування"
 			},
 			"rowTitle": "{{kind}} · {{duration}}",
+			"rowWithTemplate": "{{title}} · {{template}}",
 			"rowDate": "{{weekday}}, {{date}}",
 			"records_one": "{{count}} рекорд",
 			"records_few": "{{count}} рекорди",
@@ -921,6 +1102,23 @@
 			}
 		},
 		"loadError": "Не вдалося завантажити тренування.",
+		"invite": {
+			"title": "Налаштуємо тренування?",
+			"text": "5 коротких питань у чаті — і Kusik запропонує програму під твій режим. Без програми теж можна: просто пиши в чат, що робили.",
+			"action": "Налаштувати в чаті",
+			"later": "Пізніше"
+		},
+		"next": {
+			"label": "Наступне"
+		},
+		"templates": {
+			"title": "Мої шаблони",
+			"programLink": "програма"
+		},
+		"programTile": {
+			"title": "Програма",
+			"setup": "Налаштувати"
+		},
 		"session": {
 			"title": "{{kind}} · {{duration}}",
 			"subtitle": "{{date}} · {{time}}",
@@ -941,7 +1139,8 @@
 				"monthCount_one": "{{count}} тренування за {{month}}",
 				"monthCount_few": "{{count}} тренування за {{month}}",
 				"monthCount_many": "{{count}} тренувань за {{month}}",
-				"monthCount_other": "{{count}} тренування за {{month}}"
+				"monthCount_other": "{{count}} тренування за {{month}}",
+				"monthCountShort": "{{count}} за {{month}}"
 			},
 			"tabs": {
 				"overview": "Огляд",

@@ -1,17 +1,19 @@
 import { type ProgramMode, programModeSchema } from '@kus/shared'
 import { useTranslation } from 'react-i18next'
 
+import { formatRotateHint, type ProgramTemplateResponse } from '@/entities/program'
 import { SegmentedToggle, Text } from '@/shared/ui'
 
 interface ProgramModeSectionProps {
 	mode: ProgramMode
+	templates: readonly ProgramTemplateResponse[]
 	onChange: (mode: ProgramMode) => void
 }
 
 const MODES = programModeSchema.options
 
 /** «Як чергувати»: the mode and what it means for the «next» training. */
-export const ProgramModeSection = ({ mode, onChange }: ProgramModeSectionProps) => {
+export const ProgramModeSection = ({ mode, templates, onChange }: ProgramModeSectionProps) => {
 	const { t } = useTranslation()
 	return (
 		<>
@@ -26,7 +28,7 @@ export const ProgramModeSection = ({ mode, onChange }: ProgramModeSectionProps) 
 				options={MODES.map((value) => ({ value, label: t(`program.mode.${value}`) }))}
 			/>
 			<Text as="p" variant="caption" tone="muted" weight="regular" className="px-1">
-				{t(`program.screen.hint.${mode}`)}
+				{mode === 'ROTATE' ? formatRotateHint(templates, t) : t(`program.screen.hint.${mode}`)}
 			</Text>
 		</>
 	)

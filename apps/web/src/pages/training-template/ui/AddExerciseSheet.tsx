@@ -81,7 +81,7 @@ export const AddExerciseSheet = ({ isOpen, onOpenChange, onAdd }: AddExerciseShe
 			title={t('program.editor.addTitle')}
 		>
 			<ExerciseSearchField value={text} onChange={setText} />
-			<div className="-mr-4 flex gap-1.5 overflow-x-auto pr-4">
+			<div className="-mr-4 -ml-1 scrollbar-none flex shrink-0 gap-1.5 overflow-x-auto py-1 pr-4 pl-1">
 				{CHIP_GROUPS.map((chipGroup) => (
 					<GroupChip
 						key={chipGroup}
@@ -93,7 +93,7 @@ export const AddExerciseSheet = ({ isOpen, onOpenChange, onAdd }: AddExerciseShe
 					/>
 				))}
 			</div>
-			<div className="flex flex-col">
+			<div className="flex touch-pan-y flex-col">
 				{items?.map((item) => (
 					<ExerciseResultRow
 						key={item.id}

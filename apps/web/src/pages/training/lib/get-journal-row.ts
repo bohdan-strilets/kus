@@ -41,8 +41,19 @@ export const getWorkoutGroups = (
 export const getRecordCount = (workout: Pick<WorkoutResponse, 'exercises'>): number =>
 	workout.exercises.filter((exercise) => exercise.record !== null).length
 
+// Without a place the kind is the generic «Тренування»: the template name stands in for it
+// instead of being shown twice.
+const hasKnownPlace = (workout: WorkoutResponse): boolean =>
+	workout.place !== null && workout.place !== 'OTHER'
+
+const getRowTemplateName = (workout: WorkoutResponse): string | null =>
+	hasKnownPlace(workout) ? workout.templateName : null
+
 const getTitle = (workout: WorkoutResponse, t: TFunction, isSpoken: boolean): string => {
-	const kind = formatWorkoutKind(workout.place, t)
+	const kind =
+		!hasKnownPlace(workout) && workout.templateName !== null
+			? workout.templateName
+			: formatWorkoutKind(workout.place, t)
 	const duration = formatWorkoutDuration(workout, t, isSpoken)
 	return duration === null ? kind : t('training.journal.rowTitle', { kind, duration })
 }
@@ -50,9 +61,10 @@ const getTitle = (workout: WorkoutResponse, t: TFunction, isSpoken: boolean): st
 // the spoken label keeps the template in the line: «Зал · 62 хв · Тренування А»
 const getSpokenTitle = (workout: WorkoutResponse, t: TFunction): string => {
 	const title = getTitle(workout, t, true)
-	return workout.templateName === null
+	const templateName = getRowTemplateName(workout)
+	return templateName === null
 		? title
-		: t('training.journal.rowWithTemplate', { title, template: workout.templateName })
+		: t('training.journal.rowWithTemplate', { title, template: templateName })
 }
 
 /** Everything a row of the journal shows, as text: the view stays presentational. */
@@ -76,7 +88,7 @@ export const getJournalRow = (workout: WorkoutResponse, t: TFunction): JournalRo
 		weekday: formatWeekdayShort(date),
 		day: String(date.getDate()),
 		title: getTitle(workout, t, false),
-		templateName: workout.templateName,
+		templateName: getRowTemplateName(workout),
 		groups: groups.slice(0, limit),
 		hiddenGroupCount: Math.max(0, groups.length - limit),
 		recordCount,

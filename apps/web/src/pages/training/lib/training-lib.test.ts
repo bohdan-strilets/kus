@@ -215,6 +215,21 @@ describe('getJournalRow template name', () => {
 		expect(row.ariaLabel).toContain('Зал · 55 хв · Тренування А')
 	})
 
+	it('uses the template name as the title when there is no place, without repeating it', () => {
+		const row = getJournalRow(makeWorkout({ place: null, templateName: 'Тренування А' }), t)
+
+		expect(row.title).toBe('Тренування А · 55 хв')
+		expect(row.templateName).toBeNull()
+		expect(row.ariaLabel).toContain('Тренування А · 55 хв.')
+		expect(row.ariaLabel).not.toContain('Тренування А · 55 хв · Тренування А')
+	})
+
+	it('keeps the generic title without a place and without a template', () => {
+		const row = getJournalRow(makeWorkout({ place: null, templateName: null }), t)
+
+		expect(row.title).toBe('Тренування · 55 хв')
+	})
+
 	it('keeps the title without a template', () => {
 		const row = getJournalRow(makeWorkout({ templateName: null }), t)
 

@@ -215,7 +215,7 @@ export const BaseBottomSheet = ({
 											</Dialog.Description>
 										)}
 									</div>
-									<div className="flex min-h-0 flex-col gap-3.5 overflow-y-auto px-4 pt-3.5 pb-7">
+									<div className="flex min-h-0 flex-col gap-3.5 overflow-y-auto overscroll-contain px-4 pt-3.5 pb-7">
 										{children}
 									</div>
 								</motion.div>

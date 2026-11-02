@@ -47,6 +47,7 @@ export const ProgramScreen = ({ program }: ProgramScreenProps) => {
 			/>
 			<ProgramModeSection
 				mode={shownMode}
+				templates={program.templates}
 				onChange={(mode) => {
 					if (isBusy || mode === program.mode) return
 					updateSettings.mutate({ mode }, { onError: showActionError })

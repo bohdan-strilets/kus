@@ -6,6 +6,7 @@ import {
 	formatProgramCreated,
 	formatProgramSubtitle,
 	formatProgramVersionWhen,
+	formatRotateHint,
 } from './format-program-screen'
 
 const t = i18n.t.bind(i18n)
@@ -52,5 +53,36 @@ describe('formatProgramCreated', () => {
 
 	it('has no numbers when the program has moved on', () => {
 		expect(formatProgramCreated(null, t)).toBe('Програму створено.')
+	})
+})
+
+describe('formatRotateHint', () => {
+	const named = (...names: string[]) => names.map((name, position) => ({ name, position }))
+
+	it('shows the rotation by the short names, starting over at the end', () => {
+		expect(formatRotateHint(named('Тренування А', 'Тренування Б', 'Тренування В'), t)).toBe(
+			'А → Б → В → А… Наступне — те, що йде після останнього зробленого.',
+		)
+		expect(formatRotateHint(named('Тренування А', 'Тренування Б'), t)).toBe(
+			'А → Б → А… Наступне — те, що йде після останнього зробленого.',
+		)
+	})
+
+	it('orders by position and keeps a name that is not «Тренування X» whole', () => {
+		expect(
+			formatRotateHint(
+				[
+					{ name: 'Низ', position: 1 },
+					{ name: 'Верх', position: 0 },
+				],
+				t,
+			),
+		).toBe('Верх → Низ → Верх… Наступне — те, що йде після останнього зробленого.')
+	})
+
+	it('has no sequence for one template', () => {
+		expect(formatRotateHint(named('Тренування А'), t)).toBe(
+			'Наступне — те, що йде після останнього зробленого.',
+		)
 	})
 })

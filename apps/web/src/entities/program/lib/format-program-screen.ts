@@ -4,6 +4,27 @@ import type { TFunction } from 'i18next'
 import { DETAIL_SEPARATOR } from '@/entities/workout'
 import { formatDayMonth, formatTime } from '@/shared/lib'
 
+import { getTemplateShortLabel } from './format-program-changes'
+
+const SEQUENCE_SEPARATOR = ' → '
+
+/**
+ * The hint under «По черзі»: «А → Б → А… Наступне — …» built from the templates in the order of
+ * their position (the short names of the journal); one template has no sequence to show.
+ */
+export const formatRotateHint = (
+	templates: readonly Pick<ProgramResponse['templates'][number], 'name' | 'position'>[],
+	t: TFunction,
+): string => {
+	const labels = [...templates]
+		.sort((a, b) => a.position - b.position)
+		.map((template) => getTemplateShortLabel(template.name))
+	const [first] = labels
+	if (labels.length < 2 || first === undefined) return t('program.screen.hint.ROTATE_single')
+	const sequence = `${[...labels, first].join(SEQUENCE_SEPARATOR)}…`
+	return t('program.screen.hint.ROTATE', { sequence })
+}
+
 /** «Все тіло · 2 тренування · 3 рази на тиждень»; the parts the program has no value for are skipped. */
 export const formatProgramSubtitle = (
 	program: Pick<ProgramResponse, 'title' | 'templates' | 'perWeek'>,

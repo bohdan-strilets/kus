@@ -6,6 +6,16 @@ All notable changes to Kusik are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.10.2.1] — 2026-11-02
+
+Fixes from the iPhone check of 0.10.2. No migrations, no model-visible changes; the web version is 0.10.2+1 (semver build metadata).
+
+### Fixed
+
+- Onboarding answers typed in words: a free-text answer counts when it names exactly one option of the open question by a whole-word keyword («ходжу в зал» → Зал); a negation around the keyword, a question, a unit after a number or two different options end the onboarding as before ([5263d08])
+- «Мої вправи» shows the last cardio result («20 хв · 3,0 км»); an exercise without a muscle group gets the grey «Інше» dot, as in the training stats ([aabb4e6])
+- The «По черзі» hint lists the real templates («А → Б → В → А…»); a journal row without a place shows the template name once; the add-exercise sheet keeps its chips row whole and the list pans vertically on iOS ([9309433])
+
 ## [0.10.2] — 2026-11-01
 
 Workout programs: Kusik proposes a program in chat (five button questions or plain words), nothing is saved until «Прийняти», every change is a new version; program and template screens with a manual editor; the training tab shows the next workout. Two additive migrations, one new environment variable for the eval only (OPENROUTER_EVAL_API_KEY).
@@ -591,7 +601,11 @@ Design sync with `design/` v0.5.2. Web only: no API, shared-package or migration
 
 ## 0.2.0 / 0.1.0 — see tags
 
-[Unreleased]: https://github.com/bohdan-strilets/kus/compare/v0.10.2...HEAD
+[Unreleased]: https://github.com/bohdan-strilets/kus/compare/v0.10.2.1...HEAD
+[0.10.2.1]: https://github.com/bohdan-strilets/kus/compare/v0.10.2...v0.10.2.1
+[5263d08]: https://github.com/bohdan-strilets/kus/commit/5263d08b912453b48f3b7edb12f59db8630eb441
+[aabb4e6]: https://github.com/bohdan-strilets/kus/commit/aabb4e6d827d7b57f98bbed9e65938edfdb36e96
+[9309433]: https://github.com/bohdan-strilets/kus/commit/9309433b120104f267d1968a4e202a649b72e274
 [0.10.2]: https://github.com/bohdan-strilets/kus/compare/v0.10.1...v0.10.2
 [2a80696]: https://github.com/bohdan-strilets/kus/commit/2a806965a809d9e3b263ea9232a32b16495be4f4
 [a0ca042]: https://github.com/bohdan-strilets/kus/commit/a0ca0429177d9a6436c98c5ef3deca5e5f767784

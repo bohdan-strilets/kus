@@ -22,8 +22,11 @@ export const makeEntry = (overrides: Partial<StatsEntryRow> = {}): StatsEntryRow
 	kind: 'STRENGTH',
 	muscleGroup: null,
 	exercise: { muscleGroup: 'CHEST' },
+	isBodyweight: null,
 	durationMin: null,
 	distanceM: null,
+	kcalBurned: null,
+	source: 'MANUAL',
 	sets: [makeSet()],
 	...overrides,
 })

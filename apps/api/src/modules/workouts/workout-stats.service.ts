@@ -4,6 +4,7 @@ import type { ExerciseStatsResponse, WorkoutStatsPeriod, WorkoutStatsResponse } 
 import { getLocalDateString, toDbDate } from '../../common/time'
 import { UsersService } from '../users/users.service'
 import { buildExerciseStats } from './exercise-stats'
+import { WorkoutKcalService } from './workout-kcal.service'
 import { buildWorkoutStats } from './workout-stats'
 import { toStatsEntryRow, toStatsWorkoutRow } from './workout-stats.mapper'
 import { WorkoutStatsRepository } from './workout-stats.repository'
@@ -15,6 +16,7 @@ export class WorkoutStatsService {
 	constructor(
 		private readonly statsRepository: WorkoutStatsRepository,
 		private readonly usersService: UsersService,
+		private readonly kcal: WorkoutKcalService,
 	) {}
 
 	/** Overview, exercises and cardio of the period; the previous one is read for the comparison. */
@@ -33,11 +35,13 @@ export class WorkoutStatsService {
 				),
 			),
 		]
-		const allTime = await this.statsRepository.findStrengthEntriesOfExercises({
-			userId,
-			exerciseIds,
-		})
+		const [allTime, getBodyWeightKg] = await Promise.all([
+			this.statsRepository.findStrengthEntriesOfExercises({ userId, exerciseIds }),
+			// one read of the weigh-ins for the whole period
+			this.kcal.getBodyWeightPicker(userId, [range.from, range.to]),
+		])
 		return buildWorkoutStats({
+			getBodyWeightKg,
 			period,
 			today,
 			workouts: workouts.map(toStatsWorkoutRow),

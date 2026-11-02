@@ -16,7 +16,7 @@ const WITH_EXERCISES = {
 		orderBy: { position: 'asc' },
 		include: {
 			sets: { orderBy: { position: 'asc' } },
-			exercise: { select: { muscleGroup: true } },
+			exercise: { select: { muscleGroup: true, isBodyweight: true } },
 		},
 	},
 	// the name in the version it was done by: the journal's «· Тренування А»

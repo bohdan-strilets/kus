@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
 
-import { getCardioType, TREADMILL_WALK_MAX_KMH, type CardioType } from './cardio-type.js'
+import {
+	getCardioType,
+	isTreadmillName,
+	TREADMILL_WALK_MAX_KMH,
+	type CardioType,
+} from './cardio-type.js'
 
 describe('getCardioType', () => {
 	it.each<[string, CardioType]>([
@@ -65,6 +70,13 @@ describe('getCardioType', () => {
 		it('is a run at the threshold and above', () => {
 			expect(getCardioType('Доріжка', { speedKmh: TREADMILL_WALK_MAX_KMH })).toBe('RUN')
 			expect(getCardioType('Treadmill', { speedKmh: 12 })).toBe('RUN')
+		})
+
+		it('recognizes treadmill stems in the shortened forms', () => {
+			expect(getCardioType('Ходьба по доріжці')).toBe('WALK')
+			expect(getCardioType('Біг по доріжці', { speedKmh: 5 })).toBe('WALK')
+			expect(getCardioType('Біг по доріжці', { speedKmh: 10 })).toBe('RUN')
+			expect(isTreadmillName('Ходьба по доріжці')).toBe(true)
 		})
 	})
 

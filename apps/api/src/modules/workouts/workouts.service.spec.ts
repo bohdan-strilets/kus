@@ -2,6 +2,7 @@ import type { Prisma } from '../../generated/prisma/client'
 import { describe, expect, it, vi } from 'vitest'
 
 import { type ExerciseRow, WorkoutsService } from './workouts.service'
+import type { WorkoutKcalService } from './workout-kcal.service'
 import type { WorkoutsRepository } from './workouts.repository'
 
 const tx = {} as Prisma.TransactionClient
@@ -18,7 +19,10 @@ const createRepository = (known: ExerciseRow | null) => {
 
 const build = (known: ExerciseRow | null) => {
 	const repository = createRepository(known)
-	const service = new WorkoutsService(repository as unknown as WorkoutsRepository)
+	const service = new WorkoutsService(
+		repository as unknown as WorkoutsRepository,
+		{} as unknown as WorkoutKcalService,
+	)
 	return { repository, service }
 }
 

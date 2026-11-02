@@ -4,6 +4,8 @@ import {
 	DEFAULT_PROGRESS_STEP_KG,
 	DEFAULT_REST_SEC,
 	estimateTemplateMinutes,
+	getProgressHintKg,
+	isBodyweightByName,
 	matchMuscleGroup,
 	type MuscleGroup,
 	type NextTemplate,
@@ -138,11 +140,19 @@ export const toTemplateWrite = (
 	}),
 })
 
+/** The template's flag, then the dictionary's, then the name; cardio has none. */
+const getIsBodyweight = (row: ExerciseRow): boolean | null => {
+	if (row.kind !== 'STRENGTH') return row.isBodyweight
+	return row.isBodyweight ?? row.exercise?.isBodyweight ?? isBodyweightByName(row.name)
+}
+
 const toExerciseResponse = (
 	row: ExerciseRow,
 	lastSets: ReadonlyMap<string, LastExerciseResult>,
 ): ProgramExerciseResponse => {
 	const last = row.exerciseId === null ? undefined : lastSets.get(row.exerciseId)
+	const target = toTarget(row)
+	const isBodyweight = getIsBodyweight(row)
 	return {
 		id: row.id,
 		exerciseId: row.exerciseId,
@@ -150,11 +160,20 @@ const toExerciseResponse = (
 		kind: row.kind,
 		muscleGroup: getMuscleGroup(row),
 		position: row.position,
-		target: toTarget(row),
+		target,
 		lastSets: last?.sets ?? null,
 		lastPerformedAt: last?.performedAt.toISOString() ?? null,
-		isBodyweight: row.isBodyweight,
-		progressHintKg: null,
+		isBodyweight,
+		progressHintKg:
+			row.kind === 'STRENGTH'
+				? getProgressHintKg({
+						lastSets: last?.sets ?? null,
+						repsMax: target.repsMax,
+						weightKg: target.weightKg,
+						progressStepKg: target.progressStepKg,
+						isBodyweight,
+					})
+				: null,
 	}
 }
 

@@ -14,7 +14,7 @@ const WITH_ACTIVE_VERSION = {
 				include: {
 					exercises: {
 						orderBy: { position: 'asc' },
-						include: { exercise: { select: { muscleGroup: true } } },
+						include: { exercise: { select: { muscleGroup: true, isBodyweight: true } } },
 					},
 				},
 			},

@@ -15,8 +15,8 @@ import { formatDbDate, toDbDate } from '../../common/time'
 import type { Prisma } from '../../generated/prisma/client'
 import type { ExerciseKind, MuscleGroup } from '../../generated/prisma/enums'
 import { WorkoutNotFoundException } from './workouts.exceptions'
-import { toWorkoutResponse } from './workouts.mapper'
-import { WorkoutsRepository } from './workouts.repository'
+import { WorkoutKcalService } from './workout-kcal.service'
+import { type WorkoutWithExercises, WorkoutsRepository } from './workouts.repository'
 
 /** A row of the user's exercise dictionary, as much as the callers need. */
 export interface ExerciseRow {
@@ -65,7 +65,10 @@ const toLastCardio = (
 export class WorkoutsService {
 	private readonly logger = new Logger(WorkoutsService.name)
 
-	constructor(private readonly workoutsRepository: WorkoutsRepository) {}
+	constructor(
+		private readonly workoutsRepository: WorkoutsRepository,
+		private readonly kcal: WorkoutKcalService,
+	) {}
 
 	/** The workouts of one day, in the order they were logged. */
 	async getDay(userId: string, localDate: string): Promise<WorkoutResponse[]> {
@@ -73,7 +76,7 @@ export class WorkoutsService {
 			userId,
 			localDate: toDbDate(localDate),
 		})
-		return workouts.map(toWorkoutResponse)
+		return this.kcal.toResponses(userId, workouts)
 	}
 
 	/** Exactly one live workout: the one just logged is the user's first ever. */
@@ -89,14 +92,14 @@ export class WorkoutsService {
 			from: toDbDate(from),
 			to: toDbDate(to),
 		})
-		return workouts.map(toWorkoutResponse)
+		return this.kcal.toResponses(userId, workouts)
 	}
 
 	/** One live workout of the owner — the session screen; another user's or a deleted one is 404. */
 	async getOne(userId: string, id: string): Promise<WorkoutResponse> {
 		const workout = await this.workoutsRepository.findLiveOwned({ userId, id })
 		if (!workout) throw new WorkoutNotFoundException()
-		return toWorkoutResponse(workout)
+		return this.toOneResponse(userId, workout)
 	}
 
 	async remove(userId: string, id: string): Promise<void> {
@@ -113,7 +116,16 @@ export class WorkoutsService {
 		}
 		const workout = await this.workoutsRepository.findOwned({ userId, id })
 		if (!workout) throw new WorkoutNotFoundException()
-		return toWorkoutResponse(workout)
+		return this.toOneResponse(userId, workout)
+	}
+
+	private async toOneResponse(
+		userId: string,
+		workout: WorkoutWithExercises,
+	): Promise<WorkoutResponse> {
+		const [response] = await this.kcal.toResponses(userId, [workout])
+		if (!response) throw new WorkoutNotFoundException()
+		return response
 	}
 
 	/**

@@ -9,6 +9,7 @@ import type {
 
 import { getWorkingSets } from './exercise-progress'
 import { buildExerciseList } from './workout-stats-exercises'
+import { type BodyWeightOfDay, getBurned, NO_BODY_WEIGHT } from './workout-stats-burned'
 import {
 	DAYS_IN_WEEK,
 	type DateRange,
@@ -164,12 +165,15 @@ export const buildWorkoutStats = ({
 	workouts,
 	entries,
 	allTimeStrengthEntries,
+	getBodyWeightKg = NO_BODY_WEIGHT,
 }: {
 	period: WorkoutStatsPeriod
 	today: string
 	workouts: readonly StatsWorkoutRow[]
 	entries: readonly StatsEntryRow[]
 	allTimeStrengthEntries: readonly StatsEntryRow[]
+	/** For the calorie estimate of the workouts that named none. */
+	getBodyWeightKg?: BodyWeightOfDay
 }): WorkoutStatsResponse => {
 	const range = getStatsPeriodRange(period, today)
 	const periodWorkouts = workouts.filter((workout) => isInRange(workout.localDate, range))
@@ -194,7 +198,7 @@ export const buildWorkoutStats = ({
 					? null
 					: Math.round(sum(durations.named) / durations.named.length),
 			hasEstimatedDuration: durations.hasEstimate,
-			burned: null,
+			burned: getBurned({ workouts: periodWorkouts, entries: periodEntries, getBodyWeightKg }),
 			kcal: getKcal(periodWorkouts),
 			buckets,
 			groups: getGroups(periodEntries),

@@ -18,9 +18,14 @@ export type StatsEntryRow = {
 	kind: ExerciseKind
 	/** The snapshot on the entry. */
 	muscleGroup: MuscleGroup | null
-	exercise: { muscleGroup: MuscleGroup | null } | null
+	exercise: { muscleGroup: MuscleGroup | null; isBodyweight?: boolean | null } | null
+	/** The entry's own flag for the kcal estimate; null = unknown. */
+	isBodyweight: boolean | null
 	durationMin: number | null
 	distanceM: number | null
+	/** Named by the user or a device (cardio). */
+	kcalBurned: number | null
+	source: ExerciseSource
 	/** In position order. */
 	sets: StatsSetRow[]
 }

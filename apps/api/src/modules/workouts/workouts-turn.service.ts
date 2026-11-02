@@ -18,7 +18,7 @@ import { toId, type WorkoutRefIds } from './workout-refs'
 import { getRecordKeys, getSessionMessageIds, hasNewRecord, toWorkoutCard } from './workout-session'
 import { WorkoutSessionsService } from './workout-sessions.service'
 import { getLastPerformedAt, toExerciseContext, toWorkoutContext } from './workout-turn'
-import { toWorkoutResponse } from './workouts.mapper'
+import { WorkoutKcalService } from './workout-kcal.service'
 import { type WorkoutWithExercises, WorkoutsRepository } from './workouts.repository'
 
 export { NO_WORKOUT_REFS, type WorkoutRefIds } from './workout-refs'
@@ -49,6 +49,7 @@ export class WorkoutsTurnService {
 	constructor(
 		private readonly workoutsRepository: WorkoutsRepository,
 		private readonly sessions: WorkoutSessionsService,
+		private readonly kcal: WorkoutKcalService,
 	) {}
 
 	/**
@@ -225,7 +226,8 @@ export class WorkoutsTurnService {
 		const byMessage = new Map<string, MessageWorkouts>()
 		if (messageIds.length === 0) return byMessage
 		const rows = await this.workoutsRepository.findBySourceMessages({ userId, messageIds })
-		const responses = new Map(rows.map((row) => [row.id, toWorkoutResponse(row)]))
+		const built = await this.kcal.toResponses(userId, rows)
+		const responses = new Map(rows.map((row, index) => [row.id, built[index]]))
 		for (const messageId of messageIds) {
 			for (const row of rows) {
 				const card = toWorkoutCard(row, messageId)

@@ -1,5 +1,7 @@
 import { Injectable } from '@nestjs/common'
+import type { BodyWeightMeasurement } from '@kus/shared'
 
+import { formatDbDate } from '../../common/time'
 import type { MeasurementKind, MeasurementSource, Prisma } from '../../generated/prisma/client'
 import { type MeasurementValue, toMeasurementValue } from './measurements.mapper'
 import { MeasurementsRepository, type UpsertMeasurementData } from './measurements.repository'
@@ -76,6 +78,22 @@ export class MeasurementsService {
 	): Promise<MeasurementValue[]> {
 		const rows = await this.measurementsRepository.findInRange(query, tx)
 		return rows.map(toMeasurementValue)
+	}
+
+	/**
+	 * The weigh-ins that decide the body weight of every day `from … to` (those days' and the
+	 * nearest one before and after), as `YYYY-MM-DD` + kg, ready for `pickBodyWeight`.
+	 */
+	async findWeightsAround(query: {
+		userId: string
+		from: Date
+		to: Date
+	}): Promise<BodyWeightMeasurement[]> {
+		const rows = await this.measurementsRepository.findAround({ ...query, kind: 'WEIGHT' })
+		return rows.map((row) => ({
+			localDate: formatDbDate(row.localDate),
+			value: row.value.toNumber(),
+		}))
 	}
 
 	async findByDate(

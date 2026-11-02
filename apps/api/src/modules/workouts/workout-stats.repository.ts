@@ -6,7 +6,7 @@ import { PrismaService } from '../../prisma'
 
 const STATS_ENTRY_INCLUDE = {
 	sets: { orderBy: { position: 'asc' } },
-	exercise: { select: { name: true, muscleGroup: true } },
+	exercise: { select: { name: true, muscleGroup: true, isBodyweight: true } },
 	workout: { select: { id: true, localDate: true } },
 } satisfies Prisma.ExerciseEntryInclude
 

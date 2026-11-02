@@ -32,7 +32,7 @@ const CARDIO_TYPE_RULES: readonly CardioTypeRule[] = [
 	{ type: 'ROPE', keywords: [['скакал'], ['jump', 'rope']] },
 	{
 		type: 'STAIRS',
-		keywords: [['степер'], ['степпер'], ['stair'], ['сходи'], ['лестниц']],
+		keywords: [['степер'], ['степпер'], ['stair'], ['сход'], ['лестниц']],
 	},
 	{ type: 'ELLIPTICAL', keywords: [['еліпт'], ['эллипт'], ['ellipt']] },
 	{ type: 'ROW', keywords: [['гребл'], ['гребн'], ['греб'], ['row']] },
@@ -45,10 +45,17 @@ const CARDIO_TYPE_RULES: readonly CardioTypeRule[] = [
 ]
 
 /** The words of the treadmill names: a run by default, a walk when the speed is known and low. */
-const TREADMILL_STEMS: readonly string[] = ['доріжк', 'дорожк', 'treadmill']
+const TREADMILL_STEMS: readonly string[] = ['доріж', 'дорож', 'treadmill']
 
 const matchesStems = (words: readonly string[], stems: readonly string[]): boolean =>
 	stems.every((stem) => words.some((word) => word.startsWith(stem)))
+
+const hasTreadmillWord = (words: readonly string[]): boolean =>
+	TREADMILL_STEMS.some((stem) => words.some((word) => word.startsWith(stem)))
+
+/** Whether the name says the exercise is on a treadmill. */
+export const isTreadmillName = (name: string): boolean =>
+	hasTreadmillWord(normalizeExerciseName(name).split(' ').filter(Boolean))
 
 export interface CardioTypeOptions {
 	/** Average speed in km/h when the distance and time are known. */
@@ -63,10 +70,9 @@ export const getCardioType = (name: string, options: CardioTypeOptions = {}): Ca
 	)
 	if (!rule) return 'OTHER'
 	const { speedKmh = null } = options
-	const isTreadmill = TREADMILL_STEMS.some((stem) => words.some((word) => word.startsWith(stem)))
 	if (
 		rule.type === 'RUN' &&
-		isTreadmill &&
+		hasTreadmillWord(words) &&
 		speedKmh !== null &&
 		speedKmh < TREADMILL_WALK_MAX_KMH
 	) {

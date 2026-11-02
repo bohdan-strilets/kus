@@ -134,6 +134,30 @@ export class MeasurementsRepository {
 		})
 	}
 
+	/**
+	 * The live weigh-ins of the days `from … to` plus the nearest one on each side: enough to pick the
+	 * weight of any day inside, without reading the whole history.
+	 */
+	async findAround(
+		{ userId, kind, from, to }: { userId: string; kind: MeasurementKind; from: Date; to: Date },
+		tx?: Prisma.TransactionClient,
+	): Promise<Measurement[]> {
+		const client = tx ?? this.prisma
+		const where = { userId, kind, deletedAt: null }
+		const [inside, before, after] = await Promise.all([
+			client.measurement.findMany({ where: { ...where, localDate: { gte: from, lte: to } } }),
+			client.measurement.findFirst({
+				where: { ...where, localDate: { lt: from } },
+				orderBy: [{ localDate: 'desc' }, { measuredAt: 'desc' }],
+			}),
+			client.measurement.findFirst({
+				where: { ...where, localDate: { gt: to } },
+				orderBy: [{ localDate: 'asc' }, { measuredAt: 'desc' }],
+			}),
+		])
+		return [...(before ? [before] : []), ...inside, ...(after ? [after] : [])]
+	}
+
 	findByDate(
 		{ userId, kind, localDate }: { userId: string; kind: MeasurementKind; localDate: Date },
 		tx?: Prisma.TransactionClient,

@@ -7,6 +7,7 @@ import {
 } from '@kus/shared'
 
 import { formatDbDate } from '../../common/time'
+import { estimateWorkoutKcal } from './workout-kcal'
 import type { WorkoutWithExercises } from './workouts.repository'
 
 /** A session shorter than this is one sitting: no «≈ N хв». */
@@ -28,7 +29,9 @@ type ExerciseRow = WorkoutWithExercises['exercises'][number]
 
 /** The dictionary's group, then the snapshot of the entry, then the dictionary of names; cardio has none. */
 export const getMuscleGroup = (
-	entry: Pick<ExerciseRow, 'kind' | 'name' | 'muscleGroup' | 'exercise'>,
+	entry: Pick<ExerciseRow, 'kind' | 'name' | 'muscleGroup'> & {
+		exercise: { muscleGroup: MuscleGroup | null } | null
+	},
 ): MuscleGroup | null => {
 	if (entry.kind === 'CARDIO') return null
 	return entry.exercise?.muscleGroup ?? entry.muscleGroup ?? matchMuscleGroup(entry.name)
@@ -72,13 +75,21 @@ export const readWorkoutRecords = (
 	workout: Pick<WorkoutWithExercises, 'records'>,
 ): z.infer<typeof storedRecordsSchema> => storedRecordsSchema.catch([]).parse(workout.records ?? [])
 
+export interface WorkoutResponseOptions {
+	/** The body weight of the workout's day; without it only a named kcal is shown. */
+	bodyWeightKg?: number | null
+}
+
 // a stored value that no longer parses only loses the trophy
-export const toWorkoutResponse = (workout: WorkoutWithExercises): WorkoutResponse =>
-	toResponse(workout, readWorkoutRecords(workout))
+export const toWorkoutResponse = (
+	workout: WorkoutWithExercises,
+	{ bodyWeightKg = null }: WorkoutResponseOptions = {},
+): WorkoutResponse => toResponse(workout, readWorkoutRecords(workout), bodyWeightKg)
 
 const toResponse = (
 	workout: WorkoutWithExercises,
 	records: z.infer<typeof storedRecordsSchema>,
+	bodyWeightKg: number | null,
 ): WorkoutResponse => ({
 	id: workout.id,
 	localDate: formatDbDate(workout.localDate),
@@ -87,7 +98,7 @@ const toResponse = (
 	place: workout.place,
 	kcalBurned: workout.kcalBurned,
 	kcalSource: workout.kcalSource,
-	kcal: null,
+	kcal: estimateWorkoutKcal({ workout, bodyWeightKg }),
 	source: workout.source,
 	isEdited: workout.editedAt !== null,
 	isDeleted: workout.deletedAt !== null,

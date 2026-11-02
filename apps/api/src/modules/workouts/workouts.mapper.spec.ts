@@ -62,10 +62,14 @@ const makeWorkout = (overrides: Partial<WorkoutWithExercises> = {}): WorkoutWith
 describe('getMuscleGroup', () => {
 	it('takes the dictionary row first, then the snapshot, then the dictionary of names', () => {
 		expect(
-			getMuscleGroup(makeEntry({ muscleGroup: 'ARMS', exercise: { muscleGroup: 'BACK' } })),
+			getMuscleGroup(
+				makeEntry({ muscleGroup: 'ARMS', exercise: { muscleGroup: 'BACK', isBodyweight: null } }),
+			),
 		).toBe('BACK')
 		expect(
-			getMuscleGroup(makeEntry({ muscleGroup: 'ARMS', exercise: { muscleGroup: null } })),
+			getMuscleGroup(
+				makeEntry({ muscleGroup: 'ARMS', exercise: { muscleGroup: null, isBodyweight: null } }),
+			),
 		).toBe('ARMS')
 		expect(getMuscleGroup(makeEntry({ muscleGroup: null, exercise: null }))).toBe('CHEST')
 		expect(getMuscleGroup(makeEntry({ name: 'Зарядка' }))).toBeNull()
@@ -78,7 +82,7 @@ describe('getMuscleGroup', () => {
 					kind: 'CARDIO',
 					name: 'Біг',
 					muscleGroup: 'LEGS',
-					exercise: { muscleGroup: 'LEGS' },
+					exercise: { muscleGroup: 'LEGS', isBodyweight: null },
 				}),
 			),
 		).toBeNull()
@@ -160,7 +164,7 @@ describe('toWorkoutResponse', () => {
 			name: 'Підтягування',
 			performedAt: at('17:50'),
 			sourceMessageId: '0199b3a4-0000-7000-8000-0000000000d2',
-			exercise: { muscleGroup: 'BACK' },
+			exercise: { muscleGroup: 'BACK', isBodyweight: null },
 		})
 		const response = toWorkoutResponse(
 			makeWorkout({

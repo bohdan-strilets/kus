@@ -22,9 +22,14 @@ export const toStatsEntryRow = (entry: StatsEntryRecord): StatsEntryRow => ({
 	name: entry.exercise?.name ?? entry.name,
 	kind: entry.kind,
 	muscleGroup: entry.muscleGroup,
-	exercise: entry.exercise ? { muscleGroup: entry.exercise.muscleGroup } : null,
+	exercise: entry.exercise
+		? { muscleGroup: entry.exercise.muscleGroup, isBodyweight: entry.exercise.isBodyweight }
+		: null,
+	isBodyweight: entry.isBodyweight,
 	durationMin: entry.durationMin,
 	distanceM: entry.distanceM,
+	kcalBurned: entry.kcalBurned,
+	source: entry.source,
 	sets: entry.sets.map((set) => ({
 		reps: set.reps,
 		weightKg: set.weightKg === null ? null : set.weightKg.toNumber(),

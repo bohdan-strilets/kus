@@ -12,8 +12,6 @@ interface GroupsCardProps {
 	cardioMin: number
 }
 
-const NEUTRAL_BAR_CLASS = 'block h-2.5 w-full rounded-full bg-muted-soft'
-
 /**
  * «Підходи за групами»: strength sets only, a bar per group scaled to the biggest one. Cardio is
  * time, not sets: its own row with minutes and no bar, so the scales are never mixed.
@@ -49,11 +47,7 @@ export const GroupsCard = ({ groups, cardioMin }: GroupsCardProps) => {
 						</Text>
 						<span className="flex-1 rounded-full bg-track">
 							<span className="block" style={{ width: `${row.widthPercent}%` }}>
-								{row.group === null ? (
-									<span className={NEUTRAL_BAR_CLASS} />
-								) : (
-									<GroupDot group={row.group} className="h-2.5 w-full" />
-								)}
+								<GroupDot group={row.group} className="h-2.5 w-full" />
 							</span>
 						</span>
 						<Text as="span" variant="caption" weight="bold" isTabular className="w-8 text-right">

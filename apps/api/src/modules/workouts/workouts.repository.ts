@@ -462,7 +462,10 @@ export class WorkoutsRepository {
 		})
 	}
 
-	/** For each exercise the most recent live entry with its sets (one batch query). */
+	/**
+	 * For each exercise the most recent live entry with its sets (one batch query). A cardio entry
+	 * counts only with a duration or a distance, so one without numbers does not hide earlier results.
+	 */
 	findLastEntriesOfExercises(
 		{ userId, exerciseIds }: { userId: string; exerciseIds: string[] },
 		tx?: Prisma.TransactionClient,
@@ -473,12 +476,19 @@ export class WorkoutsRepository {
 				exerciseId: { in: exerciseIds },
 				deletedAt: null,
 				workout: { deletedAt: null },
+				OR: [
+					{ kind: { not: 'CARDIO' } },
+					{ durationMin: { not: null } },
+					{ distanceM: { not: null } },
+				],
 			},
 			distinct: ['exerciseId'],
 			orderBy: [{ exerciseId: 'asc' }, { performedAt: 'desc' }],
 			select: {
 				exerciseId: true,
 				performedAt: true,
+				durationMin: true,
+				distanceM: true,
 				sets: {
 					orderBy: { position: 'asc' },
 					select: { reps: true, weightKg: true, isWarmup: true },

@@ -372,6 +372,7 @@ describe('TrainingTemplatePage', () => {
 							kind: 'STRENGTH',
 							muscleGroup: 'BACK',
 							lastSets: [{ reps: 12, weightKg: 45, isWarmup: false }],
+							lastCardio: null,
 						},
 						{
 							id: '0199b3a4-0000-7000-8000-000000000f02',
@@ -379,6 +380,7 @@ describe('TrainingTemplatePage', () => {
 							kind: 'STRENGTH',
 							muscleGroup: 'BACK',
 							lastSets: null,
+							lastCardio: null,
 						},
 					]),
 				)

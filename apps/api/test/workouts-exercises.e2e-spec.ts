@@ -97,6 +97,52 @@ describe('exercise dictionary (e2e, real DB)', () => {
 		])
 	})
 
+	it('gives the last cardio result of a cardio exercise, and null for the rest', async () => {
+		await start()
+		const owner = await registerUser('owner@kus.app')
+		const run = await seedExercise(owner.userId, 'Біг', { kind: 'CARDIO' })
+		await seedExercise(owner.userId, 'Велотренажер', { kind: 'CARDIO' })
+		const bench = await seedExercise(owner.userId, 'Жим', { muscleGroup: 'CHEST' })
+		await seedResult(owner.userId, bench.id, 'Жим')
+		const workout = await prisma.workout.create({
+			data: { userId: owner.userId, localDate: new Date('2026-10-30T00:00:00Z') },
+		})
+		const seedRun = (performedAt: string, durationMin: number | null, distanceM: number | null) =>
+			prisma.exerciseEntry.create({
+				data: {
+					userId: owner.userId,
+					workoutId: workout.id,
+					exerciseId: run.id,
+					name: 'Біг',
+					kind: 'CARDIO',
+					source: 'MANUAL',
+					performedAt: new Date(performedAt),
+					localDate: new Date('2026-10-30T00:00:00Z'),
+					position: 1,
+					durationMin,
+					distanceM,
+				},
+			})
+		await seedRun('2026-10-30T08:00:00Z', 20, 3000)
+		await seedRun('2026-10-30T18:00:00Z', 10, null)
+		// the newest live entry has no numbers: it must not hide the 10 min one
+		await seedRun('2026-10-30T19:00:00Z', null, null)
+		const removed = await seedRun('2026-10-30T20:00:00Z', 99, 9000)
+		await prisma.exerciseEntry.update({
+			where: { id: removed.id },
+			data: { deletedAt: new Date() },
+		})
+
+		const response = await owner.agent.get(EXERCISES_URL).expect(200)
+		const byName = new Map(
+			listResponse.parse(response.body).data.map((item) => [item.name, item.lastCardio]),
+		)
+
+		expect(byName.get('Біг')).toEqual({ durationMin: 10, distanceM: null })
+		expect(byName.get('Велотренажер')).toBeNull()
+		expect(byName.get('Жим')).toBeNull()
+	})
+
 	it('filters by a part of the name and by group, cardio by kind', async () => {
 		await start()
 		const owner = await registerUser('owner@kus.app')

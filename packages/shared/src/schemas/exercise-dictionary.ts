@@ -20,6 +20,10 @@ export const exerciseDictionaryItemSchema = z.object({
 	muscleGroup: muscleGroupSchema.nullable(),
 	/** Null when the user never did the exercise. */
 	lastSets: z.array(programLastSetSchema).nullable(),
+	/** Cardio only: the last result; null for other kinds and when it never happened. */
+	lastCardio: z
+		.object({ durationMin: z.number().int().nullable(), distanceM: z.number().int().nullable() })
+		.nullable(),
 })
 export type ExerciseDictionaryItem = z.infer<typeof exerciseDictionaryItemSchema>
 

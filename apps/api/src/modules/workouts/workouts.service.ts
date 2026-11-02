@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common'
 import {
 	EXERCISE_DICTIONARY_LIMIT,
+	type ExerciseDictionaryItem,
 	type ExerciseDictionaryQuery,
 	type ExerciseDictionaryResponse,
 	matchMuscleGroup,
@@ -48,6 +49,16 @@ export interface LastTemplatedWorkout {
 export interface LastExerciseResult {
 	sets: ProgramLastSet[]
 	performedAt: Date
+	durationMin: number | null
+	distanceM: number | null
+}
+
+/** The last cardio result, or null when it never happened or carried no number. */
+const toLastCardio = (
+	last: LastExerciseResult | undefined,
+): ExerciseDictionaryItem['lastCardio'] => {
+	if (!last || (last.durationMin === null && last.distanceM === null)) return null
+	return { durationMin: last.durationMin, distanceM: last.distanceM }
 }
 
 @Injectable()
@@ -225,6 +236,7 @@ export class WorkoutsService {
 			kind,
 			muscleGroup,
 			lastSets: lastSets.get(id)?.sets ?? null,
+			lastCardio: kind === 'CARDIO' ? toLastCardio(lastSets.get(id)) : null,
 		}))
 	}
 
@@ -239,10 +251,12 @@ export class WorkoutsService {
 			userId,
 			exerciseIds: [...exerciseIds],
 		})
-		for (const { exerciseId, performedAt, sets } of entries) {
+		for (const { exerciseId, performedAt, durationMin, distanceM, sets } of entries) {
 			if (exerciseId === null) continue
 			results.set(exerciseId, {
 				performedAt,
+				durationMin,
+				distanceM,
 				sets: sets.map((set) => ({
 					reps: set.reps,
 					weightKg: set.weightKg === null ? null : set.weightKg.toNumber(),

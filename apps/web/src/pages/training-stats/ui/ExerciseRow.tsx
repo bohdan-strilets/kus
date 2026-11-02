@@ -7,7 +7,6 @@ import { getTrainingExercisePath } from '@/shared/config'
 import { Icon, ICON_SIZE, Sparkline, Text } from '@/shared/ui'
 
 const TROPHY_ICON_SIZE = 13
-const NEUTRAL_DOT_CLASS = 'inline-block size-2.5 flex-none rounded-full bg-muted-soft'
 
 /** One exercise of the period: the whole row opens its screen. The trend is decoration, the text says the same. */
 export const ExerciseRow = ({ exercise }: { exercise: WorkoutStatsExercise }) => {
@@ -21,11 +20,7 @@ export const ExerciseRow = ({ exercise }: { exercise: WorkoutStatsExercise }) =>
 				to={getTrainingExercisePath(exercise.exerciseId)}
 				className="flex min-h-15 items-center gap-3 py-2 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-ink"
 			>
-				{exercise.muscleGroup === null ? (
-					<span aria-hidden="true" className={NEUTRAL_DOT_CLASS} />
-				) : (
-					<GroupDot group={exercise.muscleGroup} />
-				)}
+				<GroupDot group={exercise.muscleGroup} />
 				<span className="flex min-w-0 flex-1 flex-col">
 					<Text as="span" variant="cardTitle" weight="bold" className="truncate">
 						{exercise.name}

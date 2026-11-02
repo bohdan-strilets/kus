@@ -153,6 +153,8 @@ const toExerciseResponse = (
 		target: toTarget(row),
 		lastSets: last?.sets ?? null,
 		lastPerformedAt: last?.performedAt.toISOString() ?? null,
+		isBodyweight: row.isBodyweight,
+		progressHintKg: null,
 	}
 }
 

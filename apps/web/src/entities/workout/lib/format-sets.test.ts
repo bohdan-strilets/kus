@@ -14,6 +14,7 @@ const set = (weightKg: number | null, reps: number, isWarmup = false): WorkoutSe
 	durationSec: null,
 	distanceM: null,
 	isWarmup,
+	doneAt: null,
 })
 
 const format = (sets: WorkoutSetResponse[], record: 'WEIGHT' | 'REPS' | null = null) =>

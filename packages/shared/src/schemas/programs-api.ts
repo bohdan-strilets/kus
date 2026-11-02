@@ -29,6 +29,10 @@ export const programExerciseResponseSchema = z.object({
 	/** The sets of the last time the user did the exercise; null when they never did. */
 	lastSets: z.array(programLastSetSchema).nullable(),
 	lastPerformedAt: z.iso.datetime().nullable(),
+	/** No weight on the bar; null = unknown. */
+	isBodyweight: z.boolean().nullable().default(null),
+	/** The weight to try next time (all working sets of the last time reached repsMax); null when none. */
+	progressHintKg: z.number().nullable().default(null),
 })
 export type ProgramExerciseResponse = z.infer<typeof programExerciseResponseSchema>
 

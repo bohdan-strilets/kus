@@ -16,6 +16,7 @@ const set = (reps: number, weightKg: number | null, isWarmup = false) => ({
 	durationSec: null,
 	distanceM: null,
 	isWarmup,
+	doneAt: null,
 })
 
 const cardio = (overrides: Partial<WorkoutExerciseResponse> = {}): WorkoutExerciseResponse =>

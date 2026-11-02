@@ -57,6 +57,8 @@ export const templateExerciseSchema = z.object({
 	exerciseId: z.uuid().nullable(),
 	kind: exerciseKindSchema,
 	muscleGroup: muscleGroupSchema.nullable(),
+	/** Optional: an older client does not send it; null/absent = unknown. */
+	isBodyweight: z.boolean().nullable().optional(),
 	target: templateExerciseTargetSchema,
 })
 export type TemplateExerciseDraft = z.infer<typeof templateExerciseSchema>

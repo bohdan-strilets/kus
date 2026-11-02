@@ -45,6 +45,8 @@ const makeExercise = (
 		{ reps: 12, weightKg: 120, isWarmup: false },
 	],
 	lastPerformedAt: '2026-10-30T10:00:00.000Z',
+	isBodyweight: null,
+	progressHintKg: null,
 	...patch,
 })
 

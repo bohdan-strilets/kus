@@ -6,6 +6,7 @@ import {
 	exerciseSourceSchema,
 	muscleGroupSchema,
 	workoutPlaceSchema,
+	workoutSourceSchema,
 } from './enums.js'
 
 /** A tab of history reads a quarter at most. */
@@ -22,6 +23,8 @@ export const workoutSetResponseSchema = z.object({
 	durationSec: z.number().nullable(),
 	distanceM: z.number().nullable(),
 	isWarmup: z.boolean(),
+	/** ISO: when the set was done in the live mode; null for sets told in the chat or a form. */
+	doneAt: z.iso.datetime().nullable().default(null),
 })
 
 export type WorkoutSetResponse = z.infer<typeof workoutSetResponseSchema>
@@ -40,6 +43,12 @@ export const workoutExerciseResponseSchema = z.object({
 	 * null only in a response cached before 0.10.0.
 	 */
 	performedAt: z.iso.datetime().nullable().default(null),
+	/** The live mode's key of the exercise inside the workout; null for the chat and forms. */
+	clientKey: z.uuid().nullable().default(null),
+	/** The template exercise it was done by; null for a free exercise. */
+	templateExerciseId: z.uuid().nullable().default(null),
+	/** No weight on the bar: the body is the load; null = unknown. */
+	isBodyweight: z.boolean().nullable().default(null),
 	sets: z.array(workoutSetResponseSchema),
 	/**
 	 * WEIGHT: a heavier set than ever before; DISTANCE: a longer one; REPS: more reps in a set without
@@ -50,6 +59,18 @@ export const workoutExerciseResponseSchema = z.object({
 })
 
 export type WorkoutExerciseResponse = z.infer<typeof workoutExerciseResponseSchema>
+
+/** Where the calories of a workout come from: a device or the user's word, or the backend's estimate. */
+export const workoutKcalSourceSchema = z.enum(['DEVICE', 'MANUAL', 'ESTIMATE'])
+
+export type WorkoutKcalSource = z.infer<typeof workoutKcalSourceSchema>
+
+export const workoutKcalSchema = z.object({
+	value: z.number(),
+	source: workoutKcalSourceSchema,
+})
+
+export type WorkoutKcal = z.infer<typeof workoutKcalSchema>
 
 /**
  * One training as the tab and the chat card show it. `kcalBurned` is only a number the user said
@@ -64,6 +85,13 @@ export const workoutResponseSchema = z.object({
 	place: workoutPlaceSchema.nullable(),
 	kcalBurned: z.number().nullable(),
 	kcalSource: exerciseSourceSchema.nullable(),
+	/**
+	 * What the screens show: the named calories, else the backend's estimate («≈»); null when
+	 * unknown. A source this client does not know reads as null.
+	 */
+	kcal: workoutKcalSchema.nullable().catch(null),
+	/** How the session was logged; an answer of an older API is a chat one. */
+	source: workoutSourceSchema.catch('CHAT'),
 	/** A later message replaced the whole workout («· змінено»). */
 	isEdited: z.boolean().default(false),
 	/** Deleted: the chat card turns into the line «Тренування 26.10 видалено.»; lists never contain it. */

@@ -49,6 +49,8 @@ const makeTemplate = (id: string, name: string, weekdays: number[]): ProgramTemp
 			target: EMPTY_TARGET,
 			lastSets: null,
 			lastPerformedAt: null,
+			isBodyweight: null,
+			progressHintKg: null,
 		},
 	],
 })

@@ -22,6 +22,7 @@ export const makeWorkoutStats = (
 		durationMin: 310,
 		avgDurationMin: 52,
 		hasEstimatedDuration: true,
+		burned: null,
 		kcal: { total: 1140, workoutsWithKcal: 2, workoutCount: 6 },
 		buckets: [
 			{ from: '2026-09-28', to: '2026-10-04', workoutCount: 2, setCount: 6, cardioMin: 40 },

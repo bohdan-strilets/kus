@@ -38,6 +38,8 @@ const responseTemplate = (id: string, key: string, name: string, position: numbe
 			position: 0,
 			lastSets: null,
 			lastPerformedAt: null,
+			isBodyweight: null,
+			progressHintKg: null,
 		},
 	],
 })

@@ -20,6 +20,7 @@ export const formatLastSets = (
 			durationSec: null,
 			distanceM: null,
 			isWarmup: false,
+			doneAt: null,
 		}))
 	const formatted = formatSets(
 		{ kind: 'STRENGTH', sets, record: null, durationMin: null, distanceM: null },

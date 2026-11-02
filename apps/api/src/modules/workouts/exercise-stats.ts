@@ -53,6 +53,7 @@ const toHistory = (
 						durationSec: set.durationSec,
 						distanceM: set.distanceM,
 						isWarmup: set.isWarmup,
+						doneAt: null,
 					})),
 				),
 			}

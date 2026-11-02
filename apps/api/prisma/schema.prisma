@@ -951,6 +951,8 @@ model Workout {
   finishedMessage Message?         @relation("WorkoutFinish", fields: [finishedMessageId], references: [id], onDelete: SetNull)
   exercises       ExerciseEntry[]
 
+  // one open live session per user
+  @@unique([userId], where: raw("source = 'LIVE' AND finished_at IS NULL AND deleted_at IS NULL"), map: "workouts_one_open_live")
   @@index([userId, localDate])
   @@index([sourceMessageId])
   @@index([finishedMessageId])
@@ -968,6 +970,8 @@ model Exercise {
   kind           ExerciseKind
   // the single source of truth for the exercise's group; null for cardio and until it is known
   muscleGroup    MuscleGroup? @map("muscle_group")
+  // bodyweight exercise; null = unknown (decided by the name rule)
+  isBodyweight   Boolean?     @map("is_bodyweight")
   createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz
   updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz
   deletedAt      DateTime?    @map("deleted_at") @db.Timestamptz
@@ -983,51 +987,62 @@ model Exercise {
 // One exercise of a workout (before 0.8.1 this table was an unused «exercise log»; it was empty).
 // performedAt / localDate / source repeat the workout's, so the old columns stay NOT NULL.
 model ExerciseEntry {
-  id              String         @id @default(uuid(7)) @db.Uuid
-  userId          String         @map("user_id") @db.Uuid
-  workoutId       String?        @map("workout_id") @db.Uuid
-  exerciseId      String?        @map("exercise_id") @db.Uuid
+  id                 String         @id @default(uuid(7)) @db.Uuid
+  userId             String         @map("user_id") @db.Uuid
+  workoutId          String?        @map("workout_id") @db.Uuid
+  exerciseId         String?        @map("exercise_id") @db.Uuid
   // as the user wrote it
-  name            String
-  kind            ExerciseKind   @default(OTHER)
+  name               String
+  kind               ExerciseKind   @default(OTHER)
   // snapshot of the group when logged, the fallback once exerciseId is gone (SetNull); null for cardio
-  muscleGroup     MuscleGroup?   @map("muscle_group")
-  position        Int            @default(0)
-  durationMin     Int?           @map("duration_min")
-  distanceM       Int?           @map("distance_m")
-  kcalBurned      Float?         @map("kcal_burned")
-  source          ExerciseSource
-  performedAt     DateTime       @map("performed_at") @db.Timestamptz
-  localDate       DateTime       @map("local_date") @db.Date
-  sourceMessageId String?        @map("source_message_id") @db.Uuid
-  createdAt       DateTime       @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt       DateTime       @updatedAt @map("updated_at") @db.Timestamptz
-  deletedAt       DateTime?      @map("deleted_at") @db.Timestamptz
+  muscleGroup        MuscleGroup?   @map("muscle_group")
+  position           Int            @default(0)
+  durationMin        Int?           @map("duration_min")
+  distanceM          Int?           @map("distance_m")
+  kcalBurned         Float?         @map("kcal_burned")
+  source             ExerciseSource
+  performedAt        DateTime       @map("performed_at") @db.Timestamptz
+  localDate          DateTime       @map("local_date") @db.Date
+  sourceMessageId    String?        @map("source_message_id") @db.Uuid
+  // the live mode's own key of the exercise inside a workout: a repeated PUT updates it, not duplicates; null for the chat
+  clientKey          String?        @map("client_key") @db.Uuid
+  // the template exercise it was done by (for «змінено» / the goal); null for a free exercise
+  templateExerciseId String?        @map("template_exercise_id") @db.Uuid
+  // null = unknown
+  isBodyweight       Boolean?       @map("is_bodyweight")
+  createdAt          DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime       @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt          DateTime?      @map("deleted_at") @db.Timestamptz
 
-  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  workout       Workout?      @relation(fields: [workoutId], references: [id], onDelete: Cascade)
-  exercise      Exercise?     @relation(fields: [exerciseId], references: [id], onDelete: SetNull)
-  sourceMessage Message?      @relation(fields: [sourceMessageId], references: [id], onDelete: SetNull)
-  sets          ExerciseSet[]
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workout          Workout?          @relation(fields: [workoutId], references: [id], onDelete: Cascade)
+  exercise         Exercise?         @relation(fields: [exerciseId], references: [id], onDelete: SetNull)
+  sourceMessage    Message?          @relation(fields: [sourceMessageId], references: [id], onDelete: SetNull)
+  templateExercise TemplateExercise? @relation(fields: [templateExerciseId], references: [id], onDelete: SetNull)
+  sets             ExerciseSet[]
 
+  @@unique([workoutId, clientKey])
   @@index([userId, localDate])
   @@index([sourceMessageId])
   @@index([workoutId])
   @@index([exerciseId])
+  @@index([templateExerciseId])
   @@map("exercise_entries")
 }
 
 // One set (or one cardio interval). userId repeats the owner, so records are found without joins.
 model ExerciseSet {
-  id              String   @id @default(uuid(7)) @db.Uuid
-  userId          String   @map("user_id") @db.Uuid
-  exerciseEntryId String   @map("exercise_entry_id") @db.Uuid
+  id              String    @id @default(uuid(7)) @db.Uuid
+  userId          String    @map("user_id") @db.Uuid
+  exerciseEntryId String    @map("exercise_entry_id") @db.Uuid
   position        Int
   reps            Int?
-  weightKg        Decimal? @map("weight_kg") @db.Decimal(6, 2)
-  durationSec     Int?     @map("duration_sec")
-  distanceM       Int?     @map("distance_m")
-  isWarmup        Boolean  @default(false) @map("is_warmup")
+  weightKg        Decimal?  @map("weight_kg") @db.Decimal(6, 2)
+  durationSec     Int?      @map("duration_sec")
+  distanceM       Int?      @map("distance_m")
+  isWarmup        Boolean   @default(false) @map("is_warmup")
+  // when the set was done (live mode); null for sets told in the chat
+  doneAt          DateTime? @map("done_at") @db.Timestamptz
 
   user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   exerciseEntry ExerciseEntry @relation(fields: [exerciseEntryId], references: [id], onDelete: Cascade)
@@ -1124,9 +1139,12 @@ model TemplateExercise {
   restSec        Int?         @map("rest_sec")
   durationMin    Int?         @map("duration_min")
   distanceM      Int?         @map("distance_m")
+  // null = unknown
+  isBodyweight   Boolean?     @map("is_bodyweight")
 
   template WorkoutTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
   exercise Exercise?       @relation(fields: [exerciseId], references: [id], onDelete: SetNull)
+  entries  ExerciseEntry[]
 
   @@unique([templateId, position])
   @@index([exerciseId])

@@ -60,6 +60,8 @@ export const workoutStatsOverviewSchema = z.object({
 	avgDurationMin: z.number().nullable(),
 	/** At least one workout had no named duration, so the sum includes an estimate («≈»). */
 	hasEstimatedDuration: z.boolean(),
+	/** Named kcal plus the estimate of the rest; null without a body weight and without named kcal. */
+	burned: z.object({ kcal: z.number(), isEstimate: z.boolean() }).nullable().default(null),
 	/** Only kcal the user named or a device showed. */
 	kcal: z.object({
 		total: z.number().nullable(),

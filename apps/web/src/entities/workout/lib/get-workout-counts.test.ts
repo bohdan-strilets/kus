@@ -9,7 +9,14 @@ const cardio = (durationMin: number | null) =>
 
 describe('getWorkoutCounts', () => {
 	it('counts strength exercises and working sets; warm-ups stay out', () => {
-		const warmup = { reps: 10, weightKg: 40, durationSec: null, distanceM: null, isWarmup: true }
+		const warmup = {
+			reps: 10,
+			weightKg: 40,
+			durationSec: null,
+			distanceM: null,
+			isWarmup: true,
+			doneAt: null,
+		}
 		const [work] = makeExercise().sets
 		const counts = getWorkoutCounts([
 			makeExercise({ sets: [warmup, ...makeExercise().sets] }),

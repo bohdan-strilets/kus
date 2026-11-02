@@ -64,6 +64,8 @@ const makeTemplate = (id: string, name: string): ProgramTemplateResponse => ({
 			},
 			lastSets: null,
 			lastPerformedAt: null,
+			isBodyweight: null,
+			progressHintKg: null,
 		},
 		{
 			id: `${id.slice(0, -1)}2`,
@@ -84,6 +86,8 @@ const makeTemplate = (id: string, name: string): ProgramTemplateResponse => ({
 			},
 			lastSets: null,
 			lastPerformedAt: null,
+			isBodyweight: null,
+			progressHintKg: null,
 		},
 	],
 })

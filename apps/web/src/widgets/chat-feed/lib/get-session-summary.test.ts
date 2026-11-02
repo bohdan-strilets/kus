@@ -15,6 +15,7 @@ const sets = (count: number, overrides: Partial<WorkoutSetResponse> = {}): Worko
 		durationSec: null,
 		distanceM: null,
 		isWarmup: false,
+		doneAt: null,
 		...overrides,
 	}))
 
@@ -29,7 +30,7 @@ describe('getSessionSummary', () => {
 				makeExercise({
 					id: 'e1',
 					muscleGroup: 'CHEST',
-					sets: [...sets(1, { isWarmup: true, weightKg: 40 }), ...sets(3)],
+					sets: [...sets(1, { isWarmup: true, doneAt: null, weightKg: 40 }), ...sets(3)],
 				}),
 				makeExercise({ id: 'e2', name: 'Присід', muscleGroup: 'LEGS', sets: sets(3) }),
 				makeExercise({ id: 'e3', name: 'Підтягування', muscleGroup: 'BACK', sets: sets(2) }),
@@ -75,8 +76,22 @@ describe('getSessionSummary', () => {
 						name: 'Жим лежачи',
 						record: 'WEIGHT',
 						sets: [
-							{ reps: 8, weightKg: 60, durationSec: null, distanceM: null, isWarmup: false },
-							{ reps: 5, weightKg: 70, durationSec: null, distanceM: null, isWarmup: false },
+							{
+								reps: 8,
+								weightKg: 60,
+								durationSec: null,
+								distanceM: null,
+								isWarmup: false,
+								doneAt: null,
+							},
+							{
+								reps: 5,
+								weightKg: 70,
+								durationSec: null,
+								distanceM: null,
+								isWarmup: false,
+								doneAt: null,
+							},
 						],
 					}),
 					makeExercise({

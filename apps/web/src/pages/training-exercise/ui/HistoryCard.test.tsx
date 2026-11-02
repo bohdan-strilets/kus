@@ -18,6 +18,7 @@ const makeSet = (overrides: Partial<SetItem>): SetItem => ({
 	durationSec: null,
 	distanceM: null,
 	isWarmup: false,
+	doneAt: null,
 	...overrides,
 })
 
@@ -40,7 +41,7 @@ describe('HistoryCard record highlight', () => {
 			makeItem('w2', '2026-10-19', {
 				record: 'WEIGHT',
 				sets: [
-					makeSet({ reps: 10, weightKg: 40, isWarmup: true }),
+					makeSet({ reps: 10, weightKg: 40, isWarmup: true, doneAt: null }),
 					makeSet({ reps: 8, weightKg: 60 }),
 					makeSet({ reps: 5, weightKg: 70 }),
 				],

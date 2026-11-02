@@ -11,6 +11,11 @@ export const MAX_CONTEXT_EXERCISES = 10
  * workout) is listed with today's, and more of it is added with appendRef.
  */
 export const WORKOUT_APPEND_MAX_GAP_HOURS = 3
+/**
+ * Finishing a live session when the last set was done longer ago than this: it ended with that
+ * set (finishedAt = its doneAt), not at the tap of «Завершити». The same for the auto-close.
+ */
+export const LIVE_FINISH_IDLE_MIN = 30
 const MS_IN_HOUR = 60 * 60 * 1000
 const APPEND_MAX_GAP_MS = WORKOUT_APPEND_MAX_GAP_HOURS * MS_IN_HOUR
 

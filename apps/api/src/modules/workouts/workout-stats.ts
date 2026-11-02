@@ -194,6 +194,7 @@ export const buildWorkoutStats = ({
 					? null
 					: Math.round(sum(durations.named) / durations.named.length),
 			hasEstimatedDuration: durations.hasEstimate,
+			burned: null,
 			kcal: getKcal(periodWorkouts),
 			buckets,
 			groups: getGroups(periodEntries),

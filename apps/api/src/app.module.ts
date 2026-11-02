@@ -27,6 +27,7 @@ import { StorageModule } from './modules/storage/storage.module'
 import { UsersModule } from './modules/users/users.module'
 import { ProgramsModule } from './modules/programs/programs.module'
 import { WorkoutsModule } from './modules/workouts/workouts.module'
+import { WorkoutLoggingModule } from './modules/workout-logging/workout-logging.module'
 import { PrismaModule } from './prisma'
 
 /** Per IP for every route; auth routes tighten it with @Throttle. In-memory: the API runs as one instance. */
@@ -55,6 +56,7 @@ const DEFAULT_THROTTLE = { ttl: minutes(1), limit: 100 }
 		FactsModule,
 		MemoryModule,
 		WorkoutsModule,
+		WorkoutLoggingModule,
 		ProgramsModule,
 		ProgressModule,
 		StorageModule,

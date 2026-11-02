@@ -54,7 +54,7 @@ const toClarificationResponse = (
 
 interface ChatMessageExtras {
 	meals: Map<string, LoggedMeal[]>
-	/** By the user message that started, added to or finished them. */
+	/** By the user message that started, added to or finished them, or by Kusik's summary message. */
 	workouts: Map<string, MessageWorkouts>
 	clarifications: ClarificationWithEntries[]
 	/** By the user message that recorded them. */
@@ -90,8 +90,9 @@ const toChatMessage = (
 ): ChatMessage => {
 	const isAssistant = message.role === MessageRole.ASSISTANT
 	const [attachment] = message.attachments
-	const messageWorkouts =
-		isAssistant && message.replyToId ? workouts.get(message.replyToId) : undefined
+	// a reply shows the workouts of the user message it answers; Kusik's own message (the summary of
+	// a live or form session) shows the session it finished
+	const messageWorkouts = isAssistant ? workouts.get(message.replyToId ?? message.id) : undefined
 	return {
 		id: message.id,
 		role: message.role,
@@ -152,6 +153,8 @@ export class ChatFeedService {
 	async toChatMessages(userId: string, messages: MessageWithAttachments[]): Promise<ChatMessage[]> {
 		const replies = messages.filter((message) => message.role === MessageRole.ASSISTANT)
 		const sourceIds = replies.flatMap((message) => (message.replyToId ? [message.replyToId] : []))
+		// Kusik's own messages: a session's finishedMessageId points at them directly
+		const ownIds = replies.flatMap((message) => (message.replyToId ? [] : [message.id]))
 		const [
 			meals,
 			workouts,
@@ -163,7 +166,7 @@ export class ChatFeedService {
 			onboarding,
 		] = await Promise.all([
 			this.entriesService.getLoggedMealsByMessage(userId, sourceIds),
-			this.workoutsTurn.getByMessages(userId, sourceIds),
+			this.workoutsTurn.getByMessages(userId, [...sourceIds, ...ownIds]),
 			replies.length > 0
 				? this.clarificationsRepository.findClarifications({
 						userId,

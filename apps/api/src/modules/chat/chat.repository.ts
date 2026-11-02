@@ -236,13 +236,26 @@ export class ChatRepository {
 		await tx.message.updateMany({ where: { id, userId }, data: { dayCard } })
 	}
 
-	/** Kusik's own message, not a reply to a user turn (the greeting after account-restore). */
+	/**
+	 * Kusik's own message, not a reply to a user turn (the greeting after account-restore, a workout
+	 * summary). `clientMessageId` makes a repeated request fail on the unique index (P2002).
+	 */
 	createAssistantMessage(
-		{ userId, content }: { userId: string; content: string },
+		{
+			userId,
+			content,
+			clientMessageId,
+		}: { userId: string; content: string; clientMessageId?: string },
 		tx?: Prisma.TransactionClient,
 	): Promise<Message> {
 		return (tx ?? this.prisma).message.create({
-			data: { userId, role: MessageRole.ASSISTANT, content, status: MessageStatus.COMPLETED },
+			data: {
+				userId,
+				role: MessageRole.ASSISTANT,
+				content,
+				status: MessageStatus.COMPLETED,
+				...(clientMessageId === undefined ? {} : { clientMessageId }),
+			},
 		})
 	}
 

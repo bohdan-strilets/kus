@@ -6,6 +6,7 @@ import {
 	estimateTemplateMinutes,
 	getProgressHintKg,
 	isBodyweightByName,
+	type LivePlanExercise,
 	matchMuscleGroup,
 	type MuscleGroup,
 	type NextTemplate,
@@ -174,6 +175,26 @@ const toExerciseResponse = (
 						isBodyweight,
 					})
 				: null,
+	}
+}
+
+/** One exercise of the template a live session follows: its target, the last time and the hint. */
+export const toLivePlanExercise = (
+	row: ExerciseRow,
+	lastSets: ReadonlyMap<string, LastExerciseResult>,
+): LivePlanExercise => {
+	const { id, exerciseId, name, kind, muscleGroup, isBodyweight, target, ...last } =
+		toExerciseResponse(row, lastSets)
+	return {
+		templateExerciseId: id,
+		exerciseId,
+		name,
+		kind,
+		muscleGroup,
+		isBodyweight,
+		...target,
+		lastSets: last.lastSets,
+		progressHintKg: last.progressHintKg,
 	}
 }
 

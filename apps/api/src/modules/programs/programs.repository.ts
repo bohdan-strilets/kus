@@ -5,22 +5,26 @@ import type { Prisma } from '../../generated/prisma/client'
 import type { ExerciseKind, MuscleGroup } from '../../generated/prisma/enums'
 import { PrismaService } from '../../prisma'
 
-/** The active version with its templates and exercises, in order; the dictionary's group wins over the snapshot. */
+/** A template's exercises in order; the dictionary's group and flag win over the snapshot. */
+const WITH_TEMPLATE_EXERCISES = {
+	exercises: {
+		orderBy: { position: 'asc' },
+		include: { exercise: { select: { muscleGroup: true, isBodyweight: true } } },
+	},
+} satisfies Prisma.WorkoutTemplateInclude
+
+/** The active version with its templates and exercises, in order. */
 const WITH_ACTIVE_VERSION = {
 	activeVersion: {
 		include: {
-			templates: {
-				orderBy: { position: 'asc' },
-				include: {
-					exercises: {
-						orderBy: { position: 'asc' },
-						include: { exercise: { select: { muscleGroup: true, isBodyweight: true } } },
-					},
-				},
-			},
+			templates: { orderBy: { position: 'asc' }, include: WITH_TEMPLATE_EXERCISES },
 		},
 	},
 } satisfies Prisma.WorkoutProgramInclude
+
+export type TemplateWithExercises = Prisma.WorkoutTemplateGetPayload<{
+	include: typeof WITH_TEMPLATE_EXERCISES
+}>
 
 export type ActiveProgram = Prisma.WorkoutProgramGetPayload<{ include: typeof WITH_ACTIVE_VERSION }>
 
@@ -71,6 +75,20 @@ export class ProgramsRepository {
 		return (tx ?? this.prisma).workoutProgram.findFirst({
 			where: { userId, deletedAt: null },
 			include: WITH_ACTIVE_VERSION,
+		})
+	}
+
+	/**
+	 * The owner's template by id, of any version (a session keeps the version it was started by);
+	 * null when it is not theirs.
+	 */
+	findTemplate(
+		{ userId, id }: { userId: string; id: string },
+		tx?: Prisma.TransactionClient,
+	): Promise<TemplateWithExercises | null> {
+		return (tx ?? this.prisma).workoutTemplate.findFirst({
+			where: { id, userId },
+			include: WITH_TEMPLATE_EXERCISES,
 		})
 	}
 

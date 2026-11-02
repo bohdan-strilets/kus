@@ -95,10 +95,11 @@ export class ChatResponseService {
 		]
 		// every card of a meal tells the whole meal's kcal («Вечеря разом»)
 		const sharingMeals = await this.entriesService.getMessagesSharingMeals(userId, changedSources)
-		// a replaced weight has no meal, so the meals lookup would never find its message
+		// a replaced weight has no meal, so the meals lookup would never find its message; a workout's
+		// summary can be Kusik's own message (live mode, form, auto-close): it is found by its own id
 		const messages = await this.chatRepository.findAssistantMessages({
 			userId,
-			ids: replyIds,
+			ids: [...new Set([...replyIds, ...sourceMessageIds])],
 			replyToIds: [...new Set([...sharingMeals, ...replacedMeasurementMessageIds])],
 		})
 		const earlier = messages.filter((message) => message.id !== currentReplyId)

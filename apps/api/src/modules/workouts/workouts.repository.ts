@@ -5,12 +5,13 @@ import type { Prisma } from '../../generated/prisma/client'
 import type { ExerciseKind, MuscleGroup } from '../../generated/prisma/enums'
 import { PrismaService } from '../../prisma'
 import { placeAfter } from './workout-session'
+import { HIDE_OPEN_LIVE } from './workout-visibility'
 
 /**
  * A workout with its live exercises and their sets, in the order they were done; the dictionary
  * row's group is the one shown.
  */
-const WITH_EXERCISES = {
+export const WITH_EXERCISES = {
 	exercises: {
 		where: { deletedAt: null },
 		orderBy: { position: 'asc' },
@@ -100,25 +101,32 @@ const toExerciseCreate = (
 export class WorkoutsRepository {
 	constructor(private readonly prisma: PrismaService) {}
 
-	/** Live workouts of the days `from … to`, newest day first. */
+	/** Live workouts of the days `from … to`, newest day first; an open live session is not among them. */
 	findInRange(
 		{ userId, from, to }: { userId: string; from: Date; to: Date },
 		tx?: Prisma.TransactionClient,
 	): Promise<WorkoutWithExercises[]> {
 		return (tx ?? this.prisma).workout.findMany({
-			where: { userId, deletedAt: null, localDate: { gte: from, lte: to } },
+			where: { userId, deletedAt: null, localDate: { gte: from, lte: to }, ...HIDE_OPEN_LIVE },
 			include: WITH_EXERCISES,
 			orderBy: [{ localDate: 'desc' }, { createdAt: 'desc' }],
 		})
 	}
 
-	/** Live workouts of one day, in the order they were logged. */
+	/**
+	 * Live workouts of one day, in the order they were logged. An open live session only with
+	 * `withOpenLive`: the chat (its context, «все») sees it, the day and the journal do not.
+	 */
 	findOfDay(
-		{ userId, localDate }: { userId: string; localDate: Date },
+		{
+			userId,
+			localDate,
+			withOpenLive = false,
+		}: { userId: string; localDate: Date; withOpenLive?: boolean },
 		tx?: Prisma.TransactionClient,
 	): Promise<WorkoutWithExercises[]> {
 		return (tx ?? this.prisma).workout.findMany({
-			where: { userId, deletedAt: null, localDate },
+			where: { userId, deletedAt: null, localDate, ...(withOpenLive ? {} : HIDE_OPEN_LIVE) },
 			include: WITH_EXERCISES,
 			orderBy: { createdAt: 'asc' },
 		})
@@ -146,7 +154,8 @@ export class WorkoutsRepository {
 		tx?: Prisma.TransactionClient,
 	): Promise<WorkoutWithExercises[]> {
 		return (tx ?? this.prisma).workout.findMany({
-			where: { userId, localDate, deletedAt: { not: null } },
+			// a discarded live session («Вийти без збереження») is a draft nobody brings back
+			where: { userId, localDate, deletedAt: { not: null }, ...HIDE_OPEN_LIVE },
 			include: WITH_EXERCISES,
 			orderBy: { deletedAt: 'desc' },
 			take,
@@ -190,12 +199,18 @@ export class WorkoutsRepository {
 		})
 	}
 
-	/** How many live workouts the owner has, counting no further than `upTo`. */
+	/**
+	 * How many live (not deleted) workouts the owner has, counting no further than `upTo`; an open
+	 * live-mode session is not one yet.
+	 */
 	countLive(
 		{ userId, upTo }: { userId: string; upTo: number },
 		tx?: Prisma.TransactionClient,
 	): Promise<number> {
-		return (tx ?? this.prisma).workout.count({ where: { userId, deletedAt: null }, take: upTo })
+		return (tx ?? this.prisma).workout.count({
+			where: { userId, deletedAt: null, ...HIDE_OPEN_LIVE },
+			take: upTo,
+		})
 	}
 
 	/** The owner's workout, deleted or not; null when it is not theirs. */
@@ -221,13 +236,17 @@ export class WorkoutsRepository {
 		return count > 0
 	}
 
-	/** Brings the owner's deleted workout back; false when it is not theirs or not deleted. */
+	/**
+	 * Brings the owner's deleted workout back; false when it is not theirs, not deleted, or a
+	 * discarded live session that was never finished.
+	 */
 	async restore(
 		{ userId, id }: { userId: string; id: string },
 		tx?: Prisma.TransactionClient,
 	): Promise<boolean> {
 		const { count } = await (tx ?? this.prisma).workout.updateMany({
-			where: { id, userId, deletedAt: { not: null } },
+			// not a discarded open live session: it would be a second open one (workouts_one_open_live)
+			where: { id, userId, deletedAt: { not: null }, ...HIDE_OPEN_LIVE },
 			data: { deletedAt: null },
 		})
 		return count > 0
@@ -420,6 +439,23 @@ export class WorkoutsRepository {
 		})
 	}
 
+	/** The user's explicit «Власна вага» on or off: the dictionary learns it. */
+	async setExerciseBodyweight(
+		{ userId, id, isBodyweight }: { userId: string; id: string; isBodyweight: boolean },
+		tx: Prisma.TransactionClient,
+	): Promise<void> {
+		// only a real change: each live snapshot would bump the row's updatedAt (the dictionary's order)
+		await tx.exercise.updateMany({
+			where: {
+				id,
+				userId,
+				deletedAt: null,
+				OR: [{ isBodyweight: null }, { isBodyweight: !isBodyweight }],
+			},
+			data: { isBodyweight },
+		})
+	}
+
 	/** Sets the group of the owner's dictionary row unless it already has one. */
 	async fillExerciseMuscleGroup(
 		{ userId, id, muscleGroup }: { userId: string; id: string; muscleGroup: MuscleGroup },
@@ -437,7 +473,12 @@ export class WorkoutsRepository {
 		tx?: Prisma.TransactionClient,
 	) {
 		return (tx ?? this.prisma).exerciseEntry.findFirst({
-			where: { userId, exerciseId, deletedAt: null, workout: { deletedAt: null } },
+			where: {
+				userId,
+				exerciseId,
+				deletedAt: null,
+				workout: { deletedAt: null, ...HIDE_OPEN_LIVE },
+			},
 			orderBy: { performedAt: 'desc' },
 			include: { sets: { orderBy: { position: 'asc' } } },
 		})
@@ -452,7 +493,8 @@ export class WorkoutsRepository {
 		tx?: Prisma.TransactionClient,
 	): Promise<{ localDate: Date; template: { key: string } | null } | null> {
 		return (tx ?? this.prisma).workout.findFirst({
-			where: { userId, deletedAt: null, templateId: { not: null } },
+			// an open live session moves the turn only once it is finished
+			where: { userId, deletedAt: null, templateId: { not: null }, ...HIDE_OPEN_LIVE },
 			orderBy: [
 				{ localDate: 'desc' },
 				{ startedAt: { sort: 'desc', nulls: 'last' } },
@@ -475,7 +517,7 @@ export class WorkoutsRepository {
 				userId,
 				exerciseId: { in: exerciseIds },
 				deletedAt: null,
-				workout: { deletedAt: null },
+				workout: { deletedAt: null, ...HIDE_OPEN_LIVE },
 				OR: [
 					{ kind: { not: 'CARDIO' } },
 					{ durationMin: { not: null } },
@@ -514,7 +556,7 @@ export class WorkoutsRepository {
 				exerciseEntry: {
 					exerciseId,
 					deletedAt: null,
-					workout: { deletedAt: null, id: { not: exceptWorkoutId } },
+					workout: { deletedAt: null, id: { not: exceptWorkoutId }, ...HIDE_OPEN_LIVE },
 				},
 			},
 		})
@@ -539,7 +581,7 @@ export class WorkoutsRepository {
 				exerciseEntry: {
 					exerciseId,
 					deletedAt: null,
-					workout: { deletedAt: null, id: { not: exceptWorkoutId } },
+					workout: { deletedAt: null, id: { not: exceptWorkoutId }, ...HIDE_OPEN_LIVE },
 				},
 			},
 		})
@@ -561,7 +603,7 @@ export class WorkoutsRepository {
 				userId,
 				exerciseId,
 				deletedAt: null,
-				workout: { deletedAt: null, id: { not: exceptWorkoutId } },
+				workout: { deletedAt: null, id: { not: exceptWorkoutId }, ...HIDE_OPEN_LIVE },
 			},
 		})
 		return _max.distanceM

@@ -31,6 +31,7 @@ import { ChatTrainingOnboardingViewsService } from './chat-training-onboarding-v
 import { ChatTurnMeasurementsService } from './chat-turn-measurements.service'
 import { ChatTurnMemoryService } from './chat-turn-memory.service'
 import { ChatTurnService } from './chat-turn.service'
+import { ChatWorkoutSummaryService } from './chat-workout-summary.service'
 import { ChatController } from './chat.controller'
 import { ChatRepository } from './chat.repository'
 import { ChatService } from './chat.service'
@@ -82,6 +83,7 @@ import { TrainingOnboardingMessagesRepository } from './training-onboarding-mess
 		ChatTurnMeasurementsService,
 		ChatTurnMemoryService,
 		ChatTurnService,
+		ChatWorkoutSummaryService,
 		ChatTrainingOnboardingService,
 		ChatTrainingOnboardingAnswersService,
 		ChatTrainingOnboardingViewsService,
@@ -91,7 +93,13 @@ import { TrainingOnboardingMessagesRepository } from './training-onboarding-mess
 		TrainingOnboardingMessagesRepository,
 	],
 	// the edit sheet (food-entries) closes the open questions of an entry it changed; account-restore
-	// writes Kusik's welcome back into the chat; the measurement sheet answers with a chat card
-	exports: [ClarificationsService, ChatGreetingsService, ChatMeasurementCardsService],
+	// writes Kusik's welcome back into the chat; the measurement sheet answers with a chat card; the live
+	// mode and the form (workout-logging) post the summary of a session
+	exports: [
+		ClarificationsService,
+		ChatGreetingsService,
+		ChatMeasurementCardsService,
+		ChatWorkoutSummaryService,
+	],
 })
 export class ChatModule {}

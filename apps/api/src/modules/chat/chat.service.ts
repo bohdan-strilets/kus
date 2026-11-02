@@ -21,6 +21,7 @@ import {
 } from './chat-training-onboarding.service'
 import { ChatTrainingOnboardingAnswersService } from './chat-training-onboarding-answers.service'
 import { ChatTurnService, type TurnParams, type TurnResult } from './chat-turn.service'
+import { ChatWorkoutSummaryService } from './chat-workout-summary.service'
 import { STALE_PENDING_MS } from './chat.constants'
 import {
 	ClientMessageIdReusedException,
@@ -66,6 +67,7 @@ export class ChatService {
 		private readonly measurementsService: MeasurementsService,
 		private readonly trainingOnboarding: ChatTrainingOnboardingService,
 		private readonly onboardingAnswers: ChatTrainingOnboardingAnswersService,
+		private readonly workoutSummary: ChatWorkoutSummaryService,
 	) {}
 
 	async sendMessage(userId: string, params: SendMessageParams): Promise<SendMessageResponse> {
@@ -239,6 +241,10 @@ export class ChatService {
 				hasPhoto: photo !== undefined,
 			})
 			const memory = await this.memoryService.findRelevantFoods(userId, params.text ?? '')
+			// a live session left alone for more than 3 h is closed before the model reads «Today's
+			// workouts», so the message never appends to it; its summary is a message of its own
+			const autoClosed = await this.workoutSummary.closeIdleLive({ userId, now: params.now })
+			const autoClosedSummaryId = autoClosed?.messageId ?? null
 			const { context, refIds, workoutRefIds, copyRefIds, factRefIds, templateRefIds } =
 				await this.chatContext.buildContext({
 					...params,
@@ -275,7 +281,9 @@ export class ChatService {
 				templateRefIds,
 			})
 			this.logger.log(`Chat turn ${decision.kind} user=${userId} message=${message.id}`)
-			return edited
+			if (autoClosedSummaryId === null) return edited
+			// the response carries the new summary among the changed messages
+			return { ...edited, sourceMessageIds: [...edited.sourceMessageIds, autoClosedSummaryId] }
 		} catch (error) {
 			await this.markFailed(message)
 			throw error

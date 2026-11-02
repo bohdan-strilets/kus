@@ -138,11 +138,23 @@ export const liveWorkoutResponseSchema = z.object({
 })
 export type LiveWorkoutResponse = z.infer<typeof liveWorkoutResponseSchema>
 
-/** Answer of finishing a live session and of the form. */
-export const workoutFinishResponseSchema = z.object({
+/** A finished session: the answer of the form and of a live finish with work in it. */
+export const workoutFinishedSchema = z.object({
 	workout: workoutResponseSchema,
 	/** The Kusik message that carries the summary card. */
 	messageId: z.uuid(),
 	hasNewRecord: z.boolean(),
+	discarded: z.literal(false).optional(),
 })
+export type WorkoutFinished = z.infer<typeof workoutFinishedSchema>
+
+/** «Завершити» with no set marked done: the session is removed, no summary, nothing to show. */
+export const workoutDiscardedSchema = z.object({ discarded: z.literal(true) })
+export type WorkoutDiscarded = z.infer<typeof workoutDiscardedSchema>
+
+/**
+ * Answer of finishing a live session (and of the form, always the finished shape). The finished
+ * shape stays as it was; `discarded: true` is the other one.
+ */
+export const workoutFinishResponseSchema = z.union([workoutFinishedSchema, workoutDiscardedSchema])
 export type WorkoutFinishResponse = z.infer<typeof workoutFinishResponseSchema>

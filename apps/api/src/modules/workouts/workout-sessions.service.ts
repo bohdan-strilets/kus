@@ -20,14 +20,9 @@ import {
 	getSessionMessageIds,
 	inheritEntryOrigins,
 } from './workout-session'
-import {
-	expandSets,
-	getBodyweightMaxReps,
-	getLastPerformedAt,
-	isRecord,
-	toDistanceM,
-	type WorkoutRecord,
-} from './workout-turn'
+import { getLiveFinishFields, isLiveIdle, isOpenLive } from './live-session'
+import { LiveSessionsService } from './live-sessions.service'
+import { expandSets, getLastPerformedAt, toDistanceM } from './workout-turn'
 import {
 	WorkoutDateOutOfRangeException,
 	WorkoutNotFoundException,
@@ -75,6 +70,7 @@ export class WorkoutSessionsService {
 	constructor(
 		private readonly workoutsRepository: WorkoutsRepository,
 		private readonly workoutsService: WorkoutsService,
+		private readonly liveSessions: LiveSessionsService,
 	) {}
 
 	/** The user's fixes of a group: the dictionary row only, the entries keep their snapshots. */
@@ -97,12 +93,45 @@ export class WorkoutSessionsService {
 	}
 
 	/** Null when the call only fixes groups, or finishes a session that is gone. */
-	writeSession(params: WriteParams, tx: Prisma.TransactionClient): Promise<SessionChange | null> {
-		if (params.input.appendRef !== null) return this.appendToSession(params, tx)
+	async writeSession(
+		params: WriteParams,
+		tx: Prisma.TransactionClient,
+	): Promise<SessionChange | null> {
+		const { input, refIds } = params
+		if (input.appendRef !== null) {
+			return this.appendToSession(params, toId(refIds.workouts, input.appendRef), tx)
+		}
+		const live = await this.findLiveToJoin(params, tx)
+		if (live !== null) return this.appendToSession(params, live, tx)
 		// only group fixes: nothing goes into a session
-		if (params.input.exercises.length === 0) return Promise.resolve(null)
-		if (params.input.replaceRef !== null) return this.replaceSession(params, tx)
+		if (input.exercises.length === 0) return null
+		if (input.replaceRef !== null) return this.replaceSession(params, tx)
 		return this.createSession(params, tx)
+	}
+
+	/**
+	 * A call without a ref goes into the open live session (exercises, or a «все» closing it) while
+	 * its last action is at most WORKOUT_APPEND_MAX_GAP_HOURS old, whatever the calendar day says.
+	 * Not a replace and not a workout of another named day. A «все» alone for a session with nothing
+	 * done removes it (no summary) and goes on as if there were none. Null: the call goes its own way.
+	 */
+	private async findLiveToJoin(
+		{ userId, input, now, localDate }: WriteParams,
+		tx: Prisma.TransactionClient,
+	): Promise<string | null> {
+		if (input.replaceRef !== null) return null
+		if (input.date !== null && input.date !== formatDbDate(localDate)) return null
+		if (input.exercises.length === 0 && !input.finish) return null
+		const live = await this.liveSessions.findOpen(userId, tx)
+		if (live === null || isLiveIdle(live, now)) return null
+		if (input.exercises.length === 0) {
+			const prepared = await this.liveSessions.prepareClose({ userId, id: live.id }, tx)
+			if (prepared === null || prepared === 'DELETED') return null
+		}
+		this.logger.log(
+			`Workout joins the open live session user=${userId} workout=${live.id} reason=no-ref`,
+		)
+		return live.id
 	}
 
 	private async createSession(
@@ -175,26 +204,32 @@ export class WorkoutSessionsService {
 	 */
 	private async appendToSession(
 		params: WriteParams,
+		id: string,
 		tx: Prisma.TransactionClient,
 	): Promise<SessionChange | null> {
 		const { userId, sourceMessageId, now, input, refIds } = params
-		const id = toId(refIds.workouts, input.appendRef ?? '')
-		const before = await this.workoutsRepository.findOwned({ userId, id }, tx)
-		const reason = getNewSessionReason({ workout: before, place: input.place, now })
-		if (reason !== null || before === null) {
+		const found = await this.workoutsRepository.findOwned({ userId, id }, tx)
+		const reason = getNewSessionReason({ workout: found, place: input.place, now })
+		if (reason !== null || found === null) {
 			this.logger.log(`Workout append cannot go on user=${userId} workout=${id} reason=${reason}`)
 			// a finish alone has nothing to start a session with: it closes what is still open
 			if (input.exercises.length === 0) {
-				return before === null
+				return found === null
 					? null
-					: this.closeOpenSession(
-							params,
-							{ workoutId: id, localDate: before.localDate, reason },
-							tx,
-						)
+					: this.closeOpenSession(params, { workoutId: id, localDate: found.localDate, reason }, tx)
 			}
 			return this.createSession(params, tx)
 		}
+		// a «все» for a live session: only what was done stays; with nothing done it goes, no summary
+		const prepared =
+			input.finish && isOpenLive(found)
+				? await this.liveSessions.prepareClose(
+						{ userId, id, keepEmpty: input.exercises.length > 0 },
+						tx,
+					)
+				: found
+		if (prepared === null || prepared === 'DELETED') return null
+		const before = prepared
 		const exercises = await this.toExerciseWrites(
 			// positions after the session's rows are set by the repository, in the write
 			{ userId, refIds, exercises: input.exercises, performedAt: now, firstPosition: 0 },
@@ -204,15 +239,14 @@ export class WorkoutSessionsService {
 			...(input.place === null ? {} : { place: input.place }),
 			...(input.durationMin === null ? {} : { durationMin: input.durationMin }),
 			...(input.kcalBurned === null ? {} : { kcalBurned: input.kcalBurned }),
-			// an addition keeps the session's binding unless it names a template
-			...(params.templateId === null ? {} : { templateId: params.templateId }),
+			// an addition keeps the session's binding unless it names a template; an open live session
+			// keeps the template it was started by
+			...(params.templateId === null || (isOpenLive(before) && before.templateId !== null)
+				? {}
+				: { templateId: params.templateId }),
 			...(input.finish
 				? {
-						finishedAt: getFinishedAt({
-							workout: before,
-							addsExercises: exercises.length > 0,
-							now,
-						}),
+						...this.getFinishFields(before, { addsExercises: exercises.length > 0, input, now }),
 						finishedMessageId: sourceMessageId,
 					}
 				: {}),
@@ -245,12 +279,13 @@ export class WorkoutSessionsService {
 	 * last entry (not now, which would stretch its duration), with the summary on this message.
 	 */
 	private async closeOpenSession(
-		{ userId, sourceMessageId }: WriteParams,
+		params: WriteParams,
 		{ workoutId, localDate, reason }: { workoutId: string; localDate: Date; reason: string | null },
 		tx: Prisma.TransactionClient,
 	): Promise<SessionChange | null> {
+		const { userId, sourceMessageId } = params
 		const session = findSessionToClose(
-			await this.workoutsRepository.findOfDay({ userId, localDate }, tx),
+			await this.workoutsRepository.findOfDay({ userId, localDate, withOpenLive: true }, tx),
 		)
 		const finishedAt = session === null ? null : getLastPerformedAt(session)
 		if (session === null || finishedAt === null) {
@@ -259,15 +294,42 @@ export class WorkoutSessionsService {
 			)
 			return null
 		}
+		// a live session ends by its own rule (its last set) and gets its duration; with nothing done
+		// it is removed instead, without a summary
+		const prepared = isOpenLive(session)
+			? await this.liveSessions.prepareClose({ userId, id: session.id }, tx)
+			: session
+		if (prepared === null || prepared === 'DELETED') return null
+		const finish = isOpenLive(prepared)
+			? getLiveFinishFields(prepared, { now: params.now })
+			: { finishedAt }
 		const workout = await this.updateSession(
-			{ userId, id: session.id, fields: { finishedAt, finishedMessageId: sourceMessageId } },
+			{ userId, id: session.id, fields: { ...finish, finishedMessageId: sourceMessageId } },
 			tx,
 		)
 		return {
 			workout,
-			recordsBefore: getRecordKeys(readWorkoutRecords(session), session.exercises),
+			recordsBefore: getRecordKeys(readWorkoutRecords(prepared), prepared.exercises),
 			messageIds: [],
 		}
+	}
+
+	/**
+	 * When a «все» ends the session: an open live one by its own rule (its last set, its duration
+	 * from the start), a chat one at the message or at its last entry (getFinishedAt).
+	 */
+	private getFinishFields(
+		before: WorkoutWithExercises,
+		{ addsExercises, input, now }: { addsExercises: boolean; input: LogWorkoutInput; now: Date },
+	): Pick<SessionFields, 'finishedAt' | 'durationMin'> {
+		if (isOpenLive(before)) {
+			return getLiveFinishFields(before, {
+				now,
+				addsExercises,
+				namedDurationMin: input.durationMin,
+			})
+		}
+		return { finishedAt: getFinishedAt({ workout: before, addsExercises, now }) }
 	}
 
 	/** Writes the named session fields (the finish among them) and reads the session back. */
@@ -418,43 +480,6 @@ export class WorkoutSessionsService {
 			{ name: exercise.name, kind: exercise.kind },
 			tx,
 		)
-	}
-
-	/**
-	 * Compares the workout with the other ones: a heavier set, a longer distance or (without weight)
-	 * more reps is a record.
-	 */
-	async saveRecords(
-		userId: string,
-		workout: WorkoutWithExercises,
-		tx: Prisma.TransactionClient,
-	): Promise<WorkoutRecord[]> {
-		const records: WorkoutRecord[] = []
-		for (const exercise of workout.exercises) {
-			if (exercise.exerciseId === null) continue
-			const key = { userId, exerciseId: exercise.exerciseId, exceptWorkoutId: workout.id }
-			const heaviest = Math.max(
-				0,
-				...exercise.sets.flatMap((set) =>
-					!set.isWarmup && set.weightKg !== null ? [set.weightKg.toNumber()] : [],
-				),
-			)
-			if (
-				heaviest > 0 &&
-				isRecord(await this.workoutsRepository.findMaxWeightKg(key, tx), heaviest)
-			) {
-				records.push({ exerciseEntryId: exercise.id, type: 'WEIGHT' })
-			}
-			if (isRecord(await this.workoutsRepository.findMaxDistanceM(key, tx), exercise.distanceM)) {
-				records.push({ exerciseEntryId: exercise.id, type: 'DISTANCE' })
-			}
-			const reps = getBodyweightMaxReps(exercise.sets)
-			if (reps !== null && isRecord(await this.workoutsRepository.findMaxReps(key, tx), reps)) {
-				records.push({ exerciseEntryId: exercise.id, type: 'REPS' })
-			}
-		}
-		await this.workoutsRepository.setRecords({ id: workout.id, records }, tx)
-		return records
 	}
 }
 

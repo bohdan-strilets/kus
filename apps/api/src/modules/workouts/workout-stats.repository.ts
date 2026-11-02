@@ -3,6 +3,7 @@ import { Injectable } from '@nestjs/common'
 import type { Prisma } from '../../generated/prisma/client'
 import type { ExerciseKind, MuscleGroup } from '../../generated/prisma/enums'
 import { PrismaService } from '../../prisma'
+import { HIDE_OPEN_LIVE } from './workout-visibility'
 
 const STATS_ENTRY_INCLUDE = {
 	sets: { orderBy: { position: 'asc' } },
@@ -39,7 +40,8 @@ export interface StatsExerciseRecord {
 
 /**
  * Reads for the training statistics. An entry counts by its workout: a deleted workout leaves its
- * entries live, and the workout's day is the truth (an entry's own day is only a copy).
+ * entries live, and the workout's day is the truth (an entry's own day is only a copy). An open
+ * live session counts once it is finished.
  */
 @Injectable()
 export class WorkoutStatsRepository {
@@ -50,7 +52,7 @@ export class WorkoutStatsRepository {
 		tx?: Prisma.TransactionClient,
 	): Promise<StatsWorkoutRecord[]> {
 		return (tx ?? this.prisma).workout.findMany({
-			where: { userId, deletedAt: null, localDate: { gte: from, lte: to } },
+			where: { userId, deletedAt: null, localDate: { gte: from, lte: to }, ...HIDE_OPEN_LIVE },
 			select: STATS_WORKOUT_SELECT,
 		})
 	}
@@ -63,7 +65,12 @@ export class WorkoutStatsRepository {
 			where: {
 				userId,
 				deletedAt: null,
-				workout: { userId, deletedAt: null, localDate: { gte: from, lte: to } },
+				workout: {
+					userId,
+					deletedAt: null,
+					localDate: { gte: from, lte: to },
+					...HIDE_OPEN_LIVE,
+				},
 			},
 			include: STATS_ENTRY_INCLUDE,
 		})
@@ -81,7 +88,7 @@ export class WorkoutStatsRepository {
 				deletedAt: null,
 				kind: 'STRENGTH',
 				exerciseId: { in: exerciseIds },
-				workout: { userId, deletedAt: null },
+				workout: { userId, deletedAt: null, ...HIDE_OPEN_LIVE },
 			},
 			include: STATS_ENTRY_INCLUDE,
 		})
@@ -92,7 +99,12 @@ export class WorkoutStatsRepository {
 		tx?: Prisma.TransactionClient,
 	): Promise<StatsEntryRecord[]> {
 		return (tx ?? this.prisma).exerciseEntry.findMany({
-			where: { userId, deletedAt: null, exerciseId, workout: { userId, deletedAt: null } },
+			where: {
+				userId,
+				deletedAt: null,
+				exerciseId,
+				workout: { userId, deletedAt: null, ...HIDE_OPEN_LIVE },
+			},
 			include: STATS_ENTRY_INCLUDE,
 		})
 	}

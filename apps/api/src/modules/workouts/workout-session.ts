@@ -1,6 +1,7 @@
 import { isWorkoutOpen, type WorkoutCard, type WorkoutRecordType } from '@kus/shared'
 
 import type { WorkoutPlace } from '../../generated/prisma/enums'
+import { isLiveIdle } from './live-session'
 import { getLastPerformedAt, type WorkoutRecord } from './workout-turn'
 import type { WorkoutWithExercises } from './workouts.repository'
 
@@ -9,18 +10,25 @@ export type NewSessionReason = 'deleted' | 'stale' | 'place'
 
 /**
  * Whether an appendRef really adds to the session: not when the session is gone, its last entry is
- * more than 3 h old, or both places are named and differ. Null means append.
+ * more than 3 h old, or both places are named and differ. Null means append. An open live session
+ * counts its 3 h from its last action (a set, an entry, its start) and has no place to differ.
  */
 export const getNewSessionReason = ({
 	workout,
 	place,
 	now,
 }: {
-	workout: Pick<WorkoutWithExercises, 'deletedAt' | 'place' | 'exercises'> | null
+	workout:
+		| (Pick<WorkoutWithExercises, 'deletedAt' | 'place' | 'exercises'> &
+				Partial<Pick<WorkoutWithExercises, 'source' | 'finishedAt' | 'startedAt'>>)
+		| null
 	place: WorkoutPlace | null
 	now: Date
 }): NewSessionReason | null => {
 	if (workout === null || workout.deletedAt !== null) return 'deleted'
+	if (workout.source === 'LIVE' && workout.finishedAt === null) {
+		return isLiveIdle(workout, now) ? 'stale' : null
+	}
 	const last = getLastPerformedAt(workout)
 	if (last === null || !isWorkoutOpen(last, now)) return 'stale'
 	if (place !== null && workout.place !== null && place !== workout.place) return 'place'

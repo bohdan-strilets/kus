@@ -10,6 +10,9 @@ import {
 import {
 	liveExerciseInputSchema,
 	liveWorkoutUpdateSchema,
+	workoutDiscardedSchema,
+	workoutFinishedSchema,
+	workoutFinishResponseSchema,
 	workoutFormSchema,
 } from './workout-logging.js'
 
@@ -183,5 +186,42 @@ describe('liveWorkoutUpdateSchema', () => {
 		expect(liveWorkoutUpdateSchema.safeParse({ knownEditedAt: null, exercises: [] }).success).toBe(
 			true,
 		)
+	})
+})
+
+describe('finish responses', () => {
+	const workout = {
+		id: UUID,
+		localDate: '2026-11-02',
+		startedAt: null,
+		durationMin: 40,
+		place: null,
+		kcalBurned: null,
+		kcalSource: null,
+		exercises: [],
+	}
+	const oldShape = { workout, messageId: UUID, hasNewRecord: false }
+
+	it('an old-shaped finish (no `discarded`) still parses as finished and as the union', () => {
+		expect(workoutFinishedSchema.safeParse(oldShape).success).toBe(true)
+		expect(workoutFinishResponseSchema.safeParse(oldShape).success).toBe(true)
+	})
+
+	it('a finish with `discarded: false` parses as finished', () => {
+		expect(workoutFinishedSchema.safeParse({ ...oldShape, discarded: false }).success).toBe(true)
+	})
+
+	it('{ discarded: true } is the discarded shape and not the finished one', () => {
+		expect(workoutDiscardedSchema.safeParse({ discarded: true }).success).toBe(true)
+		expect(workoutFinishResponseSchema.safeParse({ discarded: true }).success).toBe(true)
+		expect(workoutFinishedSchema.safeParse({ discarded: true }).success).toBe(false)
+	})
+
+	it('rejects the discarded shape with false', () => {
+		expect(workoutDiscardedSchema.safeParse({ discarded: false }).success).toBe(false)
+	})
+
+	it('a finished-looking body with discarded: true reads as the discarded shape, not as finished', () => {
+		expect(workoutFinishedSchema.safeParse({ ...oldShape, discarded: true }).success).toBe(false)
 	})
 })

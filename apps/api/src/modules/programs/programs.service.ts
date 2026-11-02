@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common'
 import {
 	getNextTemplate,
+	type LivePlanExercise,
 	type NextTemplate,
 	type ProgramDraft,
 	type ProgramResponse,
@@ -23,7 +24,12 @@ import {
 	type CreateVersionInput,
 	ProgramVersionsService,
 } from './program-versions.service'
-import { toProgramDraft, toProgramResponse, toVersionItem } from './programs.mapper'
+import {
+	toLivePlanExercise,
+	toProgramDraft,
+	toProgramResponse,
+	toVersionItem,
+} from './programs.mapper'
 import {
 	hasActiveVersion,
 	type ProgramWithVersion,
@@ -52,6 +58,44 @@ export class ProgramsService {
 	/** Whether the user has a live program (the training onboarding is offered only without one). */
 	async hasActive(userId: string, tx?: Prisma.TransactionClient): Promise<boolean> {
 		return hasActiveVersion(await this.programsRepository.findActive(userId, tx))
+	}
+
+	/** Whether the template is one of the user's active program (a session is started only by such). */
+	async hasActiveTemplate(userId: string, templateId: string): Promise<boolean> {
+		const program = await this.programsRepository.findActive(userId)
+		if (!hasActiveVersion(program)) return false
+		return program.activeVersion.templates.some(({ id }) => id === templateId)
+	}
+
+	/**
+	 * The plan of a live session: the template's exercises (of any version of the user's program)
+	 * with the last time each was done and the progress hint. Null when it is not the user's.
+	 */
+	async getTemplatePlan(
+		userId: string,
+		templateId: string,
+	): Promise<{ name: string; exercises: LivePlanExercise[] } | null> {
+		const template = await this.programsRepository.findTemplate({ userId, id: templateId })
+		if (!template) return null
+		const exerciseIds = [
+			...new Set(template.exercises.flatMap(({ exerciseId }) => exerciseId ?? [])),
+		]
+		// an open live session is never «the last time»: the repository leaves it out
+		const lastSets = await this.workoutsService.getLastSets(userId, exerciseIds)
+		return {
+			name: template.name,
+			exercises: template.exercises.map((exercise) => toLivePlanExercise(exercise, lastSets)),
+		}
+	}
+
+	/** The ids of the template's exercises; empty when the template is not the user's. */
+	async findTemplateExerciseIds(
+		userId: string,
+		templateId: string,
+		tx?: Prisma.TransactionClient,
+	): Promise<Set<string>> {
+		const template = await this.programsRepository.findTemplate({ userId, id: templateId }, tx)
+		return new Set(template?.exercises.map(({ id }) => id) ?? [])
 	}
 
 	async listVersions(userId: string): Promise<ProgramVersionListResponse> {

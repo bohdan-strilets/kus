@@ -74,6 +74,11 @@ export const ErrorCodes = {
 	WORKOUT_NOT_FOUND: 'WORKOUT_NOT_FOUND',
 	/** No exercise with this id for this user (another user's is "not found" too). */
 	EXERCISE_NOT_FOUND: 'EXERCISE_NOT_FOUND',
+	/**
+	 * The live session changed under the live mode: the chat replaced it (details.reason EDITED) or
+	 * finished it (FINISHED). The client reads it again.
+	 */
+	WORKOUT_LIVE_CONFLICT: 'WORKOUT_LIVE_CONFLICT',
 
 	// workout programs
 	/** The user has no active program (another user's reads the same). */

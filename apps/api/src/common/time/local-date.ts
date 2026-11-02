@@ -57,15 +57,21 @@ const getOffsetMs = (date: Date, timezone: string): number => {
 }
 
 /**
- * The moment the user's wall clock shows `hour`:00 on `localDate` (a @db.Date value). The offset is
- * read twice so a DST switch between the guess and the answer still lands on the right hour.
+ * The moment the user's wall clock shows `hour`:`minute` on `localDate` (a @db.Date value). The
+ * offset is read twice so a DST switch between the guess and the answer still lands on the right hour.
  */
-export const getZonedMoment = (localDate: Date, hour: number, timezone: string): Date => {
+export const getZonedMoment = (
+	localDate: Date,
+	hour: number,
+	timezone: string,
+	minute = 0,
+): Date => {
 	const guess = Date.UTC(
 		localDate.getUTCFullYear(),
 		localDate.getUTCMonth(),
 		localDate.getUTCDate(),
 		hour,
+		minute,
 	)
 	const first = guess - getOffsetMs(new Date(guess), timezone)
 	return new Date(guess - getOffsetMs(new Date(first), timezone))

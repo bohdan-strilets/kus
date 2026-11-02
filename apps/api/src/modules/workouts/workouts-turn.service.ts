@@ -19,6 +19,7 @@ import { getRecordKeys, getSessionMessageIds, hasNewRecord, toWorkoutCard } from
 import { WorkoutSessionsService } from './workout-sessions.service'
 import { getLastPerformedAt, toExerciseContext, toWorkoutContext } from './workout-turn'
 import { WorkoutKcalService } from './workout-kcal.service'
+import { WorkoutRecordsService } from './workout-records.service'
 import { type WorkoutWithExercises, WorkoutsRepository } from './workouts.repository'
 
 export { NO_WORKOUT_REFS, type WorkoutRefIds } from './workout-refs'
@@ -50,6 +51,7 @@ export class WorkoutsTurnService {
 		private readonly workoutsRepository: WorkoutsRepository,
 		private readonly sessions: WorkoutSessionsService,
 		private readonly kcal: WorkoutKcalService,
+		private readonly records: WorkoutRecordsService,
 	) {}
 
 	/**
@@ -70,7 +72,8 @@ export class WorkoutsTurnService {
 		now: Date
 	}): Promise<WorkoutsContext> {
 		const [ofDay, recent, deleted, dictionary] = await Promise.all([
-			this.workoutsRepository.findOfDay({ userId, localDate }),
+			// the open live session too: the model appends to it (appendRef)
+			this.workoutsRepository.findOfDay({ userId, localDate, withOpenLive: true }),
 			this.workoutsRepository.findRecent({
 				userId,
 				since: getOpenWorkoutSince(now),
@@ -185,7 +188,7 @@ export class WorkoutsTurnService {
 				tx,
 			)
 			if (change === null) continue
-			const records = await this.sessions.saveRecords(userId, change.workout, tx)
+			const records = await this.records.computeRecords(userId, change.workout, tx)
 			const recordsAfter = getRecordKeys(records, change.workout.exercises)
 			isNewRecord ||= hasNewRecord(change.recordsBefore, recordsAfter)
 			for (const id of change.messageIds) sourceMessageIds.add(id)

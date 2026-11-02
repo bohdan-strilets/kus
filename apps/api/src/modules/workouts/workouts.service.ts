@@ -219,6 +219,15 @@ export class WorkoutsService {
 		return rows
 	}
 
+	/** The user's explicit bodyweight flag of an exercise (the live mode, the form) goes to the dictionary. */
+	setExerciseBodyweight(
+		userId: string,
+		{ id, isBodyweight }: { id: string; isBodyweight: boolean },
+		tx: Prisma.TransactionClient,
+	): Promise<void> {
+		return this.workoutsRepository.setExerciseBodyweight({ userId, id, isBodyweight }, tx)
+	}
+
 	/** The last non-deleted workout done by a program template; null when there is none. */
 	async findLastTemplatedWorkout(userId: string): Promise<LastTemplatedWorkout | null> {
 		const workout = await this.workoutsRepository.findLastTemplatedWorkout({ userId })

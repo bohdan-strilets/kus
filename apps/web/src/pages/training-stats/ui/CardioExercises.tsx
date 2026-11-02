@@ -8,7 +8,6 @@ import {
 	StatsPanel,
 	GroupIcon,
 } from '@/entities/workout'
-import { formatInteger } from '@/shared/lib'
 import { Text } from '@/shared/ui'
 
 import { EMPTY_VALUE } from '../lib/training-stats.constants'
@@ -17,11 +16,10 @@ interface CardioExercisesProps {
 	exercises: WorkoutStatsResponse['cardio']['byExercise']
 	/** «4 год 10 хв · 26,4 км» beside the title. */
 	summary: string | null
-	kcal: WorkoutStatsResponse['overview']['kcal']
 }
 
-/** The machines of the period with time and distance; the kcal line only for numbers the person named. */
-export const CardioExercises = ({ exercises, summary, kcal }: CardioExercisesProps) => {
+/** The machines of the period with time and distance. */
+export const CardioExercises = ({ exercises, summary }: CardioExercisesProps) => {
 	const { t } = useTranslation()
 
 	return (
@@ -52,15 +50,6 @@ export const CardioExercises = ({ exercises, summary, kcal }: CardioExercisesPro
 					</li>
 				))}
 			</ul>
-			{kcal.total !== null && (
-				<Text variant="small" tone="mutedStrong">
-					{t('training.stats.cardio.kcalNote', {
-						count: kcal.workoutsWithKcal,
-						total: kcal.workoutCount,
-						kcal: formatInteger(kcal.total),
-					})}
-				</Text>
-			)}
 		</StatsPanel>
 	)
 }

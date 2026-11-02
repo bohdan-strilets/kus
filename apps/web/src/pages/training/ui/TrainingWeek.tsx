@@ -1,66 +1,101 @@
+import type { ProgramResponse, WorkoutResponse } from '@kus/shared'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useNavigate } from 'react-router'
 
-import { formatWorkoutTotal } from '@/entities/workout'
-import { formatWeekdayLong, formatWeekdayShort, toCalendarDate } from '@/shared/lib'
-import { Icon, Surface, Text } from '@/shared/ui'
+import { WorkoutDayDots } from '@/entities/workout'
+import { getTrainingSessionPath } from '@/shared/config'
+import { formatShortDate, toCalendarDate } from '@/shared/lib'
+import { Icon, ICON_SIZE, IconButton, InlineError, Skeleton, Text, WeekStrip } from '@/shared/ui'
 
-import type { WeekSummary } from '../lib/get-week-summary'
+import { getProgramWeekdays } from '../lib/get-program-weekdays'
+import { getTrainingWeekDays, type TrainingWeekDay } from '../lib/get-training-week-days'
+import { getWeekSubtitle } from '../lib/get-week-subtitle'
+import { useTrainingWeek } from '../model/use-training-week'
+import { TrainingDaySheet } from './TrainingDaySheet'
 
-const TRAINED_ICON_SIZE = 18
+interface TrainingWeekProps {
+	today: string
+	/** What the journal already read; the week is cut from it when it is covered. */
+	journal: readonly WorkoutResponse[] | undefined
+	program: ProgramResponse | null | undefined
+}
 
-/** mockups/training-home.html «Цей тиждень»: Monday to Sunday, a mark on the days with a training. */
-export const TrainingWeek = ({ summary }: { summary: WeekSummary }) => {
+/**
+ * mockups/training-home.html + week-strip.html «Цей тиждень»: the shared week strip with the group
+ * dots of the days, ‹ › (and a swipe) for the previous week, a tap opens the training of the day.
+ */
+export const TrainingWeek = ({ today, journal, program }: TrainingWeekProps) => {
 	const { t } = useTranslation()
-	const parts =
-		summary.count > 0
-			? [
-					t('training.journal.week.count', { count: summary.count }),
-					summary.minutes > 0 ? formatWorkoutTotal(summary.minutes, t) : null,
-				].filter((part): part is string => part !== null)
-			: [t('training.journal.week.none')]
+	const navigate = useNavigate()
+	const week = useTrainingWeek({ today, journal })
+	const [openedDay, setOpenedDay] = useState<TrainingWeekDay | null>(null)
+	const [isDayOpen, setIsDayOpen] = useState(false)
+	const { summary, showNext } = week
+	const days = summary
+		? getTrainingWeekDays({ summary, today, programWeekdays: getProgramWeekdays(program), t })
+		: null
+	const title = week.isCurrent
+		? t('training.journal.week.title')
+		: summary &&
+			`${formatShortDate(toCalendarDate(summary.weekStart))}–${formatShortDate(toCalendarDate(summary.weekEnd))}`
+
+	const handleSelect = (day: TrainingWeekDay): void => {
+		const [only] = day.workouts
+		if (day.workouts.length === 1 && only) void navigate(getTrainingSessionPath(only.id))
+		else if (day.workouts.length > 1) {
+			setOpenedDay(day)
+			setIsDayOpen(true)
+		}
+	}
 
 	return (
-		<Surface variant="list" radius="panel" className="flex flex-col gap-2.5 p-3.5">
-			<div className="flex items-baseline justify-between gap-2">
-				<Text as="span" variant="body" weight="extrabold">
-					{t('training.journal.week.title')}
-				</Text>
-				<Text as="span" variant="caption" weight="regular" tone="muted">
-					{parts.join(' · ')}
-				</Text>
+		<section className="flex flex-col gap-2">
+			<div className="flex items-center gap-2 pl-1">
+				<div className="flex min-w-0 flex-1 flex-col">
+					<Text as="span" variant="body" weight="extrabold">
+						{title}
+					</Text>
+					{summary && (
+						<Text as="span" variant="caption" weight="regular" tone="muted">
+							{getWeekSubtitle(summary, t)}
+						</Text>
+					)}
+				</div>
+				<IconButton variant="frosted" label={t('today.previousWeek')} onClick={week.showPrevious}>
+					<Icon name="chevron-left" size={ICON_SIZE.control} />
+				</IconButton>
+				<IconButton
+					variant="frosted"
+					label={t('today.nextWeek')}
+					onClick={showNext ?? undefined}
+					disabled={showNext === null}
+				>
+					<Icon name="chevron-right" size={ICON_SIZE.control} />
+				</IconButton>
 			</div>
-			<ul className="flex justify-between">
-				{summary.days.map((day) => {
-					const date = toCalendarDate(day.localDate)
-					const stateKey = day.hasTraining
-						? 'training.journal.week.dayTrained'
-						: 'training.journal.week.dayRest'
-					return (
-						<li key={day.localDate} className="flex flex-col items-center gap-1">
-							{/* a listitem takes no aria-label, so the spoken day is hidden text */}
-							<span className="sr-only">{t(stateKey, { day: formatWeekdayLong(date) })}</span>
-							<Text
-								as="span"
-								variant="small"
-								weight={day.hasTraining ? 'extrabold' : 'semibold'}
-								tone={day.hasTraining ? 'ink' : 'muted'}
-								aria-hidden="true"
-							>
-								{formatWeekdayShort(date)}
-							</Text>
-							<span aria-hidden="true" className="flex size-8.5 items-center justify-center">
-								{day.hasTraining ? (
-									<span className="flex size-8.5 items-center justify-center rounded-full bg-hint-training-ink text-white">
-										<Icon name="training" size={TRAINED_ICON_SIZE} />
-									</span>
-								) : (
-									<span className="size-1.5 rounded-full bg-line-strong" />
-								)}
-							</span>
-						</li>
-					)
-				})}
-			</ul>
-		</Surface>
+			{days === null && !week.isError && (
+				<Skeleton shape="block" className="h-19 rounded-bubble-ai" />
+			)}
+			{week.isError && <InlineError message={t('training.loadError')} onRetry={week.retry} />}
+			{days && (
+				<WeekStrip
+					days={days}
+					onSelect={handleSelect}
+					onSwipePrev={week.showPrevious}
+					onSwipeNext={() => showNext?.()}
+					canGoNext={showNext !== null}
+					renderIndicator={(day) => (
+						<WorkoutDayDots
+							groups={day.groups}
+							hasWorkout={day.workouts.length > 0}
+							isPlanned={day.isPlanned}
+							isOnDark={day.isSelected}
+						/>
+					)}
+				/>
+			)}
+			<TrainingDaySheet day={openedDay} isOpen={isDayOpen} onOpenChange={setIsDayOpen} />
+		</section>
 	)
 }

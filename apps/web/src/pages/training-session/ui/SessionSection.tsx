@@ -9,12 +9,10 @@ import { SessionExercise } from './SessionExercise'
 
 export interface SessionSectionProps {
 	section: SessionSectionData
-	/** The kcal line of the session, in the cardio section only; null without a named number. */
-	kcalNote?: string | null
 }
 
 /** A card of one group (training-session): the tag with a summary on the right, the exercises below. */
-export const SessionSection = ({ section, kcalNote = null }: SessionSectionProps) => {
+export const SessionSection = ({ section }: SessionSectionProps) => {
 	const { t } = useTranslation()
 	const summary = formatSectionSummary(section, t)
 
@@ -33,11 +31,6 @@ export const SessionSection = ({ section, kcalNote = null }: SessionSectionProps
 					<SessionExercise key={exercise.id} exercise={exercise} />
 				))}
 			</ul>
-			{kcalNote !== null && (
-				<Text variant="small" tone="muted">
-					{kcalNote}
-				</Text>
-			)}
 		</Surface>
 	)
 }

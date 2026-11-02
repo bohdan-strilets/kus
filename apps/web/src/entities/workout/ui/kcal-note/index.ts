@@ -1,0 +1,1 @@
+export { KcalNote } from './KcalNote'

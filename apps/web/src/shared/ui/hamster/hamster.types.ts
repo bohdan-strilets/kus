@@ -28,6 +28,8 @@ export type HamsterMood =
 	| 'sleepy'
 	/** Розминка — empty workout journal (headband, no cookie) */
 	| 'warmup'
+	/** З гантеллю — «Наступне» на вкладці «Тренування» (гантель у лапах замість пряника) */
+	| 'dumbbell'
 
 /** Chat avatar faces, picked by context (design/docs/components.md, Bubble — Kusik). */
 export type HamsterHeadMood =

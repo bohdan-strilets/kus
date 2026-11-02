@@ -93,7 +93,7 @@ describe('TrainingStatsPage', () => {
 		)
 	})
 
-	it('shows the cardio: tiles, machines, a dash with a spoken reason and the named kcal', async () => {
+	it('shows the cardio: tiles, machines and a dash with a spoken reason, no kcal row', async () => {
 		const user = userEvent.setup()
 		getMock.mockResolvedValue(reply(makeWorkoutStats()))
 		renderStats()
@@ -101,24 +101,6 @@ describe('TrainingStatsPage', () => {
 		expect(await screen.findByText('Бігова доріжка')).toBeTruthy()
 		expect(screen.getByText('Велотренажер')).toBeTruthy()
 		expect(screen.getByText('дистанції немає')).toBeTruthy()
-		expect(screen.getByText(/ккал названо: 1 140 — у 2 тренуваннях з 6/)).toBeTruthy()
-	})
-
-	it('has no kcal line when nothing was named', async () => {
-		const user = userEvent.setup()
-		const stats = makeWorkoutStats()
-		getMock.mockResolvedValue(
-			reply({
-				...stats,
-				overview: {
-					...stats.overview,
-					kcal: { total: null, workoutsWithKcal: 0, workoutCount: 6 },
-				},
-			}),
-		)
-		renderStats()
-		await user.click(await screen.findByRole('tab', { name: 'Кардіо' }))
-		await screen.findByText('Бігова доріжка')
 		expect(screen.queryByText(/ккал названо/)).toBeNull()
 	})
 

@@ -257,6 +257,26 @@ export const HAMSTER_MOODS: Record<HamsterMood, MoodParts> = {
 			</>
 		),
 	},
+	dumbbell: {
+		isBare: true,
+		face: (
+			<>
+				<Eyes />
+				<Smile />
+			</>
+		),
+		front: (
+			<>
+				<path d="M34 97 H86" stroke={C.bar} strokeWidth="3.5" strokeLinecap="round" />
+				<rect x="24" y="88" width="9" height="18" rx="3" fill={C.weight} />
+				<rect x="87" y="88" width="9" height="18" rx="3" fill={C.weight} />
+				<rect x="19" y="91" width="5" height="12" rx="2" fill={C.weight} />
+				<rect x="96" y="91" width="5" height="12" rx="2" fill={C.weight} />
+				<ellipse cx="44" cy="97" rx="6.5" ry="5.5" fill={C.furDark} />
+				<ellipse cx="76" cy="97" rx="6.5" ry="5.5" fill={C.furDark} />
+			</>
+		),
+	},
 	sleepy: {
 		back: (
 			<>

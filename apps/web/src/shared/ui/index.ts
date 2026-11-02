@@ -92,3 +92,4 @@ export {
 	ToastRouteReset,
 	useToast,
 } from './toast'
+export { WeekStrip, type WeekStripDay, type WeekStripProps } from './week-strip'

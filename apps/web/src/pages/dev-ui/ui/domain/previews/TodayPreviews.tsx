@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { getMealCategory, MealRow } from '@/entities/entry'
-import { DayStatsCard, type MacroProgressSet, SupportCard, WeekStrip } from '@/entities/stats'
+import { DayStatsCard, type MacroProgressSet, SupportCard, FoodWeekStrip } from '@/entities/stats'
 
 import {
 	SEED_EATEN_KCAL,
@@ -24,7 +24,15 @@ const TodayTop = ({ eaten, macros }: { eaten: number; macros: MacroProgressSet }
 		<>
 			<TodayPreviewHeader />
 			<div className="flex flex-col gap-2.5 px-gutter">
-				<WeekStrip days={SEED_WEEK} selectedDate={selectedDate} onSelect={setSelectedDate} />
+				<FoodWeekStrip
+					days={SEED_WEEK}
+					selectedDate={selectedDate}
+					today={SEED_TODAY}
+					onSelect={setSelectedDate}
+					onSwipePrev={() => undefined}
+					onSwipeNext={() => undefined}
+					canGoNext={false}
+				/>
 				<DayStatsCard eaten={eaten} goal={SEED_GOAL_KCAL} macros={macros} />
 			</div>
 		</>

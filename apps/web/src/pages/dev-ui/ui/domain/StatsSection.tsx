@@ -9,7 +9,7 @@ import {
 	DaySummaryCard,
 	MacroTiles,
 	SupportCard,
-	WeekStrip,
+	FoodWeekStrip,
 } from '@/entities/stats'
 import { Surface, Text } from '@/shared/ui'
 
@@ -66,7 +66,15 @@ export const StatsSection = () => {
 				</div>
 				<MacroTiles macros={SEED_MACROS} variant="compact" />
 				<MacroTiles macros={SEED_OVER_MACROS} />
-				<WeekStrip days={SEED_WEEK} selectedDate={selectedDate} onSelect={setSelectedDate} />
+				<FoodWeekStrip
+					days={SEED_WEEK}
+					selectedDate={selectedDate}
+					today={SEED_TODAY}
+					onSelect={setSelectedDate}
+					onSwipePrev={() => undefined}
+					onSwipeNext={() => undefined}
+					canGoNext={false}
+				/>
 				<DayStatsCard eaten={SEED_EATEN_KCAL} goal={SEED_GOAL_KCAL} macros={SEED_MACROS} />
 				<MealRow
 					mealLabel={t('meal.breakfast')}

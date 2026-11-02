@@ -7,7 +7,6 @@ export {
 	DETAIL_SEPARATOR,
 	formatCardioSummary,
 	formatNumber,
-	formatWorkoutKcalNote,
 	formatWorkoutDistance,
 	formatWorkoutKind,
 	formatWorkoutMinutes,
@@ -44,3 +43,11 @@ export { PeriodToggle } from './ui/period-toggle'
 export { StatsNote } from './ui/stats-note'
 export { StatTile } from './ui/stat-tile'
 export { StatsPanel } from './ui/stats-panel'
+export {
+	formatWorkoutKcal,
+	type WorkoutKcalKind,
+	type WorkoutKcalView,
+} from './lib/format-workout-kcal'
+export { KcalInfoSheet, type KcalInfoSheetProps } from './ui/kcal-info-sheet'
+export { WorkoutDayDots, type WorkoutDayDotsProps } from './ui/workout-day-dots'
+export { KcalNote } from './ui/kcal-note'

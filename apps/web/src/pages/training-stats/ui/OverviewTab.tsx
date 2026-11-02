@@ -9,13 +9,14 @@ import { getBucketBars } from '../lib/get-bucket-bars'
 import { getOverviewTiles } from '../lib/get-overview-tiles'
 import { MIN_WORKOUTS_FOR_CHART } from '../lib/training-stats.constants'
 import { GroupsCard } from './GroupsCard'
+import { KcalTile } from './KcalTile'
 
 interface OverviewTabProps {
 	stats: WorkoutStatsResponse
 	period: WorkoutStatsPeriod
 }
 
-/** «Огляд»: two numbers, workouts per week (per day for a week) and sets by group. */
+/** «Огляд»: two numbers, the kcal of the period, workouts per week (per day for a week) and sets by group. */
 export const OverviewTab = ({ stats, period }: OverviewTabProps) => {
 	const { t } = useTranslation()
 	const { overview } = stats
@@ -46,6 +47,7 @@ export const OverviewTab = ({ stats, period }: OverviewTabProps) => {
 					note={tiles.perSession}
 				/>
 			</div>
+			{overview.burned !== null && <KcalTile burned={overview.burned} period={period} />}
 			{overview.workoutCount < MIN_WORKOUTS_FOR_CHART ? (
 				<StatsNote text={t('training.stats.single.overview')} />
 			) : (

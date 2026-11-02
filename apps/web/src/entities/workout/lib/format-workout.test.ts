@@ -4,7 +4,6 @@ import { i18n } from '@/shared/i18n'
 
 import {
 	formatCardioSummary,
-	formatWorkoutKcalNote,
 	formatWorkoutKind,
 	formatWorkoutTotal,
 	getExerciseIcon,
@@ -40,17 +39,6 @@ describe('labels', () => {
 		expect(formatWorkoutKind('OUTDOOR', t)).toBe('Біг')
 		expect(formatWorkoutKind('OTHER', t)).toBe('Тренування')
 		expect(formatWorkoutKind(null, t)).toBe('Тренування')
-	})
-
-	it('the kcal line only for a named number, with its source', () => {
-		expect(formatWorkoutKcalNote({ kcalBurned: 320, kcalSource: 'DEVICE' }, t)).toBe(
-			'320 ккал · з табло · на ціль не впливає',
-		)
-		expect(formatWorkoutKcalNote({ kcalBurned: 380, kcalSource: 'MANUAL' }, t)).toBe(
-			'380 ккал · зі слів · на ціль не впливає',
-		)
-		expect(formatWorkoutKcalNote({ kcalBurned: null, kcalSource: null }, t)).toBeNull()
-		expect(formatWorkoutKcalNote({ kcalBurned: 300, kcalSource: 'AI_ESTIMATE' }, t)).toBeNull()
 	})
 })
 

@@ -41,7 +41,7 @@ export const NextWorkoutCard = ({ template }: { template: ProgramTemplateRespons
 				})}
 			</ul>
 			<span className="absolute top-10 -right-1.5">
-				<Hamster mood="warmup" size={HAMSTER_SIZE} />
+				<Hamster mood="dumbbell" size={HAMSTER_SIZE} />
 			</span>
 		</section>
 	)

@@ -62,19 +62,3 @@ export const getExerciseIcon = (
 /** «Зал», «Вдома», «Біг» (outdoors) or «Тренування». */
 export const formatWorkoutKind = (place: WorkoutResponse['place'], t: TFunction): string =>
 	t(`workout.place.${place ?? 'OTHER'}`)
-
-/**
- * «320 ккал · з табло · на ціль не впливає» — only a number the user said or a device showed.
- * A number from a model estimate is never shown, and without a number there is no line.
- */
-export const formatWorkoutKcalNote = (
-	workout: Pick<WorkoutResponse, 'kcalBurned' | 'kcalSource'>,
-	t: TFunction,
-): string | null => {
-	if (workout.kcalBurned === null) return null
-	if (workout.kcalSource !== 'MANUAL' && workout.kcalSource !== 'DEVICE') return null
-	return t('workout.kcalNote', {
-		kcal: formatInteger(workout.kcalBurned),
-		source: t(`workout.kcalSource.${workout.kcalSource}`),
-	})
-}

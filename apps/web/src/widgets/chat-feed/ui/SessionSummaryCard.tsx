@@ -4,9 +4,10 @@ import { Link } from 'react-router'
 
 import {
 	formatWorkoutDuration,
-	formatWorkoutKcalNote,
+	formatWorkoutKcal,
 	formatWorkoutKind,
 	GroupTag,
+	KcalNote,
 } from '@/entities/workout'
 import { getTrainingSessionPath } from '@/shared/config'
 import { cn, formatTime } from '@/shared/lib'
@@ -25,13 +26,13 @@ export interface SessionSummaryCardProps {
 
 /**
  * mockups/chat-training.html (A): the whole session in one card — the place and the start with the
- * duration, the counts, a plate per group, the records, the named kcal and the way into the session.
+ * duration, the counts, a plate per group, the records, the kcal (named or an estimate) and the way into the session.
  */
 export const SessionSummaryCard = ({ workout, hasTail }: SessionSummaryCardProps) => {
 	const { t } = useTranslation()
 	const { counts, groups, records } = getSessionSummary(workout, t)
 	const duration = formatWorkoutDuration(workout, t)
-	const kcalNote = formatWorkoutKcalNote(workout, t)
+	const kcal = formatWorkoutKcal(workout.kcal, t)
 
 	return (
 		<Surface
@@ -74,9 +75,9 @@ export const SessionSummaryCard = ({ workout, hasTail }: SessionSummaryCardProps
 					</Text>
 				</div>
 			))}
-			{kcalNote !== null && (
-				<Text variant="small" tone="muted">
-					{kcalNote}
+			{kcal !== null && (
+				<Text variant="caption" weight="regular" tone="mutedStrong">
+					<KcalNote view={kcal} />
 				</Text>
 			)}
 			<Link

@@ -14,6 +14,8 @@ export interface ScreenHeaderProps {
 	subtitle?: string
 	/** The parent screen: where «Назад» lands when nothing of the app is behind (a deep link). */
 	backTo: string
+	/** Under the subtitle, e.g. the kcal line of a training that opens a sheet. */
+	extra?: ReactNode
 	/** A button at the end of the row (a screen's «Змінити» / «Готово»). */
 	action?: ReactNode
 }
@@ -23,7 +25,7 @@ export interface ScreenHeaderProps {
  * Back is a button, not a link — it walks the history (useStackBack), so a Link's push would leave
  * every tap as one more entry and the iOS swipe-back would reopen the screen just left.
  */
-export const ScreenHeader = ({ title, subtitle, backTo, action }: ScreenHeaderProps) => {
+export const ScreenHeader = ({ title, subtitle, extra, backTo, action }: ScreenHeaderProps) => {
 	const { t } = useTranslation()
 	const goBack = useStackBack(backTo)
 
@@ -39,6 +41,7 @@ export const ScreenHeader = ({ title, subtitle, backTo, action }: ScreenHeaderPr
 						{subtitle}
 					</Text>
 				)}
+				{extra}
 			</div>
 			{action}
 		</header>

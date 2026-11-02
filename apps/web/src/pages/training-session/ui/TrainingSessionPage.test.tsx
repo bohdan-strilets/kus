@@ -61,6 +61,7 @@ describe('TrainingSessionPage', () => {
 				makeWorkout({
 					id: WORKOUT_ID,
 					durationMin: 62,
+					kcal: { value: 180, source: 'MANUAL' },
 					kcalBurned: 180,
 					kcalSource: 'MANUAL',
 					exercises: [
@@ -77,7 +78,7 @@ describe('TrainingSessionPage', () => {
 		expect(screen.getByText('1 · 3')).toBeTruthy()
 		expect(screen.getByText('Жим лежачи')).toBeTruthy()
 		expect(screen.getByText('1 вправа · 3 підх.')).toBeTruthy()
-		expect(screen.getByText('180 ккал · зі слів · на ціль не впливає')).toBeTruthy()
+		expect(screen.getAllByText(/180 ккал/)).toHaveLength(1)
 		expect(screen.getByRole('button', { name: /Видалити тренування/ })).toBeTruthy()
 	})
 

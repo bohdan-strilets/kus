@@ -11,7 +11,6 @@ import { ROUTES } from '@/shared/config'
 import { DecorBackdrop, InlineError } from '@/shared/ui'
 
 import { getTrainingRange } from '../lib/get-training-range'
-import { getWeekSummary } from '../lib/get-week-summary'
 import { groupWorkoutsByMonth } from '../lib/group-workouts'
 import { TrainingEmpty } from './TrainingEmpty'
 import { TrainingHeader } from './TrainingHeader'
@@ -84,7 +83,7 @@ const TrainingScreen = ({ timeZone }: { timeZone: string }) => {
 					{workouts && programQuery.isPending && <TrainingProgramSkeleton />}
 					{workouts && program && <TrainingProgramBlocks program={program} />}
 					{workouts && program && tiles}
-					{workouts && <TrainingWeek summary={getWeekSummary(workouts, today)} />}
+					{workouts && <TrainingWeek today={today} journal={workouts} program={program} />}
 					{workouts && !program && tiles}
 					{workouts &&
 						groupWorkoutsByMonth(workouts).map((month) => (

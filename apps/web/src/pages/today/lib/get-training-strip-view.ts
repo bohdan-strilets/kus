@@ -1,7 +1,7 @@
 import { TRAINING_GROUP_ORDER, type TrainingGroupKey, type WorkoutResponse } from '@kus/shared'
 import type { TFunction } from 'i18next'
 
-import { formatWorkoutDuration } from '@/entities/workout'
+import { formatWorkoutDuration, formatWorkoutKcal } from '@/entities/workout'
 import { getTrainingSessionPath } from '@/shared/config'
 import { formatTime } from '@/shared/lib'
 
@@ -12,8 +12,20 @@ export interface TrainingStripView {
 	duration: string | null
 	/** «07:10»: only when the day has several trainings and this one has a start. */
 	time: string | null
+	/** «≈ 350 ккал» (an estimate) or «380 ккал» (named); null — no number, no part. */
+	kcal: string | null
+	/** Dots that fit: fewer when the plate also carries the kcal (and the time). */
 	groups: TrainingGroupKey[]
 	ariaLabel: string
+}
+
+/** mockups/today-training.html: all groups; with kcal up to four dots, with the time and kcal up to three. */
+const DOTS_WITH_KCAL = 4
+const DOTS_WITH_KCAL_AND_TIME = 3
+
+const getDotsLimit = (hasKcal: boolean, hasTime: boolean): number => {
+	if (!hasKcal) return Number.POSITIVE_INFINITY
+	return hasTime ? DOTS_WITH_KCAL_AND_TIME : DOTS_WITH_KCAL
 }
 
 /** The groups a session touched in the fixed display order; cardio comes from the kind, not a group. */
@@ -45,6 +57,7 @@ export const getTrainingStripView = (
 		hasSiblings && workout.startedAt !== null ? formatTime(new Date(workout.startedAt)) : null
 	const spokenDuration = formatWorkoutDuration(workout, t, true)
 	const groupNames = groups.map((group) => t(`muscle.${group}`).toLocaleLowerCase('uk'))
+	const kcal = formatWorkoutKcal(workout.kcal, t)?.value ?? null
 
 	const ariaLabel = t('today.trainingStrip.aria.open', {
 		summary: [
@@ -54,6 +67,7 @@ export const getTrainingStripView = (
 			spokenDuration === null
 				? ''
 				: t('today.trainingStrip.aria.durationPart', { duration: spokenDuration }),
+			kcal === null ? '' : t('today.trainingStrip.aria.kcalPart', { kcal }),
 			groupNames.length === 0
 				? ''
 				: t('today.trainingStrip.aria.groupsPart', { groups: groupNames.join(', ') }),
@@ -65,7 +79,8 @@ export const getTrainingStripView = (
 		href: getTrainingSessionPath(workout.id),
 		duration: formatWorkoutDuration(workout, t),
 		time,
-		groups,
+		kcal,
+		groups: groups.slice(0, getDotsLimit(kcal !== null, time !== null)),
 		ariaLabel,
 	}
 }

@@ -20,7 +20,7 @@ interface CardioTabProps {
 	period: WorkoutStatsPeriod
 }
 
-/** «Кардіо»: time and distance, minutes per week (per day for a week), the machines, kcal only when named. */
+/** «Кардіо»: time and distance, minutes per week (per day for a week) and the machines. */
 export const CardioTab = ({ stats, period }: CardioTabProps) => {
 	const { t } = useTranslation()
 	const { cardio } = stats
@@ -63,7 +63,6 @@ export const CardioTab = ({ stats, period }: CardioTabProps) => {
 					{ durationMin: cardio.durationMin, distanceM: hasDistance ? cardio.distanceM : null },
 					t,
 				)}
-				kcal={stats.overview.kcal}
 			/>
 		</>
 	)

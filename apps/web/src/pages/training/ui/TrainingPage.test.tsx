@@ -228,8 +228,12 @@ describe('TrainingPage', () => {
 		expect(screen.getByText('1 тренування · 55 хв')).toBeTruthy()
 		expect(screen.getByText('Жовтень')).toBeTruthy()
 		expect(screen.getByText('Вересень')).toBeTruthy()
-		expect(screen.getByText('Понеділок: було тренування')).toBeTruthy()
-		expect(screen.getByText('Вівторок: без тренування')).toBeTruthy()
+		expect(
+			screen.getByRole('button', { name: 'Понеділок, 26 жовтня: тренування — груди' }),
+		).toBeTruthy()
+		expect(
+			screen.getByRole('button', { name: 'Вівторок, 27 жовтня: тренувань не було' }),
+		).toBeTruthy()
 		const links = screen
 			.getAllByRole('link')
 			.filter((link) => link.getAttribute('href') !== TRAINING_STATS_ROUTE)
@@ -430,5 +434,114 @@ describe('TrainingPage', () => {
 		expect(await screen.findByText('Цей тиждень')).toBeTruthy()
 		expect(screen.queryByText('Налаштуємо тренування?')).toBeNull()
 		expect(screen.getByRole('button', { name: /Програма/ })).toBeTruthy()
+	})
+})
+
+describe('TrainingPage week strip', () => {
+	const FIRST = '0199b3a4-0000-7000-8000-0000000000e1'
+	const SECOND = '0199b3a4-0000-7000-8000-0000000000e2'
+
+	it('opens the sheet «Тренування дня» with every training when the day has several', async () => {
+		mockApi([
+			makeWorkout({ id: FIRST, localDate: TODAY, startedAt: '2026-10-26T07:10:00.000Z' }),
+			makeWorkout({
+				id: SECOND,
+				localDate: TODAY,
+				place: 'HOME',
+				durationMin: 30,
+				startedAt: '2026-10-26T17:30:00.000Z',
+			}),
+		])
+		const onPathname = vi.fn()
+
+		renderPage(onPathname)
+
+		fireEvent.click(
+			await screen.findByRole('button', { name: /^Понеділок, 26 жовтня: тренування/ }),
+		)
+
+		const list = await screen.findByRole('list', { name: 'Тренування дня' })
+		const hrefs = within(list)
+			.getAllByRole('link')
+			.map((link) => link.getAttribute('href'))
+		expect(hrefs).toHaveLength(2)
+		expect(hrefs).toContain(`/app/training/${FIRST}`)
+		expect(hrefs).toContain(`/app/training/${SECOND}`)
+		expect(onPathname).not.toHaveBeenCalledWith(`/app/training/${FIRST}`)
+	})
+
+	it('goes straight to the training when the day has one', async () => {
+		mockApi([makeWorkout({ id: FIRST, localDate: TODAY })])
+		const onPathname = vi.fn()
+
+		renderPage(onPathname)
+
+		fireEvent.click(
+			await screen.findByRole('button', { name: /^Понеділок, 26 жовтня: тренування/ }),
+		)
+
+		await waitFor(() => {
+			expect(onPathname).toHaveBeenLastCalledWith(`/app/training/${FIRST}`)
+		})
+		expect(screen.queryByRole('list', { name: 'Тренування дня' })).toBeNull()
+	})
+
+	it('does nothing on a day without a training', async () => {
+		mockApi([makeWorkout({ id: FIRST, localDate: TODAY })])
+		const onPathname = vi.fn()
+
+		renderPage(onPathname)
+
+		const quietDay = await screen.findByRole('button', {
+			name: 'Вівторок, 27 жовтня: тренувань не було',
+		})
+		fireEvent.click(quietDay)
+
+		expect(quietDay.getAttribute('aria-disabled')).toBe('true')
+		expect(screen.queryByRole('list', { name: 'Тренування дня' })).toBeNull()
+		expect(onPathname).toHaveBeenLastCalledWith(ROUTES.training)
+	})
+
+	it('cannot go forward from the current week, and can come back from the previous one', async () => {
+		mockApi([makeWorkout({ id: FIRST, localDate: '2026-10-20' })])
+
+		renderPage()
+
+		await screen.findByText('Цей тиждень')
+		const next = screen.getByRole('button', { name: 'Наступний тиждень' })
+		expect(next.hasAttribute('disabled')).toBe(true)
+
+		fireEvent.click(screen.getByRole('button', { name: 'Попередній тиждень' }))
+
+		expect(screen.queryByText('Цей тиждень')).toBeNull()
+		expect(screen.getByText('1 тренування · 55 хв')).toBeTruthy()
+		expect(screen.getByRole('button', { name: 'Наступний тиждень' }).hasAttribute('disabled')).toBe(
+			false,
+		)
+		fireEvent.click(screen.getByRole('button', { name: 'Наступний тиждень' }))
+		expect(await screen.findByText('Цей тиждень')).toBeTruthy()
+	})
+
+	it('marks a program day ahead as planned on a WEEKDAYS program', async () => {
+		const program = makeProgram()
+		mockApi([makeWorkout({ id: FIRST, localDate: TODAY })], 11, {
+			program: {
+				...program,
+				mode: 'WEEKDAYS',
+				templates: program.templates.map((template, index) => ({
+					...template,
+					weekdays: index === 0 ? [3] : [],
+				})),
+			},
+		})
+
+		renderPage()
+
+		expect(
+			await screen.findByRole('button', { name: 'Середа, 28 жовтня: день за програмою' }),
+		).toBeTruthy()
+		expect(
+			screen.getByRole('button', { name: 'Четвер, 29 жовтня: тренувань не було' }),
+		).toBeTruthy()
 	})
 })

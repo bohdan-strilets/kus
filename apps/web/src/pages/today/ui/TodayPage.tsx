@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router'
 
 import { dayQueryOptions, daysRangeQueryOptions, useLocalToday } from '@/entities/day'
 import { useSessionUser } from '@/entities/session'
-import { WeekStrip } from '@/entities/stats'
+import { FoodWeekStrip } from '@/entities/stats'
 import { EditEntrySheet } from '@/features/edit-entry'
 import { EditGoalsSheet, toGoalValues } from '@/features/edit-goals'
 import { ROUTES } from '@/shared/config'
@@ -67,12 +67,16 @@ const TodayScreen = ({ userId, timeZone }: { userId: string; timeZone: string })
 					/>
 				)}
 				{weekDays && hasWeek && (
-					<WeekStrip
+					<FoodWeekStrip
 						days={weekDays}
 						selectedDate={toCalendarDate(navigation.selected)}
+						today={toCalendarDate(today)}
 						onSelect={(date) => {
 							navigation.select(fromCalendarDate(date))
 						}}
+						onSwipePrev={navigation.showPreviousWeek}
+						onSwipeNext={() => navigation.showNextWeek?.()}
+						canGoNext={navigation.showNextWeek !== null}
 					/>
 				)}
 				<DayContent

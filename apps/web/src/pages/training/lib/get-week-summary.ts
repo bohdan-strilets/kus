@@ -18,10 +18,17 @@ const DAYS_SINCE_MONDAY: Record<Weekday, number> = {
 export interface WeekDay {
 	localDate: string
 	hasTraining: boolean
+	/** ISO weekday, 1 = Monday … 7 = Sunday: how a program names its days. */
+	isoWeekday: number
+	workouts: WorkoutResponse[]
 }
 
 export interface WeekSummary {
-	/** Monday to Sunday of the current week. */
+	/** `YYYY-MM-DD` of the Monday. */
+	weekStart: string
+	/** `YYYY-MM-DD` of the Sunday. */
+	weekEnd: string
+	/** Monday to Sunday of the week. */
 	days: WeekDay[]
 	count: number
 	/** Minutes of the week: the named duration, otherwise the estimate. */
@@ -33,21 +40,29 @@ export const getWorkoutMinutes = (
 	workout: Pick<WorkoutResponse, 'durationMin' | 'estimatedDurationMin'>,
 ): number => workout.durationMin ?? workout.estimatedDurationMin ?? 0
 
-/** «Цей тиждень»: the seven days with a mark where there was a training, their count and time. */
-export const getWeekSummary = (
-	workouts: readonly WorkoutResponse[],
-	today: string,
-): WeekSummary => {
-	const weekStart = shiftLocalDate(today, -DAYS_SINCE_MONDAY[getWeekday(today)])
+/** The Monday of the week that holds `localDate`. */
+export const getWeekMonday = (localDate: string): string =>
+	shiftLocalDate(localDate, -DAYS_SINCE_MONDAY[getWeekday(localDate)])
+
+/** «Цей тиждень»: the seven days of the week of `date` with their trainings, the count and the time. */
+export const getWeekSummary = (workouts: readonly WorkoutResponse[], date: string): WeekSummary => {
+	const weekStart = getWeekMonday(date)
 	const weekEnd = shiftLocalDate(weekStart, DAYS_IN_WEEK - 1)
 	const thisWeek = workouts.filter(
 		(workout) => workout.localDate >= weekStart && workout.localDate <= weekEnd,
 	)
-	const trainedDates = new Set(thisWeek.map((workout) => workout.localDate))
 	return {
+		weekStart,
+		weekEnd,
 		days: Array.from({ length: DAYS_IN_WEEK }, (_, index) => {
 			const localDate = shiftLocalDate(weekStart, index)
-			return { localDate, hasTraining: trainedDates.has(localDate) }
+			const dayWorkouts = thisWeek.filter((workout) => workout.localDate === localDate)
+			return {
+				localDate,
+				hasTraining: dayWorkouts.length > 0,
+				isoWeekday: index + 1,
+				workouts: dayWorkouts,
+			}
 		}),
 		count: thisWeek.length,
 		minutes: thisWeek.reduce((sum, workout) => sum + getWorkoutMinutes(workout), 0),

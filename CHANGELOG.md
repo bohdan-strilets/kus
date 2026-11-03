@@ -6,6 +6,25 @@ All notable changes to Kusik are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.10.3] — 2026-11-03
+
+Live workout mode, the fill form and a workout kcal estimate. One additive migration (new nullable columns and a partial unique index; no data is rewritten). No prompt or tool changes.
+
+### Added
+
+- Live workout (`/app/training/live`): the session is saved on the server set by set and can be resumed after a restart; a mini strip above the navigation, a finish screen and one summary card in the chat; an open session closes by itself after more than 3 hours without activity (by idle time, not at midnight), and a late finish is stamped with the last set ([70203ff], [1353f12])
+- Fill form (`/app/training/fill`): the plan prefilled, «as planned» / «changed» / «skipped» per exercise, backdating up to 3 days, one idempotent «Зберегти» ([70203ff], [1353f12])
+- Workout kcal estimate on read: (MET − 1) × weight × hours with MET values from the 2024 Compendium of Physical Activities, rounded to 10; a named number is shown as is; it is never stored, never added to the daily goal and never given to the model ([1606ac7], [20d4824])
+- Shared week strip for Today and Training (swipe, 44 px arrows, group dots, program-day ring) and the stats tile «Спалено на тренуваннях» ([20d4824])
+- Bodyweight flag for exercises (`isBodyweight`) and the progress hint «+ step» when all working sets reached the top of the range ([5df30dc], [1353f12])
+- Hamster with a dumbbell on the next-workout card ([20d4824])
+
+### Changed
+
+- A chat correction of a live exercise («ні, жим був 85») edits it in place and keeps its key, so the live screen and the chat show one exercise ([1353f12])
+- The open live session is hidden from stats, the journal, the program queue and exercise history until it is finished; the model context lists only its done sets ([70203ff], [507488a])
+- Architecture notes for live mode, the form and the kcal estimate ([63dd305])
+
 ## [0.10.2.1] — 2026-11-02
 
 Fixes from the iPhone check of 0.10.2. No migrations, no model-visible changes; the web version is 0.10.2+1 (semver build metadata).
@@ -601,7 +620,15 @@ Design sync with `design/` v0.5.2. Web only: no API, shared-package or migration
 
 ## 0.2.0 / 0.1.0 — see tags
 
-[Unreleased]: https://github.com/bohdan-strilets/kus/compare/v0.10.2.1...HEAD
+[Unreleased]: https://github.com/bohdan-strilets/kus/compare/v0.10.3...HEAD
+[0.10.3]: https://github.com/bohdan-strilets/kus/compare/v0.10.2.1...v0.10.3
+[5df30dc]: https://github.com/bohdan-strilets/kus/commit/5df30dc07d9b29c1f8e57bfea25bb938bcf708ac
+[1606ac7]: https://github.com/bohdan-strilets/kus/commit/1606ac7b59f356aeb3678c61f68aafeb404da12a
+[70203ff]: https://github.com/bohdan-strilets/kus/commit/70203ff934987c6b24f447908e9e2b3919af3294
+[20d4824]: https://github.com/bohdan-strilets/kus/commit/20d482443fb773400f90a307d4a91af5914d04c5
+[1353f12]: https://github.com/bohdan-strilets/kus/commit/1353f125c64bc06fa1aaf122280f259d4b403ddc
+[507488a]: https://github.com/bohdan-strilets/kus/commit/507488acdbcb5ba823afddaceae30f79ff8fa701
+[63dd305]: https://github.com/bohdan-strilets/kus/commit/63dd30591463558de0b4de88e5c00c1072d937de
 [0.10.2.1]: https://github.com/bohdan-strilets/kus/compare/v0.10.2...v0.10.2.1
 [5263d08]: https://github.com/bohdan-strilets/kus/commit/5263d08b912453b48f3b7edb12f59db8630eb441
 [aabb4e6]: https://github.com/bohdan-strilets/kus/commit/aabb4e6d827d7b57f98bbed9e65938edfdb36e96

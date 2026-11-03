@@ -54,6 +54,13 @@ type DoneWorkExercise = Pick<
 	'clientKey' | 'durationMin' | 'distanceM'
 > & { sets: readonly { doneAt: Date | null }[] }
 
+/** The rule of hasDoneWork for one exercise: told in the chat, or live with a done set or cardio. */
+export const isDoneExercise = (exercise: DoneWorkExercise): boolean => {
+	if (exercise.clientKey === null) return true
+	if (exercise.durationMin !== null || exercise.distanceM !== null) return true
+	return exercise.sets.some((set) => set.doneAt !== null)
+}
+
 /**
  * Something was done. An exercise told in the chat (no clientKey: added by a message, «ще 10 хв
  * доріжки», or rewritten by a replaceRef) always counts: the user said it happened. A live-mode
@@ -61,11 +68,16 @@ type DoneWorkExercise = Pick<
  * set only planned is not work.
  */
 export const hasDoneWork = (workout: { exercises: readonly DoneWorkExercise[] }): boolean =>
-	workout.exercises.some((exercise) => {
-		if (exercise.clientKey === null) return true
-		if (exercise.durationMin !== null || exercise.distanceM !== null) return true
-		return exercise.sets.some((set) => set.doneAt !== null)
-	})
+	workout.exercises.some(isDoneExercise)
+
+/**
+ * The sets that count as work: all of an exercise told in the chat (they have no doneAt), only the
+ * done ones of a live-mode exercise.
+ */
+export const getDoneSets = <TSet extends { doneAt: Date | null }>(
+	exercise: Pick<DoneWorkExercise, 'clientKey'> & { sets: readonly TSet[] },
+): readonly TSet[] =>
+	exercise.clientKey === null ? exercise.sets : exercise.sets.filter((set) => set.doneAt !== null)
 
 /**
  * When a live session ended: now, unless its last set was done more than LIVE_FINISH_IDLE_MIN ago —

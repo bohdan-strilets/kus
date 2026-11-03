@@ -7,6 +7,7 @@ import {
 } from '@kus/shared'
 
 import { formatDbDate } from '../../common/time'
+import { getDoneSets, isDoneExercise } from './live-session'
 import type { ExerciseWrite, WorkoutWithExercises } from './workouts.repository'
 
 const METRES_IN_KM = 1000
@@ -77,13 +78,14 @@ export const toWorkoutContext = (
 	finished: workout.finishedAt !== null,
 	durationMin: workout.durationMin,
 	kcalBurned: workout.kcalBurned,
-	exercises: workout.exercises.map((exercise) => ({
+	// a live session's planned-only exercises and sets are not work: the model sees the done ones
+	exercises: workout.exercises.filter(isDoneExercise).map((exercise) => ({
 		name: exercise.name,
 		exerciseRef:
 			exercise.exerciseId === null ? null : (exerciseRefs.get(exercise.exerciseId) ?? null),
 		// the dictionary row's group is the one shown; the entry's snapshot when the row is gone
 		muscleGroup: exercise.exercise?.muscleGroup ?? exercise.muscleGroup,
-		sets: exercise.sets.map(toSetContext),
+		sets: getDoneSets(exercise).map(toSetContext),
 		durationMin: exercise.durationMin,
 		distanceKm: toKm(exercise.distanceM),
 	})),

@@ -3,11 +3,13 @@ import { describe, expect, it } from 'vitest'
 
 import {
 	getLastActionAt,
+	getDoneSets,
 	getLastWorkAt,
 	getLiveDurationMin,
 	getLiveFinishedAt,
 	getLiveFinishFields,
 	hasDoneWork,
+	isDoneExercise,
 	isLiveIdle,
 	isOpenLive,
 } from './live-session'
@@ -141,6 +143,54 @@ describe('hasDoneWork', () => {
 	it('is false for an empty list and for a live exercise with nothing in it', () => {
 		expect(hasDoneWork(workoutOf([]))).toBe(false)
 		expect(hasDoneWork(workoutOf([entry({ clientKey: 'k' })]))).toBe(false)
+	})
+})
+
+describe('isDoneExercise / getDoneSets', () => {
+	const exercise = (overrides: Partial<Parameters<typeof isDoneExercise>[0]> = {}) => ({
+		clientKey: null,
+		sets: [],
+		durationMin: null,
+		distanceM: null,
+		...overrides,
+	})
+	const done = { doneAt: NOW }
+	const planned = { doneAt: null }
+
+	it('isDoneExercise: chat exercise always, live only with a done set or cardio numbers', () => {
+		expect(isDoneExercise(exercise())).toBe(true)
+		expect(isDoneExercise(exercise({ sets: [planned] }))).toBe(true)
+		expect(isDoneExercise(exercise({ clientKey: 'k' }))).toBe(false)
+		expect(isDoneExercise(exercise({ clientKey: 'k', sets: [planned, planned] }))).toBe(false)
+		expect(isDoneExercise(exercise({ clientKey: 'k', sets: [planned, done] }))).toBe(true)
+		expect(isDoneExercise(exercise({ clientKey: 'k', durationMin: 5 }))).toBe(true)
+		expect(isDoneExercise(exercise({ clientKey: 'k', distanceM: 100 }))).toBe(true)
+	})
+
+	it('hasDoneWork agrees with isDoneExercise over the list', () => {
+		const list = [exercise({ clientKey: 'k' }), exercise({ clientKey: 'k2', sets: [done] })]
+		expect(hasDoneWork({ exercises: list })).toBe(list.some(isDoneExercise))
+		expect(hasDoneWork({ exercises: list.slice(0, 1) })).toBe(false)
+	})
+
+	it('getDoneSets: all sets of a chat exercise, only done ones of a live exercise', () => {
+		const sets = [planned, done, planned]
+		expect(getDoneSets({ clientKey: null, sets })).toEqual(sets)
+		expect(getDoneSets({ clientKey: 'k', sets })).toEqual([done])
+		expect(getDoneSets({ clientKey: 'k', sets: [planned] })).toEqual([])
+		expect(getDoneSets({ clientKey: 'k', sets: [] })).toEqual([])
+		expect(getDoneSets({ clientKey: null, sets: [] })).toEqual([])
+	})
+
+	it('getDoneSets keeps the generic set type and the order, without mutating the input', () => {
+		const sets = [
+			{ doneAt: null, reps: 1 },
+			{ doneAt: NOW, reps: 2 },
+			{ doneAt: NOW, reps: 3 },
+		]
+		const result = getDoneSets({ clientKey: 'k', sets })
+		expect(result.map((set) => set.reps)).toEqual([2, 3])
+		expect(sets).toHaveLength(3)
 	})
 })
 

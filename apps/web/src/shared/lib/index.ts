@@ -1,4 +1,6 @@
 export { cn } from './cn'
+export { useDebouncedValue } from './use-debounced-value'
+export { useNow } from './use-now'
 export {
 	OVERLAY_HOLD_MAX_MS,
 	useIsOverlayOpen,
@@ -14,6 +16,7 @@ export {
 	getDayRelation,
 	getLocalDateString,
 	getLocalHour,
+	getLocalTime,
 	shiftLocalDate,
 	useLocalDate,
 	useLocalHour,

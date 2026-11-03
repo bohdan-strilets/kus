@@ -1,10 +1,8 @@
 import type { WorkoutExerciseResponse, WorkoutResponse } from '@kus/shared'
 import type { TFunction } from 'i18next'
 
-import { getWorkoutCounts } from '@/entities/workout'
+import { formatFooterCounts, getWorkoutCounts } from '@/entities/workout'
 import { formatTime } from '@/shared/lib'
-
-import { formatFooterCounts } from './format-workout-counts'
 
 export interface ExerciseLogView {
 	exercises: WorkoutExerciseResponse[]

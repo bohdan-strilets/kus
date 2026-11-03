@@ -10,7 +10,7 @@ interface ExerciseTargetSheetProps {
 	/** The exercise being set up; null closes the sheet. */
 	exercise: DraftExercise | null
 	onClose: () => void
-	onSave: (key: string, target: TemplateExerciseTarget) => void
+	onSave: (key: string, target: TemplateExerciseTarget, isBodyweight: boolean | null) => void
 	onRemove: (key: string) => void
 }
 
@@ -37,8 +37,8 @@ export const ExerciseTargetSheet = ({
 				<TargetForm
 					key={shown.key}
 					exercise={shown}
-					onSave={(target) => {
-						onSave(shown.key, target)
+					onSave={(target, isBodyweight) => {
+						onSave(shown.key, target, isBodyweight)
 					}}
 					onRemove={() => {
 						onRemove(shown.key)

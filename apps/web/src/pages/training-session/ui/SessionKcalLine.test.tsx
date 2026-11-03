@@ -41,6 +41,18 @@ describe('SessionKcalLine', () => {
 		expect(button.textContent).not.toContain('≈')
 	})
 
+	it('looks 32 px but its tap zone is 44 px: min-h-8 plus a 6 px pseudo-element on each side', () => {
+		renderLine({ value: 350, source: 'ESTIMATE' })
+
+		const { className } = screen.getByRole('button')
+
+		expect(className).toContain('min-h-8')
+		expect(className).toContain('after:absolute')
+		expect(className).toContain('after:-inset-y-1.5')
+		expect(className).toContain('relative')
+		expect(screen.getByRole('button').getAttribute('type')).toBe('button')
+	})
+
 	it('opens the sheet by the info button and closes it again', async () => {
 		renderLine({ value: 350, source: 'ESTIMATE' })
 		expect(screen.queryByRole('dialog')).toBeNull()

@@ -35,6 +35,11 @@ export const TrainingRow = ({ row, isDateShown }: TrainingRowProps) => (
 				<Text as="span" variant="body" weight="bold">
 					{row.title}
 				</Text>
+				{row.time !== null && (
+					<Text as="span" variant="small" weight="regular" tone="muted">
+						{`· ${row.time}`}
+					</Text>
+				)}
 				{row.templateName !== null && (
 					<Text as="span" variant="small" weight="regular" tone="muted">
 						{row.templateName}

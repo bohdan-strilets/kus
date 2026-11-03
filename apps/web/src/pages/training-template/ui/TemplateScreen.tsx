@@ -2,6 +2,7 @@ import type { ProgramResponse, ProgramTemplateResponse } from '@kus/shared'
 import { useTranslation } from 'react-i18next'
 
 import { formatProgramTemplateMeta } from '@/entities/program'
+import { StartWorkoutButtons } from '@/features/live-workout'
 import { TRAINING_PROGRAM_ROUTE } from '@/shared/config'
 import { Button, Icon, ICON_SIZE, ScreenHeader } from '@/shared/ui'
 
@@ -53,11 +54,14 @@ export const TemplateScreen = ({ program, template }: TemplateScreenProps) => {
 					)
 				}
 			/>
-			<div className="flex flex-col gap-2.5 px-gutter pt-1 pb-4">
+			<div className="flex flex-1 flex-col gap-2.5 px-gutter pt-1 pb-4">
 				{editor.isEditing ? (
 					<TemplateEditor exercises={editor.exercises} dispatch={editor.dispatch} />
 				) : (
 					<TemplateView exercises={editor.exercises} />
+				)}
+				{!editor.isEditing && (
+					<StartWorkoutButtons templateId={template.id} className="mt-auto pt-1" />
 				)}
 			</div>
 		</div>

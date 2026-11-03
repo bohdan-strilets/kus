@@ -1,5 +1,5 @@
 import type { ProgramResponse, WorkoutResponse } from '@kus/shared'
-import { useState } from 'react'
+import { type ReactNode, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
 
@@ -8,6 +8,7 @@ import { getTrainingSessionPath } from '@/shared/config'
 import { formatShortDate, toCalendarDate } from '@/shared/lib'
 import { Icon, ICON_SIZE, IconButton, InlineError, Skeleton, Text, WeekStrip } from '@/shared/ui'
 
+import { getProgramWeekProgress } from '../lib/get-program-progress'
 import { getProgramWeekdays } from '../lib/get-program-weekdays'
 import { getTrainingWeekDays, type TrainingWeekDay } from '../lib/get-training-week-days'
 import { getWeekSubtitle } from '../lib/get-week-subtitle'
@@ -19,22 +20,23 @@ interface TrainingWeekProps {
 	/** What the journal already read; the week is cut from it when it is covered. */
 	journal: readonly WorkoutResponse[] | undefined
 	program: ProgramResponse | null | undefined
+	/** What belongs under the strip only while it shows the current week (the start of a session). */
+	renderCurrentOnly?: () => ReactNode
 }
 
 /**
  * mockups/training-home.html + week-strip.html «Цей тиждень»: the shared week strip with the group
  * dots of the days, ‹ › (and a swipe) for the previous week, a tap opens the training of the day.
  */
-export const TrainingWeek = ({ today, journal, program }: TrainingWeekProps) => {
+export const TrainingWeek = ({ today, journal, program, renderCurrentOnly }: TrainingWeekProps) => {
 	const { t } = useTranslation()
 	const navigate = useNavigate()
 	const week = useTrainingWeek({ today, journal })
 	const [openedDay, setOpenedDay] = useState<TrainingWeekDay | null>(null)
 	const [isDayOpen, setIsDayOpen] = useState(false)
 	const { summary, showNext } = week
-	const days = summary
-		? getTrainingWeekDays({ summary, today, programWeekdays: getProgramWeekdays(program), t })
-		: null
+	const programWeekdays = getProgramWeekdays(program)
+	const days = summary ? getTrainingWeekDays({ summary, today, programWeekdays, t }) : null
 	const title = week.isCurrent
 		? t('training.journal.week.title')
 		: summary &&
@@ -50,52 +52,55 @@ export const TrainingWeek = ({ today, journal, program }: TrainingWeekProps) => 
 	}
 
 	return (
-		<section className="flex flex-col gap-2">
-			<div className="flex items-center gap-2 pl-1">
-				<div className="flex min-w-0 flex-1 flex-col">
-					<Text as="span" variant="body" weight="extrabold">
-						{title}
-					</Text>
-					{summary && (
-						<Text as="span" variant="caption" weight="regular" tone="muted">
-							{getWeekSubtitle(summary, t)}
+		<>
+			<section className="flex flex-col gap-2">
+				<div className="flex items-center gap-2 pl-1">
+					<div className="flex min-w-0 flex-1 flex-col">
+						<Text as="span" variant="body" weight="extrabold">
+							{title}
 						</Text>
-					)}
+						{summary && (
+							<Text as="span" variant="caption" weight="regular" tone="muted">
+								{getWeekSubtitle(summary, t, getProgramWeekProgress(summary, programWeekdays))}
+							</Text>
+						)}
+					</div>
+					<IconButton variant="frosted" label={t('today.previousWeek')} onClick={week.showPrevious}>
+						<Icon name="chevron-left" size={ICON_SIZE.control} />
+					</IconButton>
+					<IconButton
+						variant="frosted"
+						label={t('today.nextWeek')}
+						onClick={showNext ?? undefined}
+						disabled={showNext === null}
+					>
+						<Icon name="chevron-right" size={ICON_SIZE.control} />
+					</IconButton>
 				</div>
-				<IconButton variant="frosted" label={t('today.previousWeek')} onClick={week.showPrevious}>
-					<Icon name="chevron-left" size={ICON_SIZE.control} />
-				</IconButton>
-				<IconButton
-					variant="frosted"
-					label={t('today.nextWeek')}
-					onClick={showNext ?? undefined}
-					disabled={showNext === null}
-				>
-					<Icon name="chevron-right" size={ICON_SIZE.control} />
-				</IconButton>
-			</div>
-			{days === null && !week.isError && (
-				<Skeleton shape="block" className="h-19 rounded-bubble-ai" />
-			)}
-			{week.isError && <InlineError message={t('training.loadError')} onRetry={week.retry} />}
-			{days && (
-				<WeekStrip
-					days={days}
-					onSelect={handleSelect}
-					onSwipePrev={week.showPrevious}
-					onSwipeNext={() => showNext?.()}
-					canGoNext={showNext !== null}
-					renderIndicator={(day) => (
-						<WorkoutDayDots
-							groups={day.groups}
-							hasWorkout={day.workouts.length > 0}
-							isPlanned={day.isPlanned}
-							isOnDark={day.isSelected}
-						/>
-					)}
-				/>
-			)}
-			<TrainingDaySheet day={openedDay} isOpen={isDayOpen} onOpenChange={setIsDayOpen} />
-		</section>
+				{days === null && !week.isError && (
+					<Skeleton shape="block" className="h-19 rounded-bubble-ai" />
+				)}
+				{week.isError && <InlineError message={t('training.loadError')} onRetry={week.retry} />}
+				{days && (
+					<WeekStrip
+						days={days}
+						onSelect={handleSelect}
+						onSwipePrev={week.showPrevious}
+						onSwipeNext={() => showNext?.()}
+						canGoNext={showNext !== null}
+						renderIndicator={(day) => (
+							<WorkoutDayDots
+								groups={day.groups}
+								hasWorkout={day.workouts.length > 0}
+								isPlanned={day.isPlanned}
+								isOnDark={day.isSelected}
+							/>
+						)}
+					/>
+				)}
+				<TrainingDaySheet day={openedDay} isOpen={isDayOpen} onOpenChange={setIsDayOpen} />
+			</section>
+			{week.isCurrent && renderCurrentOnly?.()}
+		</>
 	)
 }

@@ -23,7 +23,7 @@ export const SessionKcalLine = ({ workout }: { workout: Pick<WorkoutResponse, 'k
 				onClick={() => {
 					setIsInfoOpen(true)
 				}}
-				className="inline-flex min-h-tap cursor-pointer items-center gap-1 self-start"
+				className="relative inline-flex min-h-8 cursor-pointer items-center gap-1 self-start after:absolute after:inset-x-0 after:-inset-y-1.5"
 			>
 				<Text as="span" variant="caption" weight="regular" tone="mutedStrong">
 					<KcalNote view={view} />

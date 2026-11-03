@@ -29,6 +29,8 @@ import { ChoiceChips } from './ChoiceChips'
 interface StrengthFieldsProps {
 	target: TemplateExerciseTarget
 	onChange: (target: TemplateExerciseTarget) => void
+	/** No weight, so neither the weight stepper nor the progress step. */
+	isBodyweight: boolean
 }
 
 type Adjust = (target: TemplateExerciseTarget, direction: StepDirection) => TemplateExerciseTarget
@@ -52,7 +54,7 @@ const formatValue = (value: number | null): string =>
 	value === null ? EMPTY_VALUE : formatNumber(value)
 
 /** Sets, weight and reps by steppers; the progress step (only with a weight) and the rest by chips. */
-export const StrengthFields = ({ target, onChange }: StrengthFieldsProps) => {
+export const StrengthFields = ({ target, onChange, isBodyweight }: StrengthFieldsProps) => {
 	const { t } = useTranslation()
 	// 0 is the old way to say «власна вага»: the stepper reads it as no weight
 	const weightKg = target.weightKg === 0 ? null : target.weightKg
@@ -105,16 +107,17 @@ export const StrengthFields = ({ target, onChange }: StrengthFieldsProps) => {
 					max: PROGRAM_SETS_MAX,
 					decimals: 0,
 				})}
-				{renderStepper({
-					label: t('program.editor.weight'),
-					value: weightKg,
-					adjust: adjustWeight,
-					setValue: setWeight,
-					min: 0,
-					max: PROGRAM_WEIGHT_KG_MAX,
-					decimals: WEIGHT_DECIMALS,
-					unit: t('program.editor.unitKg'),
-				})}
+				{!isBodyweight &&
+					renderStepper({
+						label: t('program.editor.weight'),
+						value: weightKg,
+						adjust: adjustWeight,
+						setValue: setWeight,
+						min: 0,
+						max: PROGRAM_WEIGHT_KG_MAX,
+						decimals: WEIGHT_DECIMALS,
+						unit: t('program.editor.unitKg'),
+					})}
 				{renderStepper({
 					label: t('program.editor.repsFrom'),
 					value: target.repsMin,
@@ -134,7 +137,7 @@ export const StrengthFields = ({ target, onChange }: StrengthFieldsProps) => {
 					decimals: 0,
 				})}
 			</div>
-			{weightKg !== null && (
+			{!isBodyweight && weightKg !== null && (
 				<ChoiceChips
 					label={t('program.editor.progressStep')}
 					options={PROGRESS_STEP_OPTIONS_KG.map((value) => ({

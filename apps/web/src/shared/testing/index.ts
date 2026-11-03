@@ -19,3 +19,12 @@ export {
 	PULLUP_ID,
 	TREADMILL_ID,
 } from './workout-stats.fixture'
+export {
+	LIVE_EDITED_AT,
+	LIVE_STARTED_AT,
+	LIVE_WORKOUT_ID,
+	makeLiveInput,
+	makeLiveResponse,
+	makePlanExercise,
+} from './live-workout.fixture'
+export { makeTemplate, makeTemplateExercise, TEMPLATE_ID } from './template.fixture'

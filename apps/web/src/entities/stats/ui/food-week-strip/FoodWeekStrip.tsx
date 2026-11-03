@@ -28,8 +28,8 @@ const STATUS_LABEL_KEY = {
 	planned: 'todayAhead.dayPlanned',
 } as const
 
-/** A day after today is never «без записів»: nothing is expected of it yet. */
-const UPCOMING_EMPTY_LABEL_KEY = 'todayAhead.dayUpcomingEmpty'
+/** A day after today is never «без записів»: it is simply ahead (the training strip says the same). */
+const UPCOMING_EMPTY_LABEL_KEY = 'week.dayUpcoming'
 
 const isSameDay = (a: Date, b: Date): boolean => a.toDateString() === b.toDateString()
 

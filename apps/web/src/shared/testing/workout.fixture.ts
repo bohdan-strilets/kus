@@ -16,6 +16,8 @@ export const makeExercise = (
 	clientKey: null,
 	templateExerciseId: null,
 	isBodyweight: null,
+	kcalBurned: null,
+	kcalSource: null,
 	sets: [1, 2, 3].map(() => ({
 		reps: 8,
 		weightKg: 80,

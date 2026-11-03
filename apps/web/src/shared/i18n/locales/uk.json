@@ -92,6 +92,7 @@
 			"ENTRY_NOT_FOUND": "Цього запису вже немає. Онови екран.",
 			"MEASUREMENT_NOT_FOUND": "Цього заміру вже немає. Онови екран.",
 			"WORKOUT_NOT_FOUND": "Цього тренування вже немає. Онови екран.",
+			"WORKOUT_LIVE_CONFLICT": "Тренування змінилось у чаті — оновив.",
 			"EXERCISE_NOT_FOUND": "Цієї вправи вже немає. Онови екран.",
 			"PROGRAM_NOT_FOUND": "Програму не знайдено",
 			"PROGRAM_TEMPLATE_NOT_FOUND": "Тренування в програмі не знайдено",
@@ -461,7 +462,6 @@
 		"title": "Завтра",
 		"planned": "заплановано",
 		"dayPlanned": "{{day}} — заплановано",
-		"dayUpcomingEmpty": "{{day}} — нічого не записано",
 		"emptyTomorrow": {
 			"title": "На завтра ще нічого не записано",
 			"text": "Готуєш їжу наперед? Напиши в чаті «на завтра: …» — і запис з'явиться тут."
@@ -859,6 +859,16 @@
 		"repsUnit": "повт.",
 		"warmupShort": "розм.",
 		"bodyweight": "власна вага",
+		"set": {
+			"weightLess": "Менше ваги",
+			"weightMore": "Більше ваги",
+			"repsLess": "Менше повторів",
+			"repsMore": "Більше повторів",
+			"weightEdit": "кг: ввести число",
+			"repsEdit": "повт.: ввести число",
+			"weightPlaceholder": "Вага, кг",
+			"repsPlaceholder": "Повтори"
+		},
 		"estimated": "≈ {{duration}}",
 		"estimatedSpoken": "приблизно {{duration}}",
 		"exerciseCount_one": "{{count}} вправа",
@@ -901,6 +911,7 @@
 			"MANUAL": "зі слів",
 			"DEVICE": "з табло"
 		},
+		"kcalNote": "{{kcal}} ккал · {{source}} · на ціль не впливає",
 		"kcal": {
 			"value": "{{kcal}} ккал",
 			"estimateValue": "≈ {{kcal}} ккал",
@@ -1036,6 +1047,7 @@
 			"unitKm": "км",
 			"save": "Зберегти",
 			"removeFromWorkout": "Прибрати з тренування",
+			"bodyweight": "Власна вага",
 			"addTitle": "Вправа",
 			"add": "Додати: {{name}}",
 			"neverDone": "ще не було",
@@ -1093,6 +1105,103 @@
 		"actionError": "Не вийшло. Спробуй ще раз."
 	},
 	"training": {
+		"actionError": "Не вийшло. Спробуй ще раз.",
+		"start": {
+			"begin": "Почати",
+			"fill": "Заповнити"
+		},
+		"open": {
+			"running": "Іде · {{time}}",
+			"continue": "Продовжити"
+		},
+		"empty": {
+			"title": "Порожнє тренування",
+			"text": "Вправи додаси по ходу. Або пиши в чат, як і раніше.",
+			"program": "Скласти програму в чаті"
+		},
+		"strip": {
+			"label": "{{name}} іде, {{minutes}} хв. Відкрити",
+			"open": "Відкрити"
+		},
+		"finish": {
+			"chatNote": "У чат піде одна картка з цим зведенням.",
+			"done": "Готово"
+		},
+		"live": {
+			"minimize": "Згорнути",
+			"defaultName": "Тренування",
+			"timerLabel": "Минуло {{time}}",
+			"finish": "Завершити",
+			"progress": "Вправа {{current}} з {{total}}",
+			"target": "Мета: {{target}}",
+			"next": "далі · {{target}}",
+			"hint": "Минулого разу всі підходи по {{reps}} — спробуй {{weight}} кг",
+			"hintTake": "Взяти",
+			"setTitle": "Підхід {{n}}",
+			"setDone": "Підхід виконано",
+			"setDoneAria": "Підхід {{n}} виконано",
+			"setEdit": "Підхід {{n}}, змінити",
+			"addSet": "+ Підхід",
+			"addWarmup": "+ Розминка",
+			"warmupMark": "Р",
+			"fromChat": "З чату",
+			"offline": "Немає зв'язку — збережу, щойно з'явиться.",
+			"syncError": "Не вдалося зберегти підходи. Спробуй ще раз.",
+			"closedByChat": "Це тренування вже закрите в чаті.",
+			"discarded": "Нічого не записано",
+			"loadError": "Не вдалося завантажити тренування.",
+			"unitMin": "хв",
+			"minutesPlaceholder": "Хвилини",
+			"minutesLess": "Менше хвилин",
+			"minutesMore": "Більше хвилин",
+			"minutesEdit": "хв: ввести число",
+			"exit": {
+				"title": "Вийти без збереження?",
+				"summary": "Зроблено {{sets}} за {{minutes}}.",
+				"description": "{{summary}} Можна продовжити пізніше — тренування закриється саме, якщо від останнього підходу мине понад {{hours}} {{unit}}.",
+				"hoursUnit_one": "година",
+				"hoursUnit_few": "години",
+				"hoursUnit_many": "годин",
+				"hoursUnit_other": "години",
+				"discard": "Вийти без збереження",
+				"cancel": "Скасувати"
+			}
+		},
+		"form": {
+			"pickOne": "Познач хоча б одну вправу",
+			"close": "Закрити",
+			"title": "Заповнити",
+			"when": "Коли",
+			"whenTitle": "Коли було",
+			"day": "День",
+			"start": "Початок",
+			"whenHint": "Заднім числом — до 3 днів, як для їжі.",
+			"whenDone": "Готово",
+			"today": "Сьогодні",
+			"yesterday": "Вчора",
+			"duration": "Тривалість",
+			"save": "Зберегти",
+			"asPlanned": "Як за планом",
+			"restore": "Повернути",
+			"skipped": "не робили",
+			"skip": "Не робили",
+			"setChanged": "змінено",
+			"and": "і",
+			"setOrdinal": "{{n}}-й",
+			"changed": "Змінено: {{sets}} · план {{plan}}",
+			"changedSets_one": "{{list}} підхід",
+			"changedSets_few": "{{list}} підходи",
+			"changedSets_many": "{{list}} підходів",
+			"changedSets_other": "{{list}} підходи",
+			"loadError": "Не вдалося завантажити програму.",
+			"validation": {
+				"range": "Вкажи від {{min}} до {{max}}",
+				"durationRequired": "Вкажи тривалість",
+				"dateOutOfRange": "Обери сьогодні або один із трьох попередніх днів",
+				"startTimeInvalid": "Вкажи час, наприклад 19:00",
+				"startInFuture": "Початок у майбутньому — вкажи раніше."
+			}
+		},
 		"journal": {
 			"week": {
 				"title": "Цей тиждень",
@@ -1101,6 +1210,7 @@
 				"count_many": "{{count}} тренувань",
 				"count_other": "{{count}} тренування",
 				"none": "ще без тренувань",
+				"programProgress": "{{done}} з {{total}} за програмою",
 				"noneInHeader": "Цей тиждень: ще без тренувань"
 			},
 			"rowTitle": "{{kind}} · {{duration}}",
@@ -1483,6 +1593,7 @@
 		"dayTraining": "{{day}}: тренування — {{groups}}",
 		"dayPlanned": "{{day}}: день за програмою",
 		"dayNoTraining": "{{day}}: тренувань не було",
+		"dayUpcoming": "{{day}}: ще попереду",
 		"dayPicker": "Тренування дня"
 	},
 	"recipe": {

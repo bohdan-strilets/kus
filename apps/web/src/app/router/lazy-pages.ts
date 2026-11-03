@@ -52,3 +52,9 @@ export const TrainingProgramPage = lazy(() =>
 export const TrainingTemplatePage = lazy(() =>
 	import('@/pages/training-template').then((m) => ({ default: m.TrainingTemplatePage })),
 )
+export const TrainingLivePage = lazy(() =>
+	import('@/pages/training-live').then((m) => ({ default: m.TrainingLivePage })),
+)
+export const TrainingFillPage = lazy(() =>
+	import('@/pages/training-fill').then((m) => ({ default: m.TrainingFillPage })),
+)

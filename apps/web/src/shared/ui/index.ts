@@ -17,6 +17,9 @@ export { Button, type ButtonProps } from './button'
 export { Checkbox, type CheckboxProps } from './checkbox'
 export { Chip, type ChipProps } from './chip'
 export { ConfirmDialog, type ConfirmDialogProps } from './confirm-dialog'
+export { DashedAction } from './dashed-action'
+export { DialogCard, type DialogCardProps } from './dialog-card'
+export { DialogScrim, type DialogScrimProps } from './dialog-scrim'
 export { DecorBackdrop, DecorCrumb, type DecorCrumbProps } from './decor-backdrop'
 export { FormAlert, type FormAlertProps } from './form-alert'
 export {
@@ -77,6 +80,7 @@ export {
 	type SegmentedToggleProps,
 } from './segmented-toggle'
 export { Skeleton, type SkeletonProps } from './skeleton'
+export { SetStepper, type SetStepperProps } from './set-stepper'
 export { Stepper, type StepperProps } from './stepper'
 export { StickyActions, type StickyActionsProps } from './sticky-actions'
 export { Sparkline, type SparklineMarks, type SparklineProps } from './sparkline'

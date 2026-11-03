@@ -1,3 +1,4 @@
+import type { WorkoutResponse } from '@kus/shared'
 import { useTranslation } from 'react-i18next'
 
 import { GroupTag } from '@/entities/workout'
@@ -9,10 +10,11 @@ import { SessionExercise } from './SessionExercise'
 
 export interface SessionSectionProps {
 	section: SessionSectionData
+	workoutKcal?: WorkoutResponse['kcal']
 }
 
 /** A card of one group (training-session): the tag with a summary on the right, the exercises below. */
-export const SessionSection = ({ section }: SessionSectionProps) => {
+export const SessionSection = ({ section, workoutKcal }: SessionSectionProps) => {
 	const { t } = useTranslation()
 	const summary = formatSectionSummary(section, t)
 
@@ -28,7 +30,7 @@ export const SessionSection = ({ section }: SessionSectionProps) => {
 			</div>
 			<ul className="flex flex-col">
 				{section.exercises.map((exercise) => (
-					<SessionExercise key={exercise.id} exercise={exercise} />
+					<SessionExercise key={exercise.id} exercise={exercise} workoutKcal={workoutKcal} />
 				))}
 			</ul>
 		</Surface>

@@ -74,7 +74,7 @@ describe('getExerciseLog', () => {
 		expect(getExerciseLog(cardioOnly, ['c1'], t).counts).toBe('кардіо 15 хв')
 	})
 
-	it('keeps cardio out of the counter next to strength: it would not stay on one row', () => {
+	it('adds cardio to the counter next to strength: it fits two rows', () => {
 		const mixed = {
 			...session,
 			exercises: [
@@ -90,6 +90,57 @@ describe('getExerciseLog', () => {
 			],
 		}
 
-		expect(getExerciseLog(mixed, ['e2'], t).counts).toBe('2 вправи · 6 підходів')
+		expect(getExerciseLog(mixed, ['e2'], t).counts).toBe('2 вправи · 6 підходів · кардіо 25 хв')
+	})
+})
+
+describe('getExerciseLog: live planned sessions', () => {
+	const DONE_AT = '2026-11-02T10:00:00.000Z'
+	const planned = (doneAt: string | null) => ({
+		reps: 8,
+		weightKg: 50,
+		durationSec: null,
+		distanceM: null,
+		isWarmup: false,
+		doneAt,
+	})
+
+	it('2 exercises / 4 sets planned, 1 exercise / 2 sets done: «1 вправа · 2 підходи»', () => {
+		const live = {
+			startedAt: null,
+			finishedAt: null,
+			exercises: [
+				makeExercise({
+					id: 'l1',
+					clientKey: 'k1',
+					performedAt: at('17:30'),
+					sets: [planned(DONE_AT), planned(DONE_AT)],
+				}),
+				makeExercise({
+					id: 'l2',
+					name: 'Присід',
+					clientKey: 'k2',
+					performedAt: at('17:40'),
+					sets: [planned(null), planned(null)],
+				}),
+			],
+		}
+
+		expect(getExerciseLog(live, ['l1', 'l2'], t).counts).toBe('1 вправа · 2 підходи')
+	})
+
+	it('keeps «кардіо 10 хв» in the footer under the title with a start time', () => {
+		const withStart = makeWorkout({
+			startedAt: at('17:30'),
+			exercises: [
+				makeExercise({ id: 'e1', sets: [planned(null), planned(null)] }),
+				makeExercise({ id: 'e2', name: 'Присід', sets: [planned(null)] }),
+				makeExercise({ id: 'c1', kind: 'CARDIO', sets: [], durationMin: 10 }),
+			],
+		})
+
+		const view = getExerciseLog(withStart, ['e1', 'e2', 'c1'], t)
+
+		expect(view.counts).toBe('2 вправи · 3 підходи · кардіо 10 хв')
 	})
 })

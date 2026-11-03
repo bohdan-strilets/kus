@@ -65,3 +65,19 @@ export const TRAINING_TEMPLATE_ROUTE = `${TAB_ROUTES.training}/template/:id`
 
 export const getTrainingTemplatePath = (templateId: string): string =>
 	`${TAB_ROUTES.training}/template/${templateId}`
+
+/**
+ * The live session and the form «Заповнити»: full-screen, static, so the `:id` session route never
+ * takes them for a workout id.
+ */
+export const TRAINING_LIVE_ROUTE = `${TAB_ROUTES.training}/live`
+export const TRAINING_FILL_ROUTE = `${TAB_ROUTES.training}/fill`
+
+/** The query parameter of the form: the template to fill in. */
+export const TRAINING_FILL_TEMPLATE_PARAM = 'templateId'
+
+/** The form of a template; without one (null) an empty session. */
+export const getTrainingFillPath = (templateId: string | null): string =>
+	templateId === null
+		? TRAINING_FILL_ROUTE
+		: `${TRAINING_FILL_ROUTE}?${TRAINING_FILL_TEMPLATE_PARAM}=${templateId}`

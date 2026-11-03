@@ -18,7 +18,13 @@ import {
 	TRAINING_STATS_ROUTE,
 	getTrainingTemplatePath,
 } from '@/shared/config'
-import { makeExercise, makeWorkout, makeWorkoutStats, renderWithProviders } from '@/shared/testing'
+import {
+	makeExercise,
+	makeLiveResponse,
+	makeWorkout,
+	makeWorkoutStats,
+	renderWithProviders,
+} from '@/shared/testing'
 
 import { TrainingPage } from './TrainingPage'
 
@@ -231,12 +237,12 @@ describe('TrainingPage', () => {
 		expect(
 			screen.getByRole('button', { name: 'Понеділок, 26 жовтня: тренування — груди' }),
 		).toBeTruthy()
-		expect(
-			screen.getByRole('button', { name: 'Вівторок, 27 жовтня: тренувань не було' }),
-		).toBeTruthy()
-		const links = screen
-			.getAllByRole('link')
-			.filter((link) => link.getAttribute('href') !== TRAINING_STATS_ROUTE)
+		expect(screen.getByRole('button', { name: 'Вівторок, 27 жовтня: ще попереду' })).toBeTruthy()
+		const links = screen.getAllByRole('link').filter(
+			(link) =>
+				// the stats tile and «Скласти програму в чаті» of the empty-workout card are not journal rows
+				![TRAINING_STATS_ROUTE, ROUTES.chat].includes(link.getAttribute('href') ?? ''),
+		)
 		expect(links.map((link) => link.getAttribute('href'))).toEqual([
 			'/app/training/0199b3a4-0000-7000-8000-0000000000f3',
 			'/app/training/0199b3a4-0000-7000-8000-0000000000f2',
@@ -493,7 +499,7 @@ describe('TrainingPage week strip', () => {
 		renderPage(onPathname)
 
 		const quietDay = await screen.findByRole('button', {
-			name: 'Вівторок, 27 жовтня: тренувань не було',
+			name: 'Вівторок, 27 жовтня: ще попереду',
 		})
 		fireEvent.click(quietDay)
 
@@ -540,8 +546,191 @@ describe('TrainingPage week strip', () => {
 		expect(
 			await screen.findByRole('button', { name: 'Середа, 28 жовтня: день за програмою' }),
 		).toBeTruthy()
-		expect(
-			screen.getByRole('button', { name: 'Четвер, 29 жовтня: тренувань не було' }),
-		).toBeTruthy()
+		expect(screen.getByRole('button', { name: 'Четвер, 29 жовтня: ще попереду' })).toBeTruthy()
+	})
+})
+
+describe('TrainingPage: the start of a session follows the strip', () => {
+	const CURRENT = '0199b3a4-0000-7000-8000-0000000000e1'
+	const LAST_WEEK = '0199b3a4-0000-7000-8000-0000000000e2'
+	const SEPTEMBER = '0199b3a4-0000-7000-8000-0000000000e3'
+	const journal = () => [
+		makeWorkout({ id: CURRENT, localDate: TODAY }),
+		makeWorkout({ id: LAST_WEEK, localDate: '2026-10-20' }),
+		makeWorkout({ id: SEPTEMBER, localDate: '2026-09-30' }),
+	]
+	const journalHrefs = (): (string | null)[] =>
+		screen
+			.getAllByRole('link')
+			.map((link) => link.getAttribute('href'))
+			.filter((href) => href?.startsWith('/app/training/0199b3a4'))
+
+	it('no program: «Порожнє тренування» on the current week, gone on a past one, back again', async () => {
+		mockApi(journal())
+		renderPage()
+
+		expect(await screen.findByText('Порожнє тренування')).toBeTruthy()
+
+		fireEvent.click(screen.getByRole('button', { name: 'Попередній тиждень' }))
+		expect(screen.queryByText('Порожнє тренування')).toBeNull()
+
+		fireEvent.click(screen.getByRole('button', { name: 'Наступний тиждень' }))
+		expect(await screen.findByText('Порожнє тренування')).toBeTruthy()
+	})
+
+	it('the journal stays the full monthly list whichever week the strip shows', async () => {
+		mockApi(journal())
+		renderPage()
+		await screen.findByText('Цей тиждень')
+		const before = journalHrefs()
+
+		fireEvent.click(screen.getByRole('button', { name: 'Попередній тиждень' }))
+
+		expect(before).toHaveLength(3)
+		expect(journalHrefs()).toEqual(before)
+		expect(screen.getByText('Вересень')).toBeTruthy()
+	})
+
+	it('an open session shows its card only on the current week', async () => {
+		mockApi(journal())
+		const base = getMock.getMockImplementation()
+		getMock.mockImplementation((url: string, config?: unknown) =>
+			url === '/live-workouts/current'
+				? Promise.resolve(reply(makeLiveResponse({ templateName: 'Верх А' })))
+				: (base?.(url, config as never) as Promise<AxiosResponse>),
+		)
+		renderPage()
+
+		expect(await screen.findByRole('button', { name: 'Продовжити' })).toBeTruthy()
+		expect(screen.queryByText('Порожнє тренування')).toBeNull()
+
+		fireEvent.click(screen.getByRole('button', { name: 'Попередній тиждень' }))
+
+		expect(screen.queryByRole('button', { name: 'Продовжити' })).toBeNull()
+	})
+
+	it('with a program the empty-session card is not drawn at all', async () => {
+		mockApi(journal(), 11, { program: makeProgram() })
+		renderPage()
+		await screen.findByText('Цей тиждень')
+
+		expect(screen.queryByText('Порожнє тренування')).toBeNull()
+	})
+})
+
+describe('TrainingPage: the order of the blocks', () => {
+	const JOURNAL_ID = '0199b3a4-0000-7000-8000-0000000000e1'
+	const OLD_ID = '0199b3a4-0000-7000-8000-0000000000e2'
+	const journal = () => [
+		makeWorkout({ id: JOURNAL_ID, localDate: TODAY }),
+		makeWorkout({ id: OLD_ID, localDate: '2026-09-30' }),
+	]
+
+	/** Every next node follows the previous one in the document, top to bottom. */
+	const expectOrder = (nodes: HTMLElement[]): void => {
+		nodes.slice(1).forEach((node, index) => {
+			const previous = nodes[index] as HTMLElement
+			expect(previous.compareDocumentPosition(node) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+		})
+	}
+
+	const mockOpenSession = () => {
+		const base = getMock.getMockImplementation()
+		getMock.mockImplementation((url: string, config?: unknown) =>
+			url === '/live-workouts/current'
+				? Promise.resolve(reply(makeLiveResponse({ templateName: 'Верх А' })))
+				: (base?.(url, config as never) as Promise<AxiosResponse>),
+		)
+	}
+
+	it('with a program: heading, week, «Наступне», templates, tiles, months', async () => {
+		mockApi(journal(), 11, { program: makeProgram() })
+		renderPage()
+
+		const week = await screen.findByText('Цей тиждень')
+		expectOrder([
+			screen.getByRole('heading', { name: 'Тренування' }),
+			week,
+			screen.getByRole('region', { name: 'Наступне' }),
+			screen.getByText('Мої шаблони'),
+			screen.getByRole('link', { name: /Статистика/ }),
+			screen.getByRole('link', { name: /Програма/ }),
+			screen.getByText('Жовтень'),
+			screen.getByText('Вересень'),
+		])
+	})
+
+	it('with a program and an open session «Іде · Продовжити» takes the place of «Наступне»', async () => {
+		mockApi(journal(), 11, { program: makeProgram() })
+		mockOpenSession()
+		renderPage()
+
+		const week = await screen.findByText('Цей тиждень')
+		const resume = await screen.findByRole('button', { name: 'Продовжити' })
+		expect(screen.queryByRole('region', { name: 'Наступне' })).toBeNull()
+		expectOrder([
+			week,
+			resume,
+			screen.getByText('Мої шаблони'),
+			screen.getByRole('link', { name: /Програма/ }),
+			screen.getByText('Жовтень'),
+		])
+	})
+
+	it('with a program «Наступне» stays when a past week is selected', async () => {
+		mockApi(journal(), 11, { program: makeProgram() })
+		renderPage()
+		await screen.findByRole('region', { name: 'Наступне' })
+
+		fireEvent.click(screen.getByRole('button', { name: 'Попередній тиждень' }))
+
+		expect(screen.queryByText('Цей тиждень')).toBeNull()
+		expect(screen.getByRole('region', { name: 'Наступне' })).toBeTruthy()
+		expect(screen.getByText('Мої шаблони')).toBeTruthy()
+	})
+
+	it('without a program: heading, week, «Порожнє тренування», tiles, months', async () => {
+		mockApi(journal())
+		renderPage()
+
+		const week = await screen.findByText('Цей тиждень')
+		expectOrder([
+			screen.getByRole('heading', { name: 'Тренування' }),
+			week,
+			screen.getByText('Порожнє тренування'),
+			screen.getByRole('link', { name: /Статистика/ }),
+			screen.getByRole('button', { name: /Програма/ }),
+			screen.getByText('Жовтень'),
+		])
+		expect(screen.queryByText('Мої шаблони')).toBeNull()
+		expect(screen.queryByRole('region', { name: 'Наступне' })).toBeNull()
+	})
+
+	it('without a program the open-session card follows the week and leaves with a past week', async () => {
+		mockApi(journal())
+		mockOpenSession()
+		renderPage()
+
+		const week = await screen.findByText('Цей тиждень')
+		expectOrder([
+			week,
+			await screen.findByRole('button', { name: 'Продовжити' }),
+			screen.getByRole('link', { name: /Статистика/ }),
+		])
+
+		fireEvent.click(screen.getByRole('button', { name: 'Попередній тиждень' }))
+
+		expect(screen.queryByRole('button', { name: 'Продовжити' })).toBeNull()
+		expect(screen.getByRole('link', { name: /Статистика/ })).toBeTruthy()
+	})
+
+	it('the empty state has no week strip', async () => {
+		mockApi([])
+		renderPage()
+
+		await screen.findByText('Тут будуть твої тренування')
+
+		expect(screen.queryByRole('button', { name: 'Попередній тиждень' })).toBeNull()
+		expect(screen.queryByText('Цей тиждень')).toBeNull()
 	})
 })

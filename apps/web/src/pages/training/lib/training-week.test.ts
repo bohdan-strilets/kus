@@ -212,3 +212,38 @@ describe('getWeekSubtitle', () => {
 		expect(getWeekSubtitle({ count: 2, minutes: 0 }, t)).toBe('2 тренування')
 	})
 })
+
+describe('getTrainingWeekDays: the spoken label of an empty day', () => {
+	const labelsOf = (weekdays: number[]): (string | undefined)[] =>
+		getTrainingWeekDays({
+			summary: getWeekSummary([], WEDNESDAY),
+			today: WEDNESDAY,
+			programWeekdays: new Set(weekdays),
+			t,
+		}).map((day) => day.ariaLabel)
+
+	it('a future day without a training that is not a program day is «ще попереду»', () => {
+		const labels = labelsOf([])
+
+		expect(labels[3]).toBe('Четвер, 29 жовтня: ще попереду')
+		expect(labels[6]).toBe('Неділя, 1 листопада: ще попереду')
+	})
+
+	it('a program day ahead keeps «день за програмою»; the others ahead stay «ще попереду»', () => {
+		const labels = labelsOf([5])
+
+		expect(labels[4]).toBe("П'ятниця, 30 жовтня: день за програмою")
+		expect(labels[3]).toBe('Четвер, 29 жовтня: ще попереду')
+	})
+
+	it('a past or today empty day says «тренувань не було»', () => {
+		const labels = labelsOf([])
+
+		expect(labels[0]).toBe('Понеділок, 26 жовтня: тренувань не було')
+		expect(labels[2]).toBe('Середа, 28 жовтня: тренувань не було')
+	})
+
+	it('a past program day is still «тренувань не було»', () => {
+		expect(labelsOf([1])[0]).toBe('Понеділок, 26 жовтня: тренувань не було')
+	})
+})

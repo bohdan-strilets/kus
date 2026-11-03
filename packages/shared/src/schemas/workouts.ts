@@ -49,6 +49,9 @@ export const workoutExerciseResponseSchema = z.object({
 	templateExerciseId: z.uuid().nullable().default(null),
 	/** No weight on the bar: the body is the load; null = unknown. */
 	isBodyweight: z.boolean().nullable().default(null),
+	/** Calories the person named or a device showed for this exercise (cardio); null when none. */
+	kcalBurned: z.number().nullable().default(null),
+	kcalSource: exerciseSourceSchema.nullable().catch(null),
 	sets: z.array(workoutSetResponseSchema),
 	/**
 	 * WEIGHT: a heavier set than ever before; DISTANCE: a longer one; REPS: more reps in a set without

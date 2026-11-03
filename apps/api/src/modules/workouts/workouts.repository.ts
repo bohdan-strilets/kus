@@ -71,7 +71,18 @@ export interface ExerciseWrite {
 	performedAt: Date
 	/** The message the row came from when not the workout's own (a replace keeps the earlier one). */
 	sourceMessageId?: string | null
-	sets: { position: number; reps: number | null; weightKg: number | null; isWarmup: boolean }[]
+	/** A chat rewrite of an exercise of the live mode keeps its key, template exercise and flag. */
+	clientKey?: string | null
+	templateExerciseId?: string | null
+	isBodyweight?: boolean | null
+	sets: {
+		position: number
+		reps: number | null
+		weightKg: number | null
+		isWarmup: boolean
+		/** Set only for the sets of a rewritten live exercise; the chat's own sets have none. */
+		doneAt?: Date | null
+	}[]
 }
 
 const toExerciseCreate = (
@@ -91,6 +102,9 @@ const toExerciseCreate = (
 		localDate: write.localDate,
 		sourceMessageId:
 			exercise.sourceMessageId === undefined ? write.sourceMessageId : exercise.sourceMessageId,
+		clientKey: exercise.clientKey ?? null,
+		templateExerciseId: exercise.templateExerciseId ?? null,
+		isBodyweight: exercise.isBodyweight ?? null,
 		sets: {
 			create: exercise.sets.map((set) => ({ ...set, userId: write.userId })),
 		},

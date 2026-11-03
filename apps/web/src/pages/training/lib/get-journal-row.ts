@@ -3,7 +3,13 @@ import type { TFunction } from 'i18next'
 
 import { formatWorkoutDuration, formatWorkoutKind } from '@/entities/workout'
 import { getTrainingSessionPath } from '@/shared/config'
-import { formatDayMonth, formatWeekdayLong, formatWeekdayShort, toCalendarDate } from '@/shared/lib'
+import {
+	formatDayMonth,
+	formatTime,
+	formatWeekdayLong,
+	formatWeekdayShort,
+	toCalendarDate,
+} from '@/shared/lib'
 
 import { GROUP_TAGS_MAX, GROUP_TAGS_MAX_WITH_RECORDS } from './training.constants'
 
@@ -18,6 +24,8 @@ export interface JournalRow {
 	title: string
 	/** The template of a program day, «Тренування А»: shown small and muted after the title. */
 	templateName: string | null
+	/** «07:10»: the start, for the rows of a day's sheet; null elsewhere and without a start. */
+	time: string | null
 	groups: TrainingGroupKey[]
 	/** Groups that did not fit into the row: «+5». */
 	hiddenGroupCount: number
@@ -68,7 +76,13 @@ const getSpokenTitle = (workout: WorkoutResponse, t: TFunction): string => {
 }
 
 /** Everything a row of the journal shows, as text: the view stays presentational. */
-export const getJournalRow = (workout: WorkoutResponse, t: TFunction): JournalRow => {
+export const getJournalRow = (
+	workout: WorkoutResponse,
+	t: TFunction,
+	{ isTimeShown = false }: { isTimeShown?: boolean } = {},
+): JournalRow => {
+	const time =
+		isTimeShown && workout.startedAt !== null ? formatTime(new Date(workout.startedAt)) : null
 	const groups = getWorkoutGroups(workout)
 	const recordCount = getRecordCount(workout)
 	const limit = recordCount > 0 ? GROUP_TAGS_MAX_WITH_RECORDS : GROUP_TAGS_MAX
@@ -76,6 +90,7 @@ export const getJournalRow = (workout: WorkoutResponse, t: TFunction): JournalRo
 	const ariaLabel = [
 		t('training.journal.rowDate', { weekday: formatWeekdayLong(date), date: formatDayMonth(date) }),
 		getSpokenTitle(workout, t),
+		time ?? '',
 		groups.map((group) => t(`muscle.${group}`)).join(', '),
 		recordCount > 0 ? t('training.journal.records', { count: recordCount }) : '',
 	]
@@ -89,6 +104,7 @@ export const getJournalRow = (workout: WorkoutResponse, t: TFunction): JournalRo
 		day: String(date.getDate()),
 		title: getTitle(workout, t, false),
 		templateName: getRowTemplateName(workout),
+		time,
 		groups: groups.slice(0, limit),
 		hiddenGroupCount: Math.max(0, groups.length - limit),
 		recordCount,

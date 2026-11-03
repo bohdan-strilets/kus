@@ -4,6 +4,7 @@ import { Link } from 'react-router'
 
 import { formatProgramTemplateMeta, getExerciseGroup } from '@/entities/program'
 import { DETAIL_SEPARATOR, GroupDot } from '@/entities/workout'
+import { StartWorkoutButtons } from '@/features/live-workout'
 import { getTrainingTemplatePath } from '@/shared/config'
 import { Hamster, Text } from '@/shared/ui'
 
@@ -40,6 +41,7 @@ export const NextWorkoutCard = ({ template }: { template: ProgramTemplateRespons
 					)
 				})}
 			</ul>
+			<StartWorkoutButtons templateId={template.id} className="relative z-10 pt-1" />
 			<span className="absolute top-10 -right-1.5">
 				<Hamster mood="dumbbell" size={HAMSTER_SIZE} />
 			</span>

@@ -12,6 +12,7 @@ import { DecorBackdrop, InlineError } from '@/shared/ui'
 
 import { getTrainingRange } from '../lib/get-training-range'
 import { groupWorkoutsByMonth } from '../lib/group-workouts'
+import { NoProgramStart } from './NoProgramStart'
 import { TrainingEmpty } from './TrainingEmpty'
 import { TrainingHeader } from './TrainingHeader'
 import { TrainingInvite } from './TrainingInvite'
@@ -23,8 +24,8 @@ import { TrainingTiles } from './TrainingTiles'
 import { TrainingWeek } from './TrainingWeek'
 
 /**
- * design/docs/screens.md → Тренування: with a program «Наступне» and the templates on top, then the
- * week in a card and the trainings by month, newest first. Without a program (and with no
+ * design/docs/screens.md → Тренування: the week in a card on top; with a program «Наступне» and the templates under it, then the
+ * stat tiles and the trainings by month, newest first. Without a program (and with no
  * training yet) the first visit invites to the setup in the chat.
  */
 export const TrainingPage = () => {
@@ -68,6 +69,7 @@ const TrainingScreen = ({ timeZone }: { timeZone: string }) => {
 					{program !== undefined && (
 						<div className="flex flex-col gap-2.5 px-gutter pb-2">
 							{program && <TrainingProgramBlocks program={program} />}
+							{hasNoProgram && <NoProgramStart />}
 							{tiles}
 						</div>
 					)}
@@ -80,11 +82,18 @@ const TrainingScreen = ({ timeZone }: { timeZone: string }) => {
 			)}
 			{!isEmpty && (
 				<div className="flex flex-col gap-2.5 px-gutter pb-2">
+					{workouts && (
+						<TrainingWeek
+							today={today}
+							journal={workouts}
+							program={program}
+							// a past week is a look back: the start of a new session stays with the current one
+							renderCurrentOnly={hasNoProgram ? () => <NoProgramStart /> : undefined}
+						/>
+					)}
 					{workouts && programQuery.isPending && <TrainingProgramSkeleton />}
 					{workouts && program && <TrainingProgramBlocks program={program} />}
-					{workouts && program && tiles}
-					{workouts && <TrainingWeek today={today} journal={workouts} program={program} />}
-					{workouts && !program && tiles}
+					{workouts && tiles}
 					{workouts &&
 						groupWorkoutsByMonth(workouts).map((month) => (
 							<TrainingMonth key={month.monthKey} month={month} />

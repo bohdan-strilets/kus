@@ -3,12 +3,12 @@ import { Reorder } from 'motion/react'
 import { type Dispatch, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { Surface, Text } from '@/shared/ui'
+import { DashedAction, Surface, Text } from '@/shared/ui'
 
+import { createDraftExercise } from '../lib/new-exercise'
 import type { TemplateDraftAction } from '../lib/template-draft.reducer'
 import type { DraftExercise } from '../lib/template-draft.types'
-import { AddExerciseSheet } from './AddExerciseSheet'
-import { DashedAction } from './DashedAction'
+import { ExercisePickerSheet } from '@/entities/workout'
 import { EditorExerciseRow } from './EditorExerciseRow'
 import { ExerciseTargetSheet } from './ExerciseTargetSheet'
 
@@ -90,8 +90,8 @@ export const TemplateEditor = ({ exercises, dispatch }: TemplateEditorProps) => 
 				onClose={() => {
 					setTargetKey(null)
 				}}
-				onSave={(key, target) => {
-					dispatch({ type: 'setTarget', key, target })
+				onSave={(key, target, isBodyweight) => {
+					dispatch({ type: 'setTarget', key, target, isBodyweight })
 					setTargetKey(null)
 				}}
 				onRemove={(key) => {
@@ -99,11 +99,11 @@ export const TemplateEditor = ({ exercises, dispatch }: TemplateEditorProps) => 
 					setTargetKey(null)
 				}}
 			/>
-			<AddExerciseSheet
+			<ExercisePickerSheet
 				isOpen={isAddOpen}
 				onOpenChange={setIsAddOpen}
-				onAdd={(exercise) => {
-					dispatch({ type: 'add', exercise })
+				onPick={(pick) => {
+					dispatch({ type: 'add', exercise: createDraftExercise(pick) })
 					setIsAddOpen(false)
 				}}
 			/>

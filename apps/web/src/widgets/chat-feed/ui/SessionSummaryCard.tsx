@@ -6,14 +6,13 @@ import {
 	formatWorkoutDuration,
 	formatWorkoutKcal,
 	formatWorkoutKind,
+	getSessionSummary,
 	GroupTag,
 	KcalNote,
 } from '@/entities/workout'
 import { getTrainingSessionPath } from '@/shared/config'
 import { cn, formatTime } from '@/shared/lib'
 import { Badge, Icon, Surface, Text } from '@/shared/ui'
-
-import { getSessionSummary } from '../lib/get-session-summary'
 
 const RECORD_ICON_SIZE = 16
 const CHEVRON_SIZE = 16

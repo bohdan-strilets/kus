@@ -62,6 +62,20 @@
 	);
 }
 
+/* The strip of a running workout sits over the raised «Чат» circle: the nav (56 tab + 2×6 padding),
+   its bottom gap and the 30 px the circle sticks out (mockups/training-home.html: margin 30) */
+@utility bottom-mini-strip {
+	bottom: calc(--spacing(17) + max(--spacing(5), env(safe-area-inset-bottom)) + --spacing(7.5));
+}
+
+/* The content room under the nav and the 48 px strip over it, with a little air */
+@utility pb-nav-room-strip {
+	padding-bottom: calc(
+		--spacing(17) + max(--spacing(5), env(safe-area-inset-bottom)) + --spacing(3) + --spacing(7.5) +
+			--spacing(14)
+	);
+}
+
 /* Top of the toast stack: right under the header (ScreenHeader: 22 top + 44 button + 8 bottom =
    74 px) below the notch, so a toast never covers the composer or a sheet's «Зберегти» */
 @utility top-below-header {

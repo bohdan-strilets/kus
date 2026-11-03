@@ -1,4 +1,4 @@
-import type { WorkoutExerciseResponse } from '@kus/shared'
+import { getDoneWork, type DoneWorkSource } from './get-done-work'
 
 export interface WorkoutCounts {
 	/** Strength exercises only: cardio is told apart (design rule of 0.10.0). */
@@ -12,13 +12,13 @@ export interface WorkoutCounts {
 
 /**
  * Counts of a session as the chat cards and the session screen say them: «7 вправ · 20 підходів ·
- * кардіо 25 хв». Strength only for exercises and sets, warm-ups excluded; cardio apart.
+ * кардіо 25 хв». Strength only for exercises and sets, warm-ups excluded; cardio apart. Only done
+ * work counts (see `getDoneWork`): planned sets of an open live session stay out.
  */
-export const getWorkoutCounts = (
-	exercises: readonly Pick<WorkoutExerciseResponse, 'kind' | 'sets' | 'durationMin'>[],
-): WorkoutCounts => {
-	const cardio = exercises.filter((exercise) => exercise.kind === 'CARDIO')
-	const strength = exercises.filter((exercise) => exercise.kind !== 'CARDIO')
+export const getWorkoutCounts = (exercises: readonly DoneWorkSource[]): WorkoutCounts => {
+	const done = getDoneWork(exercises)
+	const cardio = done.filter((exercise) => exercise.kind === 'CARDIO')
+	const strength = done.filter((exercise) => exercise.kind !== 'CARDIO')
 	const minutes = cardio.reduce((sum, exercise) => sum + (exercise.durationMin ?? 0), 0)
 	return {
 		exerciseCount: strength.length,

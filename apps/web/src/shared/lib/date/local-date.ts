@@ -11,6 +11,7 @@ const getParts = (date: Date, timeZone: string): Record<string, string> => {
 		month: '2-digit',
 		day: '2-digit',
 		hour: '2-digit',
+		minute: '2-digit',
 		hourCycle: 'h23',
 	}).formatToParts(date)
 	return Object.fromEntries(parts.map((part) => [part.type, part.value]))
@@ -24,6 +25,12 @@ export const getLocalDateString = (date: Date, timeZone: string): string => {
 
 export const getLocalHour = (date: Date, timeZone: string): number =>
 	Number(getParts(date, timeZone).hour)
+
+/** `HH:mm` of the moment in that timezone (the start time a form is filled with). */
+export const getLocalTime = (date: Date, timeZone: string): string => {
+	const { hour = '00', minute = '00' } = getParts(date, timeZone)
+	return `${hour}:${minute}`
+}
 
 /** `2026-10-07`, −1 → `2026-10-06`; plain calendar arithmetic, no timezone involved. */
 export const shiftLocalDate = (localDate: string, days: number): string => {

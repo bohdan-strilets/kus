@@ -3,6 +3,7 @@ export {
 	fromCalendarDate,
 	getLocalDateString,
 	getLocalHour,
+	getLocalTime,
 	shiftLocalDate,
 	toCalendarDate,
 } from './local-date'

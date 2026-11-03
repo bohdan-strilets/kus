@@ -61,7 +61,9 @@ export const getTrainingWeekDays = ({
 		const dayName = formatDayHeading(date)
 		const getAriaLabel = (): string => {
 			if (day.hasTraining) return getTrainedLabel(dayName, groups, day.workouts, t)
-			return t(isPlanned ? 'week.dayPlanned' : 'week.dayNoTraining', { day: dayName })
+			if (isPlanned) return t('week.dayPlanned', { day: dayName })
+			const key = day.localDate > today ? 'week.dayUpcoming' : 'week.dayNoTraining'
+			return t(key, { day: dayName })
 		}
 		return {
 			date,

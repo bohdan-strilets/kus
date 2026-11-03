@@ -2,14 +2,24 @@
 import type { ProgramExerciseResponse, ProgramResponse } from '@kus/shared'
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { AxiosError, AxiosHeaders, type AxiosResponse } from 'axios'
-import { Route, Routes } from 'react-router'
+import { Route, Routes, useLocation } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { httpClient } from '@/shared/api'
-import { TRAINING_PROGRAM_ROUTE, TRAINING_TEMPLATE_ROUTE } from '@/shared/config'
-import { renderWithProviders } from '@/shared/testing'
+import {
+	TRAINING_FILL_ROUTE,
+	TRAINING_LIVE_ROUTE,
+	TRAINING_PROGRAM_ROUTE,
+	TRAINING_TEMPLATE_ROUTE,
+} from '@/shared/config'
+import { makeLiveResponse, renderWithProviders } from '@/shared/testing'
 
 import { TrainingTemplatePage } from './TrainingTemplatePage'
+
+const LocationProbe = () => {
+	const { pathname, search } = useLocation()
+	return <span data-testid="location">{`${pathname}${search}`}</span>
+}
 
 const getMock = vi.spyOn(httpClient, 'get')
 const postMock = vi.spyOn(httpClient, 'post')
@@ -449,5 +459,134 @@ describe('TrainingTemplatePage', () => {
 			exerciseId: null,
 			muscleGroup: 'BACK',
 		})
+	})
+})
+
+describe('TrainingTemplatePage: [Почати] [Заповнити]', () => {
+	it('shows both at the bottom in the view mode', async () => {
+		mockProgram()
+		renderPage()
+		await screen.findByRole('heading', { name: 'Тренування Б' })
+
+		const begin = screen.getByRole('button', { name: 'Почати' })
+		const fill = screen.getByRole('button', { name: 'Заповнити' })
+
+		expect(begin).toBeTruthy()
+		expect(fill).toBeTruthy()
+		// after the legend, i.e. below the exercises
+		const legend = screen.getByText(/^Ціль: підходи × повтори/)
+		expect(legend.compareDocumentPosition(begin) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+	})
+
+	it('hides both in the edit mode and brings them back after «Готово»', async () => {
+		mockProgram()
+		renderPage()
+		await startEditing()
+
+		expect(screen.queryByRole('button', { name: 'Почати' })).toBeNull()
+		expect(screen.queryByRole('button', { name: 'Заповнити' })).toBeNull()
+
+		fireEvent.click(screen.getByRole('button', { name: 'Готово' }))
+
+		expect(await screen.findByRole('button', { name: 'Почати' })).toBeTruthy()
+		expect(screen.getByRole('button', { name: 'Заповнити' })).toBeTruthy()
+	})
+
+	it('[Почати] starts the session of this template and opens the live screen', async () => {
+		mockProgram()
+		postMock.mockResolvedValue(reply(makeLiveResponse()))
+		const onPathname = vi.fn()
+		renderPage(onPathname)
+
+		fireEvent.click(await screen.findByRole('button', { name: 'Почати' }))
+
+		await waitFor(() => {
+			expect(onPathname).toHaveBeenLastCalledWith(TRAINING_LIVE_ROUTE)
+		})
+		expect(postMock).toHaveBeenCalledTimes(1)
+		expect(postMock).toHaveBeenCalledWith('/live-workouts', { templateId: TEMPLATE_ID })
+	})
+
+	it('[Почати] that fails stays on the screen and does not navigate', async () => {
+		mockProgram()
+		postMock.mockRejectedValue(new AxiosError('Network Error', AxiosError.ERR_NETWORK))
+		const onPathname = vi.fn()
+		renderPage(onPathname)
+
+		fireEvent.click(await screen.findByRole('button', { name: 'Почати' }))
+
+		await waitFor(() => {
+			expect(postMock).toHaveBeenCalledTimes(1)
+		})
+		expect(onPathname).not.toHaveBeenLastCalledWith(TRAINING_LIVE_ROUTE)
+		expect(screen.getByRole('heading', { name: 'Тренування Б' })).toBeTruthy()
+	})
+
+	it('[Заповнити] opens the form of this template (?templateId=…) without starting a session', async () => {
+		mockProgram()
+		renderWithProviders(
+			<Routes>
+				<Route path={TRAINING_TEMPLATE_ROUTE} element={<TrainingTemplatePage />} />
+				<Route path={TRAINING_FILL_ROUTE} element={<LocationProbe />} />
+			</Routes>,
+			{ route: TEMPLATE_PATH },
+		)
+
+		fireEvent.click(await screen.findByRole('button', { name: 'Заповнити' }))
+
+		expect((await screen.findByTestId('location')).textContent).toBe(
+			`${TRAINING_FILL_ROUTE}?templateId=${TEMPLATE_ID}`,
+		)
+		expect(postMock).not.toHaveBeenCalled()
+	})
+})
+
+describe('TrainingTemplatePage: where [Почати] [Заповнити] sit', () => {
+	it('come after the last exercise and the legend, as the last block of the content', async () => {
+		mockProgram()
+		renderPage()
+		await screen.findByRole('heading', { name: 'Тренування Б' })
+
+		const begin = screen.getByRole('button', { name: 'Почати' })
+		const fill = screen.getByRole('button', { name: 'Заповнити' })
+		const lastExercise = screen.getByText('Підйоми ніг у висі')
+		const legend = screen.getByText(/^Ціль: підходи × повтори/)
+
+		for (const button of [begin, fill]) {
+			expect(
+				lastExercise.compareDocumentPosition(button) & Node.DOCUMENT_POSITION_FOLLOWING,
+			).toBeTruthy()
+			expect(legend.compareDocumentPosition(button) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+		}
+		expect(begin.parentElement).toBe(fill.parentElement)
+	})
+
+	it('are pushed to the bottom of a content wrapper that fills the screen (mt-auto in flex-1)', async () => {
+		mockProgram()
+		renderPage()
+		await screen.findByRole('heading', { name: 'Тренування Б' })
+
+		const buttons = screen.getByRole('button', { name: 'Почати' }).parentElement as HTMLElement
+		const content = buttons.parentElement as HTMLElement
+
+		expect(buttons.className).toContain('mt-auto')
+		expect(content.className).toContain('flex-1')
+		expect(content.className).toContain('flex-col')
+		expect(content.lastElementChild).toBe(buttons)
+	})
+
+	it('leave the content wrapper in the edit mode and return to its end after «Готово»', async () => {
+		mockProgram()
+		renderPage()
+		await startEditing()
+
+		expect(screen.queryByRole('button', { name: 'Почати' })).toBeNull()
+
+		fireEvent.click(screen.getByRole('button', { name: 'Готово' }))
+
+		const buttons = (await screen.findByRole('button', { name: 'Почати' }))
+			.parentElement as HTMLElement
+		expect(buttons.className).toContain('mt-auto')
+		expect(buttons.parentElement?.lastElementChild).toBe(buttons)
 	})
 })

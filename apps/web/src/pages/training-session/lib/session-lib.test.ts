@@ -5,7 +5,7 @@ import { i18n } from '@/shared/i18n'
 import { makeExercise, makeWorkout } from '@/shared/testing'
 
 import { formatSectionSummary } from './format-section-summary'
-import { formatSessionHeader, formatSessionTime } from './format-session-header'
+import { formatSessionHeader, formatSessionTime } from '@/entities/workout'
 import { getSessionView, isBodyweightExercise } from './session-view'
 
 const t = i18n.t.bind(i18n)
@@ -149,10 +149,10 @@ const session = (overrides: Partial<WorkoutResponse> = {}): WorkoutResponse =>
 	})
 
 describe('formatSessionHeader', () => {
-	it('names the place and a named duration, with the start only', () => {
+	it('names the place and a named duration, with the range', () => {
 		const header = formatSessionHeader(session({ durationMin: 62 }), t)
 		expect(header.title).toBe('Зал · 62 хв')
-		expect(header.subtitle).toMatch(/^Понеділок, 26 жовтня · \d{2}:\d{2}$/)
+		expect(header.subtitle).toMatch(/^Понеділок, 26 жовтня · \d{2}:\d{2}–\d{2}:\d{2}$/)
 	})
 
 	it('marks an estimated duration with «≈» and shows the range', () => {
@@ -183,5 +183,37 @@ describe('formatSessionTime', () => {
 		const [from, to] = (time ?? '').split('–')
 		const minutes = (text = ''): number => Number(text.slice(0, 2)) * 60 + Number(text.slice(3))
 		expect((minutes(to) - minutes(from) + 1440) % 1440).toBe(62)
+	})
+})
+
+describe('formatSessionTime: the range of a named duration', () => {
+	const START = '2026-10-26T17:30:00.000Z'
+	const range = (durationMin: number | null, estimatedDurationMin: number | null) =>
+		formatSessionTime({ startedAt: START, durationMin, estimatedDurationMin }, t)
+	const endOf = (text: string | null): string => (text ?? '').split('–')[1] ?? ''
+
+	it('a named duration makes a range in the header', () => {
+		const workout = session({ durationMin: 62 })
+
+		const header = formatSessionHeader(workout, t)
+
+		expect(range(62, null)).toMatch(/^\d{2}:\d{2}–\d{2}:\d{2}$/)
+		expect(header.subtitle).toMatch(/^Понеділок, 26 жовтня · \d{2}:\d{2}–\d{2}:\d{2}$/)
+	})
+
+	it('the named duration wins over the estimate', () => {
+		expect(endOf(range(30, 90))).toBe(endOf(range(30, null)))
+		expect(endOf(range(30, 90))).not.toBe(endOf(range(null, 90)))
+	})
+
+	it('the estimate is used only when nothing is named', () => {
+		expect(range(null, 90)).toMatch(/^\d{2}:\d{2}–\d{2}:\d{2}$/)
+	})
+
+	it('no duration at all: the start alone; no start: no time', () => {
+		expect(range(null, null)).toMatch(/^\d{2}:\d{2}$/)
+		expect(
+			formatSessionTime({ startedAt: null, durationMin: 30, estimatedDurationMin: 30 }, t),
+		).toBe(null)
 	})
 })

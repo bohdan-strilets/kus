@@ -9,6 +9,6 @@ export type WeekDayStatus = DayStatus | 'planned'
 export interface WeekDay {
 	date: Date
 	status: WeekDayStatus
-	/** A day after today: it gets a thin frame and «заплановано» / «нічого не записано» labels. */
+	/** A day after today: it gets a thin frame and «заплановано» / «ще попереду» labels. */
 	isUpcoming?: boolean
 }

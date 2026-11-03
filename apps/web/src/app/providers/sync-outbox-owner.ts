@@ -4,6 +4,7 @@ import { hashKey, type QueryClient } from '@tanstack/react-query'
 import { useFreshReplyStore } from '@/entities/message'
 import { SESSION_QUERY_KEY } from '@/entities/session'
 import { useGoalCelebrationStore } from '@/entities/stats'
+import { useLiveWorkoutStore } from '@/features/live-workout'
 import {
 	useComposerDraftStore,
 	useOutboxStore,
@@ -15,7 +16,7 @@ import {
 const SESSION_HASH = hashKey(SESSION_QUERY_KEY)
 
 /**
- * Unsent messages, the text and the photo in the composer and the pictures of sent messages
+ * Unsent messages, the text and the photo in the composer and the pictures of sent messages and the unsent sets of a live workout
  * belong to the user who typed them: a login as someone else, a logout or a dead refresh drops
  * them from memory and storage, so they are never shown or sent from another account.
  */
@@ -32,6 +33,7 @@ export const syncOutboxOwner = (queryClient: QueryClient): (() => void) => {
 		usePhotoLimitStore.getState().claim(ownerId)
 		useFreshReplyStore.getState().claim(ownerId)
 		useGoalCelebrationStore.getState().claim(ownerId)
+		useLiveWorkoutStore.getState().claim(ownerId)
 	}
 	claim()
 	return queryClient.getQueryCache().subscribe((event) => {

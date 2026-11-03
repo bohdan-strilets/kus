@@ -10,6 +10,8 @@ export interface AppLayoutProps {
 	isFixedHeight?: boolean
 	/** The nav has a raised centre button (five tabs): the content keeps 30 px more room. */
 	hasRaisedNav?: boolean
+	/** The strip of a running workout: floats over the nav, the content keeps room under it too. */
+	miniStrip?: ReactNode
 }
 
 /**
@@ -24,10 +26,12 @@ export const AppLayout = ({
 	bottomNav,
 	isFixedHeight = false,
 	hasRaisedNav = false,
+	miniStrip,
 }: AppLayoutProps) => {
 	const viewport = useViewportBox()
 	const isKeyboardOpen = useIsKeyboardOpen()
 	const hasNav = bottomNav !== undefined && !isKeyboardOpen
+	const hasStrip = hasNav && miniStrip !== undefined
 
 	return (
 		<div
@@ -42,14 +46,17 @@ export const AppLayout = ({
 						isFixedHeight ? 'overflow-hidden' : 'overflow-y-auto overscroll-contain',
 						// the home indicator is under the keyboard while typing: no room needed then
 						hasNav
-							? hasRaisedNav
-								? 'pb-nav-room-raised'
-								: 'pb-nav-room'
+							? hasStrip
+								? 'pb-nav-room-strip'
+								: hasRaisedNav
+									? 'pb-nav-room-raised'
+									: 'pb-nav-room'
 							: !isKeyboardOpen && 'pb-safe-bottom',
 					)}
 				>
 					{children}
 				</main>
+				{hasStrip && <div className="absolute inset-x-0 bottom-mini-strip z-30">{miniStrip}</div>}
 				{hasNav && <div className="absolute inset-x-0 bottom-0 z-30">{bottomNav}</div>}
 			</div>
 		</div>

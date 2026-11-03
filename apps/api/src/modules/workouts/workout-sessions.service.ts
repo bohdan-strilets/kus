@@ -22,6 +22,7 @@ import {
 } from './workout-session'
 import { getLiveFinishFields, isLiveIdle, isOpenLive } from './live-session'
 import { LiveSessionsService } from './live-sessions.service'
+import { carryLiveFields, getEditTime, matchOldEntries } from './workout-live-carry'
 import { expandSets, getLastPerformedAt, toDistanceM } from './workout-turn'
 import {
 	WorkoutDateOutOfRangeException,
@@ -163,6 +164,9 @@ export class WorkoutSessionsService {
 			// an exercise new to the session was told by this fix: its card shows on it
 			fallback: { sourceMessageId, performedAt: now },
 		})
+		const matched = matchOldEntries({ oldEntries: before.exercises, exercises: draft.exercises })
+		const startedAt = isSameDay ? before.startedAt : draft.startedAt
+		const editedAt = getEditTime({ now, startedAt })
 		const write: WorkoutWrite = {
 			...draft,
 			// a fix keeps the binding unless it names a template itself
@@ -171,12 +175,25 @@ export class WorkoutSessionsService {
 			...(isSameDay ? { localDate: before.localDate, startedAt: before.startedAt } : {}),
 			exercises: draft.exercises.map((exercise, index) => {
 				const origin = origins[index]
-				if (origin === undefined) return exercise
-				return {
-					...exercise,
-					sourceMessageId: origin.sourceMessageId,
-					performedAt: isSameDay ? origin.performedAt : exercise.performedAt,
+				const written =
+					origin === undefined
+						? exercise
+						: {
+								...exercise,
+								sourceMessageId: origin.sourceMessageId,
+								performedAt: isSameDay ? origin.performedAt : exercise.performedAt,
+							}
+				const old = matched[index]
+				// an exercise of the live mode stays that one (its key); the chat's and new ones do not get one
+				if (
+					before.source !== 'LIVE' ||
+					old === undefined ||
+					old === null ||
+					old.clientKey === null
+				) {
+					return written
 				}
+				return carryLiveFields(written, old, { editedAt, shouldKeepTime: isSameDay })
 			}),
 		}
 		const replaced = await this.workoutsRepository.replace({ id, write }, tx)

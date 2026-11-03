@@ -121,6 +121,8 @@ const toResponse = (
 		isBodyweight: exercise.isBodyweight,
 		durationMin: exercise.durationMin,
 		distanceM: exercise.distanceM,
+		kcalBurned: exercise.kcalBurned,
+		kcalSource: exercise.kcalBurned === null ? null : exercise.source,
 		record: records.find((record) => record.exerciseEntryId === exercise.id)?.type ?? null,
 		sets: exercise.sets.map((set) => ({
 			reps: set.reps,

@@ -272,6 +272,8 @@ describe('chat with an open live session (e2e, real DB, fake model)', () => {
 				source: 'PROFILE',
 			},
 		})
+		// a row the chat told earlier (no key): a live-mode row would keep its key (chat-live-replace-in-place)
+		await prisma.exerciseEntry.updateMany({ where: { workoutId: id }, data: { clientKey: null } })
 		fake.respond(
 			createCompletion([
 				workoutCall({

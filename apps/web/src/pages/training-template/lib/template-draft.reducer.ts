@@ -7,7 +7,12 @@ export type TemplateDraftAction =
 	| { type: 'reorder'; keys: readonly string[] }
 	| { type: 'move'; key: string; delta: -1 | 1 }
 	| { type: 'remove'; key: string }
-	| { type: 'setTarget'; key: string; target: TemplateExerciseTarget }
+	| {
+			type: 'setTarget'
+			key: string
+			target: TemplateExerciseTarget
+			isBodyweight?: boolean | null
+	  }
 	| { type: 'add'; exercise: DraftExercise }
 
 /** One step up or down; the same order when the row is already at that end. */
@@ -47,7 +52,13 @@ export const templateDraftReducer = (
 			return list.filter((item) => item.key !== action.key)
 		case 'setTarget':
 			return list.map((item) =>
-				item.key === action.key ? { ...item, target: action.target } : item,
+				item.key === action.key
+					? {
+							...item,
+							target: action.target,
+							...(action.isBodyweight === undefined ? {} : { isBodyweight: action.isBodyweight }),
+						}
+					: item,
 			)
 		case 'add':
 			return [...list, action.exercise]

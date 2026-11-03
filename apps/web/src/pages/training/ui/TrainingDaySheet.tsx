@@ -40,7 +40,7 @@ export const TrainingDaySheet = ({ day, isOpen, onOpenChange }: TrainingDaySheet
 			<ul aria-label={t('week.dayPicker')} className="flex flex-col divide-y divide-divider">
 				{day?.workouts.map((workout) => (
 					<li key={workout.id}>
-						<TrainingRow row={getJournalRow(workout, t)} isDateShown />
+						<TrainingRow row={getJournalRow(workout, t, { isTimeShown: true })} isDateShown />
 					</li>
 				))}
 			</ul>

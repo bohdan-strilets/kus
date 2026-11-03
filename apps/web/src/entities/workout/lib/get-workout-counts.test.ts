@@ -42,3 +42,56 @@ describe('getWorkoutCounts', () => {
 		})
 	})
 })
+
+describe('getWorkoutCounts: live sessions', () => {
+	const planned = (doneAt: string | null) => ({
+		reps: 8,
+		weightKg: 50,
+		durationSec: null,
+		distanceM: null,
+		isWarmup: false,
+		doneAt,
+	})
+	const DONE_AT = '2026-11-02T10:00:00.000Z'
+
+	it('planned sets of an open live session stay out; equals the numbers after cleanup', () => {
+		const exercises = [
+			makeExercise({
+				id: 'a',
+				clientKey: 'ka',
+				sets: [planned(DONE_AT), planned(DONE_AT), planned(null)],
+			}),
+			makeExercise({ id: 'b', clientKey: 'kb', sets: [planned(null), planned(null)] }),
+		]
+
+		expect(getWorkoutCounts(exercises)).toMatchObject({ exerciseCount: 1, setCount: 2 })
+	})
+
+	it('a done warm-up is not a working set, but the exercise still counts', () => {
+		const counts = getWorkoutCounts([
+			makeExercise({
+				clientKey: 'k',
+				sets: [{ ...planned(DONE_AT), isWarmup: true }, planned(DONE_AT)],
+			}),
+		])
+
+		expect(counts).toMatchObject({ exerciseCount: 1, setCount: 1 })
+	})
+
+	it('chat exercises count with doneAt null; live cardio without work is ignored', () => {
+		const counts = getWorkoutCounts([
+			makeExercise({ clientKey: null }),
+			makeExercise({ kind: 'CARDIO', sets: [], clientKey: 'k', durationMin: null }),
+		])
+
+		expect(counts).toEqual({ exerciseCount: 1, setCount: 3, cardioMinutes: null, hasCardio: false })
+	})
+
+	it('cardio is never an exercise or a set', () => {
+		const counts = getWorkoutCounts([
+			makeExercise({ kind: 'CARDIO', sets: [], clientKey: 'k', durationMin: 10 }),
+		])
+
+		expect(counts).toEqual({ exerciseCount: 0, setCount: 0, cardioMinutes: 10, hasCardio: true })
+	})
+})

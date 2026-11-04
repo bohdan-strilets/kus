@@ -19,6 +19,9 @@ export const buttonVariants = cva(
 				/** «Змінити» in a screen header: white glass with a chip shadow, like the back button beside it */
 				frosted: 'bg-surface/85 font-bold text-ink shadow-chip',
 				danger: 'bg-danger font-bold text-white',
+				/** on an `ink` panel (the rest timer): the main action is white, the quiet one a glass of white */
+				onDark: 'bg-surface font-bold text-ink',
+				onDarkQuiet: 'bg-white/14 font-bold text-white',
 				/** a link on a white card: primary 700, underlined («Спершу експортувати дані») */
 				text: 'bg-transparent font-bold text-primary underline underline-offset-2',
 				/** a link on the screen gradient: primary is 4.20:1 on bg-app, so primary-deep */
@@ -32,6 +35,8 @@ export const buttonVariants = cva(
 				lg: 'min-h-button rounded-button px-5 text-body',
 				md: 'min-h-10 rounded-full px-4 text-card-title after:absolute after:inset-x-0 after:-inset-y-0.5',
 				sm: 'min-h-8.5 rounded-full px-3.5 text-caption after:absolute after:inset-x-0 after:-inset-y-1.25',
+				/** the buttons of the rest timer panel: 52 (mockups/training-rest.html) */
+				panel: 'min-h-13 rounded-button px-5 text-body',
 				/** «Змінити» / «Готово» in a screen header: a real 44px box (mockups: min-height 44) */
 				header: 'min-h-tap rounded-full px-3.5 text-card-title',
 			},

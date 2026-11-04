@@ -16,9 +16,11 @@ import {
 	isExerciseDone,
 	SyncNotice,
 	useLiveSession,
+	useRestTimer,
 	useLiveWorkoutStore,
 } from '@/features/live-workout'
 import { getTrainingSessionPath } from '@/shared/config'
+import { useWakeLock } from '@/shared/lib'
 import {
 	Button,
 	countSwipeRowsBefore,
@@ -36,6 +38,8 @@ import { LiveExercise } from './LiveExercise'
 import { LiveExerciseBar, type LiveBarSegment } from './LiveExerciseBar'
 import { LiveExerciseRow } from './LiveExerciseRow'
 import { LiveHeader } from './LiveHeader'
+import { RestTimerPanel } from './RestTimerPanel'
+import { WakeLockHint } from './WakeLockHint'
 
 /**
  * mockups/training-live.html: the full screen of an open session (no bottom nav). One exercise is
@@ -55,6 +59,8 @@ export const LiveScreen = ({ live, onFinished, isClosed }: LiveScreenProps) => {
 	const session = useLiveSession(live)
 	const { draft, current, sync } = session
 	const [isPickerOpen, setIsPickerOpen] = useState(false)
+	const restTimer = useRestTimer(draft)
+	const wakeLock = useWakeLock(restTimer.state.status === 'running')
 	const doneSets = countDoneSets(draft)
 	const exercisesRef = useRef<HTMLDivElement>(null)
 	const addExerciseRef = useRef<HTMLButtonElement>(null)
@@ -124,6 +130,7 @@ export const LiveScreen = ({ live, onFinished, isClosed }: LiveScreenProps) => {
 				}}
 			/>
 			<SyncNotice status={sync.status} onRetry={sync.retry} />
+			{wakeLock.isUnavailable && <WakeLockHint />}
 			<div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto pb-4">
 				<LiveExerciseBar segments={segments} />
 				<div ref={exercisesRef} className="flex flex-col gap-2 px-gutter">
@@ -193,6 +200,7 @@ export const LiveScreen = ({ live, onFinished, isClosed }: LiveScreenProps) => {
 					</Button>
 				</div>
 			</div>
+			<RestTimerPanel timer={restTimer} />
 			<ExercisePickerSheet
 				isOpen={isPickerOpen}
 				onOpenChange={setIsPickerOpen}

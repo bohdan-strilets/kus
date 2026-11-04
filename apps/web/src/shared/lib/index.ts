@@ -109,4 +109,5 @@ export {
 } from './viewport'
 export { getHistoryIndex, useStackBack } from './history'
 export { useSvgId } from './use-svg-id'
+export { useWakeLock } from './use-wake-lock'
 export { createUuid } from './uuid'

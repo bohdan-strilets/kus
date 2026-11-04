@@ -65,6 +65,11 @@
 	--color-over-soft: #f2a877;
 	/* links and icons on bg-dark-card */
 	--color-accent-on-dark: #ffd3a8;
+	/* the rest timer ring and its end dot on ink: 8.9:1 (`success` on dark is only 3.4:1) */
+	--color-success-on-dark: #7fd3a7;
+	/* a hint strip on the screen (the wake lock hint); the same values as the arms group */
+	--color-hint-day-bg: #fff0c2;
+	--color-hint-day-ink: #5e4508;
 	/* added: «new» dot badge on a nav tab (every tab mockup) */
 	--color-notice: #f2894f;
 	/* errors, deletion */

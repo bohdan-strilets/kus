@@ -8,6 +8,8 @@ export const LOADER_TONE_BY_VARIANT = {
 	frosted: 'brand',
 	dark: 'onPrimary',
 	danger: 'onPrimary',
+	onDark: 'brand',
+	onDarkQuiet: 'onPrimary',
 	text: 'brand',
 	textOnBackground: 'brand',
 	textDanger: 'brand',

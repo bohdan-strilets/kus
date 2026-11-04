@@ -112,6 +112,27 @@ const formatScalar = (value: unknown, t: TFunction, field: ProgramChangeLine['fi
 const beforeAfter = (before: string, after: string, t: TFunction): string =>
 	t('program.diff.beforeAfter', { before, after })
 
+/**
+ * «4 підходи замість 3»: a change of the number of sets alone is told short; the old number is in
+ * the `before` of the line. Any other difference keeps the full new target.
+ */
+const formatSetsInstead = (line: ProgramChangeLine, t: TFunction): string | null => {
+	const { before, after } = line
+	if (!isTarget(before) || !isTarget(after)) return null
+	const { sets: beforeSets, ...beforeRest } = before
+	const { sets: afterSets, ...afterRest } = after
+	if (beforeSets === null || afterSets === null || beforeSets === afterSets) return null
+	const isOnlySets = (Object.keys(afterRest) as (keyof typeof afterRest)[]).every(
+		(field) => beforeRest[field] === afterRest[field],
+	)
+	return isOnlySets
+		? t('program.diff.setsInstead', {
+				after: t('workout.setCountFull', { count: afterSets }),
+				before: beforeSets,
+			})
+		: null
+}
+
 const getExerciseTarget = (
 	line: ProgramChangeLine,
 	program: ProgramChangeContext,
@@ -155,7 +176,9 @@ const toRow = (
 				kind: 'changed',
 				title: name,
 				detail: beforeAfter(formatTargetValue(line.before, t), formatTargetValue(line.after, t), t),
-				after: isTarget(line.after) ? formatTargetValue(line.after, t) : null,
+				after:
+					formatSetsInstead(line, t) ??
+					(isTarget(line.after) ? formatTargetValue(line.after, t) : null),
 			}
 		}
 		return null

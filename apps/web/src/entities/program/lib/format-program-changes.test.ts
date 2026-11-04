@@ -121,9 +121,74 @@ describe('getProgramChangeGroups', () => {
 				kind: 'changed',
 				title: 'Махи гантелями',
 				detail: 'було 3 підходи · 12–15 повт. · стало 4 підходи · 12–15 повт.',
-				after: '4 підходи · 12–15 повт.',
+				after: '4 підходи замість 3',
 			},
 		])
+	})
+
+	const afterOfChange = (before: TemplateExerciseTarget, after: TemplateExerciseTarget) =>
+		getProgramChangeGroups(
+			changes([line({ field: 'target', name: 'Махи', before, after })]),
+			program,
+			t,
+		)[0]?.rows[0]?.after
+
+	it.each([
+		[1, '1 підхід замість 3'],
+		[2, '2 підходи замість 3'],
+		[5, '5 підходів замість 3'],
+	])('tells only a changed number of sets short: %i sets', (sets, expected) => {
+		expect(
+			afterOfChange(
+				target({ sets: 3, repsMin: 12, repsMax: 15 }),
+				target({ sets, repsMin: 12, repsMax: 15 }),
+			),
+		).toBe(expected)
+	})
+
+	it('keeps the full new target when reps change with the sets', () => {
+		expect(
+			afterOfChange(
+				target({ sets: 3, repsMin: 12, repsMax: 15 }),
+				target({ sets: 4, repsMin: 8, repsMax: 10 }),
+			),
+		).toBe('4 підходи · 8–10 повт.')
+	})
+
+	it('keeps the full new target when the weight changes with the sets', () => {
+		expect(
+			afterOfChange(
+				target({ sets: 3, repsMin: 8, repsMax: 10, weightKg: 50 }),
+				target({ sets: 4, repsMin: 8, repsMax: 10, weightKg: 55 }),
+			),
+		).toBe('4 підходи · 8–10 повт. · 55 кг')
+	})
+
+	it('does not say «замість» when only the weight changes', () => {
+		expect(
+			afterOfChange(
+				target({ sets: 3, repsMin: 8, repsMax: 10, weightKg: 50 }),
+				target({ sets: 3, repsMin: 8, repsMax: 10, weightKg: 55 }),
+			),
+		).toBe('3 підходи · 8–10 повт. · 55 кг')
+	})
+
+	it('does not say «замість» when there were no sets before', () => {
+		expect(afterOfChange(target({ repsMin: 8, repsMax: 10 }), target({ sets: 3 }))).not.toContain(
+			'замість',
+		)
+	})
+
+	it('does not say «замість» for an added or a removed exercise', () => {
+		const rows = getProgramChangeGroups(
+			changes([
+				line({ op: 'ADD', name: 'Присідання' }),
+				line({ op: 'REMOVE', name: 'Жим ногами', before: target({ sets: 3, repsMin: 10 }) }),
+			]),
+			program,
+			t,
+		)[0]?.rows
+		expect(JSON.stringify(rows)).not.toContain('замість')
 	})
 
 	it('shows no detail for a removed exercise of a version saved without its target', () => {

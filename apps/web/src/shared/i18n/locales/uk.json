@@ -1010,6 +1010,7 @@
 			"title": "Зміни в програмі",
 			"note": "Решта без змін. Поки не збережено.",
 			"beforeAfter": "було {{before}} · стало {{after}}",
+			"setsInstead": "{{after}} замість {{before}}",
 			"programGroup": "Програма",
 			"mode": "Режим",
 			"perWeek": "Разів на тиждень",

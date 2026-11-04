@@ -19,9 +19,17 @@ interface RestTimerPanelProps {
 
 const getNextText = (next: RestNext | null, isEnded: boolean, t: TFunction): string | null => {
 	if (next === null) return null
-	const set = formatRestSet(next.exercise, next.set, t)
-	if (next.isOtherExercise)
-		return t('training.live.rest.nextExercise', { exercise: next.exercise.name, set })
+	const set = formatRestSet(next.set, t)
+	const exercise = next.exercise.name
+	if (next.isOtherExercise) {
+		return next.isWarmup
+			? t('training.live.rest.nextExerciseWarmup', { exercise, set })
+			: t('training.live.rest.nextExercise', { exercise, set })
+	}
+	if (next.isWarmup)
+		return isEnded
+			? t('workout.warmupSet', { value: set })
+			: t('training.live.rest.nextWarmup', { set })
 	return isEnded ? set : t('training.live.rest.nextSet', { n: next.setNumber, set })
 }
 
@@ -60,7 +68,7 @@ export const RestTimerPanel = ({ timer }: RestTimerPanelProps) => {
 							/>
 							<div className="flex min-w-0 flex-1 flex-col gap-0.5" aria-live="assertive">
 								<Heading level="title" className="text-white">
-									{isEnded && next !== null
+									{isEnded && next !== null && !next.isWarmup
 										? t('training.live.rest.over', { n: next.setNumber })
 										: t('training.live.rest.title')}
 								</Heading>

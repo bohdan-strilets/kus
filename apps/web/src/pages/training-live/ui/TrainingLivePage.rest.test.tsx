@@ -118,3 +118,37 @@ describe('TrainingLivePage: the rest timer', () => {
 		expect(screen.getByText(/^Далі: Присідання · /)).toBeTruthy()
 	})
 })
+
+describe('TrainingLivePage: the rest timer and cardio', () => {
+	it('✓ of a strength set, then a cardio with minutes: the panel goes away', async () => {
+		current = withNewId(
+			makeLiveResponse({
+				plan: [
+					makePlanExercise({ sets: 3 }),
+					makePlanExercise({
+						templateExerciseId: SECOND_EXERCISE,
+						name: 'Доріжка',
+						kind: 'CARDIO',
+						muscleGroup: null,
+						sets: null,
+						repsMin: null,
+						repsMax: null,
+						weightKg: null,
+						durationMin: 20,
+					}),
+				],
+			}),
+		)
+		renderPage()
+
+		fireEvent.click(await screen.findByRole('button', { name: 'Підхід виконано' }))
+		expect(await screen.findByRole('timer', { name: REST_NAME })).toBeTruthy()
+
+		fireEvent.click(screen.getByRole('button', { name: /^Доріжка/ }))
+		fireEvent.click(screen.getByRole('button', { name: 'Більше хвилин' }))
+
+		await waitFor(() => {
+			expect(screen.queryByRole('timer', { name: REST_NAME })).toBeNull()
+		})
+	})
+})

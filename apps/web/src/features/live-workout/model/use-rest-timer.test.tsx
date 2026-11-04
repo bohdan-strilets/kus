@@ -290,3 +290,43 @@ describe('useRestTimer: what comes next', () => {
 		expect(result.current.next?.setNumber).toBe(1)
 	})
 })
+
+describe('useRestTimer: warm-up and cardio', () => {
+	it('a warm-up as the next set is marked isWarmup', () => {
+		const warmup: LiveDraftSet = { ...set(null), isWarmup: true }
+		const { result } = renderTimer(
+			draft([exercise('bench', [set(iso(0))]), exercise('squat', [warmup])]),
+		)
+
+		expect(result.current.next).toMatchObject({ isWarmup: true, isOtherExercise: true })
+	})
+
+	it('a working set is not marked isWarmup', () => {
+		const { result } = renderTimer(afterFirstSet(iso(0)))
+
+		expect(result.current.next?.isWarmup).toBe(false)
+	})
+
+	it('a begun cardio after the strength: idle, never ends, no sound', () => {
+		const cardio: LiveDraftExercise = {
+			...exercise('run', []),
+			kind: 'CARDIO',
+			muscleGroup: null,
+			durationMin: 20,
+		}
+		const { result } = renderTimer(draft([exercise('bench', [set(iso(0)), set(null)]), cardio]))
+
+		expect(result.current.state.status).toBe('idle')
+		advance(DEFAULT_REST_MS * 2)
+
+		expect(result.current.state.status).toBe('idle')
+		expect(playSound).not.toHaveBeenCalled()
+	})
+
+	it('a cardio without data does not stop the rest', () => {
+		const cardio: LiveDraftExercise = { ...exercise('run', []), kind: 'CARDIO', muscleGroup: null }
+		const { result } = renderTimer(draft([exercise('bench', [set(iso(0)), set(null)]), cardio]))
+
+		expect(result.current.state.status).toBe('running')
+	})
+})

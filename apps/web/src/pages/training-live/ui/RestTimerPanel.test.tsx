@@ -32,6 +32,7 @@ const next = (overrides: Partial<RestNext> = {}): RestNext => ({
 		doneAt: null,
 	},
 	setNumber: 3,
+	isWarmup: false,
 	isOtherExercise: false,
 	...overrides,
 })
@@ -67,7 +68,7 @@ describe('RestTimerPanel', () => {
 	it('running, same exercise: «Далі: підхід N · вага × повтори»', () => {
 		renderWithProviders(<RestTimerPanel timer={makeTimer()} />)
 
-		expect(screen.getByText('Далі: підхід 3 · 52,5 кг × 8')).toBeTruthy()
+		expect(screen.getByText('Далі: підхід 3 · 52,5 кг × 8 повт.')).toBeTruthy()
 	})
 
 	it('running, another exercise: «Далі: {exercise} · {set}»', () => {
@@ -75,7 +76,7 @@ describe('RestTimerPanel', () => {
 			<RestTimerPanel timer={makeTimer({ next: next({ isOtherExercise: true, setNumber: 1 }) })} />,
 		)
 
-		expect(screen.getByText('Далі: Присідання · 52,5 кг × 8')).toBeTruthy()
+		expect(screen.getByText('Далі: Присідання · 52,5 кг × 8 повт.')).toBeTruthy()
 	})
 
 	it('the +15 and skip buttons have full aria names and call the timer', () => {
@@ -111,7 +112,7 @@ describe('RestTimerPanel', () => {
 			/>,
 		)
 
-		expect(screen.getByText('52,5 кг × 8')).toBeTruthy()
+		expect(screen.getByText('52,5 кг × 8 повт.')).toBeTruthy()
 	})
 
 	it('ended, another exercise: still «Далі: {exercise} · {set}»', () => {
@@ -124,7 +125,7 @@ describe('RestTimerPanel', () => {
 			/>,
 		)
 
-		expect(screen.getByText('Далі: Присідання · 52,5 кг × 8')).toBeTruthy()
+		expect(screen.getByText('Далі: Присідання · 52,5 кг × 8 повт.')).toBeTruthy()
 		expect(screen.getByText('Час! Підхід 1')).toBeTruthy()
 	})
 
@@ -133,5 +134,82 @@ describe('RestTimerPanel', () => {
 
 		expect(screen.getByText('Відпочинок')).toBeTruthy()
 		expect(screen.queryByText(/Далі:/)).toBeNull()
+	})
+})
+
+describe('RestTimerPanel: warm-up and other set shapes', () => {
+	const warmupSet = {
+		reps: 10,
+		weightKg: 40,
+		durationSec: null,
+		distanceM: null,
+		isWarmup: true,
+		doneAt: null,
+	}
+
+	it('running, same exercise: «Далі: розминка · {set}»', () => {
+		renderWithProviders(
+			<RestTimerPanel timer={makeTimer({ next: next({ isWarmup: true, set: warmupSet }) })} />,
+		)
+
+		expect(screen.getByText('Далі: розминка · 40 кг × 10 повт.')).toBeTruthy()
+	})
+
+	it('running, another exercise: «Далі: {exercise} · розминка · {set}»', () => {
+		renderWithProviders(
+			<RestTimerPanel
+				timer={makeTimer({
+					next: next({
+						isWarmup: true,
+						isOtherExercise: true,
+						set: warmupSet,
+						exercise: { ...next().exercise, name: 'Жим гантелей' },
+					}),
+				})}
+			/>,
+		)
+
+		expect(screen.getByText('Далі: Жим гантелей · розминка · 40 кг × 10 повт.')).toBeTruthy()
+	})
+
+	it('ended, warm-up: «розминка · {set}», title «Відпочинок», no «Час! Підхід»', () => {
+		renderWithProviders(
+			<RestTimerPanel
+				timer={makeTimer({
+					state: { status: 'ended', totalSec: 90, overdueMs: 0 },
+					next: next({ isWarmup: true, set: warmupSet }),
+				})}
+			/>,
+		)
+
+		expect(screen.getByText('розминка · 40 кг × 10 повт.')).toBeTruthy()
+		expect(screen.getByText('Відпочинок')).toBeTruthy()
+		expect(screen.queryByText(/Час! Підхід/)).toBeNull()
+	})
+
+	it('a set without weight: just reps', () => {
+		renderWithProviders(
+			<RestTimerPanel
+				timer={makeTimer({
+					next: next({ set: { ...warmupSet, isWarmup: false, weightKg: null, reps: 15 } }),
+				})}
+			/>,
+		)
+
+		expect(screen.getByText('Далі: підхід 3 · 15 повт.')).toBeTruthy()
+	})
+
+	it('a timed set: seconds', () => {
+		renderWithProviders(
+			<RestTimerPanel
+				timer={makeTimer({
+					next: next({
+						set: { ...warmupSet, isWarmup: false, weightKg: null, reps: null, durationSec: 45 },
+					}),
+				})}
+			/>,
+		)
+
+		expect(screen.getByText('Далі: підхід 3 · 45 с')).toBeTruthy()
 	})
 })

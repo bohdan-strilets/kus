@@ -1177,6 +1177,8 @@
 				"timerAria": "Відпочинок, лишилось {{time}}",
 				"nextSet": "Далі: підхід {{n}} · {{set}}",
 				"nextExercise": "Далі: {{exercise}} · {{set}}",
+				"nextWarmup": "Далі: розминка · {{set}}",
+				"nextExerciseWarmup": "Далі: {{exercise}} · розминка · {{set}}",
 				"extend": "+15 с",
 				"extendAria": "Додати 15 секунд до відпочинку",
 				"skip": "Пропустити",

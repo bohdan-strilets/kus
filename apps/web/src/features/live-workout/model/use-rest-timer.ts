@@ -18,6 +18,8 @@ export interface RestNext {
 	set: LiveDraftSet
 	/** The number among the working sets of its exercise. */
 	setNumber: number
+	/** A warm-up has no number: the panel names it instead. */
+	isWarmup: boolean
 	/** The next set belongs to another exercise than the one done last. */
 	isOtherExercise: boolean
 }
@@ -55,7 +57,7 @@ export const useRestTimer = (draft: LiveDraft): RestTimer => {
 		restSec: last?.restSec ?? 0,
 		extraSec: ownAdjust?.extraSec ?? 0,
 		isSkipped: ownAdjust?.isSkipped ?? false,
-		hasNextSet: nextRef !== null,
+		hasNextSet: nextRef !== null && last?.isFollowedByCardio !== true,
 		nowMs,
 	})
 
@@ -91,6 +93,7 @@ export const useRestTimer = (draft: LiveDraft): RestTimer => {
 					exercise: nextExercise,
 					set: nextSet,
 					setNumber: getWorkingNumber(nextExercise, nextRef.setIndex),
+					isWarmup: nextSet.isWarmup,
 					isOtherExercise: nextRef.exerciseIndex !== last?.exerciseIndex,
 				}
 

@@ -69,7 +69,12 @@ describe('getLastDoneSet', () => {
 			draft([exercise('a', [set(T3)]), exercise('b', [set(T1), set(T2)])]),
 		)
 
-		expect(result).toEqual({ doneAt: T3, exerciseIndex: 0, restSec: DEFAULT_REST_SEC })
+		expect(result).toEqual({
+			doneAt: T3,
+			exerciseIndex: 0,
+			isFollowedByCardio: false,
+			restSec: DEFAULT_REST_SEC,
+		})
 	})
 
 	it('inside an exercise the latest doneAt wins even if it is not the last set', () => {
@@ -119,5 +124,43 @@ describe('getLastDoneSet', () => {
 		expect(
 			getLastDoneSet(draft([exercise('a', [set(T1)]), exercise('b', [set(T1)])]))?.exerciseIndex,
 		).toBe(1)
+	})
+})
+
+describe('getLastDoneSet: isFollowedByCardio', () => {
+	const cardio = (overrides: Partial<LiveDraftExercise> = {}): LiveDraftExercise =>
+		exercise('run', [], { kind: 'CARDIO', muscleGroup: null, ...overrides })
+
+	const followed = (...exercises: LiveDraftExercise[]): boolean | undefined =>
+		getLastDoneSet(draft([exercise('a', [set(T1)]), ...exercises]))?.isFollowedByCardio
+
+	it('true: a cardio with minutes after the strength', () => {
+		expect(followed(cardio({ durationMin: 20 }))).toBe(true)
+	})
+
+	it('true: a cardio with a distance only', () => {
+		expect(followed(cardio({ distanceM: 3000 }))).toBe(true)
+	})
+
+	it('false: a cardio without data', () => {
+		expect(followed(cardio())).toBe(false)
+	})
+
+	it('false: only the plan has minutes, the person has not begun', () => {
+		expect(followed(cardio({ plan: { ...plan(null), durationMin: 20 } }))).toBe(false)
+	})
+
+	it('false: a read-only (chat) cardio', () => {
+		expect(followed(cardio({ durationMin: 20, readOnly: true }))).toBe(false)
+	})
+
+	it('false: a cardio before the strength exercise', () => {
+		const result = getLastDoneSet(draft([cardio({ durationMin: 20 }), exercise('a', [set(T1)])]))
+
+		expect(result?.isFollowedByCardio).toBe(false)
+	})
+
+	it('false: a strength exercise with minutes after is not cardio', () => {
+		expect(followed(exercise('b', [set(null)], { durationMin: 20 }))).toBe(false)
 	})
 })

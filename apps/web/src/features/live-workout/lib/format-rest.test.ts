@@ -37,24 +37,22 @@ describe('formatRestTime', () => {
 
 describe('formatRestSet', () => {
 	it('weight × reps', () => {
-		expect(formatRestSet({ kind: 'STRENGTH' }, set(), t)).toBe('52,5 кг × 12')
+		expect(formatRestSet(set(), t)).toBe('52,5 кг × 12 повт.')
 	})
 
 	it('no weight: just reps', () => {
-		expect(formatRestSet({ kind: 'STRENGTH' }, set({ weightKg: null }), t)).toBe('12 повт.')
+		expect(formatRestSet(set({ weightKg: null }), t)).toBe('12 повт.')
 	})
 
 	it('zero weight counts as no weight', () => {
-		expect(formatRestSet({ kind: 'STRENGTH' }, set({ weightKg: 0 }), t)).toBe('12 повт.')
+		expect(formatRestSet(set({ weightKg: 0 }), t)).toBe('12 повт.')
 	})
 
 	it('timed set: seconds', () => {
-		expect(
-			formatRestSet({ kind: 'STRENGTH' }, set({ reps: null, weightKg: null, durationSec: 45 }), t),
-		).toBe('45 с')
+		expect(formatRestSet(set({ reps: null, weightKg: null, durationSec: 45 }), t)).toBe('45 с')
 	})
 
 	it('a set with nothing in it is an empty string', () => {
-		expect(formatRestSet({ kind: 'STRENGTH' }, set({ reps: null, weightKg: null }), t)).toBe('')
+		expect(formatRestSet(set({ reps: null, weightKg: null }), t)).toBe('')
 	})
 })

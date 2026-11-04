@@ -1,12 +1,19 @@
 import { DEFAULT_REST_SEC } from '@kus/shared'
 
-import type { LiveDraft } from './live-draft.types'
+import type { LiveDraft, LiveDraftExercise } from './live-draft.types'
 
 export interface LastDoneSet {
 	doneAt: string
 	exerciseIndex: number
 	restSec: number
+	/** A cardio the person has begun comes after this set: the strength part is over, no rest. */
+	isFollowedByCardio: boolean
 }
+
+const isBegunCardio = (exercise: LiveDraftExercise): boolean =>
+	exercise.kind === 'CARDIO' &&
+	!exercise.readOnly &&
+	(exercise.durationMin !== null || exercise.distanceM !== null)
 
 /**
  * The set done last in the draft (by `doneAt`) and the rest its exercise asks. Read from the
@@ -26,8 +33,16 @@ export const getLastDoneSet = (draft: LiveDraft): LastDoneSet | null => {
 				doneAt: set.doneAt,
 				exerciseIndex,
 				restSec: exercise.plan?.restSec ?? DEFAULT_REST_SEC,
+				isFollowedByCardio: false,
 			}
 		}
 	}
-	return last
+	if (last === null) return null
+	const lastIndex = last.exerciseIndex
+	return {
+		...last,
+		isFollowedByCardio: draft.exercises.some(
+			(exercise, index) => index > lastIndex && isBegunCardio(exercise),
+		),
+	}
 }

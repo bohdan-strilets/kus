@@ -85,6 +85,17 @@ export { Stepper, type StepperProps } from './stepper'
 export { StickyActions, type StickyActionsProps } from './sticky-actions'
 export { Sparkline, type SparklineMarks, type SparklineProps } from './sparkline'
 export { Surface, type SurfaceProps } from './surface'
+export {
+	countSwipeRowsBefore,
+	getSwipeOutcome,
+	type SwipeActionVariant,
+	SwipeGroup,
+	type SwipeOutcome,
+	SwipeToDelete,
+	type SwipeToDeleteProps,
+	SWIPE_ROWS_ANYWHERE,
+	useSwipeFocus,
+} from './swipe-to-delete'
 export { Switch, type SwitchProps } from './switch'
 export { Text, type TextProps } from './text'
 export { Textarea, type TextareaProps } from './textarea'

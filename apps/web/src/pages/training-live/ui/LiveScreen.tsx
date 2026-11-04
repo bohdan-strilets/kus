@@ -3,7 +3,7 @@ import {
 	MAX_EXERCISES_PER_WORKOUT,
 	type WorkoutFinished,
 } from '@kus/shared'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
 
@@ -19,7 +19,16 @@ import {
 	useLiveWorkoutStore,
 } from '@/features/live-workout'
 import { getTrainingSessionPath } from '@/shared/config'
-import { Button, DashedAction, Icon, ICON_SIZE, IconButton } from '@/shared/ui'
+import {
+	Button,
+	countSwipeRowsBefore,
+	DashedAction,
+	Icon,
+	ICON_SIZE,
+	IconButton,
+	SwipeGroup,
+	useSwipeFocus,
+} from '@/shared/ui'
 
 import { useLiveExit } from '../model/use-live-exit'
 import { LiveCardio } from './LiveCardio'
@@ -47,6 +56,15 @@ export const LiveScreen = ({ live, onFinished, isClosed }: LiveScreenProps) => {
 	const { draft, current, sync } = session
 	const [isPickerOpen, setIsPickerOpen] = useState(false)
 	const doneSets = countDoneSets(draft)
+	const exercisesRef = useRef<HTMLDivElement>(null)
+	const addExerciseRef = useRef<HTMLButtonElement>(null)
+	const rememberFocus = useSwipeFocus(exercisesRef, () => addExerciseRef.current)
+	const deleteExercise = (index: number, origin: Element | null): void => {
+		if (exercisesRef.current && origin) {
+			rememberFocus(countSwipeRowsBefore(exercisesRef.current, origin))
+		}
+		session.deleteExercise(index)
+	}
 	const exit = useLiveExit({
 		workoutId: draft.workoutId,
 		whenIdle: sync.whenIdle,
@@ -108,41 +126,56 @@ export const LiveScreen = ({ live, onFinished, isClosed }: LiveScreenProps) => {
 			<SyncNotice status={sync.status} onRetry={sync.retry} />
 			<div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto pb-4">
 				<LiveExerciseBar segments={segments} />
-				<div className="flex flex-col gap-2 px-gutter">
-					{draft.exercises.map((exercise, index) => {
-						if (index === focusIndex) {
-							return exercise.kind === 'CARDIO' ? (
-								<LiveCardio
+				<div ref={exercisesRef} className="flex flex-col gap-2 px-gutter">
+					<SwipeGroup>
+						{draft.exercises.map((exercise, index) => {
+							if (index === focusIndex) {
+								const onDeleteExercise = (origin: Element | null): void => {
+									deleteExercise(index, origin)
+								}
+								return exercise.kind === 'CARDIO' ? (
+									<LiveCardio
+										key={exercise.rowKey}
+										exercise={exercise}
+										exerciseIndex={index}
+										session={session}
+										onDeleteExercise={onDeleteExercise}
+									/>
+								) : (
+									<LiveExercise
+										key={exercise.rowKey}
+										exercise={exercise}
+										exerciseIndex={index}
+										session={session}
+										onDeleteExercise={onDeleteExercise}
+									/>
+								)
+							}
+							return (
+								<LiveExerciseRow
 									key={exercise.rowKey}
 									exercise={exercise}
-									exerciseIndex={index}
-									session={session}
-								/>
-							) : (
-								<LiveExercise
-									key={exercise.rowKey}
-									exercise={exercise}
-									exerciseIndex={index}
-									session={session}
+									isNext={index === nextIndex}
+									onSelect={
+										exercise.readOnly
+											? null
+											: () => {
+													session.selectExercise(index)
+												}
+									}
+									onDelete={
+										exercise.readOnly
+											? null
+											: (row) => {
+													deleteExercise(index, row)
+												}
+									}
 								/>
 							)
-						}
-						return (
-							<LiveExerciseRow
-								key={exercise.rowKey}
-								exercise={exercise}
-								isNext={index === nextIndex}
-								onSelect={
-									exercise.readOnly
-										? null
-										: () => {
-												session.selectExercise(index)
-											}
-								}
-							/>
-						)
-					})}
+						})}
+					</SwipeGroup>
 					<DashedAction
+						ref={addExerciseRef}
 						isDisabled={draft.exercises.length >= MAX_EXERCISES_PER_WORKOUT}
 						onClick={() => {
 							setIsPickerOpen(true)

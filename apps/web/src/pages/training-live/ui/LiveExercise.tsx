@@ -11,10 +11,16 @@ interface LiveExerciseProps {
 	exercise: LiveDraftExercise
 	exerciseIndex: number
 	session: LiveSession
+	onDeleteExercise: (origin: Element | null) => void
 }
 
 /** mockups/training-live.html: the exercise in hand — name and group, goal, last time, the hint and the sets. */
-export const LiveExercise = ({ exercise, exerciseIndex, session }: LiveExerciseProps) => {
+export const LiveExercise = ({
+	exercise,
+	exerciseIndex,
+	session,
+	onDeleteExercise,
+}: LiveExerciseProps) => {
 	const { t } = useTranslation()
 	const target = formatPlanTarget(exercise, t)
 	const lastSets = formatLastSets(exercise.plan?.lastSets ?? null, t)
@@ -52,7 +58,12 @@ export const LiveExercise = ({ exercise, exerciseIndex, session }: LiveExerciseP
 					}}
 				/>
 			)}
-			<LiveSetList exercise={exercise} exerciseIndex={exerciseIndex} session={session} />
+			<LiveSetList
+				exercise={exercise}
+				exerciseIndex={exerciseIndex}
+				session={session}
+				onDeleteExercise={onDeleteExercise}
+			/>
 		</Surface>
 	)
 }

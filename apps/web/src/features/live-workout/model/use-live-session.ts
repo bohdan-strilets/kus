@@ -13,11 +13,23 @@ import {
 	addWarmup,
 	appendExercise,
 	createLiveExercise,
+	getWorkingNumber,
 	patchSet,
+	removeExercise,
+	removeSet,
+	restoreExercise,
+	restoreSet,
 	setCardioMinutes,
 	setSetDone,
 } from '../lib/live-draft-edit'
-import { applyProgressHint, getCurrentSet, type LiveSetRef } from '../lib/live-set-helpers'
+import {
+	applyProgressHint,
+	findNextTodoRef,
+	getCurrentSet,
+	type LiveSetRef,
+	shiftRefAfterExerciseRemoval,
+	shiftRefAfterSetRemoval,
+} from '../lib/live-set-helpers'
 import { notifySetDone } from './set-done-registry'
 import { useUnsentSnapshot } from './live-workout-store'
 import { type UseLiveSync, useLiveSync } from './use-live-sync'
@@ -34,6 +46,9 @@ export interface LiveSession {
 	addSet: (exerciseIndex: number) => void
 	addWarmup: (exerciseIndex: number) => void
 	addExercise: (pick: ExercisePick) => void
+	/** Removes a set or a warm-up at once (the PUT goes out now) and offers «Скасувати» in a toast. */
+	deleteSet: (ref: LiveSetRef) => void
+	deleteExercise: (exerciseIndex: number) => void
 	takeHint: (exerciseIndex: number) => void
 	changeCardioMinutes: (exerciseIndex: number, minutes: number) => void
 }
@@ -132,6 +147,62 @@ export const useLiveSession = (live: LiveWorkoutResponse): LiveSession => {
 			const next = appendExercise(draftRef.current, createLiveExercise(pick, createUuid()))
 			commit(next)
 			setSelected({ exerciseIndex: next.exercises.length - 1, setIndex: 0 })
+		},
+		deleteSet: (ref) => {
+			const exercise = draftRef.current.exercises[ref.exerciseIndex]
+			const set = exercise?.sets[ref.setIndex]
+			if (!exercise || exercise.readOnly || exercise.clientKey === null || !set) return
+			const message = set.isWarmup
+				? t('workout.warmupDeleted')
+				: t('workout.setDeleted', { n: getWorkingNumber(exercise, ref.setIndex) })
+			const removed = { exerciseKey: exercise.clientKey, setIndex: ref.setIndex, set }
+			// the undo is one-shot: a second press in the toast's exit animation adds nothing
+			let isUndone = false
+			commit(removeSet(draftRef.current, ref))
+			setSelected((previous) => shiftRefAfterSetRemoval(previous, ref))
+			toast.show(message, {
+				action: {
+					label: t('workout.undo'),
+					onClick: () => {
+						if (isUndone) return
+						isUndone = true
+						const restored = restoreSet(draftRef.current, removed)
+						commit(restored)
+						const exerciseIndex = restored.exercises.findIndex(
+							({ clientKey }) => clientKey === removed.exerciseKey,
+						)
+						if (exerciseIndex !== -1 && removed.set.doneAt === null) {
+							setSelected({ exerciseIndex, setIndex: removed.setIndex })
+						}
+					},
+				},
+			})
+		},
+		deleteExercise: (exerciseIndex) => {
+			const exercise = draftRef.current.exercises[exerciseIndex]
+			if (!exercise || exercise.readOnly) return
+			const wasInHand = current?.exerciseIndex === exerciseIndex
+			const next = removeExercise(draftRef.current, exerciseIndex)
+			commit(next)
+			// the exercise in hand goes: the next one to do takes its place
+			setSelected((previous) =>
+				wasInHand
+					? findNextTodoRef(next, exerciseIndex)
+					: shiftRefAfterExerciseRemoval(previous, exerciseIndex),
+			)
+			toast.show(t('workout.exerciseDeleted'), {
+				action: {
+					label: t('workout.undo'),
+					onClick: () => {
+						const restored = restoreExercise(draftRef.current, { index: exerciseIndex, exercise })
+						commit(restored)
+						const restoredIndex = restored.exercises.findIndex(
+							({ rowKey }) => rowKey === exercise.rowKey,
+						)
+						setSelected(restoredIndex === -1 ? null : findNextTodoRef(restored, restoredIndex))
+					},
+				},
+			})
 		},
 		takeHint: (exerciseIndex) => {
 			const exercise = draftRef.current.exercises[exerciseIndex]

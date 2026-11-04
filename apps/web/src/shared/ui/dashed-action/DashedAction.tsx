@@ -1,5 +1,5 @@
 import { motion } from 'motion/react'
-import type { ReactNode } from 'react'
+import type { ReactNode, Ref } from 'react'
 
 import { cn, PRESS } from '@/shared/lib'
 import { Icon, ICON_SIZE } from '../icon'
@@ -9,6 +9,7 @@ interface DashedActionProps {
 	onClick: () => void
 	isDisabled?: boolean
 	className?: string
+	ref?: Ref<HTMLButtonElement>
 }
 
 /** A dashed «+ …» button: «+ Вправа» in the editor and «Нова вправа «…»» in the search. */
@@ -17,8 +18,10 @@ export const DashedAction = ({
 	onClick,
 	isDisabled = false,
 	className,
+	ref,
 }: DashedActionProps) => (
 	<motion.button
+		ref={ref}
 		type="button"
 		disabled={isDisabled}
 		onClick={onClick}

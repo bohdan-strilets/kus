@@ -3,19 +3,25 @@ import { useTranslation } from 'react-i18next'
 
 import { formatSetReps, GroupTag, NEW_CARDIO_MIN } from '@/entities/workout'
 import type { LiveDraftExercise, LiveSession } from '@/features/live-workout'
-import { SetStepper, Surface, Text } from '@/shared/ui'
+import { Icon, ICON_SIZE, IconButton, SetStepper, Surface, Text } from '@/shared/ui'
 
 interface LiveCardioProps {
 	exercise: LiveDraftExercise
 	exerciseIndex: number
 	session: LiveSession
+	onDeleteExercise: (origin: Element | null) => void
 }
 
 const MINUTE_STEP = 1
 const MIN_MINUTES = 1
 
 /** The cardio in hand: the minutes by a stepper (no sets, no weight); it counts as done while it has minutes. */
-export const LiveCardio = ({ exercise, exerciseIndex, session }: LiveCardioProps) => {
+export const LiveCardio = ({
+	exercise,
+	exerciseIndex,
+	session,
+	onDeleteExercise,
+}: LiveCardioProps) => {
 	const { t } = useTranslation()
 	const minutes = exercise.durationMin
 	const setMinutes = (value: number): void => {
@@ -31,7 +37,19 @@ export const LiveCardio = ({ exercise, exerciseIndex, session }: LiveCardioProps
 				<Text as="span" className="text-field-number-sm font-extrabold">
 					{exercise.name}
 				</Text>
-				<GroupTag group="CARDIO" />
+				<div className="-mt-1 -mr-1 -mb-1.5 flex items-center gap-1">
+					<GroupTag group="CARDIO" />
+					<IconButton
+						label={t('workout.deleteExerciseAria', { name: exercise.name })}
+						variant="ghost"
+						className="text-muted-strong"
+						onClick={(event) => {
+							onDeleteExercise(event.currentTarget)
+						}}
+					>
+						<Icon name="trash" size={ICON_SIZE.control} />
+					</IconButton>
+				</div>
 			</div>
 			<SetStepper
 				value={minutes}

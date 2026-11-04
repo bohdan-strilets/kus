@@ -5,7 +5,7 @@ import {
 } from '@kus/shared'
 import type { TFunction } from 'i18next'
 import { motion } from 'motion/react'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import {
@@ -17,16 +17,31 @@ import {
 	SetTable,
 } from '@/entities/workout'
 import { cn, PRESS } from '@/shared/lib'
-import { Button, Icon, ICON_SIZE, SetStepper, Text } from '@/shared/ui'
+import {
+	Button,
+	countSwipeRowsBefore,
+	Icon,
+	ICON_SIZE,
+	IconButton,
+	SetStepper,
+	SWIPE_ROWS_ANYWHERE,
+	SwipeGroup,
+	SwipeToDelete,
+	Text,
+	useSwipeFocus,
+} from '@/shared/ui'
 
 import { addFormSet, isFormBodyweight, patchFormSet } from '../lib/form-exercise-edit'
 import { formatPlanSummary } from '../lib/format-plan-summary'
 import { getChangedSetNumbers, getExerciseState, restorePlan } from '../lib/build-form-draft'
 import type { FormExerciseValue } from '../lib/workout-form.types'
+import { useFormSetRemoval } from '../model/use-form-set-removal'
 
 interface ExercisePlanRowProps {
 	exercise: FormExerciseValue
 	onChange: (exercise: FormExerciseValue) => void
+	/** An exercise the person added is removed (swipe or the basket); gets the row, for the focus. */
+	onRemove: (row: HTMLElement | null) => void
 }
 
 const MIN_MINUTES = 1
@@ -45,10 +60,24 @@ const formatChangedSets = (numbers: readonly number[], t: TFunction): string => 
  * differs), «Повернути» for a skipped one, and — when opened — its sets to correct. Any edit turns
  * «Як за планом» off and says what changed; pressing it brings the plan back.
  */
-export const ExercisePlanRow = ({ exercise, onChange }: ExercisePlanRowProps) => {
+export const ExercisePlanRow = ({ exercise, onChange, onRemove }: ExercisePlanRowProps) => {
 	const { t } = useTranslation()
 	const [isOpen, setIsOpen] = useState(false)
 	const [selected, setSelected] = useState<number | null>(null)
+	const setsRef = useRef<HTMLDivElement>(null)
+	const removeSet = useFormSetRemoval(exercise, onChange)
+	const rememberFocus = useSwipeFocus(
+		setsRef,
+		() => setsRef.current?.querySelector<HTMLElement>('[data-add-set]') ?? null,
+		SWIPE_ROWS_ANYWHERE,
+	)
+	const deleteSet = (index: number, position: number): void => {
+		rememberFocus(position)
+		setSelected((current) =>
+			current === null || current < index ? current : current === index ? null : current - 1,
+		)
+		removeSet(index)
+	}
 	const state = getExerciseState(exercise)
 	const isSkipped = state === 'SKIPPED'
 	const isBodyweight = isFormBodyweight(exercise)
@@ -62,10 +91,15 @@ export const ExercisePlanRow = ({ exercise, onChange }: ExercisePlanRowProps) =>
 	const changed = getChangedSetNumbers(exercise)
 	const group = exercise.kind === 'CARDIO' ? 'CARDIO' : exercise.muscleGroup
 	const isCardio = exercise.kind === 'CARDIO'
+	const isAdded = state === 'ADDED'
+	const skip = (): void => {
+		onChange({ ...exercise, isSkipped: true })
+		setIsOpen(false)
+	}
 	const isRowChanged = (index: number): boolean =>
 		changed.includes(index + 1) && exercise.plan !== null
 
-	return (
+	const body = (
 		<div
 			className={cn(
 				'flex flex-col gap-2 rounded-tile bg-surface/85 p-3',
@@ -160,54 +194,81 @@ export const ExercisePlanRow = ({ exercise, onChange }: ExercisePlanRowProps) =>
 				/>
 			)}
 			{isOpen && !isSkipped && !isCardio && (
-				<div className="flex flex-col gap-2">
-					<SetTable hasWeight={!isBodyweight}>
-						{exercise.sets.map((set, index) =>
-							index === selected ? (
-								<SetFields
-									key={index}
-									title={t('training.live.setTitle', { n: index + 1 })}
-									reps={set.reps}
-									weightKg={set.weightKg}
-									isBodyweight={isBodyweight}
-									weightStepKg={DEFAULT_PROGRESS_STEP_KG}
-									onChange={(patch) => {
-										onChange(patchFormSet(exercise, index, patch))
-									}}
-								/>
-							) : (
-								<SetRow
-									key={index}
-									label={String(index + 1)}
-									ariaLabel={t('training.live.setEdit', { n: index + 1 })}
-									reps={set.reps}
-									weightKg={set.weightKg}
-									hasWeight={!isBodyweight}
-									isChanged={isRowChanged(index)}
-									isWarmup={set.isWarmup}
-									isDone={false}
-									onSelect={() => {
-										setSelected(index)
-									}}
-									trailing={
-										isRowChanged(index) ? (
-											<Text
-												as="span"
-												variant="small"
-												tone="mutedStrong"
-												className="pr-2 text-muscle-arms-ink"
-											>
-												{t('training.form.setChanged')}
-											</Text>
-										) : null
-									}
-								/>
-							),
-						)}
-					</SetTable>
-					<div className="grid grid-cols-2 gap-2">
+				<div ref={setsRef} className="flex flex-col gap-2">
+					<SwipeGroup>
+						<SetTable hasWeight={!isBodyweight}>
+							{exercise.sets.map((set, index) => {
+								const deleteLabel = set.isWarmup
+									? t('workout.deleteWarmupAria')
+									: t('workout.deleteSetAria', { n: index + 1 })
+								if (index === selected) {
+									return (
+										<SetFields
+											key={index}
+											title={t('training.live.setTitle', { n: index + 1 })}
+											reps={set.reps}
+											weightKg={set.weightKg}
+											isBodyweight={isBodyweight}
+											weightStepKg={DEFAULT_PROGRESS_STEP_KG}
+											onChange={(patch) => {
+												onChange(patchFormSet(exercise, index, patch))
+											}}
+											deleteLabel={deleteLabel}
+											onDelete={() => {
+												// only one set is a block, so every set above it is a row
+												deleteSet(index, index)
+											}}
+										/>
+									)
+								}
+								return (
+									<SwipeToDelete
+										key={index}
+										actionLabel={t('workout.swipeDelete')}
+										actionAriaLabel={deleteLabel}
+										onAction={(row) => {
+											const position =
+												setsRef.current && row
+													? countSwipeRowsBefore(setsRef.current, row, SWIPE_ROWS_ANYWHERE)
+													: 0
+											deleteSet(index, position)
+										}}
+									>
+										<SetRow
+											label={String(index + 1)}
+											ariaLabel={t('training.live.setEdit', { n: index + 1 })}
+											reps={set.reps}
+											weightKg={set.weightKg}
+											hasWeight={!isBodyweight}
+											isChanged={isRowChanged(index)}
+											isWarmup={set.isWarmup}
+											isDone={false}
+											onSelect={() => {
+												setSelected(index)
+											}}
+											trailing={
+												isRowChanged(index) ? (
+													<Text
+														as="span"
+														variant="small"
+														tone="mutedStrong"
+														className="pr-2 text-muscle-arms-ink"
+													>
+														{t('training.form.setChanged')}
+													</Text>
+												) : null
+											}
+										/>
+									</SwipeToDelete>
+								)
+							})}
+						</SetTable>
+					</SwipeGroup>
+					<div className={cn('gap-2', isAdded ? 'flex' : 'grid grid-cols-2')}>
 						<Button
 							variant="secondary"
+							className="flex-1"
+							data-add-set=""
 							disabled={exercise.sets.length >= MAX_SETS_PER_EXERCISE}
 							onClick={() => {
 								onChange(addFormSet(exercise))
@@ -215,18 +276,42 @@ export const ExercisePlanRow = ({ exercise, onChange }: ExercisePlanRowProps) =>
 						>
 							{t('training.live.addSet')}
 						</Button>
-						<Button
-							variant="secondary"
-							onClick={() => {
-								onChange({ ...exercise, isSkipped: true })
-								setIsOpen(false)
-							}}
-						>
-							{t('training.form.skip')}
-						</Button>
+						{isAdded ? (
+							<IconButton
+								label={t('workout.deleteExerciseAria', { name: exercise.name })}
+								variant="ghost"
+								className="text-muted-strong"
+								onClick={(event) => {
+									onRemove(event.currentTarget.closest<HTMLElement>('[data-swipe-row]'))
+								}}
+							>
+								<Icon name="trash" size={ICON_SIZE.control} />
+							</IconButton>
+						) : (
+							<Button variant="secondary" onClick={skip}>
+								{t('training.form.skip')}
+							</Button>
+						)}
 					</div>
 				</div>
 			)}
 		</div>
+	)
+
+	if (isSkipped) return body
+
+	return (
+		<SwipeToDelete
+			variant={isAdded ? 'danger' : 'neutral'}
+			actionLabel={isAdded ? t('workout.swipeDelete') : t('training.form.skip')}
+			actionAriaLabel={
+				isAdded
+					? t('workout.deleteExerciseAria', { name: exercise.name })
+					: t('training.form.skipAria', { name: exercise.name })
+			}
+			onAction={isAdded ? onRemove : skip}
+		>
+			{body}
+		</SwipeToDelete>
 	)
 }

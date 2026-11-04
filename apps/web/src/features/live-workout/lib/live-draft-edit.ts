@@ -121,3 +121,58 @@ export const countDoneSets = (draft: LiveDraft): number =>
 			exercise.readOnly ? sum : sum + exercise.sets.filter((set) => set.doneAt !== null).length,
 		0,
 	)
+
+/** A set taken out by the person: what «Скасувати» needs to put it back on the same place. */
+export interface RemovedSet {
+	/** `clientKey` of its exercise: the index may have moved by the time of the undo. */
+	exerciseKey: string
+	setIndex: number
+	set: LiveDraftSet
+}
+
+/** A deleted exercise with the place it had. */
+export interface RemovedExercise {
+	index: number
+	exercise: LiveDraftExercise
+}
+
+/** The set leaves the exercise; the numbers of the working sets below are counted again by the screen. */
+export const removeSet = (draft: LiveDraft, { exerciseIndex, setIndex }: LiveSetRef): LiveDraft =>
+	mapExercise(draft, exerciseIndex, (exercise) => ({
+		...exercise,
+		sets: exercise.sets.filter((_, position) => position !== setIndex),
+	}))
+
+/** Back to the same position (kept inside the list when sets were removed meanwhile); a gone exercise takes nothing. */
+export const restoreSet = (draft: LiveDraft, removed: RemovedSet): LiveDraft => {
+	const exerciseIndex = draft.exercises.findIndex(
+		(exercise) => exercise.clientKey === removed.exerciseKey,
+	)
+	if (exerciseIndex === -1) return draft
+	return mapExercise(draft, exerciseIndex, (exercise) => {
+		const at = Math.min(removed.setIndex, exercise.sets.length)
+		return {
+			...exercise,
+			sets: [...exercise.sets.slice(0, at), removed.set, ...exercise.sets.slice(at)],
+		}
+	})
+}
+
+/** A chat exercise is never removed from here: it is not the live mode's own. */
+export const removeExercise = (draft: LiveDraft, exerciseIndex: number): LiveDraft => {
+	if (draft.exercises[exerciseIndex]?.readOnly !== false) return draft
+	return { ...draft, exercises: draft.exercises.filter((_, index) => index !== exerciseIndex) }
+}
+
+/** The same exercise (same `clientKey`, so the next PUT writes it again) on its old place; once only. */
+export const restoreExercise = (
+	draft: LiveDraft,
+	{ index, exercise }: RemovedExercise,
+): LiveDraft => {
+	if (draft.exercises.some(({ rowKey }) => rowKey === exercise.rowKey)) return draft
+	const at = Math.min(index, draft.exercises.length)
+	return {
+		...draft,
+		exercises: [...draft.exercises.slice(0, at), exercise, ...draft.exercises.slice(at)],
+	}
+}

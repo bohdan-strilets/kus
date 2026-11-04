@@ -54,3 +54,22 @@ export const addFormSet = (exercise: FormExerciseValue): FormExerciseValue => {
 /** No weight: the person's own switch, else what the dictionary says. */
 export const isFormBodyweight = (exercise: FormExerciseValue): boolean =>
 	exercise.isBodyweight ?? exercise.plan?.isBodyweight ?? false
+
+/** The set leaves the exercise; the rows below are numbered again by the table. */
+export const removeFormSet = (
+	exercise: FormExerciseValue,
+	setIndex: number,
+): FormExerciseValue => ({
+	...exercise,
+	sets: exercise.sets.filter((_, index) => index !== setIndex),
+})
+
+/** «Скасувати»: the set returns to the same place (kept inside the list if sets went meanwhile). */
+export const restoreFormSet = (
+	exercise: FormExerciseValue,
+	setIndex: number,
+	set: FormSetValue,
+): FormExerciseValue => {
+	const at = Math.min(setIndex, exercise.sets.length)
+	return { ...exercise, sets: [...exercise.sets.slice(0, at), set, ...exercise.sets.slice(at)] }
+}

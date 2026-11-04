@@ -48,3 +48,47 @@ export const applyProgressHint = (exercise: LiveDraftExercise): LiveDraftExercis
 		),
 	}
 }
+
+/** The explicit selection after a set left its exercise: the removed one is forgotten, later ones move up. */
+export const shiftRefAfterSetRemoval = (
+	selected: LiveSetRef | null,
+	removed: LiveSetRef,
+): LiveSetRef | null => {
+	if (selected === null || selected.exerciseIndex !== removed.exerciseIndex) return selected
+	if (selected.setIndex === removed.setIndex) return null
+	return selected.setIndex > removed.setIndex
+		? { ...selected, setIndex: selected.setIndex - 1 }
+		: selected
+}
+
+/** The explicit selection after an exercise left the list. */
+export const shiftRefAfterExerciseRemoval = (
+	selected: LiveSetRef | null,
+	removedIndex: number,
+): LiveSetRef | null => {
+	if (selected === null || selected.exerciseIndex === removedIndex) return null
+	return selected.exerciseIndex > removedIndex
+		? { ...selected, exerciseIndex: selected.exerciseIndex - 1 }
+		: selected
+}
+
+/** The first exercise from `fromIndex` on that the person still has to do (a set or cardio minutes); its first set to do. */
+export const findNextTodoRef = (draft: LiveDraft, fromIndex: number): LiveSetRef | null => {
+	const exerciseIndex = draft.exercises.findIndex(
+		(exercise, index) =>
+			index >= fromIndex &&
+			!exercise.readOnly &&
+			(exercise.kind === 'CARDIO'
+				? exercise.durationMin === null
+				: exercise.sets.some((set) => set.doneAt === null)),
+	)
+	const exercise = draft.exercises[exerciseIndex]
+	if (!exercise) return null
+	return {
+		exerciseIndex,
+		setIndex: Math.max(
+			0,
+			exercise.sets.findIndex((set) => set.doneAt === null),
+		),
+	}
+}

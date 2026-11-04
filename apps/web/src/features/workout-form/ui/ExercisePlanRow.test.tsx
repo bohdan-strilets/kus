@@ -10,6 +10,11 @@ import { createFormExercise } from '../lib/form-exercise-edit'
 import type { FormExerciseValue } from '../lib/workout-form.types'
 import { ExercisePlanRow } from './ExercisePlanRow'
 
+/** The card itself: the swipe frame wraps it for an exercise that is not skipped. */
+const getCard = (container: HTMLElement): HTMLElement =>
+	(container.querySelector('[data-swipe-content]')?.firstElementChild ??
+		container.firstElementChild) as HTMLElement
+
 const NOW = { localDate: '2026-11-02', time: '18:30' }
 
 const addedExercise = (): FormExerciseValue =>
@@ -25,7 +30,7 @@ const plannedExercise = (): FormExerciseValue => {
 
 const Harness = ({ initial }: { initial: FormExerciseValue }) => {
 	const [exercise, setExercise] = useState(initial)
-	return <ExercisePlanRow exercise={exercise} onChange={setExercise} />
+	return <ExercisePlanRow exercise={exercise} onChange={setExercise} onRemove={() => undefined} />
 }
 
 afterEach(cleanup)
@@ -35,25 +40,20 @@ describe('ExercisePlanRow: an ADDED exercise (no plan)', () => {
 		const { container } = renderWithProviders(<Harness initial={addedExercise()} />)
 
 		expect(screen.queryByRole('button', { name: 'Як за планом' })).toBeNull()
-		const card = container.firstElementChild as HTMLElement
+		const card = getCard(container)
 		expect(card.className).not.toContain('bg-muscle-arms-bg')
 		expect(card.className).toContain('bg-surface/85')
 	})
 
-	it('opens, offers «Не робили», and «Повернути» brings a skipped one back', () => {
+	it('offers the basket instead of «Не робили»', () => {
 		renderWithProviders(<Harness initial={addedExercise()} />)
 
 		fireEvent.click(screen.getByRole('button', { name: /^Тяга/ }))
-		fireEvent.click(screen.getByRole('button', { name: 'Не робили' }))
 
-		expect(screen.getByText('не робили')).toBeTruthy()
-		expect(screen.queryByRole('button', { name: 'Як за планом' })).toBeNull()
-
-		fireEvent.click(screen.getByRole('button', { name: 'Повернути' }))
-
-		expect(screen.queryByText('не робили')).toBeNull()
-		expect(screen.queryByRole('button', { name: 'Повернути' })).toBeNull()
-		expect(screen.queryByRole('button', { name: 'Як за планом' })).toBeNull()
+		expect(screen.queryByRole('button', { name: 'Не робили' })).toBeNull()
+		expect(
+			screen.getAllByRole('button', { name: 'Видалити вправу «Тяга»' }).length,
+		).toBeGreaterThan(0)
 	})
 
 	it('editing an added exercise never makes it «змінено»', () => {
@@ -62,10 +62,25 @@ describe('ExercisePlanRow: an ADDED exercise (no plan)', () => {
 
 		fireEvent.click(screen.getByRole('button', { name: '+ Підхід' }))
 
-		expect((container.firstElementChild as HTMLElement).className).not.toContain(
-			'bg-muscle-arms-bg',
-		)
+		expect(getCard(container).className).not.toContain('bg-muscle-arms-bg')
 		expect(screen.queryByText(/^Змінено:/)).toBeNull()
+	})
+})
+
+describe('ExercisePlanRow: an exercise of the plan', () => {
+	it('opens, offers «Не робили», and «Повернути» brings a skipped one back', () => {
+		renderWithProviders(<Harness initial={plannedExercise()} />)
+
+		fireEvent.click(screen.getByRole('button', { name: /^Жим лежачи/ }))
+		fireEvent.click(screen.getByRole('button', { name: 'Не робили' }))
+
+		expect(screen.getByText('не робили')).toBeTruthy()
+		expect(screen.queryByRole('button', { name: 'Як за планом' })).toBeNull()
+
+		fireEvent.click(screen.getByRole('button', { name: 'Повернути' }))
+
+		expect(screen.queryByText('не робили')).toBeNull()
+		expect(screen.getByRole('button', { name: 'Як за планом' })).toBeTruthy()
 	})
 })
 

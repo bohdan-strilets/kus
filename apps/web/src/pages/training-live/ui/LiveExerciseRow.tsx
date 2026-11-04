@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { formatLastSets, formatWorkoutMinutes, GroupDot, SetLine } from '@/entities/workout'
 import { isExerciseDone, type LiveDraftExercise } from '@/features/live-workout'
 import { cn, PRESS } from '@/shared/lib'
-import { Icon, ICON_SIZE, Text } from '@/shared/ui'
+import { Icon, ICON_SIZE, SwipeToDelete, Text } from '@/shared/ui'
 
 import { formatPlanTarget } from '../lib/live-exercise-view'
 
@@ -14,10 +14,12 @@ interface LiveExerciseRowProps {
 	isNext: boolean
 	/** Makes the exercise the one in hand; null for a row that is only shown. */
 	onSelect: (() => void) | null
+	/** Swipe-to-delete of the row; null for a chat exercise (never edited here). */
+	onDelete: ((row: HTMLElement | null) => void) | null
 }
 
 /** mockups/training-live.html: a finished or coming exercise as a 56px row; the chat's own are marked and never edited. */
-export const LiveExerciseRow = ({ exercise, isNext, onSelect }: LiveExerciseRowProps) => {
+export const LiveExerciseRow = ({ exercise, isNext, onSelect, onDelete }: LiveExerciseRowProps) => {
 	const { t } = useTranslation()
 	const isDone = isExerciseDone(exercise)
 	const doneSets = exercise.sets.map(({ reps, weightKg, isWarmup }) => ({
@@ -62,12 +64,12 @@ export const LiveExerciseRow = ({ exercise, isNext, onSelect }: LiveExerciseRowP
 	)
 	const className = cn(
 		'flex min-h-14 w-full items-center gap-2.5 rounded-tile bg-surface/85 px-3 text-left',
-		isNext && 'ring-1 ring-line-strong',
+		isNext && 'ring-1 ring-line-strong ring-inset',
 	)
 
-	return onSelect === null ? (
-		<div className={className}>{content}</div>
-	) : (
+	if (onSelect === null) return <div className={className}>{content}</div>
+
+	const row = (
 		<motion.button
 			type="button"
 			onClick={onSelect}
@@ -76,5 +78,16 @@ export const LiveExerciseRow = ({ exercise, isNext, onSelect }: LiveExerciseRowP
 		>
 			{content}
 		</motion.button>
+	)
+	return onDelete === null ? (
+		row
+	) : (
+		<SwipeToDelete
+			actionLabel={t('workout.swipeDelete')}
+			actionAriaLabel={t('workout.deleteExerciseAria', { name: exercise.name })}
+			onAction={onDelete}
+		>
+			{row}
+		</SwipeToDelete>
 	)
 }

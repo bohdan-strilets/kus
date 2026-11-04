@@ -867,6 +867,14 @@
 			"reps": "Повтори"
 		},
 		"bodyweight": "власна вага",
+		"swipeDelete": "Видалити",
+		"undo": "Скасувати",
+		"setDeleted": "Підхід {{n}} видалено",
+		"warmupDeleted": "Розминку видалено",
+		"exerciseDeleted": "Вправу видалено",
+		"deleteSetAria": "Видалити підхід {{n}}",
+		"deleteWarmupAria": "Видалити розминку",
+		"deleteExerciseAria": "Видалити вправу «{{name}}»",
 		"set": {
 			"weightLess": "Менше ваги",
 			"weightMore": "Більше ваги",
@@ -1194,6 +1202,7 @@
 			"restore": "Повернути",
 			"skipped": "не робили",
 			"skip": "Не робили",
+			"skipAria": "Не робили вправу «{{name}}»",
 			"setChanged": "змінено",
 			"addedMark": "додано",
 			"and": "і",

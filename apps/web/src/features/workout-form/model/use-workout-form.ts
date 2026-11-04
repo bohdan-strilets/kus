@@ -35,6 +35,8 @@ export interface UseWorkoutForm {
 	form: UseFormReturn<WorkoutFormValues>
 	/** The exercises of the form: `update(index, …)` for an edited one, `append` for «+ Вправа». */
 	exercises: UseFieldArrayReturn<WorkoutFormValues, 'exercises'>
+	/** An exercise the person added leaves the form; «Скасувати» in the toast puts it back. */
+	removeExercise: (index: number) => void
 	/** The duration field changed: until the start is edited by hand, it moves to end at «now». */
 	changeDuration: (durationMin: number | null) => void
 	/** «Готово» of the «Коли» sheet: the day and the start are the person's own from now on. */
@@ -91,6 +93,20 @@ export const useWorkoutForm = ({
 		form.setValue('startTime', value.startTime, { shouldValidate: true, shouldDirty: true })
 	}
 
+	const removeExercise = (index: number): void => {
+		const removed = form.getValues('exercises')[index]
+		if (!removed) return
+		exercises.remove(index)
+		toast.show(t('workout.exerciseDeleted'), {
+			action: {
+				label: t('workout.undo'),
+				onClick: () => {
+					exercises.insert(Math.min(index, form.getValues('exercises').length), removed)
+				},
+			},
+		})
+	}
+
 	const handleServerError = (error: unknown): void => {
 		const apiError = getApiError(error)
 		const fields = apiError.kind === 'http' ? apiError.details.fields : undefined
@@ -121,6 +137,7 @@ export const useWorkoutForm = ({
 	return {
 		form,
 		exercises,
+		removeExercise,
 		changeDuration,
 		applyWhen,
 		onSubmit,

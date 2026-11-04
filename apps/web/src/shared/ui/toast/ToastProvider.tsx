@@ -33,7 +33,12 @@ export const ToastProvider = ({ children }: { children: ReactNode }) => {
 			show: (message, options) => {
 				nextId.current += 1
 				const toast: ToastItem = { id: nextId.current, message, action: options?.action }
-				setToasts((current) => [...current, toast].slice(-MAX_VISIBLE_TOASTS))
+				// a toast with «Скасувати» replaces the previous one: only the last action can be undone
+				setToasts((current) =>
+					[...(toast.action ? current.filter((item) => !item.action) : current), toast].slice(
+						-MAX_VISIBLE_TOASTS,
+					),
+				)
 			},
 			dismissAll: () => {
 				setToasts([])

@@ -22,6 +22,8 @@ export {
 	createFormExercise,
 	isFormBodyweight,
 	patchFormSet,
+	removeFormSet,
+	restoreFormSet,
 } from './lib/form-exercise-edit'
 export { formatPlanSummary } from './lib/format-plan-summary'
 export { ExercisePlanRow } from './ui/ExercisePlanRow'

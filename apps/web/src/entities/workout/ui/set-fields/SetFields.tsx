@@ -2,7 +2,7 @@ import { MAX_SET_REPS, MAX_SET_WEIGHT_KG } from '@kus/shared'
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { SetStepper, Text } from '@/shared/ui'
+import { Icon, ICON_SIZE, IconButton, SetStepper, Text } from '@/shared/ui'
 
 import {
 	formatSetReps,
@@ -24,6 +24,10 @@ export interface SetFieldsProps {
 	/** The plan's progress step; the weight moves by it. */
 	weightStepKg: number
 	onChange: (patch: { reps?: number | null; weightKg?: number | null }) => void
+	/** The 44px basket in the header; without it the set cannot be deleted from here. */
+	onDelete?: () => void
+	/** «Видалити підхід 2»: the accessible name of the basket. */
+	deleteLabel?: string
 	/** «Підхід виконано» of the live mode. */
 	children?: ReactNode
 }
@@ -40,6 +44,8 @@ export const SetFields = ({
 	isBodyweight,
 	weightStepKg,
 	onChange,
+	onDelete,
+	deleteLabel,
 	children,
 }: SetFieldsProps) => {
 	const { t } = useTranslation()
@@ -50,9 +56,25 @@ export const SetFields = ({
 			aria-label={titleAriaLabel}
 			className="flex flex-col gap-2.5 rounded-tile border-2 border-primary bg-surface p-3"
 		>
-			<Text as="span" variant="eyebrow" tone="primaryDeep">
-				{title}
-			</Text>
+			{onDelete && deleteLabel !== undefined ? (
+				<div className="-mt-1 -mr-1 -mb-1.5 flex items-center justify-between">
+					<Text as="span" variant="eyebrow" tone="primaryDeep">
+						{title}
+					</Text>
+					<IconButton
+						label={deleteLabel}
+						variant="ghost"
+						className="text-muted-strong"
+						onClick={onDelete}
+					>
+						<Icon name="trash" size={ICON_SIZE.control} />
+					</IconButton>
+				</div>
+			) : (
+				<Text as="span" variant="eyebrow" tone="primaryDeep">
+					{title}
+				</Text>
+			)}
 			{!isBodyweight && (
 				<SetStepper
 					value={weightKg}

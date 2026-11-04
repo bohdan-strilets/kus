@@ -1,5 +1,5 @@
 import { MAX_EXERCISES_PER_WORKOUT, type ProgramTemplateResponse } from '@kus/shared'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Controller } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
@@ -15,6 +15,7 @@ import { ROUTES } from '@/shared/config'
 import { createUuid, useStackBack } from '@/shared/lib'
 import {
 	Button,
+	countSwipeRowsBefore,
 	DashedAction,
 	FormField,
 	Heading,
@@ -22,7 +23,9 @@ import {
 	ICON_SIZE,
 	IconButton,
 	Input,
+	SwipeGroup,
 	Text,
+	useSwipeFocus,
 } from '@/shared/ui'
 import { WorkoutFinishScreen } from '@/widgets/workout-finish'
 
@@ -46,8 +49,19 @@ export const FillScreen = ({ template, now }: FillScreenProps) => {
 	const { t } = useTranslation()
 	const navigate = useNavigate()
 	const goBack = useStackBack(ROUTES.training)
-	const { form, exercises, changeDuration, applyWhen, onSubmit, isSaving, finished } =
-		useWorkoutForm({ template, now })
+	const {
+		form,
+		exercises,
+		removeExercise,
+		changeDuration,
+		applyWhen,
+		onSubmit,
+		isSaving,
+		finished,
+	} = useWorkoutForm({ template, now })
+	const listRef = useRef<HTMLDivElement>(null)
+	const addExerciseRef = useRef<HTMLButtonElement>(null)
+	const rememberFocus = useSwipeFocus(listRef, () => addExerciseRef.current)
 	const [isPickerOpen, setIsPickerOpen] = useState(false)
 	const { errors } = form.formState
 	const exercisesError = errors.exercises?.message ?? errors.exercises?.root?.message
@@ -82,7 +96,10 @@ export const FillScreen = ({ template, now }: FillScreenProps) => {
 					</Text>
 				</div>
 			</header>
-			<div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-gutter pb-4">
+			<div
+				ref={listRef}
+				className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-gutter pb-4"
+			>
 				<div className="grid grid-cols-2 gap-2">
 					<FillWhenCard form={form} today={now.localDate} onApply={applyWhen} />
 					<Controller
@@ -116,16 +133,24 @@ export const FillScreen = ({ template, now }: FillScreenProps) => {
 						)}
 					/>
 				</div>
-				{exercises.fields.map((field, index) => (
-					<ExercisePlanRow
-						key={field.key}
-						exercise={field}
-						onChange={(next) => {
-							exercises.update(index, next)
-						}}
-					/>
-				))}
+				<SwipeGroup>
+					{exercises.fields.map((field, index) => (
+						<ExercisePlanRow
+							key={field.key}
+							exercise={field}
+							onChange={(next) => {
+								exercises.update(index, next)
+							}}
+							onRemove={(row) => {
+								if (listRef.current && row)
+									rememberFocus(countSwipeRowsBefore(listRef.current, row))
+								removeExercise(index)
+							}}
+						/>
+					))}
+				</SwipeGroup>
 				<DashedAction
+					ref={addExerciseRef}
 					isDisabled={exercises.fields.length >= MAX_EXERCISES_PER_WORKOUT}
 					onClick={() => {
 						setIsPickerOpen(true)

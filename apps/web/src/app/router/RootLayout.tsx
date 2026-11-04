@@ -41,15 +41,20 @@ export const RootLayout = () => {
 			bottomNav={<BottomNav todayProgress={todayProgress} />}
 			isFixedHeight={isChat}
 			hasRaisedNav={FEATURES.workouts}
+			isNavInert={isLive}
 			miniStrip={
 				liveWorkout ? (
 					<WorkoutMiniStrip live={liveWorkout} onWarm={preloadTrainingLive} />
 				) : undefined
 			}
 		>
-			<Suspense fallback={<RouteLoader />}>
-				{isLive ? (background?.outlet ?? <TrainingPage />) : outlet}
-			</Suspense>
+			{/* `contents` keeps the tab's layout; `inert` takes it out of Tab order and the a11y tree
+			    while the surface covers it (it drops the moment the route leaves live, before the fold) */}
+			<div inert={isLive} className="contents">
+				<Suspense fallback={<RouteLoader />}>
+					{isLive ? (background?.outlet ?? <TrainingPage />) : outlet}
+				</Suspense>
+			</div>
 			<AnimatePresence>
 				{isLive && (
 					<LiveSurface key="live">

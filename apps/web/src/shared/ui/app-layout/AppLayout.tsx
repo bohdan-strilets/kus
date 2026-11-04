@@ -12,6 +12,8 @@ export interface AppLayoutProps {
 	hasRaisedNav?: boolean
 	/** The strip of a running workout: floats over the nav, the content keeps room under it too. */
 	miniStrip?: ReactNode
+	/** A surface covers the nav and the strip: keep them out of focus and the accessibility tree. */
+	isNavInert?: boolean
 }
 
 /**
@@ -27,6 +29,7 @@ export const AppLayout = ({
 	isFixedHeight = false,
 	hasRaisedNav = false,
 	miniStrip,
+	isNavInert = false,
 }: AppLayoutProps) => {
 	const viewport = useViewportBox()
 	const isKeyboardOpen = useIsKeyboardOpen()
@@ -56,8 +59,16 @@ export const AppLayout = ({
 				>
 					{children}
 				</main>
-				{hasStrip && <div className="absolute inset-x-0 bottom-mini-strip z-30">{miniStrip}</div>}
-				{hasNav && <div className="absolute inset-x-0 bottom-0 z-30">{bottomNav}</div>}
+				{hasStrip && (
+					<div inert={isNavInert} className="absolute inset-x-0 bottom-mini-strip z-30">
+						{miniStrip}
+					</div>
+				)}
+				{hasNav && (
+					<div inert={isNavInert} className="absolute inset-x-0 bottom-0 z-30">
+						{bottomNav}
+					</div>
+				)}
 			</div>
 		</div>
 	)

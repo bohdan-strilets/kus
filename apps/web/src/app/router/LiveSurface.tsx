@@ -55,9 +55,25 @@ export const LiveSurface = ({ children }: { children: ReactNode }) => {
 		}
 	}, [isGrowing])
 
+	// The tab and nav under the surface are inert, so focus must live inside it. It goes to the
+	// surface itself (the screen's own focus, e.g. an exercise title, may take it over later) and
+	// comes back to what opened the screen (a link in the tab, or the strip) when the fold starts.
+	const openerRef = useRef<HTMLElement | null>(null)
+	useEffect(() => {
+		const surface = surfaceRef.current
+		if (!surface || surface.contains(document.activeElement)) return
+		openerRef.current =
+			document.activeElement instanceof HTMLElement && document.activeElement !== document.body
+				? document.activeElement
+				: null
+		surface.focus({ preventScroll: true })
+	}, [])
+
 	useEffect(() => {
 		if (isPresent) return undefined
 		const surface = surfaceRef.current
+		const opener = openerRef.current
+		if (opener?.isConnected) opener.focus({ preventScroll: true })
 		const to = surface && !isReduced ? getStripClip(surface) : null
 		if (!surface) {
 			safeToRemove()
@@ -86,7 +102,8 @@ export const LiveSurface = ({ children }: { children: ReactNode }) => {
 			/>
 			<div
 				ref={surfaceRef}
-				className="absolute inset-0 flex flex-col overflow-hidden bg-app pt-safe-top"
+				tabIndex={-1}
+				className="absolute inset-0 flex flex-col overflow-hidden bg-app pt-safe-top outline-none"
 			>
 				{isGrowing && (
 					<motion.div

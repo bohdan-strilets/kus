@@ -150,6 +150,54 @@ describe('RootLayout: the live screen over a tab', () => {
 		expect(screen.getByRole('navigation', { name: 'main nav' })).toBeTruthy()
 	})
 
+	it('the tab and the nav under the surface are inert; «back» frees them at once', async () => {
+		const router = renderApp(ROUTES.training)
+		const nav = screen.getByRole('navigation', { name: 'main nav' })
+		expect(nav.closest('[inert]')).toBeNull()
+		expect(screen.getByTestId('tab-training').closest('[inert]')).toBeNull()
+
+		fireEvent.click(screen.getByText('go live'))
+		await screen.findByTestId('live-screen')
+		expect(nav.closest('[inert]')).not.toBeNull()
+		expect(screen.getByTestId('tab-training').closest('[inert]')).not.toBeNull()
+		expect(screen.getByTestId('live-screen').closest('[inert]')).toBeNull()
+
+		await act(async () => {
+			await router.navigate(-1)
+		})
+
+		// the fold may still be running: the background is already interactive
+		expect(screen.getByRole('navigation', { name: 'main nav' }).closest('[inert]')).toBeNull()
+		expect(screen.getByTestId('tab-training').closest('[inert]')).toBeNull()
+	})
+
+	it('a deep link: the background is inert too', async () => {
+		renderApp(TRAINING_LIVE_ROUTE)
+
+		await screen.findByTestId('live-screen')
+		expect(screen.getByTestId('tab-training').closest('[inert]')).not.toBeNull()
+		expect(screen.getByRole('navigation', { name: 'main nav' }).closest('[inert]')).not.toBeNull()
+	})
+
+	it('focus moves into the surface on open and returns to the opener on close', async () => {
+		const router = renderApp(ROUTES.training)
+		const opener = screen.getByText('go live')
+		opener.focus()
+
+		fireEvent.click(opener)
+		const live = await screen.findByTestId('live-screen')
+		await waitFor(() => {
+			expect(live.closest('[tabindex="-1"]')?.contains(document.activeElement)).toBe(true)
+		})
+
+		await act(async () => {
+			await router.navigate(-1)
+		})
+		await waitFor(() => {
+			expect(document.activeElement).toBe(opener)
+		})
+	})
+
 	it('the surface closes under reduced motion too (a fade)', async () => {
 		vi.mocked(useReducedMotion).mockReturnValue(true)
 		const router = renderApp(ROUTES.training)

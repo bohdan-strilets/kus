@@ -62,12 +62,6 @@ export const workoutStatsOverviewSchema = z.object({
 	hasEstimatedDuration: z.boolean(),
 	/** Named kcal plus the estimate of the rest; null without a body weight and without named kcal. */
 	burned: z.object({ kcal: z.number(), isEstimate: z.boolean() }).nullable().default(null),
-	/** Only kcal the user named or a device showed. */
-	kcal: z.object({
-		total: z.number().nullable(),
-		workoutsWithKcal: z.number(),
-		workoutCount: z.number(),
-	}),
 	buckets: z.array(workoutStatsBucketSchema),
 	groups: z.array(workoutStatsGroupSchema),
 })

@@ -6,7 +6,7 @@ const WARSAW = 'Europe/Warsaw'
 const NOW = new Date('2026-11-10T12:00:00Z') // 13:00 in Warsaw (CET)
 
 const startOf = (localDate: string, startTime: string, timezone = WARSAW): string =>
-	getFormTime({ localDate, startTime, durationMin: 5, timezone }).startedAt.toISOString()
+	getFormTime({ localDate, startTime, durationMin: 5, timezone, now: NOW }).startedAt.toISOString()
 
 describe('getFormTime', () => {
 	it('converts HH:mm in the user time zone to UTC (winter, UTC+1) and adds the duration', () => {
@@ -15,6 +15,7 @@ describe('getFormTime', () => {
 			startTime: '18:30',
 			durationMin: 75,
 			timezone: WARSAW,
+			now: new Date('2026-11-11T00:00:00Z'),
 		})
 		expect(startedAt.toISOString()).toBe('2026-11-10T17:30:00.000Z')
 		expect(finishedAt.toISOString()).toBe('2026-11-10T18:45:00.000Z')
@@ -52,9 +53,76 @@ describe('getFormTime', () => {
 	})
 })
 
+describe('finish never later than now', () => {
+	const MINUTE = 60_000
+	const finishOf = (params: {
+		localDate: string
+		startTime: string
+		durationMin: number
+		now: Date
+	}): string => getFormTime({ ...params, timezone: WARSAW }).finishedAt.toISOString()
+
+	it('clamps to now when the session started 30 min ago and «lasted» 60', () => {
+		// 12:30Z start, now 13:00Z: the planned end 13:30Z has not come yet
+		const now = new Date('2026-11-10T13:00:00Z')
+		expect(finishOf({ localDate: '2026-11-10', startTime: '13:30', durationMin: 60, now })).toBe(
+			now.toISOString(),
+		)
+	})
+
+	it('is the start itself when the start is after now (phone-clock tolerance)', () => {
+		const { startedAt, finishedAt } = getFormTime({
+			localDate: '2026-11-10',
+			startTime: '13:04', // 12:04Z, now 12:00Z
+			durationMin: 30,
+			timezone: WARSAW,
+			now: NOW,
+		})
+		expect(startedAt.getTime()).toBeGreaterThan(NOW.getTime())
+		expect(finishedAt.getTime()).toBe(startedAt.getTime())
+	})
+
+	it('keeps start + duration for a session in the past', () => {
+		expect(
+			finishOf({ localDate: '2026-11-10', startTime: '08:00', durationMin: 45, now: NOW }),
+		).toBe('2026-11-10T07:45:00.000Z')
+		expect(
+			finishOf({ localDate: '2026-11-08', startTime: '23:30', durationMin: 90, now: NOW }),
+		).toBe('2026-11-09T00:00:00.000Z')
+	})
+
+	it('keeps the finish when it is exactly now', () => {
+		// 12:00 Warsaw = 11:00Z; 60 min later is exactly NOW
+		expect(
+			finishOf({ localDate: '2026-11-10', startTime: '12:00', durationMin: 60, now: NOW }),
+		).toBe(NOW.toISOString())
+	})
+
+	it('near midnight in Warsaw: a finish past local midnight is kept when it is already past', () => {
+		const now = new Date('2026-11-10T23:30:00Z') // 00:30 on the 11th in Warsaw
+		expect(finishOf({ localDate: '2026-11-10', startTime: '23:30', durationMin: 45, now })).toBe(
+			'2026-11-10T23:15:00.000Z',
+		)
+	})
+
+	it('near midnight in Warsaw: a finish past local midnight is clamped to now when it is still ahead', () => {
+		const now = new Date('2026-11-10T22:50:00Z') // 23:50 on the 10th in Warsaw
+		expect(finishOf({ localDate: '2026-11-10', startTime: '23:30', durationMin: 45, now })).toBe(
+			new Date(now.getTime()).toISOString(),
+		)
+		expect(now.getTime() - Date.parse('2026-11-10T22:30:00Z')).toBe(20 * MINUTE)
+	})
+})
+
 describe('findFormTimeIssue', () => {
 	const issueFor = (localDate: string, startTime = '08:00', now = NOW) => {
-		const { startedAt } = getFormTime({ localDate, startTime, durationMin: 30, timezone: WARSAW })
+		const { startedAt } = getFormTime({
+			localDate,
+			startTime,
+			durationMin: 30,
+			timezone: WARSAW,
+			now,
+		})
 		return findFormTimeIssue({ localDate, startedAt, now, timezone: WARSAW })
 	}
 

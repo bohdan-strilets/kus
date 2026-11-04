@@ -16,12 +16,16 @@ export interface FormTimeIssue {
 	code: Extract<LoggingFieldCode, 'TOO_OLD' | 'IN_FUTURE'>
 }
 
-/** The start (the day and `HH:mm` on the user's wall clock) and the finish after `durationMin`. */
+/**
+ * The start (the day and `HH:mm` on the user's wall clock) and the finish after `durationMin`,
+ * never later than `now` (a session started 30 min ago that «lasted» 60 has not finished yet).
+ */
 export const getFormTime = ({
 	localDate,
 	startTime,
 	durationMin,
 	timezone,
+	now,
 }: {
 	/** `YYYY-MM-DD` */
 	localDate: string
@@ -29,10 +33,14 @@ export const getFormTime = ({
 	startTime: string
 	durationMin: number
 	timezone: string
+	now: Date
 }): FormTime => {
 	const [hour = 0, minute = 0] = startTime.split(':').map(Number)
 	const startedAt = getZonedMoment(toDbDate(localDate), hour, timezone, minute)
-	return { startedAt, finishedAt: new Date(startedAt.getTime() + durationMin * MS_PER_MINUTE) }
+	const plannedEnd = startedAt.getTime() + durationMin * MS_PER_MINUTE
+	// a start within the phone-clock tolerance may be after `now`: the finish is then the start
+	const finishedAt = new Date(Math.max(startedAt.getTime(), Math.min(plannedEnd, now.getTime())))
+	return { startedAt, finishedAt }
 }
 
 /**

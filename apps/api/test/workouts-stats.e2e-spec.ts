@@ -165,7 +165,6 @@ describe('workout stats (e2e, real DB)', () => {
 			avgDurationMin: null,
 			groups: [],
 		})
-		expect(data.overview.kcal.total).toBeNull()
 		expect(data.exercises).toEqual([])
 		expect(data.cardio).toMatchObject({ sessionCount: 0, durationMin: 0, byExercise: [] })
 	})

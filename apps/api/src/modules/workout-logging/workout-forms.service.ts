@@ -5,6 +5,7 @@ import { toDbDate } from '../../common/time'
 import { Prisma } from '../../generated/prisma/client'
 import { PrismaService } from '../../prisma'
 import { ChatWorkoutSummaryService } from '../chat/chat-workout-summary.service'
+import { ClientMessageIdReusedException } from '../chat/chat.exceptions'
 import { ProgramTemplateNotFoundException } from '../programs/programs.exceptions'
 import { ProgramsService } from '../programs/programs.service'
 import { UsersService } from '../users/users.service'
@@ -74,7 +75,7 @@ export class WorkoutFormsService {
 		if (repeat) return { response: repeat, isCreated: false }
 		const now = new Date()
 		const { timezone } = await this.usersService.getMe(userId)
-		const time = getFormTime({ ...form, timezone })
+		const time = getFormTime({ ...form, timezone, now })
 		const issue = findFormTimeIssue({
 			localDate: form.localDate,
 			startedAt: time.startedAt,
@@ -150,9 +151,15 @@ export class WorkoutFormsService {
 		clientRequestId: string,
 	): Promise<WorkoutFinished | null> {
 		const messageId = await this.summary.findMessageIdByClientId(userId, clientRequestId)
-		if (messageId === null) return null
-		const workout = await this.repository.findByFinishedMessage({ userId, messageId })
-		if (!workout) return null
+		const workout =
+			messageId === null ? null : await this.repository.findByFinishedMessage({ userId, messageId })
+		if (messageId === null || !workout) {
+			// the id belongs to another message of this user (a chat one): not a repeat of a form
+			if (await this.summary.hasClientMessage(userId, clientRequestId)) {
+				throw new ClientMessageIdReusedException()
+			}
+			return null
+		}
 		return {
 			workout: await this.toWorkoutResponse(userId, workout),
 			messageId,

@@ -228,6 +228,78 @@ describe('workout forms (e2e, real DB)', () => {
 			expect(await prisma.workout.count({ where: { userId: stranger.userId } })).toBe(1)
 		})
 
+		describe('an id that belongs to a chat message', () => {
+			const seedMessage = (
+				userId: string,
+				clientMessageId: string,
+				role: 'USER' | 'ASSISTANT',
+			): Promise<unknown> =>
+				prisma.message.create({
+					data: { userId, role, status: 'COMPLETED', clientMessageId, content: '3 яйця' },
+				})
+
+			const errorCodeOf = (response: { body: unknown }): string =>
+				apiErrorResponseSchema.parse(response.body).errorCode
+
+			it("a user chat message's id is 409 CLIENT_MESSAGE_ID_REUSED, no workout is made", async () => {
+				await start()
+				const owner = await user('owner@kus.app')
+				const clientRequestId = randomUUID()
+				await seedMessage(owner.userId, clientRequestId, 'USER')
+
+				const response = await post(owner, body({ clientRequestId })).expect(409)
+
+				expect(errorCodeOf(response)).toBe('CLIENT_MESSAGE_ID_REUSED')
+				expect(await prisma.workout.count({ where: { userId: owner.userId } })).toBe(0)
+				expect(
+					await prisma.message.count({
+						where: { userId: owner.userId, clientMessageId: { not: null } },
+					}),
+				).toBe(1)
+			})
+
+			it('an assistant message without a workout under that id is 409 as well', async () => {
+				await start()
+				const owner = await user('owner@kus.app')
+				const clientRequestId = randomUUID()
+				await seedMessage(owner.userId, clientRequestId, 'ASSISTANT')
+
+				const response = await post(owner, body({ clientRequestId })).expect(409)
+
+				expect(errorCodeOf(response)).toBe('CLIENT_MESSAGE_ID_REUSED')
+				expect(await prisma.workout.count({ where: { userId: owner.userId } })).toBe(0)
+			})
+
+			it("the same id on another user's chat message does not block this user", async () => {
+				await start()
+				const owner = await user('owner@kus.app')
+				const stranger = await user('stranger@kus.app')
+				const clientRequestId = randomUUID()
+				await seedMessage(stranger.userId, clientRequestId, 'USER')
+
+				const response = await post(owner, body({ clientRequestId })).expect(201)
+
+				expect(formResponse.parse(response.body).data.workout.source).toBe('FORM')
+				expect(await prisma.workout.count({ where: { userId: owner.userId } })).toBe(1)
+				expect(await prisma.workout.count({ where: { userId: stranger.userId } })).toBe(0)
+			})
+
+			it('a real repeat of the form stays idempotent (200, not 409), even after the workout is deleted', async () => {
+				await start()
+				const owner = await user('owner@kus.app')
+				const payload = body()
+				const first = formResponse.parse((await post(owner, payload).expect(201)).body).data
+
+				const repeat = await post(owner, payload).expect(200)
+				await owner.agent.delete(`/api/v1/workouts/${first.workout.id}`).expect(204)
+				const afterDelete = await post(owner, payload)
+
+				expect(formResponse.parse(repeat.body).data.workout.id).toBe(first.workout.id)
+				expect(afterDelete.status).toBe(200)
+				expect(await prisma.workout.count({ where: { userId: owner.userId } })).toBe(1)
+			})
+		})
+
 		it('a rejected form leaves no message and no workout, and the id can be used again', async () => {
 			await start()
 			const owner = await user('owner@kus.app')

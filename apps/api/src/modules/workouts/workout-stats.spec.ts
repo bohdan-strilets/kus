@@ -34,7 +34,6 @@ describe('buildWorkoutStats overview', () => {
 			durationMin: 0,
 			avgDurationMin: null,
 			hasEstimatedDuration: false,
-			kcal: { total: null, workoutsWithKcal: 0, workoutCount: 0 },
 			groups: [],
 		})
 		expect(stats.overview.buckets).toHaveLength(7)
@@ -188,19 +187,6 @@ describe('buildWorkoutStats duration and kcal', () => {
 		expect(build(sixInMonth, [], [], 'month').overview.avgPerWeek).toBe(1.5)
 		expect(build([makeWorkout({})], [], [], 'week').overview.avgPerWeek).toBe(1)
 		expect(build([], [], [], 'month').overview.avgPerWeek).toBeNull()
-	})
-
-	it('counts only kcal the person named or a device showed', () => {
-		const stats = build(
-			[
-				makeWorkout({ kcalBurned: 300, kcalSource: 'MANUAL' }),
-				makeWorkout({ id: 'w2', kcalBurned: 200, kcalSource: 'DEVICE' }),
-				makeWorkout({ id: 'w3', kcalBurned: 999, kcalSource: 'AI_ESTIMATE' }),
-				makeWorkout({ id: 'w4' }),
-			],
-			[],
-		)
-		expect(stats.overview.kcal).toEqual({ total: 500, workoutsWithKcal: 2, workoutCount: 4 })
 	})
 })
 

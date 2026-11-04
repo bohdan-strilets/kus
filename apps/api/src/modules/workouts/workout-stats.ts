@@ -21,11 +21,7 @@ import {
 import type { StatsEntryRow, StatsWorkoutRow } from './workout-stats.types'
 import { getEstimatedDurationMin, getMuscleGroup } from './workouts.mapper'
 
-type Overview = WorkoutStatsResponse['overview']
 type Cardio = WorkoutStatsResponse['cardio']
-
-/** Only kcal the person named or a device showed are counted — never an estimate. */
-const NAMED_KCAL_SOURCES = ['MANUAL', 'DEVICE'] as const
 
 const MUSCLE_GROUP_ORDER = TRAINING_GROUP_ORDER.filter(
 	(group): group is Exclude<typeof group, 'CARDIO'> => group !== 'CARDIO',
@@ -82,21 +78,6 @@ const getDurations = (
 	return {
 		named: withDuration.map((duration) => duration.minutes),
 		hasEstimate: withDuration.some((duration) => duration.isEstimate),
-	}
-}
-
-const getKcal = (workouts: readonly StatsWorkoutRow[]): Overview['kcal'] => {
-	const values = workouts.flatMap((workout) =>
-		workout.kcalBurned !== null &&
-		workout.kcalSource !== null &&
-		(NAMED_KCAL_SOURCES as readonly string[]).includes(workout.kcalSource)
-			? [workout.kcalBurned]
-			: [],
-	)
-	return {
-		total: values.length === 0 ? null : sum(values),
-		workoutsWithKcal: values.length,
-		workoutCount: workouts.length,
 	}
 }
 
@@ -199,7 +180,6 @@ export const buildWorkoutStats = ({
 					: Math.round(sum(durations.named) / durations.named.length),
 			hasEstimatedDuration: durations.hasEstimate,
 			burned: getBurned({ workouts: periodWorkouts, entries: periodEntries, getBodyWeightKg }),
-			kcal: getKcal(periodWorkouts),
 			buckets,
 			groups: getGroups(periodEntries),
 		},

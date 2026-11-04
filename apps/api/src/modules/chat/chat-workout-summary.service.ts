@@ -121,4 +121,10 @@ export class ChatWorkoutSummaryService {
 		const message = await this.chatRepository.findByClientMessageId({ userId, clientMessageId })
 		return message?.role === MessageRole.ASSISTANT ? message.id : null
 	}
+
+	/** Whether the user already has a message with this clientMessageId (of any role). */
+	async hasClientMessage(userId: string, clientMessageId: string): Promise<boolean> {
+		const message = await this.chatRepository.findByClientMessageId({ userId, clientMessageId })
+		return message !== null
+	}
 }

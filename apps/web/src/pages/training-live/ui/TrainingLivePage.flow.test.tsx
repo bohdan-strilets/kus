@@ -76,6 +76,12 @@ const renderPage = (onPathname?: (pathname: string) => void) => {
 const cardioMinutesInPut = (): number | null | undefined =>
 	lastPutBody().exercises.find((exercise) => exercise.name === 'Доріжка')?.durationMin
 
+/** The stepper rolls its number: the old one is in the button until its exit ends, so wait for the one. */
+const expectMinutesShown = (text: string): Promise<void> =>
+	waitFor(() => {
+		expect(screen.getByRole('button', { name: 'хв: ввести число' }).textContent).toBe(text)
+	})
+
 const lastPutBody = (): LiveWorkoutUpdate => putMock.mock.calls.at(-1)?.[1] as LiveWorkoutUpdate
 
 beforeEach(() => {
@@ -299,7 +305,7 @@ describe('TrainingLivePage: a planned cardio', () => {
 		renderPage()
 		fireEvent.click(await screen.findByRole('button', { name: /^Доріжка/ }))
 
-		expect(screen.getByRole('button', { name: 'хв: ввести число' }).textContent).toBe('—')
+		await expectMinutesShown('—')
 		expect(screen.getByRole('button', { name: 'Менше хвилин' })).toBeTruthy()
 	})
 
@@ -310,7 +316,7 @@ describe('TrainingLivePage: a planned cardio', () => {
 
 		fireEvent.click(screen.getByRole('button', { name: 'Більше хвилин' }))
 
-		expect(screen.getByRole('button', { name: 'хв: ввести число' }).textContent).toBe('20')
+		await expectMinutesShown('20')
 		await waitFor(() => {
 			expect(putMock).toHaveBeenCalledTimes(1)
 		})
@@ -318,7 +324,7 @@ describe('TrainingLivePage: a planned cardio', () => {
 
 		fireEvent.click(screen.getByRole('button', { name: 'Більше хвилин' }))
 
-		expect(screen.getByRole('button', { name: 'хв: ввести число' }).textContent).toBe('21')
+		await expectMinutesShown('21')
 	})
 
 	it('typing minutes works at once, without the offer step', async () => {
@@ -330,7 +336,7 @@ describe('TrainingLivePage: a planned cardio', () => {
 		fireEvent.change(input, { target: { value: '35' } })
 		fireEvent.keyDown(input, { key: 'Enter' })
 
-		expect(screen.getByRole('button', { name: 'хв: ввести число' }).textContent).toBe('35')
+		await expectMinutesShown('35')
 		await waitFor(() => {
 			expect(putMock).toHaveBeenCalledTimes(1)
 		})
@@ -344,15 +350,11 @@ describe('TrainingLivePage: a planned cardio', () => {
 
 		fireEvent.click(screen.getByRole('button', { name: 'Більше хвилин' }))
 
-		expect(screen.getByRole('button', { name: 'хв: ввести число' }).textContent).toBe(
-			String(NEW_CARDIO_MIN),
-		)
+		await expectMinutesShown(String(NEW_CARDIO_MIN))
 
 		fireEvent.click(screen.getByRole('button', { name: 'Більше хвилин' }))
 
-		expect(screen.getByRole('button', { name: 'хв: ввести число' }).textContent).toBe(
-			String(NEW_CARDIO_MIN + 1),
-		)
+		await expectMinutesShown(String(NEW_CARDIO_MIN + 1))
 	})
 
 	it('cardio WITH a plan: the first «+» sets the plan minutes, not NEW_CARDIO_MIN', async () => {
@@ -362,7 +364,7 @@ describe('TrainingLivePage: a planned cardio', () => {
 
 		fireEvent.click(screen.getByRole('button', { name: 'Більше хвилин' }))
 
-		expect(screen.getByRole('button', { name: 'хв: ввести число' }).textContent).toBe('25')
+		await expectMinutesShown('25')
 	})
 })
 

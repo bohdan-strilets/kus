@@ -5,6 +5,7 @@ import type { LiveDraftExercise, LiveDraftSet } from '@/features/live-workout'
 import { getHintToShow } from './live-exercise-view'
 
 const set = (overrides: Partial<LiveDraftSet> = {}): LiveDraftSet => ({
+	rowKey: 'set-key',
 	reps: 8,
 	weightKg: 50,
 	durationSec: null,

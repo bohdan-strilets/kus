@@ -84,6 +84,13 @@ export const liveRowVariants: Variants = {
 	gone: { opacity: 0, x: LIVE_ROW_LEAVE_X_PX, transition: TRANSITION.leave },
 }
 
+/** Reduced motion: no height, no shift — a live row only fades in and out. */
+export const liveRowReducedVariants: Variants = {
+	hidden: { opacity: 0 },
+	visible: { opacity: 1, transition: TRANSITION.base },
+	gone: { opacity: 0, transition: TRANSITION.leave },
+}
+
 /** The live screen's content while the surface unfolds: opacity + y 12 → 0, base, after 80 ms; leaves first, fast. */
 export const LIVE_CONTENT_DELAY_S = 0.08
 export const liveContentVariants: Variants = {
@@ -92,11 +99,20 @@ export const liveContentVariants: Variants = {
 	gone: { opacity: 0, transition: TRANSITION.fast },
 }
 
-/** A stepper value rolls in from the side of the change: ±8 px + opacity, fast. `custom` is +1 for «+», −1 for «−». */
+/**
+ * A stepper value rolls: the new one comes in from the side of the change, the old one leaves the
+ * other way, ±8 px + opacity, fast. `custom` is +1 for «+», −1 for «−»; 0 is a plain crossfade
+ * (the set numbers after a renumbering).
+ */
 export const STEP_VALUE_SHIFT_PX = 8
 export const stepValueVariants: Variants = {
 	hidden: (direction: number) => ({ opacity: 0, y: direction * STEP_VALUE_SHIFT_PX }),
 	visible: { opacity: 1, y: 0, transition: TRANSITION.fast },
+	gone: (direction: number) => ({
+		opacity: 0,
+		y: -direction * STEP_VALUE_SHIFT_PX,
+		transition: TRANSITION.fast,
+	}),
 }
 
 /** The chat header swaps (full ↔ compact) by opacity + a small shift, base; both headers crossfade. */

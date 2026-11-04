@@ -11,10 +11,13 @@ const toExerciseInput = (exercise: FormExerciseValue): FormExerciseInput => ({
 	isBodyweight: exercise.isBodyweight,
 	durationMin: exercise.durationMin,
 	distanceM: exercise.distanceM,
-	sets: exercise.sets.map((set) => ({
-		...set,
+	sets: exercise.sets.map(({ reps, weightKg, durationSec, distanceM, isWarmup }) => ({
+		reps,
 		// a bodyweight exercise has no weight on any set (the server rejects it otherwise)
-		weightKg: exercise.isBodyweight === true ? null : set.weightKg,
+		weightKg: exercise.isBodyweight === true ? null : weightKg,
+		durationSec,
+		distanceM,
+		isWarmup,
 	})),
 })
 

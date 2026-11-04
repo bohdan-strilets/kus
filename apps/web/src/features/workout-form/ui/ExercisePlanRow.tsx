@@ -4,7 +4,7 @@ import {
 	PROGRAM_DURATION_MIN_MAX,
 } from '@kus/shared'
 import type { TFunction } from 'i18next'
-import { motion } from 'motion/react'
+import { AnimatePresence, motion } from 'motion/react'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -16,13 +16,14 @@ import {
 	SetRow,
 	SetTable,
 } from '@/entities/workout'
-import { cn, PRESS } from '@/shared/lib'
+import { cn, PRESS, useEnteringKeys } from '@/shared/lib'
 import {
 	Button,
 	countSwipeRowsBefore,
 	Icon,
 	ICON_SIZE,
 	IconButton,
+	RowMotion,
 	SetStepper,
 	SWIPE_ROWS_ANYWHERE,
 	SwipeGroup,
@@ -78,6 +79,8 @@ export const ExercisePlanRow = ({ exercise, onChange, onRemove }: ExercisePlanRo
 		)
 		removeSet(index)
 	}
+	// a new set grows in, a removed one slides out and lets the rest glide up
+	const enteringSets = useEnteringKeys(exercise.sets.map((set) => set.rowKey))
 	const state = getExerciseState(exercise)
 	const isSkipped = state === 'SKIPPED'
 	const isBodyweight = isFormBodyweight(exercise)
@@ -197,71 +200,74 @@ export const ExercisePlanRow = ({ exercise, onChange, onRemove }: ExercisePlanRo
 				<div ref={setsRef} className="flex flex-col gap-2">
 					<SwipeGroup>
 						<SetTable hasWeight={!isBodyweight}>
-							{exercise.sets.map((set, index) => {
-								const deleteLabel = set.isWarmup
-									? t('workout.deleteWarmupAria')
-									: t('workout.deleteSetAria', { n: index + 1 })
-								if (index === selected) {
+							<AnimatePresence>
+								{exercise.sets.map((set, index) => {
+									const deleteLabel = set.isWarmup
+										? t('workout.deleteWarmupAria')
+										: t('workout.deleteSetAria', { n: index + 1 })
+									const content =
+										index === selected ? (
+											<SetFields
+												title={t('training.live.setTitle', { n: index + 1 })}
+												reps={set.reps}
+												weightKg={set.weightKg}
+												isBodyweight={isBodyweight}
+												weightStepKg={DEFAULT_PROGRESS_STEP_KG}
+												onChange={(patch) => {
+													onChange(patchFormSet(exercise, index, patch))
+												}}
+												deleteLabel={deleteLabel}
+												onDelete={() => {
+													// only one set is a block, so every set above it is a row
+													deleteSet(index, index)
+												}}
+											/>
+										) : (
+											<SwipeToDelete
+												actionLabel={t('workout.swipeDelete')}
+												actionAriaLabel={deleteLabel}
+												onAction={(row) => {
+													const position =
+														setsRef.current && row
+															? countSwipeRowsBefore(setsRef.current, row, SWIPE_ROWS_ANYWHERE)
+															: 0
+													deleteSet(index, position)
+												}}
+											>
+												<SetRow
+													label={String(index + 1)}
+													ariaLabel={t('training.live.setEdit', { n: index + 1 })}
+													reps={set.reps}
+													weightKg={set.weightKg}
+													hasWeight={!isBodyweight}
+													isChanged={isRowChanged(index)}
+													isWarmup={set.isWarmup}
+													isDone={false}
+													onSelect={() => {
+														setSelected(index)
+													}}
+													trailing={
+														isRowChanged(index) ? (
+															<Text
+																as="span"
+																variant="small"
+																tone="mutedStrong"
+																className="pr-2 text-muscle-arms-ink"
+															>
+																{t('training.form.setChanged')}
+															</Text>
+														) : null
+													}
+												/>
+											</SwipeToDelete>
+										)
 									return (
-										<SetFields
-											key={index}
-											title={t('training.live.setTitle', { n: index + 1 })}
-											reps={set.reps}
-											weightKg={set.weightKg}
-											isBodyweight={isBodyweight}
-											weightStepKg={DEFAULT_PROGRESS_STEP_KG}
-											onChange={(patch) => {
-												onChange(patchFormSet(exercise, index, patch))
-											}}
-											deleteLabel={deleteLabel}
-											onDelete={() => {
-												// only one set is a block, so every set above it is a row
-												deleteSet(index, index)
-											}}
-										/>
+										<RowMotion key={set.rowKey} isEntering={enteringSets.has(set.rowKey)}>
+											{content}
+										</RowMotion>
 									)
-								}
-								return (
-									<SwipeToDelete
-										key={index}
-										actionLabel={t('workout.swipeDelete')}
-										actionAriaLabel={deleteLabel}
-										onAction={(row) => {
-											const position =
-												setsRef.current && row
-													? countSwipeRowsBefore(setsRef.current, row, SWIPE_ROWS_ANYWHERE)
-													: 0
-											deleteSet(index, position)
-										}}
-									>
-										<SetRow
-											label={String(index + 1)}
-											ariaLabel={t('training.live.setEdit', { n: index + 1 })}
-											reps={set.reps}
-											weightKg={set.weightKg}
-											hasWeight={!isBodyweight}
-											isChanged={isRowChanged(index)}
-											isWarmup={set.isWarmup}
-											isDone={false}
-											onSelect={() => {
-												setSelected(index)
-											}}
-											trailing={
-												isRowChanged(index) ? (
-													<Text
-														as="span"
-														variant="small"
-														tone="mutedStrong"
-														className="pr-2 text-muscle-arms-ink"
-													>
-														{t('training.form.setChanged')}
-													</Text>
-												) : null
-											}
-										/>
-									</SwipeToDelete>
-								)
-							})}
+								})}
+							</AnimatePresence>
 						</SetTable>
 					</SwipeGroup>
 					<div className={cn('gap-2', isAdded ? 'flex' : 'grid grid-cols-2')}>

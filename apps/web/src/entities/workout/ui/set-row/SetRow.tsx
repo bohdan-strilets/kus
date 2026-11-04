@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { cn } from '@/shared/lib'
-import { Text } from '@/shared/ui'
+import { StepValue, Text } from '@/shared/ui'
 
 import { formatSetReps, formatSetWeight } from '../../lib/set-edit'
 
@@ -48,7 +48,7 @@ export const SetRow = ({
 	const content = (
 		<>
 			<Text as="span" variant="caption" tone="muted" weight="extrabold" className="w-11 flex-none">
-				{label}
+				<StepValue text={label} direction={0} />
 			</Text>
 			{hasWeight && (
 				<span className="min-w-0 flex-1 basis-0">

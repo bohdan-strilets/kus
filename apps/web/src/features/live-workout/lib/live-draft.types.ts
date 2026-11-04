@@ -1,6 +1,8 @@
 import type { ExerciseKind, MuscleGroup, ProgramLastSet } from '@kus/shared'
 
 export interface LiveDraftSet {
+	/** Key of the row in a list: local only (never in the PUT or the unsent snapshot), new after a reload. */
+	rowKey: string
 	reps: number | null
 	weightKg: number | null
 	durationSec: number | null

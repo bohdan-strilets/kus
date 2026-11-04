@@ -1,4 +1,5 @@
 import { MAX_EXERCISES_PER_WORKOUT, type ProgramTemplateResponse } from '@kus/shared'
+import { motion } from 'motion/react'
 import { useRef, useState } from 'react'
 import { Controller } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
@@ -96,7 +97,9 @@ export const FillScreen = ({ template, now }: FillScreenProps) => {
 					</Text>
 				</div>
 			</header>
-			<div
+			{/* layoutScroll: the sets glide inside a scrolling parent, Motion has to know its scroll */}
+			<motion.div
+				layoutScroll
 				ref={listRef}
 				className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-gutter pb-4"
 			>
@@ -158,7 +161,7 @@ export const FillScreen = ({ template, now }: FillScreenProps) => {
 				>
 					{t('program.editor.addExercise')}
 				</DashedAction>
-			</div>
+			</motion.div>
 			<div className="flex flex-col gap-2 px-gutter pt-2 pb-4">
 				{exercisesError && (
 					<Text role="alert" variant="caption" tone="danger" className="text-center">

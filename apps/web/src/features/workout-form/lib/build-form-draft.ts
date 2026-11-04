@@ -20,6 +20,7 @@ const toFormSet = ({
 	reps: number | null
 	weightKg: number | null
 }): FormSetValue => ({
+	rowKey: createUuid(),
 	reps,
 	weightKg,
 	durationSec: null,
@@ -27,7 +28,8 @@ const toFormSet = ({
 	isWarmup: false,
 })
 
-const cloneSets = (sets: readonly FormSetValue[]): FormSetValue[] => sets.map((set) => ({ ...set }))
+const cloneSets = (sets: readonly FormSetValue[]): FormSetValue[] =>
+	sets.map((set) => ({ ...set, rowKey: createUuid() }))
 
 export interface BuildFormDraftOptions {
 	now: FormNow

@@ -13,6 +13,7 @@ import { useWorkoutForm } from './use-workout-form'
 const NOW = { localDate: '2026-11-02', time: '18:30' }
 
 const formSet = (reps: number, overrides: Partial<FormSetValue> = {}): FormSetValue => ({
+	rowKey: `set-${reps}`,
 	reps,
 	weightKg: 50,
 	durationSec: null,

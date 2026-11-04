@@ -8,6 +8,7 @@ import type { LiveDraftSet } from './live-draft.types'
 const t = i18n.t.bind(i18n)
 
 const set = (overrides: Partial<LiveDraftSet> = {}): LiveDraftSet => ({
+	rowKey: 'set-key',
 	reps: 12,
 	weightKg: 52.5,
 	durationSec: null,

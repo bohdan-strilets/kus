@@ -1,6 +1,8 @@
 import type { ExerciseKind, MuscleGroup } from '@kus/shared'
 
 export interface FormSetValue {
+	/** Key of the row in a list: local only (never sent, not compared with the plan). */
+	rowKey: string
 	reps: number | null
 	weightKg: number | null
 	durationSec: number | null

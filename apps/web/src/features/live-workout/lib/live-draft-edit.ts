@@ -1,11 +1,13 @@
 import { DEFAULT_PROGRESS_STEP_KG } from '@kus/shared'
 
 import { type ExercisePick, NEW_CARDIO_MIN } from '@/entities/workout'
+import { createUuid } from '@/shared/lib'
 
 import type { LiveDraft, LiveDraftExercise, LiveDraftSet } from './live-draft.types'
 import type { LiveSetRef } from './live-set-helpers'
 
 const emptySet = (): LiveDraftSet => ({
+	rowKey: createUuid(),
 	reps: null,
 	weightKg: null,
 	durationSec: null,
@@ -62,7 +64,10 @@ export const setSetDone = (draft: LiveDraft, ref: LiveSetRef, doneAt: string | n
 export const addSet = (draft: LiveDraft, exerciseIndex: number): LiveDraft =>
 	mapExercise(draft, exerciseIndex, (exercise) => {
 		const last = [...exercise.sets].reverse().find((set) => !set.isWarmup)
-		return { ...exercise, sets: [...exercise.sets, { ...(last ?? emptySet()), doneAt: null }] }
+		return {
+			...exercise,
+			sets: [...exercise.sets, { ...(last ?? emptySet()), rowKey: createUuid(), doneAt: null }],
+		}
 	})
 
 /** «+ Розминка»: at the front, the reps of the first working set, the weight left to the person. */

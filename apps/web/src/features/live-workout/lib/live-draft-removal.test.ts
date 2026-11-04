@@ -17,6 +17,7 @@ import {
 const DONE_AT = '2026-11-02T09:00:00.000Z'
 
 const set = (overrides: Partial<LiveDraftSet> = {}): LiveDraftSet => ({
+	rowKey: 'set-key',
 	reps: 8,
 	weightKg: 50,
 	durationSec: null,

@@ -18,6 +18,7 @@ const addedExercise = (): FormExerciseValue => ({
 		'added',
 	),
 	sets: [1, 2, 3].map((reps) => ({
+		rowKey: `set-${reps}`,
 		reps,
 		weightKg: 40,
 		durationSec: null,

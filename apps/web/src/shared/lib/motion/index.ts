@@ -27,6 +27,7 @@ export {
 	LIVE_CONTENT_DELAY_S,
 	LIVE_ROW_LEAVE_X_PX,
 	liveContentVariants,
+	liveRowReducedVariants,
 	liveRowVariants,
 	popInVariants,
 	ROW_STAGGER_S,

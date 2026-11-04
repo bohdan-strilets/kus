@@ -47,6 +47,7 @@ const makeKeys = (): (() => string) => {
 }
 
 const set = (overrides: Partial<LiveDraftSet> = {}): LiveDraftSet => ({
+	rowKey: 'set-key',
 	reps: 8,
 	weightKg: 50,
 	durationSec: null,
@@ -54,6 +55,12 @@ const set = (overrides: Partial<LiveDraftSet> = {}): LiveDraftSet => ({
 	isWarmup: false,
 	doneAt: null,
 	...overrides,
+})
+
+/** A set the code made: its `rowKey` is a fresh uuid, the rest is what `set()` says. */
+const freshSet = (overrides: Partial<LiveDraftSet> = {}): LiveDraftSet => ({
+	...set(overrides),
+	rowKey: expect.any(String) as string,
 })
 
 const exercise = (overrides: Partial<LiveDraftExercise> = {}): LiveDraftExercise => ({
@@ -113,7 +120,7 @@ describe('buildLiveDraft', () => {
 	it('falls back to one empty row for a plan without a set count', () => {
 		const built = planDraft({ sets: null, repsMin: null, repsMax: null, weightKg: null })
 
-		expect(built.sets).toEqual([set({ reps: null, weightKg: null })])
+		expect(built.sets).toEqual([freshSet({ reps: null, weightKg: null })])
 	})
 
 	it('a planned cardio starts NOT done: no minutes, no distance, no sets; the plan minutes are only the start', () => {
@@ -263,7 +270,9 @@ describe('buildLiveDraft', () => {
 			{ unsent: [unsent], createKey: makeKeys() },
 		)
 
-		expect(built.exercises[0]?.sets).toEqual([set({ reps: 10, weightKg: 60, doneAt: DONE_AT })])
+		expect(built.exercises[0]?.sets).toEqual([
+			freshSet({ reps: 10, weightKg: 60, doneAt: DONE_AT }),
+		])
 	})
 
 	it('an empty unsent snapshot is the truth too (everything was removed)', () => {
@@ -627,13 +636,13 @@ describe('live-draft-edit', () => {
 		const { sets } = addSet(draftOf(base), 0).exercises[0] as LiveDraftExercise
 
 		expect(sets).toHaveLength(4)
-		expect(sets[3]).toEqual(set({ reps: 6, weightKg: 90, doneAt: null }))
+		expect(sets[3]).toEqual(freshSet({ reps: 6, weightKg: 90, doneAt: null }))
 	})
 
 	it('addSet on an exercise without sets adds an empty one', () => {
 		const { sets } = addSet(draftOf(exercise({ sets: [] })), 0).exercises[0] as LiveDraftExercise
 
-		expect(sets).toEqual([set({ reps: null, weightKg: null })])
+		expect(sets).toEqual([freshSet({ reps: null, weightKg: null })])
 	})
 
 	it('addWarmup goes first with the reps of the first working set and no weight', () => {
@@ -642,7 +651,7 @@ describe('live-draft-edit', () => {
 		const { sets } = addWarmup(draftOf(base), 0).exercises[0] as LiveDraftExercise
 
 		expect(sets).toHaveLength(2)
-		expect(sets[0]).toEqual(set({ isWarmup: true, reps: 6, weightKg: null }))
+		expect(sets[0]).toEqual(freshSet({ isWarmup: true, reps: 6, weightKg: null }))
 		expect(sets[1]?.weightKg).toBe(80)
 	})
 
@@ -693,7 +702,7 @@ describe('live-draft-edit', () => {
 			KEY_2,
 		)
 
-		expect(created.sets).toEqual([set({ reps: null, weightKg: null })])
+		expect(created.sets).toEqual([freshSet({ reps: null, weightKg: null })])
 		expect(created.exerciseId).toBeNull()
 	})
 
@@ -709,7 +718,7 @@ describe('live-draft-edit', () => {
 			KEY_2,
 		)
 
-		expect(created.sets).toEqual([set({ reps: null, weightKg: null })])
+		expect(created.sets).toEqual([freshSet({ reps: null, weightKg: null })])
 	})
 
 	it('createLiveExercise: cardio has the default minutes and no sets', () => {

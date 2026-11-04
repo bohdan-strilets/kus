@@ -49,6 +49,7 @@ const fromServerExercise = (exercise: WorkoutExerciseResponse): LiveDraftExercis
 	durationMin: exercise.durationMin,
 	distanceM: exercise.distanceM,
 	sets: exercise.sets.map(({ reps, weightKg, durationSec, distanceM, isWarmup, doneAt }) => ({
+		rowKey: createUuid(),
 		reps,
 		weightKg,
 		durationSec,
@@ -71,7 +72,7 @@ const fromInput = (input: LiveExerciseInput): LiveDraftExercise => ({
 	isBodyweight: input.isBodyweight,
 	durationMin: input.durationMin,
 	distanceM: input.distanceM,
-	sets: input.sets.map((set) => ({ ...set })),
+	sets: input.sets.map((set) => ({ ...set, rowKey: createUuid() })),
 	plan: null,
 })
 
@@ -90,6 +91,7 @@ const fromPlan = (plan: LivePlanExercise, clientKey: string): LiveDraftExercise 
 	durationMin: null,
 	distanceM: null,
 	sets: buildPlanSets(toPlanTarget(plan)).map(({ reps, weightKg }) => ({
+		rowKey: createUuid(),
 		reps,
 		weightKg,
 		durationSec: null,
@@ -159,7 +161,11 @@ export const adoptServerExercises = (draft: LiveDraft, live: LiveWorkoutResponse
 				isBodyweight: fromServer.isBodyweight,
 				durationMin: fromServer.durationMin,
 				distanceM: fromServer.distanceM,
-				sets: fromServer.sets,
+				// the same place keeps its row, so a chat edit does not remount every set
+				sets: fromServer.sets.map((set, index) => ({
+					...set,
+					rowKey: exercise.sets[index]?.rowKey ?? set.rowKey,
+				})),
 			}
 		})
 	const serverOnly = [...serverByKey]

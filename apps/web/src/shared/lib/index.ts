@@ -60,6 +60,7 @@ export {
 	HOP_TRANSITION,
 	isReducedMotion,
 	liveContentVariants,
+	liveRowReducedVariants,
 	liveRowVariants,
 	popInVariants,
 	PRESS,

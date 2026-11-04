@@ -249,7 +249,14 @@ describe('createFormExercise and edits', () => {
 
 		expect(withHistory.sets.map((set) => [set.reps, set.weightKg])).toEqual([[8, 70]])
 		expect(without.sets).toEqual([
-			{ reps: null, weightKg: null, durationSec: null, distanceM: null, isWarmup: false },
+			{
+				rowKey: expect.any(String) as string,
+				reps: null,
+				weightKg: null,
+				durationSec: null,
+				distanceM: null,
+				isWarmup: false,
+			},
 		])
 	})
 
@@ -265,8 +272,15 @@ describe('createFormExercise and edits', () => {
 	it('addFormSet copies the last working set, skipping a trailing warm-up', () => {
 		const exercise = draftExercise({
 			sets: [
-				{ reps: 5, weightKg: 100, durationSec: null, distanceM: null, isWarmup: false },
-				{ reps: 15, weightKg: 20, durationSec: null, distanceM: null, isWarmup: true },
+				{
+					rowKey: 'a',
+					reps: 5,
+					weightKg: 100,
+					durationSec: null,
+					distanceM: null,
+					isWarmup: false,
+				},
+				{ rowKey: 'b', reps: 15, weightKg: 20, durationSec: null, distanceM: null, isWarmup: true },
 			],
 		})
 

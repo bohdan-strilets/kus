@@ -2,7 +2,7 @@ import { MAX_SET_REPS, MAX_SET_WEIGHT_KG } from '@kus/shared'
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { Icon, ICON_SIZE, IconButton, SetStepper, Text } from '@/shared/ui'
+import { Icon, ICON_SIZE, IconButton, SetStepper, StepValue, Text } from '@/shared/ui'
 
 import {
 	formatSetReps,
@@ -59,7 +59,7 @@ export const SetFields = ({
 			{onDelete && deleteLabel !== undefined ? (
 				<div className="-mt-1 -mr-1 -mb-1.5 flex items-center justify-between">
 					<Text as="span" variant="eyebrow" tone="primaryDeep">
-						{title}
+						<StepValue text={title} direction={0} />
 					</Text>
 					<IconButton
 						label={deleteLabel}
@@ -72,7 +72,7 @@ export const SetFields = ({
 				</div>
 			) : (
 				<Text as="span" variant="eyebrow" tone="primaryDeep">
-					{title}
+					<StepValue text={title} direction={0} />
 				</Text>
 			)}
 			{!isBodyweight && (

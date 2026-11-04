@@ -1,8 +1,10 @@
 import { type ExercisePick, NEW_CARDIO_MIN } from '@/entities/workout'
+import { createUuid } from '@/shared/lib'
 
 import type { FormExerciseValue, FormSetValue } from './workout-form.types'
 
 const emptySet = (): FormSetValue => ({
+	rowKey: createUuid(),
 	reps: null,
 	weightKg: null,
 	durationSec: null,
@@ -48,7 +50,10 @@ export const patchFormSet = (
 /** «+ Підхід»: a copy of the last working set. */
 export const addFormSet = (exercise: FormExerciseValue): FormExerciseValue => {
 	const last = [...exercise.sets].reverse().find((set) => !set.isWarmup)
-	return { ...exercise, sets: [...exercise.sets, { ...(last ?? emptySet()) }] }
+	return {
+		...exercise,
+		sets: [...exercise.sets, { ...(last ?? emptySet()), rowKey: createUuid() }],
+	}
 }
 
 /** No weight: the person's own switch, else what the dictionary says. */

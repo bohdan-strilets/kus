@@ -1,4 +1,5 @@
 import { MAX_SETS_PER_EXERCISE } from '@kus/shared'
+import { AnimatePresence } from 'motion/react'
 import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -52,107 +53,107 @@ export const LiveSetList = ({
 	)
 	const isBodyweight = isBodyweightExercise(exercise)
 	const isAtLimit = exercise.sets.length >= MAX_SETS_PER_EXERCISE
-	// a set has no key of its own, its place is one: a new place grows in, a removed one lets the rest glide up
-	const enteringSets = useEnteringKeys(exercise.sets.map((_, index) => String(index)))
+	// a new set grows in, a removed one slides out and lets the rest glide up
+	const enteringSets = useEnteringKeys(exercise.sets.map((set) => set.rowKey))
 
 	return (
 		<div ref={containerRef} className="flex flex-col gap-2">
 			<SwipeGroup>
 				<SetTable hasWeight={!isBodyweight}>
-					{exercise.sets.map((set, setIndex) => {
-						const ref = { exerciseIndex, setIndex }
-						const number = String(getWorkingNumber(exercise, setIndex))
-						const rowLabel = set.isWarmup ? t('workout.warmupShort') : number
-						const deleteLabel = set.isWarmup
-							? t('workout.deleteWarmupAria')
-							: t('workout.deleteSetAria', { n: number })
-						const isCurrent =
-							current?.exerciseIndex === exerciseIndex && current.setIndex === setIndex
-						const isBlock = isCurrent && set.doneAt === null
-						const renderContent = (hasSwapped: boolean) =>
-							isBlock ? (
-								<SetFields
-									title={
-										set.isWarmup
-											? t('training.live.warmupTitle')
-											: t('training.live.setTitle', { n: number })
-									}
-									titleAriaLabel={
-										set.isWarmup ? t('training.live.warmupSetAria', { n: setIndex + 1 }) : undefined
-									}
-									reps={set.reps}
-									weightKg={set.weightKg}
-									isBodyweight={isBodyweight}
-									weightStepKg={getWeightStepKg(exercise)}
-									onChange={(patch) => {
-										session.changeSet(ref, patch)
-									}}
-									deleteLabel={deleteLabel}
-									onDelete={() => {
-										// only one set is a block, so every set above it is a row
-										rememberFocus(setIndex)
-										session.deleteSet(ref)
-									}}
-								>
-									<Button
-										isFullWidth
-										className="min-h-14 bg-success"
-										icon={<Icon name="check" size={ICON_SIZE.control} />}
-										onClick={() => {
-											session.toggleDone(ref)
-										}}
-									>
-										{t('training.live.setDone')}
-									</Button>
-								</SetFields>
-							) : (
-								<SwipeToDelete
-									actionLabel={t('workout.swipeDelete')}
-									actionAriaLabel={deleteLabel}
-									onAction={(row) => {
-										if (containerRef.current && row) {
-											rememberFocus(
-												countSwipeRowsBefore(containerRef.current, row, SWIPE_ROWS_ANYWHERE),
-											)
+					<AnimatePresence>
+						{exercise.sets.map((set, setIndex) => {
+							const ref = { exerciseIndex, setIndex }
+							const number = String(getWorkingNumber(exercise, setIndex))
+							const rowLabel = set.isWarmup ? t('workout.warmupShort') : number
+							const deleteLabel = set.isWarmup
+								? t('workout.deleteWarmupAria')
+								: t('workout.deleteSetAria', { n: number })
+							const isCurrent =
+								current?.exerciseIndex === exerciseIndex && current.setIndex === setIndex
+							const isBlock = isCurrent && set.doneAt === null
+							const renderContent = (hasSwapped: boolean) =>
+								isBlock ? (
+									<SetFields
+										title={
+											set.isWarmup
+												? t('training.live.warmupTitle')
+												: t('training.live.setTitle', { n: number })
 										}
-										session.deleteSet(ref)
-									}}
-								>
-									<SetRow
-										label={rowLabel}
-										ariaLabel={t('training.live.setEdit', { n: rowLabel })}
+										titleAriaLabel={
+											set.isWarmup
+												? t('training.live.warmupSetAria', { n: setIndex + 1 })
+												: undefined
+										}
 										reps={set.reps}
 										weightKg={set.weightKg}
-										hasWeight={!isBodyweight}
-										isWarmup={set.isWarmup}
-										isDone={set.doneAt !== null}
-										onSelect={() => {
-											session.selectSet(ref)
+										isBodyweight={isBodyweight}
+										weightStepKg={getWeightStepKg(exercise)}
+										onChange={(patch) => {
+											session.changeSet(ref, patch)
 										}}
-										trailing={
-											<SetDoneToggle
-												label={rowLabel}
-												isDone={set.doneAt !== null}
-												isPoppedOnMount={hasSwapped}
-												onToggle={() => {
-													session.toggleDone(ref)
-												}}
-											/>
-										}
-									/>
-								</SwipeToDelete>
-							)
+										deleteLabel={deleteLabel}
+										onDelete={() => {
+											// only one set is a block, so every set above it is a row
+											rememberFocus(setIndex)
+											session.deleteSet(ref)
+										}}
+									>
+										<Button
+											isFullWidth
+											className="min-h-14 bg-success"
+											icon={<Icon name="check" size={ICON_SIZE.control} />}
+											onClick={() => {
+												session.toggleDone(ref)
+											}}
+										>
+											{t('training.live.setDone')}
+										</Button>
+									</SetFields>
+								) : (
+									<SwipeToDelete
+										actionLabel={t('workout.swipeDelete')}
+										actionAriaLabel={deleteLabel}
+										onAction={(row) => {
+											if (containerRef.current && row) {
+												rememberFocus(
+													countSwipeRowsBefore(containerRef.current, row, SWIPE_ROWS_ANYWHERE),
+												)
+											}
+											session.deleteSet(ref)
+										}}
+									>
+										<SetRow
+											label={rowLabel}
+											ariaLabel={t('training.live.setEdit', { n: rowLabel })}
+											reps={set.reps}
+											weightKg={set.weightKg}
+											hasWeight={!isBodyweight}
+											isWarmup={set.isWarmup}
+											isDone={set.doneAt !== null}
+											onSelect={() => {
+												session.selectSet(ref)
+											}}
+											trailing={
+												<SetDoneToggle
+													label={rowLabel}
+													isDone={set.doneAt !== null}
+													isPoppedOnMount={hasSwapped}
+													onToggle={() => {
+														session.toggleDone(ref)
+													}}
+												/>
+											}
+										/>
+									</SwipeToDelete>
+								)
 
-						return (
-							<RowMotion
-								key={setIndex}
-								isEntering={enteringSets.has(String(setIndex))}
-								hasExit={false}
-							>
-								<SwapFade contentKey={isBlock ? 'block' : 'row'}>{renderContent}</SwapFade>
-							</RowMotion>
-						)
-					})}
+							return (
+								<RowMotion key={set.rowKey} isEntering={enteringSets.has(set.rowKey)}>
+									<SwapFade contentKey={isBlock ? 'block' : 'row'}>{renderContent}</SwapFade>
+								</RowMotion>
+							)
+						})}
+					</AnimatePresence>
 				</SetTable>
 			</SwipeGroup>
 			<div className="flex gap-2 pt-0.5">

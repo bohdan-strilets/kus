@@ -4,7 +4,7 @@ import type { TFunction } from 'i18next'
 import { type FormattedSets, formatSets } from './format-sets'
 
 /**
- * The last result of an exercise in the notation of the sets («50×12 ×3»): the working sets only —
+ * The last result of an exercise in the notation of the sets («50 кг × 12 — 3 підходи»): the working sets only —
  * a warm-up says nothing about what to lift next. Null when the user never did the exercise.
  */
 export const formatLastSets = (

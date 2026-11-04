@@ -103,3 +103,4 @@ export {
 } from './lib/set-edit'
 export { SetFields, type SetFieldsProps } from './ui/set-fields'
 export { SetRow, type SetRowProps } from './ui/set-row'
+export { SetTable, type SetTableProps } from './ui/set-table'

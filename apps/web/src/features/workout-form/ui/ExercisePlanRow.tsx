@@ -8,7 +8,7 @@ import { motion } from 'motion/react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { formatSetReps, GroupDot, SetFields, SetRow } from '@/entities/workout'
+import { formatSetReps, GroupDot, SetFields, SetRow, SetTable } from '@/entities/workout'
 import { cn, PRESS } from '@/shared/lib'
 import { Button, Icon, ICON_SIZE, SetStepper, Text } from '@/shared/ui'
 
@@ -146,42 +146,44 @@ export const ExercisePlanRow = ({ exercise, onChange }: ExercisePlanRowProps) =>
 			)}
 			{isOpen && !isSkipped && !isCardio && (
 				<div className="flex flex-col gap-2">
-					{exercise.sets.map((set, index) =>
-						index === selected ? (
-							<SetFields
-								key={index}
-								title={t('training.live.setTitle', { n: index + 1 })}
-								reps={set.reps}
-								weightKg={set.weightKg}
-								isBodyweight={isBodyweight}
-								weightStepKg={DEFAULT_PROGRESS_STEP_KG}
-								onChange={(patch) => {
-									onChange(patchFormSet(exercise, index, patch))
-								}}
-							/>
-						) : (
-							<SetRow
-								key={index}
-								label={String(index + 1)}
-								ariaLabel={t('training.live.setEdit', { n: index + 1 })}
-								reps={set.reps}
-								weightKg={set.weightKg}
-								hasWeight={!isBodyweight}
-								isWarmup={set.isWarmup}
-								isDone={false}
-								onSelect={() => {
-									setSelected(index)
-								}}
-								trailing={
-									changed.includes(index + 1) && exercise.plan !== null ? (
-										<Text as="span" variant="small" tone="mutedStrong" className="pr-2">
-											{t('training.form.setChanged')}
-										</Text>
-									) : null
-								}
-							/>
-						),
-					)}
+					<SetTable hasWeight={!isBodyweight}>
+						{exercise.sets.map((set, index) =>
+							index === selected ? (
+								<SetFields
+									key={index}
+									title={t('training.live.setTitle', { n: index + 1 })}
+									reps={set.reps}
+									weightKg={set.weightKg}
+									isBodyweight={isBodyweight}
+									weightStepKg={DEFAULT_PROGRESS_STEP_KG}
+									onChange={(patch) => {
+										onChange(patchFormSet(exercise, index, patch))
+									}}
+								/>
+							) : (
+								<SetRow
+									key={index}
+									label={String(index + 1)}
+									ariaLabel={t('training.live.setEdit', { n: index + 1 })}
+									reps={set.reps}
+									weightKg={set.weightKg}
+									hasWeight={!isBodyweight}
+									isWarmup={set.isWarmup}
+									isDone={false}
+									onSelect={() => {
+										setSelected(index)
+									}}
+									trailing={
+										changed.includes(index + 1) && exercise.plan !== null ? (
+											<Text as="span" variant="small" tone="mutedStrong" className="pr-2">
+												{t('training.form.setChanged')}
+											</Text>
+										) : null
+									}
+								/>
+							),
+						)}
+					</SetTable>
 					<div className="grid grid-cols-2 gap-2">
 						<Button
 							variant="secondary"

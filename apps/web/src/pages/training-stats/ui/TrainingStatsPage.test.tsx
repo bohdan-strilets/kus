@@ -87,7 +87,7 @@ describe('TrainingStatsPage', () => {
 		await user.click(await screen.findByRole('tab', { name: 'Вправи' }))
 		const link = await screen.findByRole('link', { name: /Жим лежачи/ })
 		expect(link.getAttribute('href')).toBe(`/app/training/exercise/${BENCH_ID}`)
-		expect(link.textContent).toContain('рекорд 70×5 · +10 кг')
+		expect(link.textContent).toContain('рекорд 70 кг × 5 · +10 кг')
 		expect(screen.getByRole('link', { name: /Підтягування/ }).textContent).toContain(
 			'рекорд 9 повт.',
 		)

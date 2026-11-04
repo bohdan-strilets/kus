@@ -113,7 +113,7 @@ describe('ProgramProposalCard', () => {
 
 		expect(row.getAttribute('aria-expanded')).toBe('true')
 		expect(screen.getByText('Жим лежачи')).toBeTruthy()
-		expect(screen.getByText('3 × 8–12 · 60 кг')).toBeTruthy()
+		expect(screen.getByText('3 підходи · 8–12 повт. · 60 кг')).toBeTruthy()
 	})
 
 	it('accepts and asks to change in the chat', () => {

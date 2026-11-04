@@ -108,7 +108,7 @@ describe('getSessionSummary', () => {
 			t,
 		)
 
-		expect(view.records).toEqual(['Рекорд: жим лежачи 70×5', 'Рекорд: біг 5,0 км'])
+		expect(view.records).toEqual(['Рекорд: жим лежачи — 70 кг × 5', 'Рекорд: біг — 5,0 км'])
 	})
 
 	it('no records without a record', () => {
@@ -153,7 +153,7 @@ describe('getSessionSummary: live sessions', () => {
 
 		expect(view.counts).toBe('1 вправа · 2 підходи')
 		expect(view.groups).toEqual([{ group: 'CHEST', detail: '2' }])
-		expect(view.records).toEqual(['Рекорд: жим лежачи 50×10'])
+		expect(view.records).toEqual(['Рекорд: жим лежачи — 50 кг × 10'])
 	})
 
 	it('chat exercises with doneAt null count entirely', () => {

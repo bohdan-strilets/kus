@@ -7,6 +7,8 @@ import {
 } from '@kus/shared'
 import type { TFunction } from 'i18next'
 
+import { DETAIL_SEPARATOR } from '@/entities/workout'
+
 import {
 	formatProgramTarget,
 	formatProgramTemplateMeta,
@@ -31,9 +33,9 @@ export interface ProgramChangeRow {
 	key: string
 	kind: ProgramChangeKind
 	title: string
-	/** «3 × 8–12 · 70 кг», «було … · стало …»; null when the line has nothing to add. */
+	/** «3 підходи · 8–12 повт. · 70 кг», «було … · стало …»; null when the line has nothing to add. */
 	detail: string | null
-	/** The new target of a changed exercise, «4 × 12–15»; the one-line list says only that. */
+	/** The new target of a changed exercise, «4 підходи · 12–15 повт.»; the one-line list says only that. */
 	after?: string | null
 }
 
@@ -53,14 +55,15 @@ export const getTemplateShortLabel = (name: string): string =>
 		: name
 
 /**
- * A change as one line (the sheet «Що змінилось»): «Б: Махи — 4 × 12–15» for a change,
- * «Б: Присідання 3 × 8–12 · 70 кг» for an added one, just «Б: Жим ногами» for a removed one
+ * A change as one line (the sheet «Що змінилось»): «Б: Махи — 4 підходи · 12–15 повт.» for a change,
+ * «Б: Присідання · 3 підходи · 8–12 повт. · 70 кг» for an added one, just «Б: Жим ногами» for a removed one
  * (the view strikes it out).
  */
 export const formatProgramChangeLine = (row: ProgramChangeRow, templateName: string): string => {
 	const title = `${getTemplateShortLabel(templateName)}: ${row.title}`
 	if (row.kind === 'removed') return title
-	if (row.kind === 'added') return row.detail === null ? title : `${title} ${row.detail}`
+	if (row.kind === 'added')
+		return row.detail === null ? title : `${title}${DETAIL_SEPARATOR}${row.detail}`
 	const detail = row.after ?? row.detail
 	return detail === null ? title : `${title} — ${detail}`
 }

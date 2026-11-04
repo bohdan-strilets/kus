@@ -60,9 +60,9 @@ describe('HistoryCard record highlight', () => {
 		expect(within(oldest).queryByText(RECORD_TEXT)).toBeNull()
 
 		const marker = within(middle).getByText(RECORD_TEXT)
-		expect(marker.parentElement?.textContent).toContain('70×5')
-		expect(marker.parentElement?.textContent).not.toContain('60×8')
-		expect(marker.parentElement?.textContent).not.toContain('40×10')
+		expect(marker.parentElement?.textContent).toContain('70 кг × 5')
+		expect(marker.parentElement?.textContent).not.toContain('60 кг × 8')
+		expect(marker.parentElement?.textContent).not.toContain('40 кг × 10')
 	})
 
 	it('marks the set with the most reps for a bodyweight record', () => {

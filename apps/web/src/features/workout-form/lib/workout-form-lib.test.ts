@@ -382,18 +382,20 @@ describe('date options', () => {
 describe('formatPlanSummary', () => {
 	const t = i18n.t.bind(i18n)
 
-	it('says the plan: sets × reps · weight', () => {
-		expect(formatPlanSummary(draftExercise(), t)).toBe('3 × 10 · 50 кг')
+	it('says the plan: sets · weight × reps', () => {
+		expect(formatPlanSummary(draftExercise(), t)).toBe('3 підходи · 50 кг × 10')
 	})
 
 	it('keeps saying the plan after an edit (it is what «Як за планом» brings back)', () => {
 		expect(formatPlanSummary(patchFormSet(draftExercise(), 0, { reps: 3 }), t)).toBe(
-			'3 × 10 · 50 кг',
+			'3 підходи · 50 кг × 10',
 		)
 	})
 
-	it('says «власна вага» for bodyweight', () => {
-		expect(formatPlanSummary(draftExercise({}, { isBodyweight: true }), t)).toContain('власна вага')
+	it('says only the reps for bodyweight', () => {
+		expect(formatPlanSummary(draftExercise({}, { isBodyweight: true }), t)).toBe(
+			'3 підходи · 10 повт.',
+		)
 	})
 
 	it('cardio: the minutes; none: null', () => {

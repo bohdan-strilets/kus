@@ -86,7 +86,7 @@ describe('FillScreen: the plan', () => {
 		expect(screen.getByText('Верх А')).toBeTruthy()
 		expect(screen.getByText('Сьогодні · 17:35')).toBeTruthy()
 		expect(screen.getByRole<HTMLInputElement>('textbox', { name: /Тривалість/ }).value).toBe('55')
-		expect(rowButton('Жим лежачи').textContent).toContain('3 × 10 · 50 кг')
+		expect(rowButton('Жим лежачи').textContent).toContain('3 підходи · 50 кг × 10')
 		expect(screen.getByRole('button', { name: 'Як за планом' }).getAttribute('aria-pressed')).toBe(
 			'true',
 		)
@@ -141,7 +141,7 @@ describe('FillScreen: deviations', () => {
 		expect(screen.getByRole('button', { name: 'Як за планом' }).getAttribute('aria-pressed')).toBe(
 			'false',
 		)
-		expect(screen.getByText('Змінено: 2-й підхід · план 3 × 10 · 50 кг')).toBeTruthy()
+		expect(screen.getByText('Змінено: 2-й підхід · план: 3 підходи · 50 кг × 10')).toBeTruthy()
 	})
 
 	it('names two changed sets «2-й і 3-й підходи»', () => {
@@ -153,7 +153,9 @@ describe('FillScreen: deviations', () => {
 		fireEvent.click(screen.getByRole('button', { name: 'Підхід 3, змінити' }))
 		fireEvent.click(screen.getByRole('button', { name: 'Менше повторів' }))
 
-		expect(screen.getByText('Змінено: 2-й і 3-й підходи · план 3 × 10 · 50 кг')).toBeTruthy()
+		expect(
+			screen.getByText('Змінено: 2-й і 3-й підходи · план: 3 підходи · 50 кг × 10'),
+		).toBeTruthy()
 		// the set in hand is a block, the other one is a row with the mark
 		expect(screen.getAllByText('змінено')).toHaveLength(1)
 	})
@@ -178,7 +180,7 @@ describe('FillScreen: deviations', () => {
 
 		fireEvent.click(screen.getByRole('button', { name: '+ Підхід' }))
 
-		expect(screen.getByText('Змінено: 4-й підхід · план 3 × 10 · 50 кг')).toBeTruthy()
+		expect(screen.getByText('Змінено: 4-й підхід · план: 3 підходи · 50 кг × 10')).toBeTruthy()
 	})
 
 	it('«Не робили» skips the exercise: «не робили» and «Повернути»; it is not sent', async () => {
@@ -275,7 +277,9 @@ describe('FillScreen: wording of the changed sets', () => {
 		renderScreen(bigTemplate(3))
 		changeSets([1, 2, 3])
 
-		expect(screen.getByText('Змінено: 1-й, 2-й і 3-й підходи · план 3 × 10 · 50 кг')).toBeTruthy()
+		expect(
+			screen.getByText('Змінено: 1-й, 2-й і 3-й підходи · план: 3 підходи · 50 кг × 10'),
+		).toBeTruthy()
 	})
 
 	it('five changed sets use the «many» form: «підходів»', () => {
@@ -283,7 +287,9 @@ describe('FillScreen: wording of the changed sets', () => {
 		changeSets([1, 2, 3, 4, 5])
 
 		expect(
-			screen.getByText('Змінено: 1-й, 2-й, 3-й, 4-й і 5-й підходів · план 5 × 10 · 50 кг'),
+			screen.getByText(
+				'Змінено: 1-й, 2-й, 3-й, 4-й і 5-й підходів · план: 5 підходів · 50 кг × 10',
+			),
 		).toBeTruthy()
 	})
 })

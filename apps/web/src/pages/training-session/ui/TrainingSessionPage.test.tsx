@@ -74,8 +74,8 @@ describe('TrainingSessionPage', () => {
 		renderAt(getTrainingSessionPath(WORKOUT_ID))
 
 		expect(await screen.findByRole('heading', { name: 'Зал · 62 хв' })).toBeTruthy()
-		expect(screen.getByText('Вправ · підходів')).toBeTruthy()
-		expect(screen.getByText('1 · 3')).toBeTruthy()
+		expect(screen.getByText('Вправ').parentElement?.textContent).toBe('Вправ1')
+		expect(screen.getByText('Підходів').parentElement?.textContent).toBe('Підходів3')
 		expect(screen.getByText('Жим лежачи')).toBeTruthy()
 		expect(screen.getByText('1 вправа · 3 підх.')).toBeTruthy()
 		expect(screen.getAllByText(/180 ккал/)).toHaveLength(1)
@@ -90,7 +90,8 @@ describe('TrainingSessionPage', () => {
 
 		await screen.findByText('Бігова доріжка')
 		expect(screen.queryByText('Тривалість')).toBeNull()
-		expect(screen.queryByText('Вправ · підходів')).toBeNull()
+		expect(screen.queryByText('Вправ')).toBeNull()
+		expect(screen.queryByText('Підходів')).toBeNull()
 		expect(screen.queryByText('ккал', { exact: false })).toBeNull()
 	})
 

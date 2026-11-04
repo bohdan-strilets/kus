@@ -9,16 +9,14 @@ export type SetSegmentKind = 'warmup' | 'work' | 'record'
 
 export interface SetSegment {
 	kind: SetSegmentKind
-	/** «60×8», «8», «45 с», «15 хв · 2,1 км»; the repeat count is separate. */
+	/** «70 кг × 5», «8 повт.», «45 с», «15 хв · 2,1 км»; the number of sets is separate. */
 	text: string
-	/** «×3»: only neighbouring equal sets are folded. */
-	multiplier?: number
+	/** «— 3 підходи»: only neighbouring equal sets are folded. */
+	count?: number
 }
 
 export interface FormattedSets {
 	segments: SetSegment[]
-	/** «повт.» after the last segment when all working sets are bodyweight; otherwise null. */
-	unit: string | null
 }
 
 type SetsSource = Pick<
@@ -36,7 +34,9 @@ const formatSetText = (set: WorkoutSetResponse, t: TFunction): string | null => 
 			: t('workout.sec', { value: formatInteger(set.durationSec) })
 	}
 	const reps = formatInteger(set.reps)
-	return set.weightKg !== null && hasWeight(set) ? `${formatNumber(set.weightKg)}×${reps}` : reps
+	return set.weightKg !== null && hasWeight(set)
+		? t('workout.setWeightReps', { weight: formatNumber(set.weightKg), reps })
+		: t('workout.reps', { value: reps })
 }
 
 /** The working set that gave the record: the heaviest one, or the one with most reps without weight. */
@@ -67,7 +67,7 @@ const foldNeighbours = (segments: readonly SetSegment[]): SetSegment[] =>
 			last.kind === segment.kind &&
 			last.text === segment.text
 		if (isSame) {
-			last.multiplier = (last.multiplier ?? 1) + 1
+			last.count = (last.count ?? 1) + 1
 			return folded
 		}
 		folded.push({ ...segment })
@@ -78,7 +78,6 @@ const formatStrengthSets = (exercise: SetsSource, t: TFunction): FormattedSets =
 	const recordIndex = findRecordIndex(exercise.sets, exercise.record)
 	const warmups: SetSegment[] = []
 	const works: SetSegment[] = []
-	const workingSets: WorkoutSetResponse[] = []
 	exercise.sets.forEach((set, index) => {
 		const text = formatSetText(set, t)
 		if (text === null) return
@@ -86,26 +85,20 @@ const formatStrengthSets = (exercise: SetsSource, t: TFunction): FormattedSets =
 			warmups.push({ kind: 'warmup', text })
 			return
 		}
-		workingSets.push(set)
 		works.push({ kind: index === recordIndex ? 'record' : 'work', text })
 	})
-	const isBodyweight =
-		workingSets.length > 0 && workingSets.every((set) => !hasWeight(set) && set.reps !== null)
-	return {
-		segments: [...foldNeighbours(warmups), ...foldNeighbours(works)],
-		unit: isBodyweight ? t('workout.repsUnit') : null,
-	}
+	return { segments: [...foldNeighbours(warmups), ...foldNeighbours(works)] }
 }
 
 /**
  * The sets of an exercise as segments of the notation (design/docs/training-groups.md): warm-ups
- * first, equal neighbours folded into «×3», the record set apart; bodyweight sets are only reps with
- * the unit «повт.» at the end; cardio is the one segment «15 хв · 2,1 км».
+ * first, equal neighbours folded into «— 3 підходи», the record set apart; «70 кг × 5», a
+ * bodyweight set is «8 повт.»; cardio is the one segment «15 хв · 2,1 км».
  */
 export const formatSets = (exercise: SetsSource, t: TFunction): FormattedSets => {
 	if (exercise.kind === 'CARDIO') {
 		const text = formatCardioSummary(exercise, t)
-		return { segments: text === null ? [] : [{ kind: 'work', text }], unit: null }
+		return { segments: text === null ? [] : [{ kind: 'work', text }] }
 	}
 	return formatStrengthSets(exercise, t)
 }

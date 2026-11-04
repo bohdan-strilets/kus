@@ -1,4 +1,3 @@
-import { Fragment } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { cn } from '@/shared/lib'
@@ -13,77 +12,63 @@ export interface SetLineProps {
 	className?: string
 }
 
-const Multiplier = ({ value }: { value: number }) => (
-	<Text as="span" variant="caption" tone="muted" weight="semibold" isTabular>
-		{' ×'}
-		{value}
-	</Text>
-)
-
-const Segment = ({ segment }: { segment: SetSegment }) => {
+const Pill = ({ segment }: { segment: SetSegment }) => {
 	const { t } = useTranslation()
 	if (segment.kind === 'warmup') {
 		return (
-			<span className="rounded-checkbox border border-dashed border-line-strong px-1.5 py-px whitespace-nowrap">
-				<Text as="span" variant="small" tone="muted" weight="semibold" isTabular>
-					{t('workout.warmupShort')} {segment.text}
+			<span className="rounded-tag border-2 border-dashed border-line-strong px-2 py-0.5 whitespace-nowrap">
+				<Text as="span" variant="caption" tone="muted" isTabular>
+					{t('workout.warmupSet', { value: segment.text })}
 				</Text>
-				{segment.multiplier !== undefined && <Multiplier value={segment.multiplier} />}
 			</span>
 		)
 	}
 	if (segment.kind === 'record') {
 		return (
-			<span className="inline-flex items-center gap-1 whitespace-nowrap text-success-ink">
-				<Text as="span" variant="caption" tone="successInk" weight="extrabold" isTabular>
+			<span className="inline-flex items-center gap-0.75 rounded-tag bg-success-soft px-2 py-0.75 whitespace-nowrap">
+				<Text as="span" variant="cardTitle" tone="successInk" weight="extrabold" isTabular>
 					{segment.text}
 				</Text>
-				<Icon name="trophy" size={RECORD_ICON_SIZE} />
+				<Icon name="trophy" size={RECORD_ICON_SIZE} className="text-success-ink" />
 				<span className="sr-only">{t('workout.record')}</span>
 			</span>
 		)
 	}
 	return (
-		<span className="whitespace-nowrap">
-			<Text as="span" variant="caption" weight="bold" isTabular>
+		<span className="rounded-tag bg-field px-2 py-0.75 whitespace-nowrap">
+			<Text as="span" variant="cardTitle" isTabular>
 				{segment.text}
 			</Text>
-			{segment.multiplier !== undefined && <Multiplier value={segment.multiplier} />}
+		</span>
+	)
+}
+
+const Segment = ({ segment }: { segment: SetSegment }) => {
+	const { t } = useTranslation()
+	if (segment.count === undefined) return <Pill segment={segment} />
+	return (
+		<span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+			<Pill segment={segment} />
+			<Text as="span" variant="caption" tone="mutedStrong" weight="regular">
+				{t('workout.setRepeat', { value: t('workout.setCountFull', { count: segment.count }) })}
+			</Text>
 		</span>
 	)
 }
 
 /**
- * The sets of an exercise in the notation «60×8 ×3 · 65×6» (design/docs/training-groups.md): wraps
- * between sets, a warm-up is a dashed plate, a record is success-ink with a trophy and a text for
- * screen readers.
+ * The sets of an exercise as pills «60 кг × 8 — 3 підходи» (design/docs/training-groups.md): they
+ * wrap between sets, a warm-up is a dashed pill, a record is `success-soft` with a trophy and a
+ * text for screen readers.
  */
 export const SetLine = ({ sets, className }: SetLineProps) => {
-	const { segments, unit } = sets
+	const { segments } = sets
 	if (segments.length === 0) return null
-	const lastIndex = segments.length - 1
 	return (
-		<p className={cn('flex flex-wrap items-center gap-x-1.5 gap-y-1 text-muted-strong', className)}>
-			{segments.map((segment, index) => {
-				const previous = segments[index - 1]
-				const needsDot =
-					previous !== undefined && previous.kind !== 'warmup' && segment.kind !== 'warmup'
-				return (
-					<Fragment key={`${segment.kind}-${segment.text}-${index}`}>
-						{needsDot && (
-							<span aria-hidden="true" className="text-muted-soft">
-								·
-							</span>
-						)}
-						<Segment segment={segment} />
-						{index === lastIndex && unit !== null && (
-							<Text as="span" variant="caption" weight="bold" tone="mutedStrong">
-								{unit}
-							</Text>
-						)}
-					</Fragment>
-				)
-			})}
+		<p className={cn('flex flex-wrap items-center gap-1.25', className)}>
+			{segments.map((segment, index) => (
+				<Segment key={`${segment.kind}-${segment.text}-${index}`} segment={segment} />
+			))}
 		</p>
 	)
 }

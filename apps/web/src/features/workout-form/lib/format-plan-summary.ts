@@ -1,16 +1,14 @@
 import type { TFunction } from 'i18next'
 
-import { formatProgramTarget } from '@/entities/program'
-import { formatWorkoutMinutes } from '@/entities/workout'
+import { DETAIL_SEPARATOR, formatNumber, formatWorkoutMinutes } from '@/entities/workout'
 
 import { isFormBodyweight } from './form-exercise-edit'
 import type { FormExerciseValue } from './workout-form.types'
 
-const BODYWEIGHT_KG = 0
-
 /**
- * «3 × 12 · 120 кг», «3 × 15 · власна вага», «10 хв»: what the exercise says before anything is
- * edited. The plan's own sets are the source — the row says what «Як за планом» brings back.
+ * «3 підходи · 120 кг × 12», «3 підходи · 15 повт.», «10 хв»: what the exercise says before
+ * anything is edited. The plan's own sets are the source — the row says what «Як за планом»
+ * brings back.
  */
 export const formatPlanSummary = (exercise: FormExerciseValue, t: TFunction): string | null => {
 	if (exercise.kind === 'CARDIO') {
@@ -20,20 +18,11 @@ export const formatPlanSummary = (exercise: FormExerciseValue, t: TFunction): st
 	const sets = (exercise.plan?.sets ?? exercise.sets).filter((set) => !set.isWarmup)
 	const first = sets[0]
 	if (!first) return null
-	return formatProgramTarget(
-		{
-			kind: exercise.kind,
-			target: {
-				sets: sets.length,
-				repsMin: first.reps,
-				repsMax: first.reps,
-				weightKg: isFormBodyweight(exercise) ? BODYWEIGHT_KG : first.weightKg,
-				progressStepKg: null,
-				restSec: null,
-				durationMin: null,
-				distanceM: null,
-			},
-		},
-		t,
-	)
+	const count = t('workout.setCountFull', { count: sets.length })
+	if (first.reps === null) return count
+	const hasWeight = !isFormBodyweight(exercise) && first.weightKg !== null && first.weightKg > 0
+	const load = hasWeight
+		? t('workout.setWeightReps', { weight: formatNumber(first.weightKg ?? 0), reps: first.reps })
+		: t('workout.reps', { value: first.reps })
+	return `${count}${DETAIL_SEPARATOR}${load}`
 }

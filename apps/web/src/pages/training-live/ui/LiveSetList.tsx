@@ -1,7 +1,7 @@
 import { MAX_SETS_PER_EXERCISE } from '@kus/shared'
 import { useTranslation } from 'react-i18next'
 
-import { SetFields, SetRow } from '@/entities/workout'
+import { SetFields, SetRow, SetTable } from '@/entities/workout'
 import {
 	getWeightStepKg,
 	getWorkingNumber,
@@ -28,63 +28,66 @@ export const LiveSetList = ({ exercise, exerciseIndex, session }: LiveSetListPro
 
 	return (
 		<div className="flex flex-col gap-2">
-			{exercise.sets.map((set, setIndex) => {
-				const ref = { exerciseIndex, setIndex }
-				const label = set.isWarmup
-					? t('training.live.warmupMark')
-					: String(getWorkingNumber(exercise, setIndex))
-				const isCurrent = current?.exerciseIndex === exerciseIndex && current.setIndex === setIndex
-				if (isCurrent && set.doneAt === null) {
-					return (
-						<SetFields
-							key={setIndex}
-							title={t('training.live.setTitle', { n: label })}
-							reps={set.reps}
-							weightKg={set.weightKg}
-							isBodyweight={isBodyweight}
-							weightStepKg={getWeightStepKg(exercise)}
-							onChange={(patch) => {
-								session.changeSet(ref, patch)
-							}}
-						>
-							<Button
-								isFullWidth
-								className="min-h-14 bg-success"
-								icon={<Icon name="check" size={ICON_SIZE.control} />}
-								onClick={() => {
-									session.toggleDone(ref)
+			<SetTable hasWeight={!isBodyweight}>
+				{exercise.sets.map((set, setIndex) => {
+					const ref = { exerciseIndex, setIndex }
+					const number = String(getWorkingNumber(exercise, setIndex))
+					const label = set.isWarmup ? t('training.live.warmupMark') : number
+					const rowLabel = set.isWarmup ? t('workout.warmupShort') : number
+					const isCurrent =
+						current?.exerciseIndex === exerciseIndex && current.setIndex === setIndex
+					if (isCurrent && set.doneAt === null) {
+						return (
+							<SetFields
+								key={setIndex}
+								title={t('training.live.setTitle', { n: label })}
+								reps={set.reps}
+								weightKg={set.weightKg}
+								isBodyweight={isBodyweight}
+								weightStepKg={getWeightStepKg(exercise)}
+								onChange={(patch) => {
+									session.changeSet(ref, patch)
 								}}
 							>
-								{t('training.live.setDone')}
-							</Button>
-						</SetFields>
+								<Button
+									isFullWidth
+									className="min-h-14 bg-success"
+									icon={<Icon name="check" size={ICON_SIZE.control} />}
+									onClick={() => {
+										session.toggleDone(ref)
+									}}
+								>
+									{t('training.live.setDone')}
+								</Button>
+							</SetFields>
+						)
+					}
+					return (
+						<SetRow
+							key={setIndex}
+							label={rowLabel}
+							ariaLabel={t('training.live.setEdit', { n: rowLabel })}
+							reps={set.reps}
+							weightKg={set.weightKg}
+							hasWeight={!isBodyweight}
+							isWarmup={set.isWarmup}
+							isDone={set.doneAt !== null}
+							onSelect={() => {
+								session.selectSet(ref)
+							}}
+							trailing={
+								<SetDoneToggle
+									label={rowLabel}
+									isDone={set.doneAt !== null}
+									onToggle={() => {
+										session.toggleDone(ref)
+									}}
+								/>
+							}
+						/>
 					)
-				}
-				return (
-					<SetRow
-						key={setIndex}
-						label={label}
-						ariaLabel={t('training.live.setEdit', { n: label })}
-						reps={set.reps}
-						weightKg={set.weightKg}
-						hasWeight={!isBodyweight}
-						isWarmup={set.isWarmup}
-						isDone={set.doneAt !== null}
-						onSelect={() => {
-							session.selectSet(ref)
-						}}
-						trailing={
-							<SetDoneToggle
-								label={label}
-								isDone={set.doneAt !== null}
-								onToggle={() => {
-									session.toggleDone(ref)
-								}}
-							/>
-						}
-					/>
-				)
-			})}
+				})}
+			</SetTable>
 			<div className="grid grid-cols-2 gap-2 pt-0.5">
 				<Button
 					variant="secondary"

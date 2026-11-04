@@ -7,7 +7,7 @@ import { Text } from '@/shared/ui'
 import { formatSetReps, formatSetWeight } from '../../lib/set-edit'
 
 export interface SetRowProps {
-	/** «1», «2» or «Р» for a warm-up. */
+	/** «1», «2» or «розм.» for a warm-up. */
 	label: string
 	/** «Підхід 2, змінити». */
 	ariaLabel: string
@@ -24,8 +24,9 @@ export interface SetRowProps {
 }
 
 /**
- * A set of the list (mockups/training-live.html): «52,5 кг × 12 повт.». Done — `success-soft`,
- * a warm-up — dashed with «Р». The row and the trailing control are siblings, so no button holds a button.
+ * A row of the table «Підхід · Вага · Повтори» (mockups/training-live.html): «2 · 52,5 кг · 12 повт.», no «×» —
+ * the columns say what is what. Done — `success-soft`, a warm-up — dashed with «розм.». The row and the
+ * trailing control are siblings, so no button holds a button.
  */
 export const SetRow = ({
 	label,
@@ -39,29 +40,29 @@ export const SetRow = ({
 	trailing,
 }: SetRowProps) => {
 	const { t } = useTranslation()
+	const numberTone = isDone ? 'successInk' : 'ink'
 	const content = (
 		<>
-			<Text as="span" variant="small" tone="muted" className="w-4 flex-none text-center">
+			<Text as="span" variant="caption" tone="muted" weight="extrabold" className="w-11 flex-none">
 				{label}
 			</Text>
-			<span className="flex min-w-0 flex-1 items-baseline gap-1">
-				{hasWeight && (
-					<>
-						<Text as="span" className="text-name font-extrabold" isTabular>
-							{formatSetWeight(weightKg)}
-						</Text>
-						<Text as="span" variant="small" tone="muted">
-							{t('program.editor.unitKg')}
-						</Text>
-						<Text as="span" variant="small" tone="muted">
-							×
-						</Text>
-					</>
-				)}
-				<Text as="span" className="text-name font-extrabold" isTabular>
+			{hasWeight && (
+				<span className="min-w-0 flex-1 basis-0">
+					<Text as="span" className="text-title" tone={numberTone} isTabular>
+						{formatSetWeight(weightKg)}
+					</Text>
+					<Text as="span" variant="caption" tone="muted">
+						{' '}
+						{t('program.editor.unitKg')}
+					</Text>
+				</span>
+			)}
+			<span className="min-w-0 flex-1 basis-0">
+				<Text as="span" className="text-title" tone={numberTone} isTabular>
 					{formatSetReps(reps)}
 				</Text>
-				<Text as="span" variant="small" tone="muted">
+				<Text as="span" variant="caption" tone="muted">
+					{' '}
 					{t('workout.repsUnit')}
 				</Text>
 			</span>
@@ -81,12 +82,12 @@ export const SetRow = ({
 					type="button"
 					aria-label={ariaLabel}
 					onClick={onSelect}
-					className="flex min-h-14 min-w-0 flex-1 cursor-pointer items-center gap-2 text-left"
+					className="flex min-h-14 min-w-0 flex-1 cursor-pointer items-center gap-2.5 text-left"
 				>
 					{content}
 				</button>
 			) : (
-				<div className="flex min-h-14 min-w-0 flex-1 items-center gap-2">{content}</div>
+				<div className="flex min-h-14 min-w-0 flex-1 items-center gap-2.5">{content}</div>
 			)}
 			{trailing}
 		</div>

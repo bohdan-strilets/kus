@@ -67,10 +67,10 @@ const formatReps = ({ repsMin, repsMax }: TemplateExerciseTarget): string | null
 
 const formatSetsAndReps = (target: TemplateExerciseTarget, t: TFunction): string | null => {
 	const reps = formatReps(target)
-	if (target.sets !== null && reps !== null)
-		return t('program.target.setsReps', { sets: target.sets, reps })
-	if (target.sets !== null) return t('workout.setCount', { count: target.sets })
-	return reps === null ? null : t('workout.reps', { value: reps })
+	const sets = target.sets === null ? null : t('workout.setCountFull', { count: target.sets })
+	const repsText = reps === null ? null : t('workout.reps', { value: reps })
+	const parts = [sets, repsText].filter((part): part is string => part !== null)
+	return parts.length > 0 ? parts.join(DETAIL_SEPARATOR) : null
 }
 
 /** «власна вага» for 0 kg, «60 кг» for a load, nothing when no weight is set. */
@@ -81,7 +81,8 @@ const formatTargetWeight = (weightKg: number | null, t: TFunction): string | nul
 }
 
 /**
- * The plan of a strength exercise: «3 × 8–12 · 60 кг», «3 × 15–20 · власна вага», «4 × 12–15».
+ * The plan of a strength exercise: «3 підходи · 8–12 повт. · 60 кг», «3 підходи · 15–20 повт. · власна вага»,
+ * «4 підходи · 12–15 повт.» — no «×», it is only between the kg and the reps of a set.
  * With `withDetails` the step and the rest follow: «… · +2,5 кг · 120 с» (the editor and the detail).
  */
 export const formatStrengthTarget = (

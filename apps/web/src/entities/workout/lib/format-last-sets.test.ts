@@ -22,10 +22,10 @@ describe('formatLastSets', () => {
 			t,
 		)
 
-		expect(result?.segments).toEqual([{ kind: 'work', text: '50×12', multiplier: 3 }])
+		expect(result?.segments).toEqual([{ kind: 'work', text: '50 кг × 12', count: 3 }])
 	})
 
-	it('writes bodyweight sets as reps with the unit', () => {
+	it('writes bodyweight sets as reps with «повт.»', () => {
 		const result = formatLastSets(
 			[
 				{ reps: 8, weightKg: null, isWarmup: false },
@@ -34,8 +34,7 @@ describe('formatLastSets', () => {
 			t,
 		)
 
-		expect(result?.segments.map((segment) => segment.text)).toEqual(['8', '7'])
-		expect(result?.unit).toBe('повт.')
+		expect(result?.segments.map((segment) => segment.text)).toEqual(['8 повт.', '7 повт.'])
 	})
 
 	it('is null when only warm-ups were done', () => {

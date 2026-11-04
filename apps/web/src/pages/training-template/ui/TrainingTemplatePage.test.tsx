@@ -136,10 +136,10 @@ describe('TrainingTemplatePage', () => {
 
 		expect(await screen.findByRole('heading', { name: 'Тренування Б' })).toBeTruthy()
 		expect(screen.getByText('2 вправи · ~55 хв')).toBeTruthy()
-		expect(screen.getByText('3 × 10–12 · 120 кг · +5 кг · 120 с')).toBeTruthy()
-		expect(screen.getByText('3 × 10–15 · 60 с')).toBeTruthy()
+		expect(screen.getByText('3 підходи · 10–12 повт. · 120 кг · +5 кг · 120 с')).toBeTruthy()
+		expect(screen.getByText('3 підходи · 10–15 повт. · 60 с')).toBeTruthy()
 		expect(
-			screen.getByText('Ціль: підходи × повтори · робоча вага · крок прогресу · відпочинок.'),
+			screen.getByText('Ціль: підходи · повтори · робоча вага · крок прогресу · відпочинок.'),
 		).toBeTruthy()
 	})
 
@@ -405,7 +405,7 @@ describe('TrainingTemplatePage', () => {
 
 		fireEvent.click(screen.getByRole('button', { name: 'Вправа' }))
 		const sheet = await screen.findByRole('dialog', { name: 'Вправа' })
-		expect(await within(sheet).findByText('45×12')).toBeTruthy()
+		expect(await within(sheet).findByText('45 кг × 12')).toBeTruthy()
 		expect(within(sheet).getByText('ще не було')).toBeTruthy()
 		fireEvent.click(within(sheet).getByRole('button', { name: 'Додати: Тяга верхнього блока' }))
 		await waitFor(() => {
@@ -474,7 +474,7 @@ describe('TrainingTemplatePage: [Почати] [Заповнити]', () => {
 		expect(begin).toBeTruthy()
 		expect(fill).toBeTruthy()
 		// after the legend, i.e. below the exercises
-		const legend = screen.getByText(/^Ціль: підходи × повтори/)
+		const legend = screen.getByText(/^Ціль: підходи · повтори/)
 		expect(legend.compareDocumentPosition(begin) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
 	})
 
@@ -550,7 +550,7 @@ describe('TrainingTemplatePage: where [Почати] [Заповнити] sit', 
 		const begin = screen.getByRole('button', { name: 'Почати' })
 		const fill = screen.getByRole('button', { name: 'Заповнити' })
 		const lastExercise = screen.getByText('Підйоми ніг у висі')
-		const legend = screen.getByText(/^Ціль: підходи × повтори/)
+		const legend = screen.getByText(/^Ціль: підходи · повтори/)
 
 		for (const button of [begin, fill]) {
 			expect(

@@ -74,20 +74,20 @@ describe('plan target', () => {
 			...strength,
 			target: target({ sets: 3, repsMin: 8, repsMax: 12, weightKg: 60 }),
 		}
-		expect(formatProgramTarget(exercise, t)).toBe('3 × 8–12 · 60 кг')
+		expect(formatProgramTarget(exercise, t)).toBe('3 підходи · 8–12 повт. · 60 кг')
 	})
 
 	it('bodyweight and no weight', () => {
 		const sets = { sets: 3, repsMin: 15, repsMax: 20 }
 		expect(formatProgramTarget({ ...strength, target: target({ ...sets, weightKg: 0 }) }, t)).toBe(
-			'3 × 15–20 · власна вага',
+			'3 підходи · 15–20 повт. · власна вага',
 		)
 		expect(
 			formatProgramTarget(
 				{ ...strength, target: target({ sets: 4, repsMin: 12, repsMax: 15 }) },
 				t,
 			),
-		).toBe('4 × 12–15')
+		).toBe('4 підходи · 12–15 повт.')
 	})
 
 	it('a fraction and one rep value', () => {
@@ -95,7 +95,7 @@ describe('plan target', () => {
 			...strength,
 			target: target({ sets: 3, repsMin: 10, repsMax: 10, weightKg: 77.5 }),
 		}
-		expect(formatProgramTarget(exercise, t)).toBe('3 × 10 · 77,5 кг')
+		expect(formatProgramTarget(exercise, t)).toBe('3 підходи · 10 повт. · 77,5 кг')
 	})
 
 	it('step and rest only when asked', () => {
@@ -110,9 +110,9 @@ describe('plan target', () => {
 				restSec: 120,
 			}),
 		}
-		expect(formatProgramTarget(exercise, t)).toBe('3 × 8–12 · 70 кг')
+		expect(formatProgramTarget(exercise, t)).toBe('3 підходи · 8–12 повт. · 70 кг')
 		expect(formatProgramTarget(exercise, t, { withDetails: true })).toBe(
-			'3 × 8–12 · 70 кг · +2,5 кг · 120 с',
+			'3 підходи · 8–12 повт. · 70 кг · +2,5 кг · 120 с',
 		)
 	})
 
@@ -129,5 +129,41 @@ describe('plan target', () => {
 		expect(formatProgramTarget(cardio({ durationMin: 20, distanceM: 3000 }), t)).toBe(
 			'20 хв · 3,0 км',
 		)
+	})
+})
+
+describe('plan notation invariant', () => {
+	it('has no «×» in any plan line', () => {
+		const lines = [
+			formatProgramTarget({ ...strength, target: target({ sets: 3, repsMin: 8, repsMax: 12 }) }, t),
+			formatProgramTarget(
+				{ ...strength, target: target({ sets: 3, repsMin: 8, repsMax: 12, weightKg: 60 }) },
+				t,
+			),
+			formatProgramTarget(
+				{
+					...strength,
+					target: target({
+						sets: 4,
+						repsMin: 5,
+						repsMax: 5,
+						weightKg: 0,
+						progressStepKg: 2.5,
+						restSec: 90,
+					}),
+				},
+				t,
+				{ withDetails: true },
+			),
+			formatProgramTarget(
+				{ kind: 'CARDIO', target: target({ durationMin: 20, distanceM: 3000 }) },
+				t,
+			),
+		]
+		lines.forEach((line) => {
+			expect(line).not.toBeNull()
+			expect(line).not.toContain('×')
+		})
+		expect(lines[0]).toBe('3 підходи · 8–12 повт.')
 	})
 })

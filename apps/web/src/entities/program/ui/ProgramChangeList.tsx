@@ -19,7 +19,7 @@ const ROW_CLASS_BY_KIND: Record<ProgramChangeKind, string> = {
 
 interface ProgramChangeListProps {
 	groups: ProgramChangeGroup[]
-	/** One flat list, one line per change led by its template («Б: Махи — 4 × 12–15»), as in the sheet «Що змінилось». */
+	/** One flat list, one line per change led by its template («Б: Махи — 4 підходи · 12–15 повт.»), as in the sheet «Що змінилось». */
 	isPrefixed?: boolean
 }
 

@@ -2,7 +2,7 @@ import type { LiveDraftExercise } from '@/features/live-workout'
 import { formatProgramTarget } from '@/entities/program'
 import type { TFunction } from 'i18next'
 
-/** «3 × 10–12 · 50 кг»: what the template asks of the exercise; null without a plan. */
+/** «3 підходи · 10–12 повт. · 50 кг»: what the template asks of the exercise; null without a plan. */
 export const formatPlanTarget = (exercise: LiveDraftExercise, t: TFunction): string | null => {
 	const { plan } = exercise
 	if (plan === null) return null

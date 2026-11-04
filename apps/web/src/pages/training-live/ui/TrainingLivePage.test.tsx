@@ -100,7 +100,7 @@ describe('TrainingLivePage', () => {
 		renderPage()
 
 		expect(await screen.findByText('Жим лежачи')).toBeTruthy()
-		expect(screen.getByText('Мета: 3 × 8–10 · 50 кг')).toBeTruthy()
+		expect(screen.getByText('Мета: 3 підходи · 8–10 повт. · 50 кг')).toBeTruthy()
 		expect(screen.getByText('Підхід 1')).toBeTruthy()
 		expect(screen.getByRole('button', { name: 'Підхід виконано' })).toBeTruthy()
 	})

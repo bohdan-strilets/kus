@@ -104,19 +104,24 @@ describe('getProgramChangeGroups', () => {
 		expect(groups).toHaveLength(1)
 		expect(groups[0]?.label).toBe('Тренування Б')
 		expect(groups[0]?.rows).toEqual([
-			{ key: '0', kind: 'removed', title: 'Жим ногами', detail: '3 × 10–12 · 120 кг' },
+			{
+				key: '0',
+				kind: 'removed',
+				title: 'Жим ногами',
+				detail: '3 підходи · 10–12 повт. · 120 кг',
+			},
 			{
 				key: '1',
 				kind: 'added',
 				title: 'Присідання',
-				detail: '3 × 8–12 · 70 кг · +2,5 кг · 120 с',
+				detail: '3 підходи · 8–12 повт. · 70 кг · +2,5 кг · 120 с',
 			},
 			{
 				key: '2',
 				kind: 'changed',
 				title: 'Махи гантелями',
-				detail: 'було 3 × 12–15 · стало 4 × 12–15',
-				after: '4 × 12–15',
+				detail: 'було 3 підходи · 12–15 повт. · стало 4 підходи · 12–15 повт.',
+				after: '4 підходи · 12–15 повт.',
 			},
 		])
 	})
@@ -199,25 +204,32 @@ describe('formatProgramChangeLine', () => {
 	it('tells a change by its new target after a dash', () => {
 		expect(
 			formatProgramChangeLine(
-				row({ kind: 'changed', detail: 'було 3 × 12–15 · стало 4 × 12–15', after: '4 × 12–15' }),
+				row({
+					kind: 'changed',
+					detail: 'було 3 підходи · 12–15 повт. · стало 4 підходи · 12–15 повт.',
+					after: '4 підходи · 12–15 повт.',
+				}),
 				'Тренування Б',
 			),
-		).toBe('Б: Махи — 4 × 12–15')
+		).toBe('Б: Махи — 4 підходи · 12–15 повт.')
 	})
 
 	it('tells an added exercise with its target, no dash', () => {
 		expect(
 			formatProgramChangeLine(
-				row({ title: 'Присідання', detail: '3 × 8–12 · 70 кг' }),
+				row({ title: 'Присідання', detail: '3 підходи · 8–12 повт. · 70 кг' }),
 				'Тренування Б',
 			),
-		).toBe('Б: Присідання 3 × 8–12 · 70 кг')
+		).toBe('Б: Присідання · 3 підходи · 8–12 повт. · 70 кг')
 		expect(formatProgramChangeLine(row({}), 'Тренування Б')).toBe('Б: Махи')
 	})
 
 	it('leaves only the name of a removed one', () => {
 		expect(
-			formatProgramChangeLine(row({ kind: 'removed', detail: '3 × 10–12' }), 'Тренування Б'),
+			formatProgramChangeLine(
+				row({ kind: 'removed', detail: '3 підходи · 10–12 повт.' }),
+				'Тренування Б',
+			),
 		).toBe('Б: Махи')
 	})
 

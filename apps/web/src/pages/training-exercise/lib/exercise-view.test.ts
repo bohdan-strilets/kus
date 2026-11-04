@@ -51,8 +51,8 @@ describe('getRecordTiles', () => {
 	it('weighted: the heaviest set and the most reps at that weight, with dates', () => {
 		const tiles = getRecordTiles(makeWeightedStats().best, false, t)
 		expect(tiles.map((tile) => [tile.label, tile.value, tile.date])).toEqual([
-			['Рекорд ваги', '70×5', '26 жовт'],
-			['Найбільше повт.', '70×6', '21 жовт'],
+			['Рекорд ваги', '70 кг × 5', '26 жовт'],
+			['Найбільше повт.', '70 кг × 6', '21 жовт'],
 		])
 	})
 

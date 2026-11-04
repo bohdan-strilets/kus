@@ -8,7 +8,9 @@ const t = i18n.t.bind(i18n)
 
 describe('formatBestSet and formatChange', () => {
 	it('writes weight×reps, or reps for a bodyweight exercise', () => {
-		expect(formatBestSet({ weightKg: 77.5, reps: 5, localDate: '2026-10-01' }, t)).toBe('77,5×5')
+		expect(formatBestSet({ weightKg: 77.5, reps: 5, localDate: '2026-10-01' }, t)).toBe(
+			'77,5 кг × 5',
+		)
 		expect(formatBestSet({ weightKg: null, reps: 9, localDate: '2026-10-01' }, t)).toBe('9 повт.')
 		expect(formatBestSet(null, t)).toBeNull()
 	})

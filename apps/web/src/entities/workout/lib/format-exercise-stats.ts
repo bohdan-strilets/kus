@@ -3,11 +3,11 @@ import type { TFunction } from 'i18next'
 
 import { formatNumber } from './format-workout'
 
-/** «70×5», or «9 повт.» for a bodyweight exercise; null without a working set. */
+/** «70 кг × 5», or «9 повт.» for a bodyweight exercise; null without a working set. */
 export const formatBestSet = (best: WorkoutStatsExercise['best'], t: TFunction): string | null => {
 	if (best === null) return null
 	if (best.weightKg === null || best.weightKg === 0) return t('workout.reps', { value: best.reps })
-	return `${formatNumber(best.weightKg)}×${best.reps}`
+	return t('workout.setWeightReps', { weight: formatNumber(best.weightKg), reps: best.reps })
 }
 
 /** «+10 кг», «−2 повт.», «без змін»; null when there is nothing to compare. */

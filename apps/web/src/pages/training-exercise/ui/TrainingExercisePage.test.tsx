@@ -74,9 +74,9 @@ describe('TrainingExercisePage', () => {
 		expect(screen.getByText('+10 кг за місяць')).toBeTruthy()
 		expect(screen.getByRole('img', { name: 'Графік ваги за місяць' })).toBeTruthy()
 		expect(screen.getByText('Рекорд ваги')).toBeTruthy()
-		expect(screen.getByText('70×6')).toBeTruthy()
+		expect(screen.getByText('70 кг × 6')).toBeTruthy()
 		expect(screen.getByText('Історія')).toBeTruthy()
-		expect(screen.getByText('розм. 40×10')).toBeTruthy()
+		expect(screen.getByText('розминка · 40 кг × 10')).toBeTruthy()
 		expect(getMock).toHaveBeenCalledWith(`/workouts/exercises/${BENCH_ID}`, {
 			params: { period: 'month' },
 		})

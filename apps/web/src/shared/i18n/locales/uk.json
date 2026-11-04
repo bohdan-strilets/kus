@@ -858,6 +858,14 @@
 		"reps": "{{value}} повт.",
 		"repsUnit": "повт.",
 		"warmupShort": "розм.",
+		"warmupSet": "розминка · {{value}}",
+		"setWeightReps": "{{weight}} кг × {{reps}}",
+		"setRepeat": "— {{value}}",
+		"table": {
+			"set": "Підхід",
+			"weight": "Вага",
+			"reps": "Повтори"
+		},
 		"bodyweight": "власна вага",
 		"set": {
 			"weightLess": "Менше ваги",
@@ -883,7 +891,7 @@
 		"cardioPart": "кардіо {{duration}}",
 		"cardioBare": "кардіо",
 		"summary": {
-			"record": "Рекорд: {{name}} {{value}}",
+			"record": "Рекорд: {{name}} — {{value}}",
 			"open": "Відкрити тренування"
 		},
 		"log": {
@@ -934,7 +942,6 @@
 			"duration": "~{{duration}}"
 		},
 		"target": {
-			"setsReps": "{{sets}} × {{reps}}",
 			"weight": "{{value}} кг",
 			"progressStep": "+{{value}} кг"
 		},
@@ -1017,7 +1024,7 @@
 			"programTitle": "Назва програми"
 		},
 		"template": {
-			"legend": "Ціль: підходи × повтори · робоча вага · крок прогресу · відпочинок.",
+			"legend": "Ціль: підходи · повтори · робоча вага · крок прогресу · відпочинок.",
 			"loadError": "Не вдалося завантажити тренування."
 		},
 		"editor": {
@@ -1188,7 +1195,7 @@
 			"setChanged": "змінено",
 			"and": "і",
 			"setOrdinal": "{{n}}-й",
-			"changed": "Змінено: {{sets}} · план {{plan}}",
+			"changed": "Змінено: {{sets}} · план: {{plan}}",
 			"changedSets_one": "{{list}} підхід",
 			"changedSets_few": "{{list}} підходи",
 			"changedSets_many": "{{list}} підходів",
@@ -1250,7 +1257,8 @@
 			"timeRange": "{{from}}–{{to}}",
 			"tiles": {
 				"duration": "Тривалість",
-				"strength": "Вправ · підходів"
+				"exercises": "Вправ",
+				"sets": "Підходів"
 			},
 			"notFound": {
 				"title": "Такого тренування немає",

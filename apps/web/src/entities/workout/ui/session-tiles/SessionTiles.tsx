@@ -49,10 +49,13 @@ export const SessionTiles = ({ duration, strength, cardio }: SessionTilesProps) 
 		<div className="flex gap-2 px-gutter">
 			{duration !== null && <Tile label={t('training.session.tiles.duration')} value={duration} />}
 			{strength !== null && (
-				<Tile
-					label={t('training.session.tiles.strength')}
-					value={`${formatInteger(strength.exerciseCount)} · ${formatInteger(strength.setCount)}`}
-				/>
+				<>
+					<Tile
+						label={t('training.session.tiles.exercises')}
+						value={formatInteger(strength.exerciseCount)}
+					/>
+					<Tile label={t('training.session.tiles.sets')} value={formatInteger(strength.setCount)} />
+				</>
 			)}
 			{cardio !== null && (
 				<Tile

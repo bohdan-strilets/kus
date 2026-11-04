@@ -23,7 +23,7 @@ export interface SessionSummaryGroup {
 export interface SessionSummaryView {
 	counts: string | null
 	groups: SessionSummaryGroup[]
-	/** «Рекорд: жим лежачи 70×5», one per exercise that gave one. */
+	/** «Рекорд: жим лежачи — 70 кг × 5», one per exercise that gave one. */
 	records: string[]
 }
 
@@ -33,10 +33,8 @@ const getRecordValue = (exercise: WorkoutExerciseResponse, t: TFunction): string
 	if (exercise.record === 'DISTANCE') {
 		return exercise.distanceM === null ? null : formatWorkoutDistance(exercise.distanceM, t)
 	}
-	const { segments, unit } = formatSets(exercise, t)
-	const text = segments.find((segment) => segment.kind === 'record')?.text
-	if (text === undefined) return null
-	return unit === null ? text : `${text} ${unit}`
+	const { segments } = formatSets(exercise, t)
+	return segments.find((segment) => segment.kind === 'record')?.text ?? null
 }
 
 const getRecords = (exercises: readonly WorkoutExerciseResponse[], t: TFunction): string[] =>

@@ -95,6 +95,8 @@ export const router = createBrowserRouter([
 									{ path: TRAINING_PROGRAM_ROUTE, element: <TrainingProgramPage /> },
 									{ path: TRAINING_TEMPLATE_ROUTE, element: <TrainingTemplatePage /> },
 									{ path: TRAINING_EXERCISE_ROUTE, element: <TrainingExercisePage /> },
+									// a surface over the tab (RootLayout draws it), not a stack screen
+									{ path: TRAINING_LIVE_ROUTE, element: <TrainingLivePage /> },
 									{ path: TRAINING_SESSION_ROUTE, element: <TrainingSessionPage /> },
 									{ path: '*', element: <Navigate to={ROUTES.chat} replace /> },
 								],
@@ -113,7 +115,6 @@ export const router = createBrowserRouter([
 									{ path: ROUTES.profileData, element: <MyDataPage /> },
 									{ path: ROUTES.memory, element: <MemoryPage /> },
 									{ path: ROUTES.settings, element: <SettingsPage /> },
-									{ path: TRAINING_LIVE_ROUTE, element: <TrainingLivePage /> },
 									{ path: TRAINING_FILL_ROUTE, element: <TrainingFillPage /> },
 									{ path: ROUTES.settingsPassword, element: <ChangePasswordPage /> },
 									{ path: ROUTES.accountRestore, element: <AccountRestorePage /> },

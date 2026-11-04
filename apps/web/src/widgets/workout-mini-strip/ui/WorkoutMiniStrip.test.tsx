@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, cleanup, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { TRAINING_LIVE_ROUTE } from '@/shared/config'
@@ -52,5 +52,28 @@ describe('WorkoutMiniStrip', () => {
 		)
 
 		expect(screen.getByRole('link').textContent).toContain('Тренування · 00:00')
+	})
+})
+
+describe('WorkoutMiniStrip: the live screen unfolds from it', () => {
+	it('carries data-mini-strip, so the surface finds its rectangle', () => {
+		renderWithProviders(<WorkoutMiniStrip live={makeLiveResponse()} />)
+
+		expect(screen.getByRole('link').hasAttribute('data-mini-strip')).toBe(true)
+	})
+
+	it('warms the live screen up when the finger comes down', () => {
+		const onWarm = vi.fn()
+		renderWithProviders(<WorkoutMiniStrip live={makeLiveResponse()} onWarm={onWarm} />)
+
+		fireEvent.pointerDown(screen.getByRole('link'))
+
+		expect(onWarm).toHaveBeenCalledTimes(1)
+	})
+
+	it('works without onWarm: pointerdown does not throw', () => {
+		renderWithProviders(<WorkoutMiniStrip live={makeLiveResponse()} />)
+
+		expect(() => fireEvent.pointerDown(screen.getByRole('link'))).not.toThrow()
 	})
 })

@@ -24,6 +24,10 @@ export {
 	HEADER_SWAP,
 	HOP_KEYFRAMES,
 	HOP_TRANSITION,
+	LIVE_CONTENT_DELAY_S,
+	LIVE_ROW_LEAVE_X_PX,
+	liveContentVariants,
+	liveRowVariants,
 	popInVariants,
 	ROW_STAGGER_S,
 	rowVariants,
@@ -31,5 +35,7 @@ export {
 	SHAKE_KEYFRAMES,
 	SHAKE_TRANSITION,
 	sheetVariants,
+	STEP_VALUE_SHIFT_PX,
+	stepValueVariants,
 	tabContentVariants,
 } from './variants'

@@ -20,7 +20,7 @@ export const EASE: Record<'out' | 'spring' | 'in', CubicBezier> = {
 const toSeconds = (ms: number): number => ms / 1000
 
 export const TRANSITION: Record<
-	'fast' | 'base' | 'slow' | 'expand' | 'pop' | 'exit' | 'toggle',
+	'fast' | 'base' | 'slow' | 'expand' | 'pop' | 'exit' | 'leave' | 'toggle',
 	Transition
 > = {
 	fast: { duration: toSeconds(DURATION_MS.fast), ease: EASE.out },
@@ -30,6 +30,8 @@ export const TRANSITION: Record<
 	expand: { duration: 0.25, ease: EASE.out },
 	pop: { duration: 0.3, ease: EASE.spring },
 	exit: { duration: 0.25, ease: EASE.in },
+	/** a row leaving a list: fast ease-in (design/docs/motion.md «Живий режим» п. 4) */
+	leave: { duration: toSeconds(DURATION_MS.fast), ease: EASE.in },
 	/** switch thumb: slow + spring (design/docs/motion.md) */
 	toggle: { duration: toSeconds(DURATION_MS.slow), ease: EASE.spring },
 }

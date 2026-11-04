@@ -52,9 +52,13 @@ export const TrainingProgramPage = lazy(() =>
 export const TrainingTemplatePage = lazy(() =>
 	import('@/pages/training-template').then((m) => ({ default: m.TrainingTemplatePage })),
 )
-export const TrainingLivePage = lazy(() =>
-	import('@/pages/training-live').then((m) => ({ default: m.TrainingLivePage })),
-)
+const loadTrainingLive = () =>
+	import('@/pages/training-live').then((m) => ({ default: m.TrainingLivePage }))
+export const TrainingLivePage = lazy(loadTrainingLive)
+/** The finger came down on the mini strip: the chunk is on its way before the tap ends. */
+export const preloadTrainingLive = (): void => {
+	void loadTrainingLive()
+}
 export const TrainingFillPage = lazy(() =>
 	import('@/pages/training-fill').then((m) => ({ default: m.TrainingFillPage })),
 )

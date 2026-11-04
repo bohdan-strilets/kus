@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 import type { RestNext, RestTimer } from '@/features/live-workout'
-import { cleanup, fireEvent, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { renderWithProviders } from '@/shared/testing'
+import { createWrapper, renderWithProviders } from '@/shared/testing'
 
 import { RestTimerPanel } from './RestTimerPanel'
 
@@ -211,5 +211,78 @@ describe('RestTimerPanel: warm-up and other set shapes', () => {
 		)
 
 		expect(screen.getByText('Далі: підхід 3 · 45 с')).toBeTruthy()
+	})
+})
+
+describe('RestTimerPanel: the height it takes', () => {
+	const PANEL_HEIGHT_PX = 168
+
+	afterEach(() => {
+		Reflect.deleteProperty(HTMLElement.prototype, 'offsetHeight')
+		vi.unstubAllGlobals()
+	})
+
+	const stubLayout = (): void => {
+		Object.defineProperty(HTMLElement.prototype, 'offsetHeight', {
+			configurable: true,
+			get: () => PANEL_HEIGHT_PX,
+		})
+		vi.stubGlobal(
+			'ResizeObserver',
+			class {
+				observe = vi.fn()
+				disconnect = vi.fn()
+			},
+		)
+	}
+
+	const renderPanel = (onHeightChange: (heightPx: number) => void) => {
+		const Wrapper = createWrapper()
+		const view = render(
+			<Wrapper>
+				<RestTimerPanel timer={makeTimer()} onHeightChange={onHeightChange} />
+			</Wrapper>,
+		)
+		return {
+			...view,
+			rest: () => {
+				view.rerender(
+					<Wrapper>
+						<RestTimerPanel
+							timer={makeTimer({ state: { status: 'idle' } })}
+							onHeightChange={onHeightChange}
+						/>
+					</Wrapper>,
+				)
+			},
+		}
+	}
+
+	it('reports its height when it appears', () => {
+		stubLayout()
+		const onHeightChange = vi.fn()
+
+		renderPanel(onHeightChange)
+
+		expect(onHeightChange).toHaveBeenLastCalledWith(PANEL_HEIGHT_PX)
+	})
+
+	it('reports 0 once it is gone', async () => {
+		stubLayout()
+		const onHeightChange = vi.fn()
+		const view = renderPanel(onHeightChange)
+
+		view.rest()
+
+		await waitFor(() => {
+			expect(onHeightChange).toHaveBeenLastCalledWith(0)
+		})
+		expect(screen.queryByRole('timer')).toBeNull()
+	})
+
+	it('works without onHeightChange', () => {
+		renderWithProviders(<RestTimerPanel timer={makeTimer()} />)
+
+		expect(screen.getByRole('timer')).toBeTruthy()
 	})
 })

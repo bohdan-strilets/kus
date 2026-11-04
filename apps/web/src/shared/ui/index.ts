@@ -80,6 +80,7 @@ export {
 	type SegmentedToggleProps,
 } from './segmented-toggle'
 export { Skeleton, type SkeletonProps } from './skeleton'
+export { RowMotion, SwapFade } from './row-motion'
 export { SetStepper, type SetStepperProps } from './set-stepper'
 export { Stepper, type StepperProps } from './stepper'
 export { StickyActions, type StickyActionsProps } from './sticky-actions'

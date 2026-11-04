@@ -12,9 +12,16 @@ const TICK_MS = 1000
 /**
  * mockups/training-home.html: while a live session is open, a 48px `ink` strip over the bottom
  * nav on every tab — a `success` dot, «Тренування Б · 23:14» and «Відкрити». The whole strip is the
- * link; the dot is decoration, the name and the time carry the meaning.
+ * link; the dot is decoration, the name and the time carry the meaning. The live screen unfolds from it
+ * (`data-mini-strip` is how the screen finds the strip's rectangle).
  */
-export const WorkoutMiniStrip = ({ live }: { live: LiveWorkoutResponse }) => {
+interface WorkoutMiniStripProps {
+	live: LiveWorkoutResponse
+	/** The finger came down on the strip: the app warms up what the live screen needs. */
+	onWarm?: () => void
+}
+
+export const WorkoutMiniStrip = ({ live, onWarm }: WorkoutMiniStripProps) => {
 	const { t } = useTranslation()
 	const now = useNow(TICK_MS)
 	const name = live.templateName ?? t('training.live.defaultName')
@@ -24,6 +31,8 @@ export const WorkoutMiniStrip = ({ live }: { live: LiveWorkoutResponse }) => {
 	return (
 		<Link
 			to={TRAINING_LIVE_ROUTE}
+			data-mini-strip=""
+			onPointerDown={onWarm}
 			aria-label={t('training.strip.label', { name, minutes })}
 			className="mx-gutter flex min-h-12 items-center gap-2.5 rounded-button bg-ink py-0 pr-2 pl-3.5 text-white shadow-float focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-ink"
 		>

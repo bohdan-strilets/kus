@@ -3,6 +3,7 @@ import {
 	MAX_EXERCISES_PER_WORKOUT,
 	type WorkoutFinished,
 } from '@kus/shared'
+import { motion, useReducedMotion } from 'motion/react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
@@ -28,15 +29,12 @@ import {
 	Icon,
 	ICON_SIZE,
 	IconButton,
-	SwipeGroup,
 	useSwipeFocus,
 } from '@/shared/ui'
 
 import { useLiveExit } from '../model/use-live-exit'
-import { LiveCardio } from './LiveCardio'
-import { LiveExercise } from './LiveExercise'
 import { LiveExerciseBar, type LiveBarSegment } from './LiveExerciseBar'
-import { LiveExerciseRow } from './LiveExerciseRow'
+import { LiveExerciseList } from './LiveExerciseList'
 import { LiveHeader } from './LiveHeader'
 import { RestTimerPanel } from './RestTimerPanel'
 import { WakeLockHint } from './WakeLockHint'
@@ -56,9 +54,12 @@ interface LiveScreenProps {
 export const LiveScreen = ({ live, onFinished, isClosed }: LiveScreenProps) => {
 	const { t } = useTranslation()
 	const navigate = useNavigate()
+	const isReduced = useReducedMotion() === true
 	const session = useLiveSession(live)
 	const { draft, current, sync } = session
 	const [isPickerOpen, setIsPickerOpen] = useState(false)
+	// the rest sheet lies over the content: the content keeps this much room under it
+	const [restPanelHeight, setRestPanelHeight] = useState(0)
 	const restTimer = useRestTimer(draft)
 	const wakeLock = useWakeLock(restTimer.state.status === 'running')
 	const doneSets = countDoneSets(draft)
@@ -84,6 +85,25 @@ export const LiveScreen = ({ live, onFinished, isClosed }: LiveScreenProps) => {
 		if (isSessionClosed) useLiveWorkoutStore.getState().clearSnapshot(draft.workoutId)
 	}, [isSessionClosed, draft.workoutId])
 
+	const focusIndex = current?.exerciseIndex ?? -1
+	const exerciseCount = draft.exercises.length
+	const lastFocusRef = useRef({ focusIndex, exerciseCount })
+	// design/docs/motion.md «Живий режим» п. 3: when the hand moves to another exercise, its title
+	// scrolls into view and takes the focus
+	useEffect(() => {
+		const last = lastFocusRef.current
+		lastFocusRef.current = { focusIndex, exerciseCount }
+		// a deleted exercise hands the focus over by itself (useSwipeFocus)
+		if (last.focusIndex === focusIndex || exerciseCount < last.exerciseCount) return
+		const title = exercisesRef.current?.querySelector<HTMLElement>('[data-live-exercise-title]')
+		if (!title) return
+		// jsdom has no scrollIntoView
+		if (typeof title.scrollIntoView === 'function') {
+			title.scrollIntoView({ behavior: isReduced ? 'auto' : 'smooth', block: 'start' })
+		}
+		title.focus({ preventScroll: true })
+	}, [focusIndex, exerciseCount, isReduced])
+
 	if (isSessionClosed) {
 		return (
 			<div className="flex min-h-0 flex-1 flex-col gap-3 pt-5.5">
@@ -101,7 +121,6 @@ export const LiveScreen = ({ live, onFinished, isClosed }: LiveScreenProps) => {
 		)
 	}
 
-	const focusIndex = current?.exerciseIndex ?? -1
 	const nextIndex = draft.exercises.findIndex(
 		(exercise, index) => index > focusIndex && !exercise.readOnly && !isExerciseDone(exercise),
 	)
@@ -119,7 +138,7 @@ export const LiveScreen = ({ live, onFinished, isClosed }: LiveScreenProps) => {
 				})
 
 	return (
-		<div className="flex min-h-0 flex-1 flex-col">
+		<div className="relative flex min-h-0 flex-1 flex-col">
 			<LiveHeader
 				name={draft.templateName ?? t('training.live.defaultName')}
 				startedAt={draft.startedAt}
@@ -131,56 +150,17 @@ export const LiveScreen = ({ live, onFinished, isClosed }: LiveScreenProps) => {
 			/>
 			<SyncNotice status={sync.status} onRetry={sync.retry} />
 			{wakeLock.isUnavailable && <WakeLockHint />}
-			<div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto pb-4">
+			{/* layoutScroll: the rows glide inside a scrolling parent, Motion has to know its scroll */}
+			<motion.div layoutScroll className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto pb-4">
 				<LiveExerciseBar segments={segments} />
 				<div ref={exercisesRef} className="flex flex-col gap-2 px-gutter">
-					<SwipeGroup>
-						{draft.exercises.map((exercise, index) => {
-							if (index === focusIndex) {
-								const onDeleteExercise = (origin: Element | null): void => {
-									deleteExercise(index, origin)
-								}
-								return exercise.kind === 'CARDIO' ? (
-									<LiveCardio
-										key={exercise.rowKey}
-										exercise={exercise}
-										exerciseIndex={index}
-										session={session}
-										onDeleteExercise={onDeleteExercise}
-									/>
-								) : (
-									<LiveExercise
-										key={exercise.rowKey}
-										exercise={exercise}
-										exerciseIndex={index}
-										session={session}
-										onDeleteExercise={onDeleteExercise}
-									/>
-								)
-							}
-							return (
-								<LiveExerciseRow
-									key={exercise.rowKey}
-									exercise={exercise}
-									isNext={index === nextIndex}
-									onSelect={
-										exercise.readOnly
-											? null
-											: () => {
-													session.selectExercise(index)
-												}
-									}
-									onDelete={
-										exercise.readOnly
-											? null
-											: (row) => {
-													deleteExercise(index, row)
-												}
-									}
-								/>
-							)
-						})}
-					</SwipeGroup>
+					<LiveExerciseList
+						draft={draft}
+						session={session}
+						focusIndex={focusIndex}
+						nextIndex={nextIndex}
+						onDeleteExercise={deleteExercise}
+					/>
 					<DashedAction
 						ref={addExerciseRef}
 						isDisabled={draft.exercises.length >= MAX_EXERCISES_PER_WORKOUT}
@@ -199,8 +179,14 @@ export const LiveScreen = ({ live, onFinished, isClosed }: LiveScreenProps) => {
 						{t('training.live.exit.discard')}
 					</Button>
 				</div>
-			</div>
-			<RestTimerPanel timer={restTimer} />
+				{/* the rest sheet covers the bottom of the list: this room keeps «+ Підхід» and the basket reachable */}
+				{restPanelHeight > 0 ? (
+					<div aria-hidden="true" className="flex-none" style={{ height: restPanelHeight }} />
+				) : (
+					<div aria-hidden="true" className="flex-none pb-safe-bottom" />
+				)}
+			</motion.div>
+			<RestTimerPanel timer={restTimer} onHeightChange={setRestPanelHeight} />
 			<ExercisePickerSheet
 				isOpen={isPickerOpen}
 				onOpenChange={setIsPickerOpen}

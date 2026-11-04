@@ -8,13 +8,17 @@ import {
 	type RestNext,
 	type RestTimer,
 } from '@/features/live-workout'
-import { sheetVariants } from '@/shared/lib'
+import { sheetVariants, useElementHeight } from '@/shared/lib'
 import { Button, Heading, Text } from '@/shared/ui'
 
 import { RestRing } from './RestRing'
 
+const ignoreHeight = (): void => undefined
+
 interface RestTimerPanelProps {
 	timer: RestTimer
+	/** The height the panel takes over the content (0 when it is gone): the content keeps that much room. */
+	onHeightChange?: (heightPx: number) => void
 }
 
 const getNextText = (next: RestNext | null, isEnded: boolean, t: TFunction): string | null => {
@@ -34,13 +38,14 @@ const getNextText = (next: RestNext | null, isEnded: boolean, t: TFunction): str
 }
 
 /**
- * mockups/training-rest.html: a panel from the bottom on `ink` — the ring, «Відпочинок» and what
+ * mockups/training-rest.html: a sheet over the content, from the bottom, on `ink` — the ring, «Відпочинок» and what
  * comes next, [+15 с] [Пропустити]; at the end «Час! Підхід N» and one [До підходу]. The end is
  * announced to a screen reader (`aria-live="assertive"`). The «на паузі» state of the mockup is
  * not made: the time is counted from `doneAt`, so there is nothing to pause.
  */
-export const RestTimerPanel = ({ timer }: RestTimerPanelProps) => {
+export const RestTimerPanel = ({ timer, onHeightChange }: RestTimerPanelProps) => {
 	const { t } = useTranslation()
+	const heightRef = useElementHeight(onHeightChange ?? ignoreHeight)
 	const { state, next } = timer
 	const isShown = state.status !== 'idle'
 	const isEnded = state.status === 'ended'
@@ -52,11 +57,12 @@ export const RestTimerPanel = ({ timer }: RestTimerPanelProps) => {
 		<AnimatePresence>
 			{isShown && (
 				<motion.section
+					ref={heightRef}
 					variants={sheetVariants}
 					initial="hidden"
 					animate="visible"
 					exit="hidden"
-					className="flex-none rounded-t-sheet bg-ink pb-safe-bottom"
+					className="absolute inset-x-0 bottom-0 z-10 rounded-t-sheet bg-ink pb-safe-bottom"
 				>
 					<div className="flex flex-col gap-3 px-gutter pt-4 pb-4">
 						<div className="flex items-center gap-4">

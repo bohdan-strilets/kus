@@ -27,10 +27,15 @@ export const LiveExercise = ({
 	const hint = getHintToShow(exercise)
 
 	return (
-		<Surface radius="card" className="flex flex-col gap-2.5 p-3.5">
+		<Surface radius="chip" className="flex flex-col gap-2.5 p-3.5">
 			<div className="flex flex-col gap-1">
 				<div className="flex items-start justify-between gap-2">
-					<Text as="span" className="text-field-number-sm font-extrabold">
+					<Text
+						as="span"
+						tabIndex={-1}
+						data-live-exercise-title=""
+						className="scroll-mt-4 text-field-number-sm font-extrabold focus:outline-none"
+					>
 						{exercise.name}
 					</Text>
 					{exercise.muscleGroup !== null && <GroupTag group={exercise.muscleGroup} />}

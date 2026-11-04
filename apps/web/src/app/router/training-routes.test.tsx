@@ -48,13 +48,18 @@ describe('training routes', () => {
 		expect(resolved.params).not.toHaveProperty('id')
 	})
 
-	it('both full screens render without the bottom nav (the stack layout)', () => {
-		for (const path of [TRAINING_LIVE_ROUTE, TRAINING_FILL_ROUTE]) {
-			const resolved = resolve(path)
+	it('the form renders without the bottom nav (the stack layout)', () => {
+		const resolved = resolve(TRAINING_FILL_ROUTE)
 
-			expect(resolved.hasStackLayout).toBe(true)
-			expect(resolved.hasTabLayout).toBe(false)
-		}
+		expect(resolved.hasStackLayout).toBe(true)
+		expect(resolved.hasTabLayout).toBe(false)
+	})
+
+	it('the live screen is a surface over the tab layout, not a stack screen', () => {
+		const resolved = resolve(TRAINING_LIVE_ROUTE)
+
+		expect(resolved.hasTabLayout).toBe(true)
+		expect(resolved.hasStackLayout).toBe(false)
 	})
 
 	it('a real session id still reaches the session screen, inside the tab layout', () => {

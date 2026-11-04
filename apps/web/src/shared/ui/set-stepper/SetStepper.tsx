@@ -7,6 +7,7 @@ import { Icon, ICON_SIZE } from '../icon'
 import { parseStepperValue } from '../stepper/parse-stepper-value'
 import { Text } from '../text'
 import type { SetStepperProps } from './set-stepper.types'
+import { StepValue } from './StepValue'
 
 const BUTTON_CLASS =
 	'flex size-14 shrink-0 cursor-pointer items-center justify-center rounded-full bg-secondary text-ink disabled:cursor-not-allowed disabled:opacity-50'
@@ -36,6 +37,7 @@ export const SetStepper = ({
 }: SetStepperProps) => {
 	const [isEditing, setIsEditing] = useState(false)
 	const [draft, setDraft] = useState('')
+	const [direction, setDirection] = useState<1 | -1>(1)
 	// Enter applies and the unmounting input blurs: the second pass must do nothing
 	const isDoneRef = useRef(false)
 
@@ -45,7 +47,9 @@ export const SetStepper = ({
 		setIsEditing(false)
 		if (!shouldApply) return
 		const next = parseStepperValue(draft, { min, max, decimals })
-		if (next !== null) onCommit(next)
+		if (next === null) return
+		setDirection(1)
+		onCommit(next)
 	}
 
 	const startEditing = (): void => {
@@ -60,7 +64,10 @@ export const SetStepper = ({
 				type="button"
 				aria-label={decreaseLabel}
 				disabled={isDecreaseDisabled}
-				onClick={onDecrease}
+				onClick={() => {
+					setDirection(-1)
+					onDecrease()
+				}}
 				{...(isDecreaseDisabled ? {} : PRESS)}
 				className={BUTTON_CLASS}
 			>
@@ -100,7 +107,7 @@ export const SetStepper = ({
 						onClick={startEditing}
 						className={cn(VALUE_CLASS, 'min-h-14 min-w-14 cursor-pointer')}
 					>
-						{valueText}
+						<StepValue text={valueText} direction={direction} />
 					</button>
 				)}
 				{!isEditing && (
@@ -112,7 +119,10 @@ export const SetStepper = ({
 			<motion.button
 				type="button"
 				aria-label={increaseLabel}
-				onClick={onIncrease}
+				onClick={() => {
+					setDirection(1)
+					onIncrease()
+				}}
 				{...PRESS}
 				className={BUTTON_CLASS}
 			>

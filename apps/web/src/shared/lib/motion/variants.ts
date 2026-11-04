@@ -69,6 +69,36 @@ export const achievementPopVariants: Variants = {
 	},
 }
 
+/** A set or an exercise row of the live mode leaves to the left before the gap closes. */
+export const LIVE_ROW_LEAVE_X_PX = -32
+/** Rows of the live mode: a new one grows by height + opacity (y −4 → 0, base), a removed one slides left, fast ease-in. */
+export const liveRowVariants: Variants = {
+	hidden: { height: 0, opacity: 0, y: -4, overflow: 'hidden' },
+	visible: {
+		height: 'auto',
+		opacity: 1,
+		y: 0,
+		transition: TRANSITION.base,
+		transitionEnd: { overflow: 'visible' },
+	},
+	gone: { opacity: 0, x: LIVE_ROW_LEAVE_X_PX, transition: TRANSITION.leave },
+}
+
+/** The live screen's content while the surface unfolds: opacity + y 12 → 0, base, after 80 ms; leaves first, fast. */
+export const LIVE_CONTENT_DELAY_S = 0.08
+export const liveContentVariants: Variants = {
+	hidden: { opacity: 0, y: 12 },
+	visible: { opacity: 1, y: 0, transition: { ...TRANSITION.base, delay: LIVE_CONTENT_DELAY_S } },
+	gone: { opacity: 0, transition: TRANSITION.fast },
+}
+
+/** A stepper value rolls in from the side of the change: ±8 px + opacity, fast. `custom` is +1 for «+», −1 for «−». */
+export const STEP_VALUE_SHIFT_PX = 8
+export const stepValueVariants: Variants = {
+	hidden: (direction: number) => ({ opacity: 0, y: direction * STEP_VALUE_SHIFT_PX }),
+	visible: { opacity: 1, y: 0, transition: TRANSITION.fast },
+}
+
 /** The chat header swaps (full ↔ compact) by opacity + a small shift, base; both headers crossfade. */
 export const HEADER_SWAP = {
 	initial: { opacity: 0, y: -6 },

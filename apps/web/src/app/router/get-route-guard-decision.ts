@@ -1,5 +1,5 @@
 import type { SessionStatus } from '@/entities/session'
-import { isProtectedPath, ROUTES } from '@/shared/config'
+import { isProtectedPath, ROUTES, TRAINING_LIVE_ROUTE } from '@/shared/config'
 
 export type RouteGuard = 'protected' | 'guest'
 
@@ -11,12 +11,20 @@ export interface ReturnState {
 export type GuardDecision =
 	| { action: 'render' }
 	| { action: 'loading' }
-	| { action: 'error' }
+	/** `canResumeLive`: offline, with a live session of this device's last user to go back to. */
+	| { action: 'error'; canResumeLive?: true }
 	| { action: 'redirect'; to: string; state?: ReturnState }
 
 interface GuardInput {
 	guard: RouteGuard
 	status: SessionStatus
+	/**
+	 * The session check failed for lack of a connection (not an answer of the API). A 5xx without the
+	 * API's error format (a proxy in front) counts too: the API is unreachable, which is offline for us.
+	 */
+	isNetworkError?: boolean
+	/** The device holds the last live session of its last known user (`lastSeen` in the live store). */
+	hasOfflineLive?: boolean
 	/** pathname + search + hash of the current location. */
 	path: string
 	/** location.state, whatever it holds — it can come from history, so it's untrusted. */
@@ -46,9 +54,21 @@ const getAuthenticatedDecision = (path: string, isPendingDeletion: boolean): Gua
 	return { action: 'render' }
 }
 
+/**
+ * No connection and no cached user: the live screen alone still works from the copy of the last
+ * session, everywhere else it is «retry» with a way back into that session.
+ */
+const getOfflineDecision = (path: string, hasOfflineLive: boolean): GuardDecision => {
+	if (!hasOfflineLive) return { action: 'error' }
+	if (getPathname(path) === TRAINING_LIVE_ROUTE) return { action: 'render' }
+	return { action: 'error', canResumeLive: true }
+}
+
 export const getRouteGuardDecision = ({
 	guard,
 	status,
+	isNetworkError = false,
+	hasOfflineLive = false,
 	path,
 	locationState,
 	isPendingDeletion,
@@ -59,7 +79,7 @@ export const getRouteGuardDecision = ({
 	if (guard === 'protected') {
 		if (status === 'authenticated') return getAuthenticatedDecision(path, isPendingDeletion)
 		// the network failed, not the session: show «retry», don't throw the user out
-		if (status === 'error') return { action: 'error' }
+		if (status === 'error') return getOfflineDecision(path, isNetworkError && hasOfflineLive)
 		return { action: 'redirect', to: ROUTES.login, state: { from: path } }
 	}
 

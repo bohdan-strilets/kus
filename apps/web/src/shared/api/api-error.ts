@@ -38,3 +38,10 @@ export const isUnauthorizedError = (error: unknown): boolean => {
 	const apiError = getApiError(error)
 	return apiError.kind === 'http' && apiError.status === HTTP_STATUS.unauthorized
 }
+
+/**
+ * The request never got an answer (offline, a timeout). Narrower than `kind: 'network'`, which also
+ * covers a proxy's 5xx: an answer did come then, so the server was reached.
+ */
+export const isUnreachableError = (error: unknown): boolean =>
+	isAxiosError(error) && !error.response

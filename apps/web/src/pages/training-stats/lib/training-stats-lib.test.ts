@@ -58,3 +58,37 @@ describe('getBucketBars', () => {
 		expect(bars.map((bar) => bar.label)).toEqual(['Чт', 'Пт', 'Сб', 'Нд'])
 	})
 })
+
+describe('getOverviewTiles: unknown total', () => {
+	const { overview } = makeWorkoutStats()
+
+	it('is a dash and unknown when workouts exist but none has a duration', () => {
+		const tiles = getOverviewTiles(
+			{ ...overview, workoutCount: 3, durationMin: 0, avgDurationMin: null },
+			'month',
+			t,
+		)
+
+		expect(tiles.isTotalUnknown).toBe(true)
+		expect(tiles.total).toBe('—')
+		expect(tiles.perSession).toBeNull()
+	})
+
+	it('an empty period is not «unknown»: no workouts, the plain zero total', () => {
+		const tiles = getOverviewTiles(
+			{ ...overview, workoutCount: 0, durationMin: 0, avgDurationMin: null },
+			'month',
+			t,
+		)
+
+		expect(tiles.isTotalUnknown).toBe(false)
+		expect(tiles.total).not.toBe('—')
+	})
+
+	it('a known average keeps the real total', () => {
+		const tiles = getOverviewTiles(overview, 'month', t)
+
+		expect(tiles.isTotalUnknown).toBe(false)
+		expect(tiles.total).toBe('5 год 10 хв')
+	})
+})

@@ -82,7 +82,10 @@ export const LiveScreen = ({ live, onFinished, isClosed }: LiveScreenProps) => {
 	const isSessionClosed = (isClosed || sync.closedByChat) && !exit.isClosingMyself
 	// nothing of a closed session is written any more: its unsent sets go
 	useEffect(() => {
-		if (isSessionClosed) useLiveWorkoutStore.getState().clearSnapshot(draft.workoutId)
+		if (!isSessionClosed) return
+		const { clearSnapshot, clearLastSeen } = useLiveWorkoutStore.getState()
+		clearSnapshot(draft.workoutId)
+		clearLastSeen()
 	}, [isSessionClosed, draft.workoutId])
 
 	const focusIndex = current?.exerciseIndex ?? -1

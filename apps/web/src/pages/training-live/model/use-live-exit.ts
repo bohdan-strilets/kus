@@ -48,7 +48,10 @@ export const useLiveExit = ({
 	const [isWaiting, setIsWaiting] = useState(false)
 	const [isClosingMyself, setIsClosingMyself] = useState(false)
 	const clearSnapshot = (): void => {
-		useLiveWorkoutStore.getState().clearSnapshot(workoutId)
+		const { clearSnapshot: clearUnsent, clearLastSeen } = useLiveWorkoutStore.getState()
+		clearUnsent(workoutId)
+		// the session is over: nothing of it may be shown on an offline start
+		clearLastSeen()
 	}
 
 	const finish = async (): Promise<void> => {
@@ -66,7 +69,8 @@ export const useLiveExit = ({
 				(data) => {
 					clearSnapshot()
 					if ('discarded' in data && data.discarded) {
-						toast.show(t('training.live.discarded'))
+						// shown before the navigation below, which would otherwise close it at once
+						toast.show(t('training.live.discarded'), { keepOnNavigation: true })
 						void navigate(ROUTES.training, { replace: true })
 						return
 					}

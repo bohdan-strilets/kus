@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest'
-import { Link, MemoryRouter } from 'react-router'
+import { Link, MemoryRouter, useNavigate } from 'react-router'
 import { MotionGlobalConfig } from 'motion/react'
 
 import '@/shared/i18n'
@@ -201,5 +201,44 @@ describe('ToastProvider timers', () => {
 		fireEvent.click(screen.getByText('go'))
 
 		await expectToastGone()
+	})
+
+	it('keeps a keepOnNavigation toast through the next route change only', async () => {
+		const Leaver = () => {
+			const toast = useToast()
+			const navigate = useNavigate()
+			return (
+				<button
+					type="button"
+					onClick={() => {
+						toast.show('Нічого не записано', { keepOnNavigation: true })
+						void navigate('/profile')
+					}}
+				>
+					leave
+				</button>
+			)
+		}
+		render(
+			<MemoryRouter initialEntries={['/memory']}>
+				<ToastProvider>
+					<ToastRouteReset />
+					<Leaver />
+					<Link to="/today">go</Link>
+				</ToastProvider>
+			</MemoryRouter>,
+		)
+
+		fireEvent.click(screen.getByText('leave'))
+		await act(async () => {
+			await vi.advanceTimersByTimeAsync(EXIT_FLUSH_MS)
+		})
+		expect(screen.queryByText('Нічого не записано')).not.toBeNull()
+
+		fireEvent.click(screen.getByText('go'))
+		await act(async () => {
+			await vi.advanceTimersByTimeAsync(EXIT_FLUSH_MS)
+		})
+		expect(screen.queryByText('Нічого не записано')).toBeNull()
 	})
 })

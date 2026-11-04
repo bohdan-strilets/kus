@@ -87,6 +87,18 @@ export const Eyes = () => (
 	</>
 )
 
+/** Closed happy eyes and an open smile: «Радіє» and «Радіє рекорду». */
+export const HappyFace = () => (
+	<>
+		<path d="M42 58 Q47 51 52 58" {...getLineProps()} />
+		<path d="M68 58 Q73 51 78 58" {...getLineProps()} />
+		<path d="M52 71 Q60 85 68 71 Z" fill={C.eye} />
+		<rect x="57" y="71" width="2.8" height="3.6" rx="0.8" fill={C.white} />
+		<rect x="60.2" y="71" width="2.8" height="3.6" rx="0.8" fill={C.white} />
+		<ellipse cx="60" cy="79" rx="4" ry="2" fill={C.blush} />
+	</>
+)
+
 export const Smile = () => (
 	<>
 		<path d="M54 72 Q57 75 60 72 Q63 75 66 72" {...getLineProps(2.2)} />

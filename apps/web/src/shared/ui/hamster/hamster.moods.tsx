@@ -1,6 +1,6 @@
 import { HAMSTER_COLORS as C } from './hamster.constants'
 import { getLineProps } from './hamster-line'
-import { Eyes, Smile } from './hamster-parts'
+import { Eyes, HappyFace, Smile } from './hamster-parts'
 import type { HamsterMood, MoodParts } from './hamster.types'
 
 /** Per-mood artwork, 1:1 with design/mockups/brand-hamster.html (viewBox 0 0 120 120). */
@@ -33,16 +33,7 @@ export const HAMSTER_MOODS: Record<HamsterMood, MoodParts> = {
 				/>
 			</>
 		),
-		face: (
-			<>
-				<path d="M42 58 Q47 51 52 58" {...getLineProps()} />
-				<path d="M68 58 Q73 51 78 58" {...getLineProps()} />
-				<path d="M52 71 Q60 85 68 71 Z" fill={C.eye} />
-				<rect x="57" y="71" width="2.8" height="3.6" rx="0.8" fill={C.white} />
-				<rect x="60.2" y="71" width="2.8" height="3.6" rx="0.8" fill={C.white} />
-				<ellipse cx="60" cy="79" rx="4" ry="2" fill={C.blush} />
-			</>
-		),
+		face: <HappyFace />,
 	},
 	think: {
 		back: (
@@ -274,6 +265,37 @@ export const HAMSTER_MOODS: Record<HamsterMood, MoodParts> = {
 				<rect x="96" y="91" width="5" height="12" rx="2" fill={C.weight} />
 				<ellipse cx="44" cy="97" rx="6.5" ry="5.5" fill={C.furDark} />
 				<ellipse cx="76" cy="97" rx="6.5" ry="5.5" fill={C.furDark} />
+			</>
+		),
+	},
+	record: {
+		isBare: true,
+		face: <HappyFace />,
+		front: (
+			<>
+				<path
+					d="M48 82 h24 v8 a12 12 0 0 1 -24 0z"
+					fill={C.bell}
+					stroke={C.trophyEdge}
+					strokeWidth="1.5"
+				/>
+				<path
+					d="M48 85 h-5 a5 5 0 0 0 5 8 M72 85 h5 a5 5 0 0 1 -5 8"
+					stroke={C.trophyEdge}
+					strokeWidth="2.5"
+					fill="none"
+				/>
+				<rect x="57" y="101" width="6" height="6" fill={C.trophyEdge} />
+				<rect x="51" y="106" width="18" height="5" rx="2" fill={C.headband} />
+				<ellipse cx="46" cy="92" rx="6.5" ry="5.5" fill={C.furDark} />
+				<ellipse cx="74" cy="92" rx="6.5" ry="5.5" fill={C.furDark} />
+				<path d="M14 18 l2 5 5 2 -5 2 -2 5 -2 -5 -5 -2 5 -2z" fill={C.accent} />
+				<path
+					d="M104 20 l1.6 3.6 3.6 1.6 -3.6 1.6 -1.6 3.6 -1.6 -3.6 -3.6 -1.6 3.6 -1.6z"
+					fill={C.bell}
+				/>
+				<circle cx="22" cy="44" r="2.5" fill={C.accentLight} />
+				<circle cx="100" cy="42" r="2.5" fill={C.sparkBlue} />
 			</>
 		),
 	},

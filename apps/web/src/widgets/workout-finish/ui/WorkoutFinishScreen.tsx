@@ -33,7 +33,7 @@ interface WorkoutFinishScreenProps {
 
 /**
  * mockups/training-live.html «Зведення» (and training-form «Після «Зберегти»»): the same screen
- * after the live mode and after the form. A new record — the proud hamster and the `achieve`
+ * after the live mode and after the form. A new record — the hamster with a trophy and the `achieve`
  * sound together with the record rows; otherwise a happy one. The chat got its card from the
  * backend, so the feed and the program's «next» are read again here.
  */
@@ -45,7 +45,7 @@ export const WorkoutFinishScreen = ({ finished, onDone }: WorkoutFinishScreenPro
 	const { groups, records } = getSessionSummary(workout, t)
 	const counts = getWorkoutCounts(workout.exercises)
 	const kcal = formatWorkoutKcal(workout.kcal, t)
-	const mood = hasNewRecord ? 'proud' : 'happy'
+	const mood = hasNewRecord ? 'record' : 'happy'
 
 	useEffect(() => {
 		void queryClient.invalidateQueries({ queryKey: MESSAGES_QUERY_KEY })

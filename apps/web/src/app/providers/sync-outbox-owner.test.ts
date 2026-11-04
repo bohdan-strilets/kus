@@ -4,7 +4,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useFreshReplyStore } from '@/entities/message'
 import { SESSION_QUERY_KEY } from '@/entities/session'
 import { hasCelebratedGoal, markGoalCelebrated, useGoalCelebrationStore } from '@/entities/stats'
+import { LIVE_WORKOUT_QUERY_KEY } from '@/entities/workout'
+import { useLiveWorkoutStore } from '@/features/live-workout'
 import { useComposerDraftStore, useOutboxStore, usePhotoLimitStore } from '@/features/send-message'
+import { makeLiveResponse } from '@/shared/testing'
 
 import { syncOutboxOwner } from './sync-outbox-owner'
 
@@ -53,6 +56,7 @@ describe('syncOutboxOwner', () => {
 		useComposerDraftStore.setState({ ownerId: null, text: '' })
 		usePhotoLimitStore.setState({ ownerId: null, blockedUntil: null })
 		useFreshReplyStore.setState({ ownerId: null, freshAt: {} })
+		useLiveWorkoutStore.setState({ ownerId: null, snapshots: {}, lastSeen: null })
 		useGoalCelebrationStore.setState({
 			ownerId: null,
 			armed: null,
@@ -186,5 +190,90 @@ describe('syncOutboxOwner', () => {
 
 		expect(Object.keys(useOutboxStore.getState().items)).toHaveLength(1)
 		stop()
+	})
+
+	describe('last seen live workout', () => {
+		const live = makeLiveResponse({ templateName: 'Верх А' })
+
+		it('writes the answer of the live query as lastSeen for the known owner', () => {
+			const queryClient = new QueryClient()
+			const stop = syncOutboxOwner(queryClient)
+			queryClient.setQueryData(SESSION_QUERY_KEY, USER_A)
+
+			queryClient.setQueryData(LIVE_WORKOUT_QUERY_KEY, live)
+
+			expect(useLiveWorkoutStore.getState()).toMatchObject({ ownerId: USER_A.id, lastSeen: live })
+			stop()
+		})
+
+		it('erases lastSeen when the session is closed (null)', () => {
+			const queryClient = new QueryClient()
+			const stop = syncOutboxOwner(queryClient)
+			queryClient.setQueryData(SESSION_QUERY_KEY, USER_A)
+			queryClient.setQueryData(LIVE_WORKOUT_QUERY_KEY, live)
+
+			queryClient.setQueryData(LIVE_WORKOUT_QUERY_KEY, null)
+
+			expect(useLiveWorkoutStore.getState().lastSeen).toBeNull()
+			stop()
+		})
+
+		it('does not keep a response that does not parse', () => {
+			const queryClient = new QueryClient()
+			const stop = syncOutboxOwner(queryClient)
+			queryClient.setQueryData(SESSION_QUERY_KEY, USER_A)
+
+			queryClient.setQueryData(LIVE_WORKOUT_QUERY_KEY, { workout: 'broken' })
+
+			expect(useLiveWorkoutStore.getState().lastSeen).toBeNull()
+			stop()
+		})
+
+		it('writes nothing while the owner is unknown', () => {
+			const queryClient = new QueryClient()
+			const stop = syncOutboxOwner(queryClient)
+
+			queryClient.setQueryData(LIVE_WORKOUT_QUERY_KEY, live)
+
+			expect(useLiveWorkoutStore.getState()).toMatchObject({ ownerId: null, lastSeen: null })
+			stop()
+		})
+
+		it('writes nothing for an anonymous session', () => {
+			const queryClient = new QueryClient()
+			const stop = syncOutboxOwner(queryClient)
+			queryClient.setQueryData(SESSION_QUERY_KEY, null)
+
+			queryClient.setQueryData(LIVE_WORKOUT_QUERY_KEY, live)
+
+			expect(useLiveWorkoutStore.getState().lastSeen).toBeNull()
+			stop()
+		})
+
+		it('keeps lastSeen for the same user and drops it for another user', () => {
+			const queryClient = new QueryClient()
+			const stop = syncOutboxOwner(queryClient)
+			queryClient.setQueryData(SESSION_QUERY_KEY, USER_A)
+			queryClient.setQueryData(LIVE_WORKOUT_QUERY_KEY, live)
+
+			queryClient.setQueryData(SESSION_QUERY_KEY, { ...USER_A })
+			expect(useLiveWorkoutStore.getState().lastSeen).toEqual(live)
+
+			queryClient.setQueryData(SESSION_QUERY_KEY, USER_B)
+			expect(useLiveWorkoutStore.getState()).toMatchObject({ ownerId: USER_B.id, lastSeen: null })
+			stop()
+		})
+
+		it('drops lastSeen after logout', () => {
+			const queryClient = new QueryClient()
+			const stop = syncOutboxOwner(queryClient)
+			queryClient.setQueryData(SESSION_QUERY_KEY, USER_A)
+			queryClient.setQueryData(LIVE_WORKOUT_QUERY_KEY, live)
+
+			queryClient.setQueryData(SESSION_QUERY_KEY, null)
+
+			expect(useLiveWorkoutStore.getState()).toMatchObject({ ownerId: null, lastSeen: null })
+			stop()
+		})
 	})
 })

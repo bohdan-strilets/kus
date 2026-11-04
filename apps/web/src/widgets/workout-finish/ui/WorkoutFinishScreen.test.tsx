@@ -41,10 +41,10 @@ afterEach(() => {
 })
 
 describe('WorkoutFinishScreen', () => {
-	it('a new record: the proud hamster and the achieve sound', () => {
+	it('a new record: the hamster with a trophy and the achieve sound', () => {
 		renderScreen(makeFinished({ hasNewRecord: true }))
 
-		expect(screen.getByRole('img', { name: "Хом'як гордий" })).toBeTruthy()
+		expect(screen.getByRole('img', { name: "Хом'як радіє рекорду" })).toBeTruthy()
 		expect(playSound).toHaveBeenCalledTimes(1)
 		expect(playSound).toHaveBeenCalledWith('achieve')
 	})

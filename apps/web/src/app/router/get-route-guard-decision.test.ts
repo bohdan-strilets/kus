@@ -137,3 +137,60 @@ describe('getReturnPath', () => {
 		expect(getReturnPath('from')).toBeNull()
 	})
 })
+
+describe('getRouteGuardDecision — offline live workout', () => {
+	const offline = {
+		...base,
+		guard: 'protected',
+		status: 'error',
+		isNetworkError: true,
+		hasOfflineLive: true,
+	} as const
+
+	it('renders the live screen alone when offline with a kept session', () => {
+		expect(getRouteGuardDecision({ ...offline, path: '/app/training/live' })).toEqual({
+			action: 'render',
+		})
+	})
+
+	it('ignores query and hash on the live path', () => {
+		expect(getRouteGuardDecision({ ...offline, path: '/app/training/live?x=1#top' })).toEqual({
+			action: 'render',
+		})
+	})
+
+	it('offers the way back into the session on any other route', () => {
+		expect(getRouteGuardDecision({ ...offline, path: '/app/today' })).toEqual({
+			action: 'error',
+			canResumeLive: true,
+		})
+		expect(getRouteGuardDecision({ ...offline, path: '/app/training/live-other' })).toEqual({
+			action: 'error',
+			canResumeLive: true,
+		})
+	})
+
+	it('shows plain retry without a kept session, even on the live path', () => {
+		expect(
+			getRouteGuardDecision({ ...offline, hasOfflineLive: false, path: '/app/training/live' }),
+		).toEqual({ action: 'error' })
+		expect(getRouteGuardDecision({ ...offline, hasOfflineLive: false })).toEqual({
+			action: 'error',
+		})
+	})
+
+	it('never opens the live screen for an error that is not a network one', () => {
+		expect(
+			getRouteGuardDecision({ ...offline, isNetworkError: false, path: '/app/training/live' }),
+		).toEqual({ action: 'error' })
+	})
+
+	it('does not render the live screen for an anonymous or pending session', () => {
+		expect(
+			getRouteGuardDecision({ ...offline, status: 'anonymous', path: '/app/training/live' }),
+		).toMatchObject({ action: 'redirect', to: '/login' })
+		expect(
+			getRouteGuardDecision({ ...offline, status: 'pending', path: '/app/training/live' }),
+		).toEqual({ action: 'loading' })
+	})
+})

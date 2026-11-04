@@ -30,6 +30,8 @@ export type HamsterMood =
 	| 'warmup'
 	/** З гантеллю — «Наступне» на вкладці «Тренування» (гантель у лапах замість пряника) */
 	| 'dumbbell'
+	/** Радіє рекорду — новий рекорд на екрані завершення тренування (кубок у лапах замість пряника) */
+	| 'record'
 
 /** Chat avatar faces, picked by context (design/docs/components.md, Bubble — Kusik). */
 export type HamsterHeadMood =

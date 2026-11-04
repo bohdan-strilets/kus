@@ -44,6 +44,7 @@ export const OverviewTab = ({ stats, period }: OverviewTabProps) => {
 				<StatTile
 					label={t('training.stats.overview.total')}
 					value={tiles.total}
+					srNote={tiles.isTotalUnknown ? t('training.stats.overview.totalUnknown') : undefined}
 					note={tiles.perSession}
 				/>
 			</div>

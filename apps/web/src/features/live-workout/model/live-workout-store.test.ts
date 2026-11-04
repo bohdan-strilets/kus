@@ -175,7 +175,7 @@ describe('useLiveWorkoutStore: owner', () => {
 		expect(useLiveWorkoutStore.getState()).toMatchObject({ ownerId: null, snapshots: {} })
 	})
 
-	it('persists the owner next to the snapshots, in storage version 2', () => {
+	it('persists the owner next to the snapshots, in storage version 3', () => {
 		useLiveWorkoutStore.getState().claim(OWNER_A)
 		useLiveWorkoutStore.getState().saveSnapshot(id(1), snapshot())
 
@@ -184,7 +184,7 @@ describe('useLiveWorkoutStore: owner', () => {
 			state?: { ownerId?: string; snapshots?: unknown }
 		}
 
-		expect(stored.version).toBe(2)
+		expect(stored.version).toBe(3)
 		expect(stored.state?.ownerId).toBe(OWNER_A)
 		expect(stored.state?.snapshots).toHaveProperty(id(1))
 	})

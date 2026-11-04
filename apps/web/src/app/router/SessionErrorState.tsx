@@ -9,7 +9,14 @@ const HAMSTER_SIZE = 120
  * is «retry», never a redirect to /login. No mockup: the EmptyState pattern from docs (hamster
  * `oops`, title, text, one primary button).
  */
-export const SessionErrorState = ({ onRetry }: { onRetry: () => void }) => {
+export const SessionErrorState = ({
+	onRetry,
+	onResumeLive,
+}: {
+	onRetry: () => void
+	/** Offline with an open live session on this device: the way back into it. */
+	onResumeLive?: () => void
+}) => {
 	const { t } = useTranslation()
 
 	return (
@@ -26,6 +33,11 @@ export const SessionErrorState = ({ onRetry }: { onRetry: () => void }) => {
 				<Button icon={<Icon name="retry" size={ICON_SIZE.control} />} onClick={onRetry}>
 					{t('common.retry')}
 				</Button>
+				{onResumeLive && (
+					<Button variant="secondary" onClick={onResumeLive}>
+						{t('errors.session.resumeLive')}
+					</Button>
+				)}
 			</div>
 		</AppLayout>
 	)

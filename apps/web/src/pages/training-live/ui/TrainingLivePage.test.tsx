@@ -105,6 +105,24 @@ describe('TrainingLivePage', () => {
 		expect(screen.getByRole('button', { name: 'Підхід виконано' })).toBeTruthy()
 	})
 
+	it('a current warm-up is titled «Розминка» and read as «Розминка, підхід N»', async () => {
+		renderPage()
+		await screen.findByText('Підхід 1')
+
+		fireEvent.click(screen.getByRole('button', { name: '+ Розминка' }))
+
+		const group = await screen.findByRole('group', { name: 'Розминка, підхід 1' })
+		expect(within(group).getByText('Розминка')).toBeTruthy()
+		expect(screen.queryByText('Підхід Р')).toBeNull()
+	})
+
+	it('a current working set keeps «Підхід N» with no group label', async () => {
+		renderPage()
+
+		expect(await screen.findByText('Підхід 1')).toBeTruthy()
+		expect(screen.queryByRole('group', { name: /Розминка/ })).toBeNull()
+	})
+
 	it('marking a set done sends it with doneAt and tells the set-done listener once', async () => {
 		const listener = vi.fn<(event: SetDoneEvent) => void>()
 		const unsubscribe = onSetDone(listener)

@@ -69,6 +69,32 @@ describe('ExercisePlanRow: an ADDED exercise (no plan)', () => {
 	})
 })
 
+describe('ExercisePlanRow: subtitle and changed set', () => {
+	it('an added exercise ends its subtitle with « · додано»', () => {
+		renderWithProviders(<Harness initial={addedExercise()} />)
+
+		const subtitle = screen.getByRole('button', { name: /^Тяга/ }).textContent
+		expect(subtitle.endsWith(' · додано')).toBe(true)
+	})
+
+	it('an exercise of the plan has no «додано»', () => {
+		renderWithProviders(<Harness initial={plannedExercise()} />)
+
+		expect(screen.queryByText(/додано/)).toBeNull()
+	})
+
+	it('a changed set row is highlighted and says «змінено»', () => {
+		renderWithProviders(<Harness initial={plannedExercise()} />)
+		fireEvent.click(screen.getByRole('button', { name: /^Жим лежачи/ }))
+		fireEvent.click(screen.getByRole('button', { name: '+ Підхід' }))
+
+		const label = screen.getByText('змінено')
+		expect(label).toBeTruthy()
+		const row = label.parentElement as HTMLElement
+		expect(row.className).toContain('bg-muscle-arms-bg')
+	})
+})
+
 describe('ExercisePlanRow: 44 px tap targets', () => {
 	it('the exercise name control and «Повернути» carry min-h-tap', () => {
 		renderWithProviders(<Harness initial={{ ...plannedExercise(), isSkipped: true }} />)

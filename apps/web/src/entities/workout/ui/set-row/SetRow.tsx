@@ -17,6 +17,8 @@ export interface SetRowProps {
 	hasWeight: boolean
 	isWarmup: boolean
 	isDone: boolean
+	/** Differs from the plan (the form): a highlighted row; the «змінено» in `trailing` says it too. */
+	isChanged?: boolean
 	/** Makes the row the set being edited; without it the row only shows. */
 	onSelect?: () => void
 	/** «✓» of the live mode, «змінено» of the form. */
@@ -36,11 +38,13 @@ export const SetRow = ({
 	hasWeight,
 	isWarmup,
 	isDone,
+	isChanged = false,
 	onSelect,
 	trailing,
 }: SetRowProps) => {
 	const { t } = useTranslation()
 	const numberTone = isDone ? 'successInk' : 'ink'
+	const numberClassName = cn('text-title', isChanged && 'text-muscle-arms-ink')
 	const content = (
 		<>
 			<Text as="span" variant="caption" tone="muted" weight="extrabold" className="w-11 flex-none">
@@ -48,7 +52,7 @@ export const SetRow = ({
 			</Text>
 			{hasWeight && (
 				<span className="min-w-0 flex-1 basis-0">
-					<Text as="span" className="text-title" tone={numberTone} isTabular>
+					<Text as="span" className={numberClassName} tone={numberTone} isTabular>
 						{formatSetWeight(weightKg)}
 					</Text>
 					<Text as="span" variant="caption" tone="muted">
@@ -58,7 +62,7 @@ export const SetRow = ({
 				</span>
 			)}
 			<span className="min-w-0 flex-1 basis-0">
-				<Text as="span" className="text-title" tone={numberTone} isTabular>
+				<Text as="span" className={numberClassName} tone={numberTone} isTabular>
 					{formatSetReps(reps)}
 				</Text>
 				<Text as="span" variant="caption" tone="muted">
@@ -73,7 +77,7 @@ export const SetRow = ({
 		<div
 			className={cn(
 				'flex min-h-14 items-center gap-1 rounded-tile pr-1.5 pl-3',
-				isDone ? 'bg-success-soft' : 'bg-field',
+				isDone ? 'bg-success-soft' : isChanged ? 'bg-muscle-arms-bg' : 'bg-field',
 				isWarmup && 'border-2 border-dashed border-line-strong',
 			)}
 		>

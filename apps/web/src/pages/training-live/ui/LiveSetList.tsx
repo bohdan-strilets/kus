@@ -32,7 +32,6 @@ export const LiveSetList = ({ exercise, exerciseIndex, session }: LiveSetListPro
 				{exercise.sets.map((set, setIndex) => {
 					const ref = { exerciseIndex, setIndex }
 					const number = String(getWorkingNumber(exercise, setIndex))
-					const label = set.isWarmup ? t('training.live.warmupMark') : number
 					const rowLabel = set.isWarmup ? t('workout.warmupShort') : number
 					const isCurrent =
 						current?.exerciseIndex === exerciseIndex && current.setIndex === setIndex
@@ -40,7 +39,14 @@ export const LiveSetList = ({ exercise, exerciseIndex, session }: LiveSetListPro
 						return (
 							<SetFields
 								key={setIndex}
-								title={t('training.live.setTitle', { n: label })}
+								title={
+									set.isWarmup
+										? t('training.live.warmupTitle')
+										: t('training.live.setTitle', { n: number })
+								}
+								titleAriaLabel={
+									set.isWarmup ? t('training.live.warmupSetAria', { n: setIndex + 1 }) : undefined
+								}
 								reps={set.reps}
 								weightKg={set.weightKg}
 								isBodyweight={isBodyweight}

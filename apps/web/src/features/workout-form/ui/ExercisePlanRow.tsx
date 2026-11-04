@@ -8,7 +8,14 @@ import { motion } from 'motion/react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { formatSetReps, GroupDot, SetFields, SetRow, SetTable } from '@/entities/workout'
+import {
+	DETAIL_SEPARATOR,
+	formatSetReps,
+	GroupDot,
+	SetFields,
+	SetRow,
+	SetTable,
+} from '@/entities/workout'
 import { cn, PRESS } from '@/shared/lib'
 import { Button, Icon, ICON_SIZE, SetStepper, Text } from '@/shared/ui'
 
@@ -46,9 +53,17 @@ export const ExercisePlanRow = ({ exercise, onChange }: ExercisePlanRowProps) =>
 	const isSkipped = state === 'SKIPPED'
 	const isBodyweight = isFormBodyweight(exercise)
 	const summary = formatPlanSummary(exercise, t)
+	const subtitle =
+		state === 'ADDED'
+			? [summary, t('training.form.addedMark')]
+					.filter((part): part is string => part !== null)
+					.join(DETAIL_SEPARATOR)
+			: summary
 	const changed = getChangedSetNumbers(exercise)
 	const group = exercise.kind === 'CARDIO' ? 'CARDIO' : exercise.muscleGroup
 	const isCardio = exercise.kind === 'CARDIO'
+	const isRowChanged = (index: number): boolean =>
+		changed.includes(index + 1) && exercise.plan !== null
 
 	return (
 		<div
@@ -72,7 +87,7 @@ export const ExercisePlanRow = ({ exercise, onChange }: ExercisePlanRowProps) =>
 						{exercise.name}
 					</Text>
 					<Text as="span" variant="small" tone="mutedStrong" weight="regular">
-						{isSkipped ? t('training.form.skipped') : summary}
+						{isSkipped ? t('training.form.skipped') : subtitle}
 					</Text>
 				</button>
 				{isSkipped ? (
@@ -168,14 +183,20 @@ export const ExercisePlanRow = ({ exercise, onChange }: ExercisePlanRowProps) =>
 									reps={set.reps}
 									weightKg={set.weightKg}
 									hasWeight={!isBodyweight}
+									isChanged={isRowChanged(index)}
 									isWarmup={set.isWarmup}
 									isDone={false}
 									onSelect={() => {
 										setSelected(index)
 									}}
 									trailing={
-										changed.includes(index + 1) && exercise.plan !== null ? (
-											<Text as="span" variant="small" tone="mutedStrong" className="pr-2">
+										isRowChanged(index) ? (
+											<Text
+												as="span"
+												variant="small"
+												tone="mutedStrong"
+												className="pr-2 text-muscle-arms-ink"
+											>
 												{t('training.form.setChanged')}
 											</Text>
 										) : null

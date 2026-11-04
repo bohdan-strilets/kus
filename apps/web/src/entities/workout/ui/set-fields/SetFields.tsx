@@ -15,6 +15,8 @@ import {
 export interface SetFieldsProps {
 	/** «Підхід 2» (or the warm-up's own name). */
 	title: string
+	/** Read instead of `title` when the visible one is shorter, «Розминка» → «Розминка, підхід 2». */
+	titleAriaLabel?: string
 	reps: number | null
 	/** Ignored when `isBodyweight`: there is no weight to set. */
 	weightKg: number | null
@@ -32,6 +34,7 @@ export interface SetFieldsProps {
  */
 export const SetFields = ({
 	title,
+	titleAriaLabel,
 	reps,
 	weightKg,
 	isBodyweight,
@@ -42,7 +45,11 @@ export const SetFields = ({
 	const { t } = useTranslation()
 
 	return (
-		<div className="flex flex-col gap-2.5 rounded-tile border-2 border-primary bg-surface p-3">
+		<div
+			role={titleAriaLabel === undefined ? undefined : 'group'}
+			aria-label={titleAriaLabel}
+			className="flex flex-col gap-2.5 rounded-tile border-2 border-primary bg-surface p-3"
+		>
 			<Text as="span" variant="eyebrow" tone="primaryDeep">
 				{title}
 			</Text>

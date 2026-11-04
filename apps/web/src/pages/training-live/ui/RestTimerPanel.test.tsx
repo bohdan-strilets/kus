@@ -172,7 +172,7 @@ describe('RestTimerPanel: warm-up and other set shapes', () => {
 		expect(screen.getByText('Далі: Жим гантелей · розминка · 40 кг × 10 повт.')).toBeTruthy()
 	})
 
-	it('ended, warm-up: «розминка · {set}», title «Відпочинок», no «Час! Підхід»', () => {
+	it('ended, warm-up: «розминка · {set}», title «Час! Розминка», no «Час! Підхід»', () => {
 		renderWithProviders(
 			<RestTimerPanel
 				timer={makeTimer({
@@ -183,7 +183,7 @@ describe('RestTimerPanel: warm-up and other set shapes', () => {
 		)
 
 		expect(screen.getByText('розминка · 40 кг × 10 повт.')).toBeTruthy()
-		expect(screen.getByText('Відпочинок')).toBeTruthy()
+		expect(screen.getByText('Час! Розминка')).toBeTruthy()
 		expect(screen.queryByText(/Час! Підхід/)).toBeNull()
 	})
 

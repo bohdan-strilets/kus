@@ -37,6 +37,13 @@ const getNextText = (next: RestNext | null, isEnded: boolean, t: TFunction): str
 	return isEnded ? set : t('training.live.rest.nextSet', { n: next.setNumber, set })
 }
 
+const getTitle = (next: RestNext | null, isEnded: boolean, t: TFunction): string => {
+	if (!isEnded || next === null) return t('training.live.rest.title')
+	return next.isWarmup
+		? t('training.live.rest.overWarmup')
+		: t('training.live.rest.over', { n: next.setNumber })
+}
+
 /**
  * mockups/training-rest.html: a sheet over the content, from the bottom, on `ink` — the ring, «Відпочинок» and what
  * comes next, [+15 с] [Пропустити]; at the end «Час! Підхід N» and one [До підходу]. The end is
@@ -74,9 +81,7 @@ export const RestTimerPanel = ({ timer, onHeightChange }: RestTimerPanelProps) =
 							/>
 							<div className="flex min-w-0 flex-1 flex-col gap-0.5" aria-live="assertive">
 								<Heading level="title" className="text-white">
-									{isEnded && next !== null && !next.isWarmup
-										? t('training.live.rest.over', { n: next.setNumber })
-										: t('training.live.rest.title')}
+									{getTitle(next, isEnded, t)}
 								</Heading>
 								{nextText !== null && (
 									<Text as="p" variant="caption" tone="onDark" className="text-white/70">

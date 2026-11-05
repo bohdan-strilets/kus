@@ -6,6 +6,37 @@ All notable changes to Kusik are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.10.5] — 2026-11-05
+
+Live chat: Kusik's longer answers get light formatting, the training program shows as a card on request, recipes, advice next to a stats card from the backend's numbers, a gentler tone, and fixes from a real gym session (live mode order and weights, resume, the fill form, training stats). One additive migration (`messages.program_view`, nullable). Prompt 2026-11-05.1–.3 with eval; the cached prefix ceiling is now 25 000 tokens (measured 20 036).
+
+### Added
+
+- Rich text in Kusik's replies: a total, linear parser of a Markdown subset (paragraphs, one short heading level, one-level lists, bold) renders to React nodes only; tables, links, code and HTML stay literal text, user messages are never formatted, and ESLint bans `dangerouslySetInnerHTML` ([2bf01b3], [1f07b9c])
+- The training program on request: `reply.attach: "program"` stores a snapshot of the active version in `Message.programView` and the chat shows a read-only program card with folded templates and «Відкрити програму»; an empty `attach` from the model is read as no card ([0de98ee], [725caa0], [6948a19], [7a72c92])
+- Advice next to a stats card: `show_stats.advice` makes a second model call with the period's numbers counted by the backend (no weight), within the turn's time budget; the advice shows as a bubble under the card, and a failed call shows a fixed text ([06b51ad], [9cd021f], [b907741])
+- Recipes in the prompt: a whole recipe with grams, steps and an estimated kcal / macros line per portion, one sentence on whether it fits today, a short question with options for a vague wish ([a47a349], [fc07b82])
+- `MeterBar` with an even 2 px inset for the training stats group bars ([1a8803e])
+- A «N тренувань без часу» note on the total time tile when some workouts have no duration ([a96acb8])
+- A prefix token budget guard test calibrated on the measured prompt, and eval cases for formatting, recipes, the program card, tone, cardio and stats advice with judging-word and markup checks ([59a8a0e], [7d17227], [ba97fb4])
+
+### Changed
+
+- Tone: no judging words about food or days; emoji only sparingly in longer replies; shorter tool descriptions without duplicated prompt rules ([a47a349], [f03907e])
+- Training stats weeks are full Monday–Sunday weeks up to the current one; days of the week period after today show no zero bar ([1f7b8e1])
+- Exercise plans in program cards sit under the exercise name ([6948a19])
+- Architecture notes for rich text, the program card, stats advice and the prefix guard ([63c55d5])
+
+### Fixed
+
+- A repeated cardio on «все» is no longer stored twice (identical cardio within 5 minutes on finish) ([a1619aa], [916a192])
+- Live mode starts with the planned cardio warm-up, stays on the exercise in hand and then goes to the next undone one; the next set takes the weight and reps of the last done one unless it was edited by hand ([966b279], [1a1fcc5])
+- The live screen renders the last known session at once on resume, a session check paused offline is no longer an endless loader, and the screen never keeps another owner's session ([1a0a9c5], [8d89983])
+- Fill-form cards keep their full height; the summary counts the actual sets and a changed card always says what it is compared with («2 підходи замість 3», «Змінено · план: …») ([50796e3], [9e310f5], [d276fa4], [4b1c209])
+- «N на тиждень» divides by the weeks shown, not earlier than the first workout ([f1e273e])
+- A recipe without a goal ends with its kcal line; a measurement to confirm is never logged together with the question ([fc07b82], [f03907e])
+- The 44 px tap area of the wide segmented tabs is pinned by a test ([6e8bfd5])
+
 ## [0.10.4] — 2026-11-05
 
 Training polish: one set notation everywhere, a rest timer, deleting sets and exercises with undo, live mode motion and an offline launch of an unfinished live workout. No migrations. No prompt, tool or model-context changes, so no eval.
@@ -647,7 +678,39 @@ Design sync with `design/` v0.5.2. Web only: no API, shared-package or migration
 
 ## 0.2.0 / 0.1.0 — see tags
 
-[Unreleased]: https://github.com/bohdan-strilets/kus/compare/v0.10.4...HEAD
+[Unreleased]: https://github.com/bohdan-strilets/kus/compare/v0.10.5...HEAD
+[0.10.5]: https://github.com/bohdan-strilets/kus/compare/v0.10.4...v0.10.5
+[6e8bfd5]: https://github.com/bohdan-strilets/kus/commit/6e8bfd58c2e4588ec06f67ad9c18ac9285b06ad7
+[4b1c209]: https://github.com/bohdan-strilets/kus/commit/4b1c209ed086567dd53bba0d5e19dd02bb193ff9
+[8d89983]: https://github.com/bohdan-strilets/kus/commit/8d899836a73af13eca0ab184197bb181fc5fdd8c
+[d276fa4]: https://github.com/bohdan-strilets/kus/commit/d276fa47e1e35da4e67ea87c3b5535a7f4fe3f84
+[a96acb8]: https://github.com/bohdan-strilets/kus/commit/a96acb8026ebeaabeda5e73b74c55eecd3220751
+[f1e273e]: https://github.com/bohdan-strilets/kus/commit/f1e273ec3e346c0f09f7a819274770a1d6deed78
+[1f7b8e1]: https://github.com/bohdan-strilets/kus/commit/1f7b8e1bdc8baf4c401bc1b56e14790872d73f64
+[1a8803e]: https://github.com/bohdan-strilets/kus/commit/1a8803e17819a2438c2c2950b265adc1cb4557c8
+[9e310f5]: https://github.com/bohdan-strilets/kus/commit/9e310f5463ae133a3f50ecf3de1d189fa58f264b
+[50796e3]: https://github.com/bohdan-strilets/kus/commit/50796e35c381d9e295a17bbd6a20bc5948b5d389
+[1a0a9c5]: https://github.com/bohdan-strilets/kus/commit/1a0a9c5f15b8913e38c503b95d7056b73155ba0c
+[1a1fcc5]: https://github.com/bohdan-strilets/kus/commit/1a1fcc59a3fe8d57746debf7e7415cdd2c485ae0
+[966b279]: https://github.com/bohdan-strilets/kus/commit/966b279001284bdb96c674d77cf06edbf6d8e9cc
+[63c55d5]: https://github.com/bohdan-strilets/kus/commit/63c55d506b30e68eb1b853b9835daf9d0ee7850f
+[fc07b82]: https://github.com/bohdan-strilets/kus/commit/fc07b8253335a69e2db633da9db449c73399b44a
+[ba97fb4]: https://github.com/bohdan-strilets/kus/commit/ba97fb4c076fcbc36898500bcba55f33bca168c7
+[f03907e]: https://github.com/bohdan-strilets/kus/commit/f03907e5d212ce430a40d7e1212bcb04d218dc1d
+[7a72c92]: https://github.com/bohdan-strilets/kus/commit/7a72c926314354c1b8f726ec43b9ee1119a2e21d
+[7d17227]: https://github.com/bohdan-strilets/kus/commit/7d17227faf4e6a056fae0c2c5de93fef785f92f8
+[a47a349]: https://github.com/bohdan-strilets/kus/commit/a47a34999500a1f10b973ac9beaba50129adfb98
+[6948a19]: https://github.com/bohdan-strilets/kus/commit/6948a192048d8f2d6ee396a21834c79dd6f0b151
+[916a192]: https://github.com/bohdan-strilets/kus/commit/916a192eb6c99f4db9ac42588098024bcd7a3396
+[b907741]: https://github.com/bohdan-strilets/kus/commit/b907741781dbf92c5eaed706822716ffc865f2ec
+[9cd021f]: https://github.com/bohdan-strilets/kus/commit/9cd021f1ab748b81226443853d23b2b383d832b8
+[06b51ad]: https://github.com/bohdan-strilets/kus/commit/06b51ad1b70e5acded33d22db753f2095a019bbf
+[a1619aa]: https://github.com/bohdan-strilets/kus/commit/a1619aaa6581ab5162ba30158ed47b581ca33f11
+[725caa0]: https://github.com/bohdan-strilets/kus/commit/725caa0895d507f1260ce709b4400f9f3f628437
+[0de98ee]: https://github.com/bohdan-strilets/kus/commit/0de98ee1ecda3609f6e287e988b7c062f10f34ad
+[1f07b9c]: https://github.com/bohdan-strilets/kus/commit/1f07b9c25743fb9f2ec73ae49ae647153a4b1e39
+[2bf01b3]: https://github.com/bohdan-strilets/kus/commit/2bf01b36e6ee5ebb2ac9b20208e562ce2b23f44f
+[59a8a0e]: https://github.com/bohdan-strilets/kus/commit/59a8a0e8b80215875cd7818877f8a129d21478c9
 [0.10.4]: https://github.com/bohdan-strilets/kus/compare/v0.10.3...v0.10.4
 [6c14274]: https://github.com/bohdan-strilets/kus/commit/6c142744d933337c6c0b33f070df5cb0214e0238
 [561057d]: https://github.com/bohdan-strilets/kus/commit/561057d2b24c1bf2424a9caabfe4fe268822f692

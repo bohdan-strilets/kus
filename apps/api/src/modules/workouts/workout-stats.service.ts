@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common'
 import type { ExerciseStatsResponse, WorkoutStatsPeriod, WorkoutStatsResponse } from '@kus/shared'
 
-import { getLocalDateString, toDbDate } from '../../common/time'
+import { formatDbDate, getLocalDateString, toDbDate } from '../../common/time'
 import { UsersService } from '../users/users.service'
 import { buildExerciseStats } from './exercise-stats'
 import { WorkoutKcalService } from './workout-kcal.service'
@@ -28,9 +28,10 @@ export class WorkoutStatsService {
 		const lastBucketEnd = range.buckets.at(-1)?.to ?? range.to
 		const windowEnd = lastBucketEnd > range.to ? lastBucketEnd : range.to
 		const window = { userId, from: toDbDate(range.previous.from), to: toDbDate(windowEnd) }
-		const [workouts, entries] = await Promise.all([
+		const [workouts, entries, firstWorkout] = await Promise.all([
 			this.statsRepository.findWorkoutsInRange(window),
 			this.statsRepository.findEntriesInRange(window),
+			this.statsRepository.findFirstWorkoutDate({ userId }),
 		])
 		const exerciseIds = [
 			...new Set(
@@ -48,6 +49,7 @@ export class WorkoutStatsService {
 			getBodyWeightKg,
 			period,
 			today,
+			firstWorkoutDate: firstWorkout === null ? null : formatDbDate(firstWorkout),
 			workouts: workouts.map(toStatsWorkoutRow),
 			entries: entries.map(toStatsEntryRow),
 			allTimeStrengthEntries: allTime.map(toStatsEntryRow),

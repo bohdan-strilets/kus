@@ -53,7 +53,10 @@ export type WorkoutStatsGroup = z.infer<typeof workoutStatsGroupSchema>
 export const workoutStatsOverviewSchema = z.object({
 	workoutCount: z.number(),
 	workoutCountPrev: z.number(),
-	/** Workouts per week over the elapsed part of the period (at least one week), one decimal; null without workouts. */
+	/**
+	 * Workouts per calendar Monday–Sunday week, over the weeks shown (the one the period starts in to
+	 * the current one, not before the week of the first workout), one decimal; null without workouts.
+	 */
 	avgPerWeek: z.number().nullable(),
 	/** Strength only, warm-up sets are not counted. */
 	exerciseCount: z.number(),

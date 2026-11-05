@@ -14,6 +14,7 @@ import {
 	DAYS_IN_WEEK,
 	type DateRange,
 	getStatsPeriodRange,
+	getWeekStart,
 	isInRange,
 	MS_IN_DAY,
 	type StatsBucketRange,
@@ -57,12 +58,27 @@ const getGroups = (entries: readonly StatsEntryRow[]): WorkoutStatsGroup[] => {
 
 const AVG_DECIMALS_FACTOR = 10
 
-/** Per week over the days gone so far (the rest of the period has not happened yet), never less than one week. */
-const getAvgPerWeek = (count: number, range: DateRange, today: string): number | null => {
-	if (count === 0) return null
-	const end = today < range.to ? today : range.to
-	const days = (toTime(end) - toTime(range.from)) / MS_IN_DAY + 1
-	const weeks = Math.max(days / DAYS_IN_WEEK, 1)
+/**
+ * Per week over the calendar Monday–Sunday weeks shown: from the week the period starts in (not
+ * before the week of the very first workout) to the current one, inclusive.
+ */
+const getAvgPerWeek = ({
+	count,
+	range,
+	today,
+	firstWorkoutDate,
+}: {
+	count: number
+	range: DateRange
+	today: string
+	firstWorkoutDate: string | null
+}): number | null => {
+	if (count === 0 || firstWorkoutDate === null) return null
+	const periodStart = getWeekStart(range.from)
+	const firstStart = getWeekStart(firstWorkoutDate)
+	const start = periodStart > firstStart ? periodStart : firstStart
+	const weeks = (toTime(getWeekStart(today)) - toTime(start)) / MS_IN_DAY / DAYS_IN_WEEK + 1
+	if (weeks < 1) return null
 	return Math.round((count / weeks) * AVG_DECIMALS_FACTOR) / AVG_DECIMALS_FACTOR
 }
 
@@ -150,6 +166,7 @@ const getCardio = (
 export const buildWorkoutStats = ({
 	period,
 	today,
+	firstWorkoutDate,
 	workouts,
 	entries,
 	allTimeStrengthEntries,
@@ -157,6 +174,8 @@ export const buildWorkoutStats = ({
 }: {
 	period: WorkoutStatsPeriod
 	today: string
+	/** The day of the user's very first workout, over all time; null without any. */
+	firstWorkoutDate: string | null
 	workouts: readonly StatsWorkoutRow[]
 	entries: readonly StatsEntryRow[]
 	allTimeStrengthEntries: readonly StatsEntryRow[]
@@ -175,7 +194,12 @@ export const buildWorkoutStats = ({
 		previous: range.previous,
 		overview: {
 			workoutCount: periodWorkouts.length,
-			avgPerWeek: getAvgPerWeek(periodWorkouts.length, range, today),
+			avgPerWeek: getAvgPerWeek({
+				count: periodWorkouts.length,
+				range,
+				today,
+				firstWorkoutDate,
+			}),
 			workoutCountPrev: workouts.filter((workout) => isInRange(workout.localDate, range.previous))
 				.length,
 			exerciseCount: countStrengthExercises(periodEntries),

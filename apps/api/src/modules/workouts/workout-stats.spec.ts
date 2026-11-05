@@ -11,10 +11,12 @@ const build = (
 	entries: StatsEntryRow[],
 	allTime: StatsEntryRow[] = entries,
 	period: 'week' | 'month' | 'quarter' = 'week',
+	firstWorkoutDate: string | null = workouts.map((workout) => workout.localDate).sort()[0] ?? null,
 ) =>
 	buildWorkoutStats({
 		period,
 		today: TODAY,
+		firstWorkoutDate,
 		workouts,
 		entries,
 		allTimeStrengthEntries: allTime.filter((entry) => entry.kind === 'STRENGTH'),
@@ -148,6 +150,7 @@ describe('buildWorkoutStats buckets', () => {
 		const stats = buildWorkoutStats({
 			period: 'month',
 			today: '2026-11-05',
+			firstWorkoutDate: null,
 			workouts: [
 				makeWorkout({ id: 'w1', localDate: '2026-10-27' }),
 				makeWorkout({ id: 'w2', localDate: '2026-11-04' }),
@@ -225,13 +228,50 @@ describe('buildWorkoutStats duration and kcal', () => {
 		expect(stats.overview).toMatchObject({ durationMin: 0, avgDurationMin: null })
 	})
 
-	it('averages workouts per week over the days gone, at least one week', () => {
-		const sixInMonth = Array.from({ length: 6 }, (_, index) =>
-			makeWorkout({ id: `w${index}`, localDate: '2026-10-05' }),
-		)
-		expect(build(sixInMonth, [], [], 'month').overview.avgPerWeek).toBe(1.5)
-		expect(build([makeWorkout({})], [], [], 'week').overview.avgPerWeek).toBe(1)
-		expect(build([], [], [], 'month').overview.avgPerWeek).toBeNull()
+	describe('avgPerWeek', () => {
+		const at = (localDate: string, count = 1) =>
+			Array.from({ length: count }, (_, index) =>
+				makeWorkout({ id: `${localDate}-${index}`, localDate }),
+			)
+
+		it('divides by the Monday weeks from the first workout to the current one', () => {
+			// first workout 05.10: weeks 05.10, 12.10, 19.10, 26.10 = 4
+			expect(build(at('2026-10-05', 6), [], [], 'month').overview.avgPerWeek).toBe(1.5)
+		})
+
+		it('a month on 05.11 with 2 workouts in 2 weeks is 1 per week', () => {
+			const stats = buildWorkoutStats({
+				period: 'month',
+				today: '2026-11-05',
+				firstWorkoutDate: '2026-10-20',
+				workouts: at('2026-11-02', 2),
+				entries: [],
+				allTimeStrengthEntries: [],
+			})
+			// the month starts on Sunday 01.11 (week 26.10), today is in the week 02.11: 2 weeks
+			expect(stats.overview.avgPerWeek).toBe(1)
+		})
+
+		it('a quarter divides by the weeks shown from the period start', () => {
+			// quarter from 01.08 (Saturday): week 27.07 ... 26.10 = 14 weeks
+			expect(build(at('2026-08-03', 14), [], [], 'quarter', '2026-01-05').overview.avgPerWeek).toBe(
+				1,
+			)
+		})
+
+		it('does not count weeks before the very first workout', () => {
+			// first workout 2 weeks ago (14.10): weeks 12.10, 19.10, 26.10 = 3, not 13
+			expect(build(at('2026-10-14', 3), [], [], 'quarter').overview.avgPerWeek).toBe(1)
+		})
+
+		it('the week period is always one week', () => {
+			expect(build([makeWorkout({})], [], [], 'week').overview.avgPerWeek).toBe(1)
+		})
+
+		it('is null without workouts or without a first workout', () => {
+			expect(build([], [], [], 'month').overview.avgPerWeek).toBeNull()
+			expect(build(at('2026-10-05'), [], [], 'month', null).overview.avgPerWeek).toBeNull()
+		})
 	})
 })
 

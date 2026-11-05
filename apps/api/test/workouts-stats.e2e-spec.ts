@@ -124,7 +124,12 @@ describe('workout stats (e2e, real DB)', () => {
 		const response = await owner.agent.get(STATS_URL).query({ period: 'month' }).expect(200)
 
 		const { data } = statsResponse.parse(response.body)
-		expect(data.overview).toMatchObject({ workoutCount: 1, exerciseCount: 1, setCount: 2 })
+		expect(data.overview).toMatchObject({
+			workoutCount: 1,
+			exerciseCount: 1,
+			setCount: 2,
+			avgPerWeek: 1,
+		})
 		expect(data.exercises).toHaveLength(1)
 		expect(data.exercises[0]).toMatchObject({
 			exerciseId: exercises.bench.id,
@@ -148,6 +153,24 @@ describe('workout stats (e2e, real DB)', () => {
 		expect(data.overview).toMatchObject({ workoutCount: 0, setCount: 0, exerciseCount: 0 })
 		expect(data.exercises).toEqual([])
 		expect(data.cardio.sessionCount).toBe(0)
+	})
+
+	it('avgPerWeek ignores the first workout of another user and a deleted one', async () => {
+		await start()
+		const owner = await registerUser('owner@kus.app')
+		const other = await registerUser('other@kus.app')
+		const longAgo = new Date(todayDate.getTime() - 60 * 86_400_000)
+		await prisma.workout.create({ data: { userId: other.userId, localDate: longAgo } })
+		await prisma.workout.create({
+			data: { userId: owner.userId, localDate: longAgo, deletedAt: new Date() },
+		})
+		const exercises = await seedExercises(owner.userId)
+		await seedWorkout(owner.userId, exercises)
+
+		const response = await owner.agent.get(STATS_URL).query({ period: 'quarter' }).expect(200)
+
+		const { data } = statsResponse.parse(response.body)
+		expect(data.overview).toMatchObject({ workoutCount: 1, avgPerWeek: 1 })
 	})
 
 	it('returns zeros and empty lists for a period without workouts', async () => {

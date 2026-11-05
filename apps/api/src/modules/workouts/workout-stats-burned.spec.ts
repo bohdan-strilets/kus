@@ -84,6 +84,7 @@ describe('buildWorkoutStats overview.burned', () => {
 	const base = {
 		period: 'week' as const,
 		today: '2026-10-28',
+		firstWorkoutDate: null,
 		workouts: [makeWorkout()],
 		entries: [makeEntry()],
 		allTimeStrengthEntries: [],

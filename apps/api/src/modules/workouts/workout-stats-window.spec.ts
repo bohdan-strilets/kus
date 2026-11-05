@@ -19,6 +19,7 @@ describe('buildWorkoutStats: current week past the period end', () => {
 		buildWorkoutStats({
 			period,
 			today: TODAY,
+			firstWorkoutDate: null,
 			workouts: [
 				makeWorkout({ id: 'in', localDate: '2026-10-30' }),
 				makeWorkout({ id: 'out', localDate: '2026-11-01' }),
@@ -73,6 +74,7 @@ describe('buildWorkoutStats: current week past the period end', () => {
 		const stats = buildWorkoutStats({
 			period: 'week',
 			today: '2026-10-28',
+			firstWorkoutDate: null,
 			workouts: [],
 			entries: [],
 			allTimeStrengthEntries: [],
@@ -92,9 +94,11 @@ describe('buildWorkoutStats: current week past the period end', () => {
 describe('WorkoutStatsService.getStats query window', () => {
 	const findWorkoutsInRange = vi.fn()
 	const findEntriesInRange = vi.fn()
+	const findFirstWorkoutDate = vi.fn()
 	const statsRepository = {
 		findWorkoutsInRange,
 		findEntriesInRange,
+		findFirstWorkoutDate,
 		findStrengthEntriesOfExercises: vi.fn().mockResolvedValue([]),
 	} as unknown as WorkoutStatsRepository
 	const usersService = {
@@ -110,6 +114,7 @@ describe('WorkoutStatsService.getStats query window', () => {
 		vi.setSystemTime(new Date('2026-10-31T12:00:00Z'))
 		findWorkoutsInRange.mockResolvedValue([])
 		findEntriesInRange.mockResolvedValue([])
+		findFirstWorkoutDate.mockResolvedValue(null)
 	})
 	afterEach(() => {
 		vi.useRealTimers()
@@ -125,6 +130,26 @@ describe('WorkoutStatsService.getStats query window', () => {
 		}
 		expect(findWorkoutsInRange).toHaveBeenCalledWith(expected)
 		expect(findEntriesInRange).toHaveBeenCalledWith(expected)
+	})
+
+	it('reads the first workout day of the user only and passes it to the average', async () => {
+		findFirstWorkoutDate.mockResolvedValue(new Date('2026-10-19T00:00:00Z'))
+		findWorkoutsInRange.mockResolvedValue([
+			{
+				id: 'w1',
+				localDate: new Date('2026-10-30T00:00:00Z'),
+				durationMin: null,
+				kcalBurned: null,
+				kcalSource: null,
+				finishedAt: null,
+				finishedMessageId: null,
+				exercises: [],
+			},
+		])
+		const stats = await service.getStats(USER_ID, 'month')
+		expect(findFirstWorkoutDate).toHaveBeenCalledWith({ userId: USER_ID })
+		// weeks 19.10 and 26.10
+		expect(stats.overview.avgPerWeek).toBe(0.5)
 	})
 
 	it('does not narrow the window for the week period', async () => {

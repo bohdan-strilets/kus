@@ -57,6 +57,18 @@ export class WorkoutStatsRepository {
 		})
 	}
 
+	/** The day of the user's very first counted workout; null without any. */
+	async findFirstWorkoutDate(
+		{ userId }: { userId: string },
+		tx?: Prisma.TransactionClient,
+	): Promise<Date | null> {
+		const result = await (tx ?? this.prisma).workout.aggregate({
+			where: { userId, deletedAt: null, ...HIDE_OPEN_LIVE },
+			_min: { localDate: true },
+		})
+		return result._min.localDate
+	}
+
 	findEntriesInRange(
 		{ userId, from, to }: { userId: string; from: Date; to: Date },
 		tx?: Prisma.TransactionClient,

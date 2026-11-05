@@ -164,7 +164,7 @@ export const hasNewRecord = (before: ReadonlySet<string>, after: ReadonlySet<str
 	[...after].some((key) => !before.has(key))
 
 /** A cardio told again with a «все» is the same one only within this window of the first telling. */
-export const CARDIO_REPEAT_WINDOW_MIN = 15
+export const CARDIO_REPEAT_WINDOW_MIN = 5
 const MS_IN_MIN = 60 * 1000
 
 interface CardioKey {

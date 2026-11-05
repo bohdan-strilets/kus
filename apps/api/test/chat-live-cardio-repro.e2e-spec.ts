@@ -208,6 +208,17 @@ describe('live + chat cardio (investigation, fake model)', () => {
 		expect(row.finishedAt).not.toBeNull()
 	})
 
+	it('the same cardio with finish 6 minutes later is outside the window: stored again', async () => {
+		const owner = await start()
+		const id = await openLive(owner, [liveExercise()])
+		fake.respond(createCompletion([cardioCall({ appendRef: 'w1' })]))
+		await send(owner, 'доріжка 10 хв')
+		await moveBack(id, 6)
+		fake.respond(createCompletion([cardioCall({ appendRef: 'w1', finish: true })]))
+		await send(owner, 'ще доріжка 10 хв, все')
+		expect(await names(id)).toEqual(['Жим лежачи', 'Доріжка 10', 'Доріжка 10'])
+	})
+
 	it('finish with a cardio of another duration right after the first adds both', async () => {
 		const owner = await start()
 		const id = await openLive(owner, [liveExercise()])

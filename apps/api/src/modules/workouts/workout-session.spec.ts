@@ -315,8 +315,9 @@ describe('isRepeatedCardio', () => {
 
 	it('treats exactly the window as a repeat and a second more as not', () => {
 		const at = (ms: number) => [entry({ performedAt: new Date(NOW.getTime() - ms) })]
-		expect(check(cardio, at(CARDIO_REPEAT_WINDOW_MIN * MIN_MS))).toBe(true)
-		expect(check(cardio, at(CARDIO_REPEAT_WINDOW_MIN * MIN_MS + 1000))).toBe(false)
+		expect(CARDIO_REPEAT_WINDOW_MIN).toBe(5)
+		expect(check(cardio, at(5 * MIN_MS))).toBe(true)
+		expect(check(cardio, at(5 * MIN_MS + 1000))).toBe(false)
 	})
 
 	it('compares distance with null equal to null only', () => {

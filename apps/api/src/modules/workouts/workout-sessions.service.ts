@@ -254,7 +254,7 @@ export class WorkoutSessionsService {
 				userId,
 				refIds,
 				exercises: input.finish
-					? this.skipRepeatedCardio(input.exercises, before, now)
+					? this.skipRepeatedCardio({ userId, exercises: input.exercises, session: before, now })
 					: input.exercises,
 				performedAt: now,
 				firstPosition: 0,
@@ -301,11 +301,17 @@ export class WorkoutSessionsService {
 	}
 
 	/** A cardio the closing call tells again right after the session got it is not added twice. */
-	private skipRepeatedCardio(
-		exercises: LogWorkoutInput['exercises'],
-		session: WorkoutWithExercises,
-		now: Date,
-	): LogWorkoutInput['exercises'] {
+	private skipRepeatedCardio({
+		userId,
+		exercises,
+		session,
+		now,
+	}: {
+		userId: string
+		exercises: LogWorkoutInput['exercises']
+		session: WorkoutWithExercises
+		now: Date
+	}): LogWorkoutInput['exercises'] {
 		return exercises.filter((exercise) => {
 			const isRepeat = isRepeatedCardio({
 				candidate: {
@@ -317,7 +323,8 @@ export class WorkoutSessionsService {
 				exercises: session.exercises,
 				now,
 			})
-			if (isRepeat) this.logger.warn(`reason=repeated-cardio workoutId=${session.id}`)
+			if (isRepeat)
+				this.logger.warn(`reason=repeated-cardio userId=${userId} workoutId=${session.id}`)
 			return !isRepeat
 		})
 	}

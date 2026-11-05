@@ -74,6 +74,9 @@ const MAX_OPTION_KCAL = 20_000
 const MAX_OPTION_GRAMS = MAX_ENTRY_GRAMS * MAX_ITEMS_PER_MESSAGE
 
 const replyTextSchema = z.string().trim().min(1).max(REPLY_MAX_LENGTH)
+// only reply.text: a whole recipe (~1 500 characters asked in "Recipes") with room before a retry
+export const REPLY_TEXT_MAX_LENGTH = 2000
+const replyLongTextSchema = z.string().trim().min(1).max(REPLY_TEXT_MAX_LENGTH)
 
 /** OTHER may repeat within a day, so a message never logs into it. */
 export const loggableMealTypeSchema = mealTypeSchema.exclude(['OTHER'])
@@ -122,9 +125,7 @@ export const aiFoodItemSchema = foodEntryBaseSchema
 		mealType: loggableMealTypeSchema
 			.nullable()
 			.default(null)
-			.describe(
-				'Meal of this item, only when this message names several ("сніданок: …, обід: …"). Never from earlier messages or the day so far',
-			),
+			.describe('Meal of this item, only when this message names several ("сніданок: …, обід: …")'),
 		date: z.iso
 			.date()
 			.nullable()
@@ -152,7 +153,7 @@ export const logFoodInputSchema = z.object({
 		.nullable()
 		.default(null)
 		.describe(
-			'Only if this message names one meal for the whole message ("на обід"); never from earlier messages or the day so far. Items may name their own',
+			'Only if this message names one meal for the whole message ("на обід"). Items may name their own',
 		),
 	reply: replyTextSchema.describe(
 		`1–2 short warm sentences for the chat in the language of the user's message, in your own words. No totals or day sums — the app shows them`,
@@ -241,8 +242,8 @@ export const photoUnusableInputSchema = z.object({
 export type PhotoUnusableInput = z.infer<typeof photoUnusableInputSchema>
 
 export const replyInputSchema = z.object({
-	text: replyTextSchema.describe(
-		`The answer in the language of the user's message: 1–2 sentences for small talk, up to ~6 when the user asks for advice or an explanation`,
+	text: replyLongTextSchema.describe(
+		`The answer in the language of the user's message; length and format as in "Tone"`,
 	),
 	attach: z
 		.enum(['program'])
@@ -287,9 +288,7 @@ export const showDayInputSchema = z.object({
 		.nullable()
 		.default(null)
 		.describe('Only for another day: YYYY-MM-DD from "Days", any earlier day or tomorrow'),
-	reply: replyTextSchema.describe(
-		'One short sentence in the language of the user next to the card. Numbers only from the context, never added up; often none — the card shows the totals.',
-	),
+	reply: replyTextSchema.describe('One short sentence next to the card. See "Day card".'),
 })
 
 export type ShowDayInput = z.infer<typeof showDayInputSchema>
@@ -306,28 +305,22 @@ export const closeDayInputSchema = z.object({
 		.max(MAX_ESTIMATED_DAY_KCAL)
 		.nullable()
 		.default(null)
-		.describe(
-			'Total kcal of the whole day, only when the user named it ("закрий вчора десь на 4000"). Never calculate or subtract: the backend logs the missing difference',
-		),
-	reply: replyTextSchema.describe(
-		'One short sentence in the language of the user next to the card. No totals, no verdict words — the card shows them; a date as dd.mm is fine.',
-	),
+		.describe('Total kcal of the whole day, only when the user named it. See "Closing the day"'),
+	reply: replyTextSchema.describe('One short sentence next to the card. See "Closing the day".'),
 })
 
 export type CloseDayInput = z.infer<typeof closeDayInputSchema>
 
 export const showStatsInputSchema = z.object({
 	days: statsDaysSchema.describe(
-		`How many days the period covers, ${STATS_DAYS_MIN}–${STATS_DAYS_MAX}, ending on endDate: a week 7, a month 30, "last 15 days" 15`,
+		`How many days the period covers, ${STATS_DAYS_MIN}–${STATS_DAYS_MAX}, ending on endDate`,
 	),
 	endDate: z.iso
 		.date()
 		.nullable()
 		.default(null)
 		.describe('Only if the period ends before today: YYYY-MM-DD'),
-	reply: replyTextSchema.describe(
-		'One short sentence in the language of the user next to the card. No numbers — the card shows them.',
-	),
+	reply: replyTextSchema.describe('One short sentence next to the card, no numbers.'),
 	advice: z
 		.boolean()
 		.default(false)
@@ -354,7 +347,10 @@ export const logWorkoutInputSchema = z.object({
 		.default(null)
 		.describe('Only a number the user said'),
 	// may be empty only with appendRef + finish or with exerciseGroups (the parser checks)
-	exercises: z.array(workoutExerciseSchema).max(MAX_EXERCISES_PER_WORKOUT),
+	exercises: z
+		.array(workoutExerciseSchema)
+		.max(MAX_EXERCISES_PER_WORKOUT)
+		.describe('Only what this message adds; empty with appendRef + finish for a plain "все"'),
 	replaceRef: z
 		.string()
 		.regex(WORKOUT_REF_PATTERN)
@@ -449,9 +445,8 @@ const AI_TOOL_DESCRIPTIONS: Record<AiToolName, string> = {
 	propose_program:
 		'Propose a new or changed training program, always the whole program. Nothing is saved until the user accepts the card. See "Program".',
 	log_food:
-		'Log everything the user says they ate or drank in this message. Always log your best estimate, even when you also ask a clarify question. See "Logging food". Never to fix something already logged.',
-	log_measurement:
-		'Log body weight (kg) or waist (cm) the user reports. Fix a wrong value of a day by logging it again for that date. confirmedJump only after the user confirmed an unusual change in a later message.',
+		'Log everything the user says they ate or drank in this message. See "Logging food". Never to fix something already logged.',
+	log_measurement: 'Log body weight (kg) or waist (cm) the user reports. See "Weight and waist".',
 	delete_measurement:
 		'Remove a wrong weight or waist value listed in the context, by kind and date. Goes with one reply.',
 	show_day: 'Show the card of a day. See "Day card".',
@@ -468,12 +463,11 @@ const AI_TOOL_DESCRIPTIONS: Record<AiToolName, string> = {
 		'Delete entries ("e1") or workouts ("w1") logged today that the user wants removed.',
 	restore_entry: 'Bring back entries or workouts deleted today (by ref), e.g. "поверни".',
 	resolve_clarification: 'The user answers an open question in words. See "Fixing what is logged".',
-	not_food:
-		'The user claims to have eaten something inedible ("з\'їв камінь", "з\'їв телефон"). Nothing is logged.',
+	not_food: 'The user claims to have eaten something inedible. Nothing is logged.',
 	photo_unusable:
-		'Only for a message with a photo: there is no food on it, or the label cannot be read. Nothing is logged. Never for a text-only message.',
+		'Only for a message with a photo: no food on it, or the label cannot be read. Nothing is logged.',
 	reply:
-		'Conversation and answers; nothing is logged. Also the chat answer next to correct_entry, delete_entry, restore_entry, resolve_clarification, save_food, save_fact or forget_fact.',
+		'Conversation and answers; nothing is logged. Also the chat answer next to the edit and memory tools.',
 }
 
 /** OpenAI-compatible tool definition, as OpenRouter expects it. */

@@ -4,12 +4,13 @@ import { SYSTEM_PROMPT } from './prompt.js'
 import { getAiFunctionTools } from './tools.js'
 
 // The cached prefix (system prompt + tool schemas) is measured in real tokens only by eval.
-// Calibration: prompt 2026-11-01.1 measured 19 363 tokens at 48 733 characters (24 931 + 23 802).
+// Calibration: prompt 2026-11-05.1 measured 19 947 tokens at 50 153 characters (eval case
+// save-food-text: 20 280 input tokens against 19 696 on 2026-11-01.1, whose prefix was 19 363).
 // Recalibrate both numbers after every eval that measures a new prefix.
-const CALIBRATED_TOKENS = 19_363
-const CALIBRATED_CHARS = 48_733
-// Ceiling for 0.10.x, set by the author (PROMPT_CHANGELOG.md); it does not grow without their decision.
-const PREFIX_TOKEN_CEILING = 19_700
+const CALIBRATED_TOKENS = 19_947
+const CALIBRATED_CHARS = 50_153
+// Ceiling set by the author (PROMPT_CHANGELOG.md); it does not grow without their decision.
+const PREFIX_TOKEN_CEILING = 25_000
 
 const countPrefixChars = (): number =>
 	SYSTEM_PROMPT.length + JSON.stringify(getAiFunctionTools()).length

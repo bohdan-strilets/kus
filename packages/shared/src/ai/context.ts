@@ -22,7 +22,10 @@ import type { ExerciseContext, TodayWorkoutContext } from './workout-context.js'
 const CHARS_PER_TOKEN = 4
 export const HISTORY_MAX_TOKENS = 1500
 export const HISTORY_MAX_MESSAGES = 6
-/** Kusik's replies may be up to REPLY_MAX_LENGTH (1000), so history keeps them whole. */
+/**
+ * Most of Kusik's replies fit REPLY_MAX_LENGTH (1000) and stay whole; a recipe in reply.text (up to
+ * REPLY_TEXT_MAX_LENGTH) is cut on purpose — the history budget is small and the model needs the gist.
+ */
 export const HISTORY_MESSAGE_MAX_CHARS = 1000
 export const MEMORY_MAX_FOODS = 10
 

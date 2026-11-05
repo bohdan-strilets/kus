@@ -85,6 +85,8 @@ export interface RequestStatsAdviceParams {
 	/** The show_stats answer of the first call, as it was validated. */
 	stats: Extract<FoodParseDecision, { kind: 'stats' }>
 	card: StatsCard
+	/** The call's own time limit; the turn passes what is left of the proxy budget. */
+	deadlineMs?: number
 }
 
 interface CompletionResult {
@@ -192,10 +194,11 @@ export class AiService {
 		params,
 		stats,
 		card,
+		deadlineMs = AI_STATS_ADVICE_DEADLINE_MS,
 	}: RequestStatsAdviceParams): Promise<string | null> {
 		// the photo of the message is not needed for advice on numbers: less data to the model
 		const adviceParams: ParseFoodParams = { ...params, image: undefined }
-		const signal = AbortSignal.timeout(AI_STATS_ADVICE_DEADLINE_MS)
+		const signal = AbortSignal.timeout(deadlineMs)
 		const messages: AiRequestMessage[] = [
 			...buildFoodParseMessages(params.context, params.text),
 			{
@@ -239,12 +242,18 @@ export class AiService {
 				result.ok && result.decision.kind === 'reply' && !hasSideEffects(result.decision)
 					? result.decision.text
 					: null
+			// the advice is already paid for: a failed bookkeeping write must not lose it
 			await this.recordRun(adviceParams, {
 				completion,
 				durationMs,
 				calls: result.calls,
 				errorCode: isTruncated ? OUTPUT_TRUNCATED : text === null ? INVALID_TOOL_CALLS : null,
 				kind: STATS_ADVICE_CALL,
+			}).catch((error: unknown) => {
+				this.logger.warn(
+					`AI run record failed purpose=${STATS_ADVICE_CALL.purpose} user=${params.userId} ` +
+						`message=${params.messageId} error=${error instanceof Error ? error.name : 'unknown'}`,
+				)
 			})
 			return isTruncated ? null : text
 		} catch (error) {

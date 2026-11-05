@@ -24,6 +24,8 @@ export const AI_PARSE_DEADLINE_MS = seconds(95)
  * on top of AI_PARSE_DEADLINE_MS and the DB budget; a normal parse is far below its own limit.
  */
 export const AI_STATS_ADVICE_DEADLINE_MS = seconds(25)
+/** Less time than this left before the proxy limit: the second call is skipped. */
+export const AI_STATS_ADVICE_MIN_MS = seconds(5)
 
 /** AiToolCall rows hold food data and are kept only for prompt debugging (docs/database.md). */
 export const TOOL_CALL_RETENTION_DAYS = 30

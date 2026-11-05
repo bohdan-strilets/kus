@@ -228,6 +228,7 @@ export class ChatService {
 
 	private async processTurn(params: TurnParams, usageDate: Date): Promise<TurnResult> {
 		const { userId, message, photo, onboardingAnswer } = params
+		const turnStartedAt = Date.now()
 		try {
 			// the last onboarding answer asks the model for a program from all five; before the usage is
 			// reserved and before any model call, a run with a missing answer ends as closed
@@ -280,10 +281,16 @@ export class ChatService {
 				copyRefIds,
 				factRefIds,
 				templateRefIds,
+				turnStartedAt,
 				requestStatsAdvice:
 					decision.kind === 'stats' && decision.advice
-						? (card) =>
-								this.aiService.requestStatsAdvice({ params: parseParams, stats: decision, card })
+						? (card, deadlineMs) =>
+								this.aiService.requestStatsAdvice({
+									params: parseParams,
+									stats: decision,
+									card,
+									deadlineMs,
+								})
 						: undefined,
 			})
 			this.logger.log(`Chat turn ${decision.kind} user=${userId} message=${message.id}`)

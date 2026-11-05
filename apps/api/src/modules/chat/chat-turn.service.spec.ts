@@ -2,6 +2,11 @@ import { Logger } from '@nestjs/common'
 import { STATS_EMPTY_REPLY } from '@kus/shared'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import {
+	AI_STATS_ADVICE_DEADLINE_MS,
+	CHAT_TURN_DB_BUDGET_MS,
+	VERCEL_PROXY_TIMEOUT_MS,
+} from '../ai/ai.constants'
 import type { TemplateRefIds } from '../programs/program-chat-context'
 import { STATS_ADVICE_FAILED_REPLY } from './chat.constants'
 import { TurnCopySourceMissingException, TurnDateOutOfRangeException } from './chat.exceptions'
@@ -86,7 +91,8 @@ const createService = () => {
 		decision: never,
 		copyRefIds: Map<string, string> = new Map(),
 		templateRefIds?: TemplateRefIds,
-		requestStatsAdvice?: (card: never) => Promise<string | null>,
+		requestStatsAdvice?: (card: never, deadlineMs: number) => Promise<string | null>,
+		turnStartedAt?: number,
 	) =>
 		service.saveDecision(
 			{
@@ -103,6 +109,7 @@ const createService = () => {
 				copyRefIds,
 				...(templateRefIds ? { templateRefIds } : {}),
 				...(requestStatsAdvice ? { requestStatsAdvice } : {}),
+				...(turnStartedAt === undefined ? {} : { turnStartedAt }),
 			} as never,
 		)
 	return {
@@ -454,7 +461,7 @@ describe('ChatTurnService.saveDecision show_stats with advice', () => {
 
 		await save(toAdviceDecision(true), new Map(), undefined, requestAdvice)
 
-		expect(requestAdvice).toHaveBeenCalledWith(card)
+		expect(requestAdvice).toHaveBeenCalledWith(card, AI_STATS_ADVICE_DEADLINE_MS)
 		expect(completeTurn).toHaveBeenCalledWith(
 			expect.objectContaining({
 				replyText: 'Додай білка на вечерю.',
@@ -470,6 +477,38 @@ describe('ChatTurnService.saveDecision show_stats with advice', () => {
 
 		await save(toAdviceDecision(true), new Map(), undefined, vi.fn().mockResolvedValue(null))
 
+		expect(completeTurn).toHaveBeenCalledWith(
+			expect.objectContaining({
+				replyText: STATS_ADVICE_FAILED_REPLY,
+				statsCard: { ...card, hasAdvice: true },
+			}),
+			expect.anything(),
+		)
+	})
+
+	it('gives the call what is left of the proxy time when that is less than its deadline', async () => {
+		const { save, buildStats } = createService()
+		buildStats.mockResolvedValue(card)
+		const requestAdvice = vi.fn().mockResolvedValue('Ок.')
+		const leftMs = 12_000
+		const startedAt = Date.now() - (VERCEL_PROXY_TIMEOUT_MS - CHAT_TURN_DB_BUDGET_MS - leftMs)
+
+		await save(toAdviceDecision(true), new Map(), undefined, requestAdvice, startedAt)
+
+		const deadlineMs = requestAdvice.mock.calls[0]?.[1] as number
+		expect(deadlineMs).toBeLessThanOrEqual(leftMs)
+		expect(deadlineMs).toBeGreaterThan(leftMs - 1000)
+	})
+
+	it('skips the second call with less than the minimum left: the card and the fixed text', async () => {
+		const { save, buildStats, completeTurn } = createService()
+		buildStats.mockResolvedValue(card)
+		const requestAdvice = vi.fn()
+		const startedAt = Date.now() - (VERCEL_PROXY_TIMEOUT_MS - CHAT_TURN_DB_BUDGET_MS - 1000)
+
+		await save(toAdviceDecision(true), new Map(), undefined, requestAdvice, startedAt)
+
+		expect(requestAdvice).not.toHaveBeenCalled()
 		expect(completeTurn).toHaveBeenCalledWith(
 			expect.objectContaining({
 				replyText: STATS_ADVICE_FAILED_REPLY,

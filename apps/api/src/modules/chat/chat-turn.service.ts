@@ -27,6 +27,7 @@ import { formatDbDate, getLocalHour } from '../../common/time'
 import { AttachmentStatus, MeasurementKind, type Prisma } from '../../generated/prisma/client'
 import { PrismaService } from '../../prisma'
 import { AchievementsService } from '../achievements/achievements.service'
+import { getStatsAdviceDeadlineMs } from '../ai/stats-advice-budget'
 import { EntriesService } from '../entries/entries.service'
 import type { EntryWithMealType } from '../entries/entries.repository'
 import type { LogEntriesParams, MealEntryInput, NewFoodEntry } from '../entries/entries.types'
@@ -118,7 +119,7 @@ const getReplyText = (decision: FoodParseDecision): string => {
 }
 
 /** Asks the model for advice on a stats card; null when nothing usable came back. */
-export type RequestStatsAdvice = (card: StatsCard) => Promise<string | null>
+export type RequestStatsAdvice = (card: StatsCard, deadlineMs: number) => Promise<string | null>
 
 const getMealKey = (day: string, mealType: string): string => `${day}|${mealType}`
 
@@ -193,6 +194,7 @@ export class ChatTurnService {
 			factRefIds = NO_FACT_REFS,
 			templateRefIds = NO_TEMPLATE_REFS,
 			requestStatsAdvice,
+			turnStartedAt = Date.now(),
 		}: {
 			memory: RelevantFoods
 			refIds: EditRefIds
@@ -205,6 +207,8 @@ export class ChatTurnService {
 			templateRefIds?: TemplateRefIds
 			/** The second model call of «summary and advice»; without it a stats card is just the card. */
 			requestStatsAdvice?: RequestStatsAdvice
+			/** When the turn began (ms); the advice gets what is left of the proxy time. */
+			turnStartedAt?: number
 		},
 	): Promise<TurnResult> {
 		// the numbers of the card are counted before the turn is written; a card is a snapshot anyway
@@ -212,7 +216,7 @@ export class ChatTurnService {
 		const builtStatsCard = await this.buildStatsCard({ userId, localDate }, decision)
 		const advice = await this.buildStatsAdvice(
 			{ userId, messageId: message.id },
-			{ decision, card: builtStatsCard, requestAdvice: requestStatsAdvice },
+			{ decision, card: builtStatsCard, requestAdvice: requestStatsAdvice, turnStartedAt },
 		)
 		const statsCard = advice?.card ?? builtStatsCard
 		const proposal = await this.buildProgramCard(userId, decision, {
@@ -578,14 +582,21 @@ export class ChatTurnService {
 			decision,
 			card,
 			requestAdvice,
+			turnStartedAt,
 		}: {
 			decision: FoodParseDecision
 			card: StatsCard | undefined
 			requestAdvice: RequestStatsAdvice | undefined
+			turnStartedAt: number
 		},
 	): Promise<{ card: StatsCard; text: string } | null> {
 		if (decision.kind !== 'stats' || !decision.advice || !card || !requestAdvice) return null
-		const text = await requestAdvice(card)
+		const deadlineMs = getStatsAdviceDeadlineMs(Date.now() - turnStartedAt)
+		if (deadlineMs === null) {
+			this.logger.warn(`Stats advice skipped, no time left user=${userId} message=${messageId}`)
+			return { card: { ...card, hasAdvice: true }, text: STATS_ADVICE_FAILED_REPLY }
+		}
+		const text = await requestAdvice(card, deadlineMs)
 		if (text === null) {
 			this.logger.warn(`Stats advice failed user=${userId} message=${messageId}`)
 		}

@@ -387,6 +387,18 @@ describe('AiService.parseFood', () => {
 			)
 		})
 
+		it('returns the advice when the run record cannot be written, and warns without text', async () => {
+			fake.respond(createCompletion([reply('Більше білка.')]))
+			repository.createRun.mockRejectedValueOnce(new Error('db down'))
+			const warn = vi.spyOn(Logger.prototype, 'warn')
+
+			await expect(service.requestStatsAdvice({ params, stats, card })).resolves.toBe(
+				'Більше білка.',
+			)
+			expect(warn).toHaveBeenCalledWith(expect.stringContaining('AI run record failed'))
+			expect(warn).not.toHaveBeenCalledWith(expect.stringContaining('Більше білка'))
+		})
+
 		it('gives null, not an error, when the model sends no usable reply', async () => {
 			fake.respond(createCompletion([logFoodCall()]))
 

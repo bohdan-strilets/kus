@@ -62,6 +62,7 @@ const createSetSchema = (t: TFunction) =>
 /** Only the shape of a set; its values are checked at the root, and only if the exercise is not skipped. */
 const looseSetSchema = z.object({
 	rowKey: z.string(),
+	planKey: z.string().nullable(),
 	reps: z.number().nullable(),
 	weightKg: z.number().nullable(),
 	durationSec: z.number().nullable(),

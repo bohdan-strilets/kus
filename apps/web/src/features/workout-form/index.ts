@@ -25,7 +25,7 @@ export {
 	removeFormSet,
 	restoreFormSet,
 } from './lib/form-exercise-edit'
-export { formatPlanSummary } from './lib/format-plan-summary'
+export { formatExerciseSummary, formatPlanSummary } from './lib/format-plan-summary'
 export { ExercisePlanRow } from './ui/ExercisePlanRow'
 export { WhenSheet } from './ui/WhenSheet'
 export { formatDateOption } from './lib/format-date-option'

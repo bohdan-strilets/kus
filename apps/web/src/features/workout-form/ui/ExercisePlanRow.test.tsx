@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { makeTemplate, renderWithProviders } from '@/shared/testing'
 
 import { buildFormDraft } from '../lib/build-form-draft'
-import { createFormExercise } from '../lib/form-exercise-edit'
+import { createFormExercise, patchFormSet, removeFormSet } from '../lib/form-exercise-edit'
 import type { FormExerciseValue } from '../lib/workout-form.types'
 import { ExercisePlanRow } from './ExercisePlanRow'
 
@@ -27,6 +27,8 @@ const plannedExercise = (): FormExerciseValue => {
 	const [exercise] = buildFormDraft(makeTemplate(), { now: NOW }).exercises
 	return exercise as FormExerciseValue
 }
+
+const changedExercise = (): FormExerciseValue => patchFormSet(plannedExercise(), 0, { reps: 3 })
 
 const Harness = ({ initial }: { initial: FormExerciseValue }) => {
 	const [exercise, setExercise] = useState(initial)
@@ -99,9 +101,8 @@ describe('ExercisePlanRow: subtitle and changed set', () => {
 	})
 
 	it('a changed set row is highlighted and says «змінено»', () => {
-		renderWithProviders(<Harness initial={plannedExercise()} />)
+		renderWithProviders(<Harness initial={changedExercise()} />)
 		fireEvent.click(screen.getByRole('button', { name: /^Жим лежачи/ }))
-		fireEvent.click(screen.getByRole('button', { name: '+ Підхід' }))
 
 		const label = screen.getByText('змінено')
 		expect(label).toBeTruthy()
@@ -112,9 +113,8 @@ describe('ExercisePlanRow: subtitle and changed set', () => {
 
 describe('ExercisePlanRow: CHANGED state tint', () => {
 	it('the card is not tinted, only the changed set row is, and «змінено» is shown', () => {
-		const { container } = renderWithProviders(<Harness initial={plannedExercise()} />)
+		const { container } = renderWithProviders(<Harness initial={changedExercise()} />)
 		fireEvent.click(screen.getByRole('button', { name: /^Жим лежачи/ }))
-		fireEvent.click(screen.getByRole('button', { name: '+ Підхід' }))
 
 		const label = screen.getByText('змінено')
 		expect(label).toBeTruthy()
@@ -136,5 +136,14 @@ describe('ExercisePlanRow: 44 px tap targets', () => {
 		renderWithProviders(<Harness initial={addedExercise()} />)
 
 		expect(screen.getByRole('button', { name: /^Тяга/ }).className).toContain('min-h-tap')
+	})
+})
+
+describe('ExercisePlanRow: the number of sets', () => {
+	it('says what is there and how it differs from the plan', () => {
+		renderWithProviders(<Harness initial={removeFormSet(plannedExercise(), 0)} />)
+
+		expect(screen.getByText('Змінено: 2 підходи замість 3')).toBeTruthy()
+		expect(screen.getByRole('button', { name: /^Жим лежачи/ }).textContent).toContain('2 підходи')
 	})
 })

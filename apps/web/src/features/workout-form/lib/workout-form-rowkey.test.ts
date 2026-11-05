@@ -25,6 +25,7 @@ const keysOf = (exercise: FormExerciseValue): string[] => exercise.sets.map(({ r
 
 const set = (overrides: Partial<FormSetValue> = {}): FormSetValue => ({
 	rowKey: 'row-a',
+	planKey: null,
 	reps: 8,
 	weightKg: 50,
 	durationSec: 30,
@@ -190,10 +191,11 @@ describe('the plan comparison ignores rowKey', () => {
 		expect(getExerciseState(changed)).toBe('CHANGED')
 	})
 
-	it('an extra set counts as changed; a restored plan is PLANNED again', () => {
+	it('an extra set is no ordinal but is not «as planned»; a restored plan is PLANNED again', () => {
 		const exercise = addFormSet(plannedExercise())
 
-		expect(getChangedSetNumbers(exercise)).toEqual([exercise.sets.length])
+		expect(getChangedSetNumbers(exercise)).toEqual([])
+		expect(getExerciseState(exercise)).toBe('CHANGED')
 		expect(getExerciseState(restorePlan(exercise))).toBe('PLANNED')
 	})
 })

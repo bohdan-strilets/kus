@@ -18,7 +18,7 @@ import {
 	patchFormSet,
 } from './form-exercise-edit'
 import { formatDateOption } from './format-date-option'
-import { formatPlanSummary } from './format-plan-summary'
+import { formatExerciseSummary, formatPlanSummary } from './format-plan-summary'
 import { getFormDateOptions } from './get-date-options'
 import type { FormExerciseValue } from './workout-form.types'
 
@@ -156,12 +156,14 @@ describe('exercise state against the plan', () => {
 		expect(getChangedSetNumbers(exercise)).toEqual([2, 3])
 	})
 
-	it('an added set is changed, a removed one too', () => {
+	it('an added or a removed set is no ordinal: the number says it, the state is CHANGED', () => {
 		const added = addFormSet(draftExercise())
-		const removed = { ...draftExercise(), sets: draftExercise().sets.slice(0, 2) }
+		const planned = draftExercise()
+		const removed = { ...planned, sets: planned.sets.slice(0, 2) }
 
-		expect(getChangedSetNumbers(added)).toEqual([4])
-		expect(getChangedSetNumbers(removed)).toEqual([3])
+		expect(getChangedSetNumbers(added)).toEqual([])
+		expect(getExerciseState(added)).toBe('CHANGED')
+		expect(getChangedSetNumbers(removed)).toEqual([])
 		expect(getExerciseState(removed)).toBe('CHANGED')
 	})
 
@@ -251,6 +253,7 @@ describe('createFormExercise and edits', () => {
 		expect(without.sets).toEqual([
 			{
 				rowKey: expect.any(String) as string,
+				planKey: null,
 				reps: null,
 				weightKg: null,
 				durationSec: null,
@@ -274,13 +277,22 @@ describe('createFormExercise and edits', () => {
 			sets: [
 				{
 					rowKey: 'a',
+					planKey: null,
 					reps: 5,
 					weightKg: 100,
 					durationSec: null,
 					distanceM: null,
 					isWarmup: false,
 				},
-				{ rowKey: 'b', reps: 15, weightKg: 20, durationSec: null, distanceM: null, isWarmup: true },
+				{
+					rowKey: 'b',
+					planKey: null,
+					reps: 15,
+					weightKg: 20,
+					durationSec: null,
+					distanceM: null,
+					isWarmup: true,
+				},
 			],
 		})
 
@@ -403,6 +415,9 @@ describe('formatPlanSummary', () => {
 	it('keeps saying the plan after an edit (it is what «Як за планом» brings back)', () => {
 		expect(formatPlanSummary(patchFormSet(draftExercise(), 0, { reps: 3 }), t)).toBe(
 			'3 підходи · 50 кг × 10',
+		)
+		expect(formatExerciseSummary(patchFormSet(draftExercise(), 0, { reps: 3 }), t)).toBe(
+			'3 підходи · 50 кг × 3',
 		)
 	})
 

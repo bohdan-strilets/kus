@@ -5,6 +5,7 @@ import type { FormExerciseValue, FormSetValue } from './workout-form.types'
 
 const emptySet = (): FormSetValue => ({
 	rowKey: createUuid(),
+	planKey: null,
 	reps: null,
 	weightKg: null,
 	durationSec: null,
@@ -52,7 +53,7 @@ export const addFormSet = (exercise: FormExerciseValue): FormExerciseValue => {
 	const last = [...exercise.sets].reverse().find((set) => !set.isWarmup)
 	return {
 		...exercise,
-		sets: [...exercise.sets, { ...(last ?? emptySet()), rowKey: createUuid() }],
+		sets: [...exercise.sets, { ...(last ?? emptySet()), rowKey: createUuid(), planKey: null }],
 	}
 }
 

@@ -257,13 +257,13 @@ describe('FillScreen: deviations', () => {
 		expect(screen.queryByText(/^Змінено:/)).toBeNull()
 	})
 
-	it('«+ Підхід» adds a changed set', () => {
+	it('«+ Підхід» changes the set count, not the set ordinals', () => {
 		renderScreen()
 		fireEvent.click(rowButton('Жим лежачи'))
 
 		fireEvent.click(screen.getByRole('button', { name: '+ Підхід' }))
 
-		expect(screen.getByText('Змінено: 4-й підхід · план: 3 підходи · 50 кг × 10')).toBeTruthy()
+		expect(screen.getByText('Змінено: 4 підходи замість 3')).toBeTruthy()
 	})
 
 	it('«Не робили» skips the exercise: «не робили» and «Повернути»; it is not sent', async () => {

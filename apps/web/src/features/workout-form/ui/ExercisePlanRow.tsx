@@ -3,7 +3,6 @@ import {
 	MAX_SETS_PER_EXERCISE,
 	PROGRAM_DURATION_MIN_MAX,
 } from '@kus/shared'
-import type { TFunction } from 'i18next'
 import { AnimatePresence, motion } from 'motion/react'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -33,7 +32,8 @@ import {
 } from '@/shared/ui'
 
 import { addFormSet, isFormBodyweight, patchFormSet } from '../lib/form-exercise-edit'
-import { formatPlanSummary } from '../lib/format-plan-summary'
+import { formatChangeLine } from '../lib/format-change-line'
+import { formatExerciseSummary } from '../lib/format-plan-summary'
 import { getChangedSetNumbers, getExerciseState, restorePlan } from '../lib/build-form-draft'
 import type { FormExerciseValue } from '../lib/workout-form.types'
 import { useFormSetRemoval } from '../model/use-form-set-removal'
@@ -46,15 +46,6 @@ interface ExercisePlanRowProps {
 }
 
 const MIN_MINUTES = 1
-
-/** «2-й і 3-й»: the changed sets as ordinals, the last one joined with «і». */
-const formatChangedSets = (numbers: readonly number[], t: TFunction): string => {
-	const ordinals = numbers.map((n) => t('training.form.setOrdinal', { n }))
-	const last = ordinals[ordinals.length - 1] ?? ''
-	return ordinals.length <= 1
-		? last
-		: `${ordinals.slice(0, -1).join(', ')} ${t('training.form.and')} ${last}`
-}
 
 /**
  * mockups/training-form.html: an exercise of the template with «Як за планом» (on while nothing
@@ -84,7 +75,7 @@ export const ExercisePlanRow = ({ exercise, onChange, onRemove }: ExercisePlanRo
 	const state = getExerciseState(exercise)
 	const isSkipped = state === 'SKIPPED'
 	const isBodyweight = isFormBodyweight(exercise)
-	const summary = formatPlanSummary(exercise, t)
+	const summary = formatExerciseSummary(exercise, t)
 	const subtitle =
 		state === 'ADDED'
 			? [summary, t('training.form.addedMark')]
@@ -92,6 +83,7 @@ export const ExercisePlanRow = ({ exercise, onChange, onRemove }: ExercisePlanRo
 					.join(DETAIL_SEPARATOR)
 			: summary
 	const changed = getChangedSetNumbers(exercise)
+	const changeLine = state === 'CHANGED' ? formatChangeLine(exercise, t) : null
 	const group = exercise.kind === 'CARDIO' ? 'CARDIO' : exercise.muscleGroup
 	const isCardio = exercise.kind === 'CARDIO'
 	const isAdded = state === 'ADDED'
@@ -153,15 +145,9 @@ export const ExercisePlanRow = ({ exercise, onChange, onRemove }: ExercisePlanRo
 					)
 				)}
 			</div>
-			{state === 'CHANGED' && exercise.plan !== null && !isCardio && (
+			{changeLine !== null && (
 				<Text as="span" variant="small" tone="mutedStrong" weight="regular">
-					{t('training.form.changed', {
-						sets: t('training.form.changedSets', {
-							count: changed.length,
-							list: formatChangedSets(changed, t),
-						}),
-						plan: summary,
-					})}
+					{changeLine}
 				</Text>
 			)}
 			{isOpen && !isSkipped && isCardio && (

@@ -21,6 +21,7 @@ const toFormSet = ({
 	weightKg: number | null
 }): FormSetValue => ({
 	rowKey: createUuid(),
+	planKey: null,
 	reps,
 	weightKg,
 	durationSec: null,
@@ -29,7 +30,7 @@ const toFormSet = ({
 })
 
 const cloneSets = (sets: readonly FormSetValue[]): FormSetValue[] =>
-	sets.map((set) => ({ ...set, rowKey: createUuid() }))
+	sets.map((set) => ({ ...set, rowKey: createUuid(), planKey: set.rowKey }))
 
 export interface BuildFormDraftOptions {
 	now: FormNow
@@ -89,16 +90,34 @@ const isSameSet = (a: FormSetValue, b: FormSetValue): boolean =>
 	a.distanceM === b.distanceM &&
 	a.isWarmup === b.isWarmup
 
-/** 1-based numbers of the sets that differ from the plan (extra sets count too): «2-й і 3-й підходи». */
+/**
+ * 1-based numbers of the sets that differ from the plan set they were made from: «2-й і 3-й підходи».
+ * A set the person added has no plan set, and a deleted one leaves no row: both are in the count
+ * (`getPlanCountChange`), not among the ordinals.
+ */
 export const getChangedSetNumbers = (exercise: FormExerciseValue): number[] => {
 	const planned = exercise.plan?.sets ?? []
-	const length = Math.max(planned.length, exercise.sets.length)
-	return Array.from({ length }, (_, index) => index).flatMap((index) => {
-		const set = exercise.sets[index]
-		const plannedSet = planned[index]
-		return set && plannedSet && isSameSet(set, plannedSet) ? [] : [index + 1]
+	return exercise.sets.flatMap((set, index) => {
+		if (set.planKey === null) return []
+		const plannedSet = planned.find(({ rowKey }) => rowKey === set.planKey)
+		return plannedSet && isSameSet(set, plannedSet) ? [] : [index + 1]
 	})
 }
+
+/** How many working sets there are against the plan (`null`: the same number, or nothing to compare). */
+export const getPlanCountChange = (
+	exercise: FormExerciseValue,
+): { actual: number; planned: number } | null => {
+	const { plan } = exercise
+	if (plan === null || exercise.kind === 'CARDIO') return null
+	const actual = exercise.sets.filter((set) => !set.isWarmup).length
+	const planned = plan.sets.filter((set) => !set.isWarmup).length
+	return actual === planned ? null : { actual, planned }
+}
+
+/** Every plan set is still there and nothing was added: a deleted set and an added one do not cancel out. */
+const hasPlanSets = (exercise: FormExerciseValue, plan: FormExercisePlan): boolean =>
+	exercise.sets.length === plan.sets.length && exercise.sets.every((set) => set.planKey !== null)
 
 /** «Як за планом» is on only while nothing differs; a skipped exercise and one without a plan are their own states. */
 export const getExerciseState = (exercise: FormExerciseValue): FormExerciseState => {
@@ -106,6 +125,7 @@ export const getExerciseState = (exercise: FormExerciseValue): FormExerciseState
 	const { plan } = exercise
 	if (plan === null) return 'ADDED'
 	const isSame =
+		hasPlanSets(exercise, plan) &&
 		getChangedSetNumbers(exercise).length === 0 &&
 		exercise.durationMin === plan.durationMin &&
 		exercise.distanceM === plan.distanceM

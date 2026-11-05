@@ -169,6 +169,69 @@ describe('KusikReply: stats', () => {
 		expect(screen.queryByText('Ось твій місяць.')).toBeNull()
 	})
 
+	it('with advice the words follow the card as a bubble', () => {
+		renderReply(
+			createReply({
+				statsCard: { ...statsCard, hasAdvice: true },
+				content: 'Білка трохи не вистачає.',
+			}),
+		)
+
+		expect(screen.getByText('За 30 днів')).toBeTruthy()
+		expect(screen.getByText('Білка трохи не вистачає.')).toBeTruthy()
+	})
+
+	it('with advice but empty words no bubble is drawn', () => {
+		const { container: withAdvice } = renderReply(
+			createReply({ statsCard: { ...statsCard, hasAdvice: true }, content: '' }),
+		)
+		const withAdviceHtml = withAdvice.innerHTML
+		cleanup()
+		const { container: plain } = renderReply(createReply({ statsCard }))
+
+		expect(screen.getByText('За 30 днів')).toBeTruthy()
+		expect(withAdviceHtml.length).toBe(plain.innerHTML.length)
+	})
+
+	it('the advice follows the card in the DOM', () => {
+		renderReply(
+			createReply({
+				statsCard: { ...statsCard, hasAdvice: true },
+				content: 'Білка трохи не вистачає.',
+			}),
+		)
+
+		const card = screen.getByText('За 30 днів')
+		const advice = screen.getByText('Білка трохи не вистачає.')
+
+		expect(card.compareDocumentPosition(advice) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+	})
+
+	it('advice with markup renders a heading and an ordered list, no literal markers', () => {
+		const { container } = renderReply(
+			createReply({
+				statsCard: { ...statsCard, hasAdvice: true },
+				content: '### Що змінити\n1. **Білок** — додай сир\n2. Вода',
+			}),
+		)
+
+		expect(screen.getByText('Що змінити')).toBeTruthy()
+		expect(screen.getByText('Білок').closest('ol')?.querySelectorAll('li').length).toBe(2)
+		expect(screen.getByText('Білок').tagName).toBe('STRONG')
+		expect(container.textContent).not.toContain('###')
+		expect(container.textContent).not.toContain('**')
+	})
+
+	it('the fixed error text is shown as a plain bubble', () => {
+		const errorText = 'Не вдалося підготувати пораду. Спробуй ще раз.'
+		const { container } = renderReply(
+			createReply({ statsCard: { ...statsCard, hasAdvice: true }, content: errorText }),
+		)
+
+		expect(screen.getByText(errorText)).toBeTruthy()
+		expect(container.querySelector('li')).toBeNull()
+	})
+
 	it('without a card the words stay a plain reply', () => {
 		renderReply(createReply({ statsCard: null, content: 'Ось твій місяць.' }))
 

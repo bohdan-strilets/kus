@@ -154,13 +154,24 @@ export const KusikReply = ({
 		)
 	}
 
-	// a period snapshot (show_stats): like the closing card, the card alone — the model's words
-	// next to it drifted into templates («Ось твій місяць», «Глянь на картці»), so they are not shown
+	// a period snapshot (show_stats): the card alone — without advice the model's words drifted into
+	// templates («Ось твій місяць», «Глянь на картці»), so they are hidden. With `hasAdvice` the words
+	// are the advice (or its fixed error text): a plain bubble under the card, indented like attachments
 	if (message.statsCard) {
+		const advice = message.statsCard.hasAdvice ? message.content : null
 		return (
-			<KusikRow kind={kind}>
-				<StatsCard card={message.statsCard} today={today} />
-			</KusikRow>
+			<div className="flex flex-col gap-1.5 self-stretch">
+				<KusikRow kind={kind}>
+					<StatsCard card={message.statsCard} today={today} />
+				</KusikRow>
+				{advice && (
+					<div className={ATTACHMENTS_CLASS}>
+						<MessageBubble>
+							<RichText text={advice} />
+						</MessageBubble>
+					</div>
+				)}
+			</div>
 		)
 	}
 

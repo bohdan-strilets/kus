@@ -4,7 +4,7 @@
  * Heuristics on purpose — they flag for a human look, the copy rules live in the prompt.
  */
 
-import type { AddressForm } from '@kus/shared'
+import { type AddressForm, parseRichText } from '@kus/shared'
 
 import type { ReplyLanguage } from './cases/case.types.js'
 
@@ -196,3 +196,72 @@ const OPENING_WORDS = 3
 /** The first words of a reply, to spot a phrase the model repeats from case to case. */
 export const getReplyOpening = (reply: string): string =>
 	toWords(reply).slice(0, OPENING_WORDS).join(' ')
+
+/**
+ * Words that judge food, a meal or a day (the prompt forbids them even when the user says them).
+ * Stems match by the beginning of a word; "погано" only as a whole word, so "непогано" is fine.
+ * `\b` does not work with Cyrillic, hence the letter look-arounds.
+ */
+const JUDGING_STEMS = [
+	'зрив',
+	'зірв',
+	'шкідлив',
+	'чіт-міл',
+	'читмил',
+	'гріх',
+	'грішн',
+	'провал',
+	'заборонен',
+	'винн',
+	'відпрацю',
+	'компенсу',
+] as const
+const JUDGING_WHOLE_WORDS = ['погано'] as const
+const JUDGING_PATTERN = new RegExp(
+	String.raw`(?<!\p{L})(?:(?:${JUDGING_STEMS.join('|')})\p{L}*|(?:${JUDGING_WHOLE_WORDS.join('|')})(?!\p{L}))`,
+	'giu',
+)
+
+/** The judging words of a reply, lower-case and without repeats; empty = none. */
+export const findJudgingWords = (reply: string): string[] => [
+	...new Set((reply.match(JUDGING_PATTERN) ?? []).map((word) => word.toLowerCase())),
+]
+
+const TABLE_ROW_PATTERN = /^\s*\|.*\|\s*$/mu
+const LINK_PATTERN = /\[[^\]\n]*\]\([^)\n]*\)/u
+const NESTED_LIST_PATTERN = /^[ \t]+(?:[-*•]|\d+[.)])[ \t]+\S/mu
+const HEADING_LINE_PATTERN = /^\s*#{1,6}[ \t]+(.+)$/gmu
+const EMOJI_PATTERN = /\p{Extended_Pictographic}/gu
+const MAX_HEADING_WORDS = 4
+const SHORT_REPLY_LINES = 2
+const MAX_EMOJI = 2
+
+const countWords = (text: string): number => text.trim().split(/\s+/u).length
+
+const countLines = (reply: string): number =>
+	reply.split(/\r?\n/u).filter((line) => line.trim().length > 0).length
+
+/**
+ * Format the prompt forbids or reserves for longer replies: tables, links, code, a nested list, a
+ * heading over 4 words, headings or lists in a 1–2 line reply, too many emoji (or any in a short reply).
+ * Codes, not texts, so a report can group them; empty = clean.
+ */
+export const findMarkupViolations = (reply: string): string[] => {
+	const violations: string[] = []
+	const blocks = parseRichText(reply)
+	const isShort = countLines(reply) <= SHORT_REPLY_LINES
+	if (TABLE_ROW_PATTERN.test(reply)) violations.push('table')
+	if (LINK_PATTERN.test(reply)) violations.push('link')
+	if (reply.includes('`')) violations.push('code')
+	if (NESTED_LIST_PATTERN.test(reply)) violations.push('nested-list')
+	const headings = [...reply.matchAll(HEADING_LINE_PATTERN)]
+	if (headings.some((match) => countWords(match[1] ?? '') > MAX_HEADING_WORDS)) {
+		violations.push('long-heading')
+	}
+	if (isShort && blocks.some((block) => block.type !== 'paragraph'))
+		violations.push('block-in-short')
+	const emojiCount = (reply.match(EMOJI_PATTERN) ?? []).length
+	if (emojiCount > MAX_EMOJI) violations.push('many-emoji')
+	else if (emojiCount > 0 && isShort) violations.push('emoji-in-short')
+	return violations
+}

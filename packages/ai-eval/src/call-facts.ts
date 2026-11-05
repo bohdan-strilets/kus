@@ -24,7 +24,11 @@ const closeDayFactsSchema = z.object({
 	date: optionalDate,
 	estimatedTotalKcal: z.number().nullable().optional(),
 })
-const showStatsFactsSchema = z.object({ days: statsDaysSchema, endDate: optionalDate })
+const showStatsFactsSchema = z.object({
+	days: statsDaysSchema,
+	endDate: optionalDate,
+	advice: z.boolean().optional(),
+})
 
 export const EMPTY_CALL_FACTS: CallFacts = {
 	logDate: null,
@@ -104,7 +108,11 @@ export const getCallFacts = (rawCalls: RawToolCall[], today: string): CallFacts 
 		if (call.name === 'show_stats') {
 			const parsed = showStatsFactsSchema.safeParse(args)
 			if (parsed.success) {
-				facts.statsCards.push({ days: parsed.data.days, endDate: parsed.data.endDate ?? null })
+				facts.statsCards.push({
+					days: parsed.data.days,
+					endDate: parsed.data.endDate ?? null,
+					...(parsed.data.advice === true ? { advice: true as const } : {}),
+				})
 			}
 		}
 	}

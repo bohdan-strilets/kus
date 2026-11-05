@@ -126,7 +126,7 @@ export const HISTORY_CARD_CASES: EvalCase[] = [
 	{
 		id: 'stats-week',
 		text: 'Підбий підсумок за тиждень',
-		expect: { decision: 'stats', stats: { days: 7 } },
+		expect: { decision: 'stats', stats: { days: 7 }, statsAdvice: false },
 		reference: 'A summary of the week → show_stats week, numbers are the backend card',
 	},
 	{

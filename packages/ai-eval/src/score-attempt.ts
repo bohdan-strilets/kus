@@ -167,6 +167,8 @@ export interface ScoreInput {
 	rawCalls: RawToolCall[]
 	validationErrors: ValidationAttempt[]
 	rawAttempts: RawAttempt[]
+	/** The second call of «summary and advice», when the case made it (see stats-follow-up.ts). */
+	statsFollowUp?: { text: string | null }
 }
 
 export type ScoreOutcome = { result: CaseResult } | { errors: string[] }
@@ -178,7 +180,11 @@ export const scoreAttempt = (input: ScoreInput): ScoreOutcome => {
 	const refs = getParseRefs(context)
 	const result = parseToolCalls(rawCalls, refs, { hasImage: evalCase.photo !== undefined })
 	if (!result.ok) return { errors: result.errors }
-	const replyText = getReplyText(result.decision)
+	const { statsFollowUp } = input
+	// the advice is a reply of the same turn: the reply checks and replyExcludes judge both texts
+	const replyText = [getReplyText(result.decision), statsFollowUp?.text]
+		.filter((text): text is string => Boolean(text))
+		.join(' ')
 	const items = getLoggedItems(result.decision)
 	const totals = items.length > 0 ? sumItems(items, sources) : null
 	return {
@@ -192,6 +198,8 @@ export const scoreAttempt = (input: ScoreInput): ScoreOutcome => {
 			protein: totals?.protein ?? null,
 			categories: items.map((item) => item.category),
 			replyText,
+			replyAttach: result.decision.kind === 'reply' ? result.decision.attach : null,
+			...(statsFollowUp ? { statsFollowUp } : {}),
 			edits: getEditResult(result.decision, context),
 			measurements: getMeasuredItems(result.decision, context.measurements.today),
 			workouts: getLoggedWorkouts(result.decision),

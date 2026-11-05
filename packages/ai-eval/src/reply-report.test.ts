@@ -33,6 +33,18 @@ describe('formatReplyChecks', () => {
 		expect(report).not.toContain('поїла')
 	})
 
+	it('lists judging words and markup violations next to the gender check', () => {
+		const report = formatReplyChecks([
+			pair('judge', 'вчора піца', 'Не зрив, це нормально 🙂'),
+			pair('clean', 'вчора піца', 'Записав піцу за вчора.'),
+		])
+
+		expect(report).toContain('Оцінні слова в reply (ціль 0): 1 з 2')
+		expect(report).toContain('- judge: зрив')
+		expect(report).toContain('Порушення розмітки в reply (ціль 0): 1 з 2')
+		expect(report).toContain('- judge: emoji-in-short')
+	})
+
 	it('flags a reply in another language than the message', () => {
 		const report = formatReplyChecks([pair('pl', 'zjadłam jajka', 'Записано, смачні яйця!')])
 

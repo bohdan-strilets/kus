@@ -56,7 +56,8 @@ export interface CallFacts {
 	/** Every close_day call, its day resolved; null total = the user named none. */
 	closeDays: { date: string; estimatedTotalKcal: number | null }[]
 	/** Every show_stats call; null end = today. */
-	statsCards: { days: number; endDate: string | null }[]
+	/** `advice` is set only when the model sent advice: true. */
+	statsCards: { days: number; endDate: string | null; advice?: true }[]
 	/** Every save_food call as the model sent it (defaults filled by the shared schema). */
 	savedFoods: SaveFoodInput[]
 	/** Every save_fact call as the model sent it. */
@@ -104,6 +105,10 @@ export interface CaseResult {
 	textOnlyAnswers: number
 	/** Every failed validation attempt, also when a retry then succeeded; empty when the first try passed. */
 	validationErrors: ValidationAttempt[]
+	/** The reply's attach ("program"); null when none or the answer was not a plain reply. */
+	replyAttach?: 'program' | null
+	/** The second call of «summary and advice»: made only for a case with `statsNumbers`. */
+	statsFollowUp?: { text: string | null }
 	/** Words in the reply that mix Cyrillic and Latin letters. */
 	mixedScriptWords: string[]
 	/** Every model answer of the case, in order; absent in results saved before --rescore existed. */

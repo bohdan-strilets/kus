@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest'
 import { evalCaseSchema } from './case.types.js'
 import { HISTORY_CARD_CASES } from './history-cards.cases.js'
 import { REPO_CASES } from './index.js'
+import { LIVE_CHAT_CASES } from './live-chat.cases.js'
 import { WORKOUT_2_CASES } from './workout-2.cases.js'
 
 const base = { id: 'c', expect: { decision: 'log' }, reference: 'r' }
@@ -119,6 +120,44 @@ describe('history card cases', () => {
 				...base,
 				text: 'x',
 				expect: { decision: 'log', copyRefs: ['m1'] },
+			}).success,
+		).toBe(false)
+	})
+})
+
+describe('live chat cases (0.10.5)', () => {
+	const ONLY_IDS = [
+		'prod-suggest-dinner',
+		'prod-stats-month-no-template',
+		'workout-2-done-vse',
+		'program-discuss',
+	]
+
+	it('are valid cases and are part of the repo set', () => {
+		expect(LIVE_CHAT_CASES).toHaveLength(18)
+		for (const item of LIVE_CHAT_CASES) {
+			expect(evalCaseSchema.safeParse(item).success, item.id).toBe(true)
+			expect(REPO_CASES).toContain(item)
+		}
+	})
+
+	it('keeps the cases that the changed descriptions touch', () => {
+		const ids = new Set(REPO_CASES.map(({ id }) => id))
+		for (const id of ONLY_IDS) expect(ids.has(id), id).toBe(true)
+	})
+
+	it('accepts replyAttach, statsAdvice and statsNumbers', () => {
+		const parsed = evalCaseSchema.parse({
+			...base,
+			text: 'x',
+			expect: { decision: 'reply', replyAttach: null, statsAdvice: true, statsNumbers: '7 days' },
+		})
+		expect(parsed.expect.replyAttach).toBeNull()
+		expect(
+			evalCaseSchema.safeParse({
+				...base,
+				text: 'x',
+				expect: { decision: 'reply', replyAttach: 'recipe' },
 			}).success,
 		).toBe(false)
 	})

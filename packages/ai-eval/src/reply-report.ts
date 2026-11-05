@@ -6,6 +6,8 @@ import type { CaseResult } from './eval.types.js'
 import {
 	detectLanguage,
 	findGenderedForms,
+	findJudgingWords,
+	findMarkupViolations,
 	getReplyOpening,
 	isNameFromText,
 } from './reply-checks.js'
@@ -47,6 +49,24 @@ const formatGender = (pairs: Pair[]): string => {
 		return forms.length > 0 ? [{ pair, detail: forms.join(', ') }] : []
 	})
 	return formatFlagged('Стать користувача в reply (ціль 0)', flagged, withReply.length)
+}
+
+const formatJudging = (pairs: Pair[]): string => {
+	const withReply = pairs.filter(({ result }) => result.replyText)
+	const flagged = withReply.flatMap((pair) => {
+		const words = findJudgingWords(pair.result.replyText ?? '')
+		return words.length > 0 ? [{ pair, detail: words.join(', ') }] : []
+	})
+	return formatFlagged('Оцінні слова в reply (ціль 0)', flagged, withReply.length)
+}
+
+const formatMarkup = (pairs: Pair[]): string => {
+	const withReply = pairs.filter(({ result }) => result.replyText)
+	const flagged = withReply.flatMap((pair) => {
+		const violations = findMarkupViolations(pair.result.replyText ?? '')
+		return violations.length > 0 ? [{ pair, detail: violations.join(', ') }] : []
+	})
+	return formatFlagged('Порушення розмітки в reply (ціль 0)', flagged, withReply.length)
 }
 
 /** A name the user never wrote: «слизу» for «сливи». Copies, memory, photos and day totals are skipped. */
@@ -108,6 +128,8 @@ const formatOutputTokens = (pairs: Pair[]): string => {
 export const formatReplyChecks = (pairs: Pair[]): string =>
 	[
 		formatGender(pairs),
+		formatJudging(pairs),
+		formatMarkup(pairs),
 		formatNames(pairs),
 		formatLanguage(pairs),
 		formatOpenings(pairs),

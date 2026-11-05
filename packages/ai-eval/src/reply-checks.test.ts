@@ -5,6 +5,8 @@ import {
 	findGenderedForms,
 	getReplyOpening,
 	isNameFromText,
+	findJudgingWords,
+	findMarkupViolations,
 } from './reply-checks.js'
 
 describe('findGenderedForms', () => {
@@ -118,5 +120,69 @@ describe('findGenderedForms: double forms in neutral', () => {
 		expect(findGenderedForms('Ти вже поїв(-ла)?')).toContain('поїв(-ла)')
 		expect(findGenderedForms('Готовий(-а) до тренування?')).toContain('готовий(-а)')
 		expect(findGenderedForms('Ти поїв(ла) вже?')).toContain('поїв(ла)')
+	})
+})
+
+describe('findJudgingWords', () => {
+	it('flags "погано" only as a whole word', () => {
+		expect(findJudgingWords('Це погано.')).toEqual(['погано'])
+		expect(findJudgingWords('Непогано для вечері')).toEqual([])
+	})
+
+	it('matches the stems by the beginning of a word, in any case', () => {
+		expect(findJudgingWords('Ти зірвався?')).toEqual(['зірвався'])
+		expect(findJudgingWords('Зриви бувають')).toEqual(['зриви'])
+		expect(findJudgingWords('Треба відпрацювати')).toEqual(['відпрацювати'])
+		expect(
+			findJudgingWords('Чіт-міл і гріх, шкідливе, заборонене, провал, компенсуй'),
+		).toHaveLength(6)
+	})
+
+	it('does not flag plain wording and returns each word once', () => {
+		expect(findJudgingWords('Записав піцу, чипси й тортик за вчора.')).toEqual([])
+		expect(findJudgingWords('зрив, зрив')).toEqual(['зрив'])
+	})
+})
+
+describe('findMarkupViolations', () => {
+	const LONG = 'Перший рядок.\n\nДругий рядок.\n\nТретій рядок.'
+
+	it('accepts a clean short reply and a clean longer one', () => {
+		expect(findMarkupViolations('Записав: **420 ккал**.')).toEqual([])
+		expect(
+			findMarkupViolations(
+				'Ось що можна спробувати.\n\n### Що змінити\n\n1. Більше сну\n2. Піднімати на **2,5 кг** більше',
+			),
+		).toEqual([])
+	})
+
+	it('flags a table, a link and backticks', () => {
+		expect(findMarkupViolations(`${LONG}\n| а | б |`)).toContain('table')
+		expect(findMarkupViolations(`${LONG}\n[тут](https://x.y)`)).toContain('link')
+		expect(findMarkupViolations(`${LONG}\n\`код\``)).toContain('code')
+	})
+
+	it('flags a nested list item', () => {
+		expect(findMarkupViolations(`${LONG}\n- один\n  - вкладений`)).toContain('nested-list')
+		expect(findMarkupViolations(`${LONG}\n- один\n- два`)).not.toContain('nested-list')
+	})
+
+	it('flags a heading over 4 words only', () => {
+		expect(findMarkupViolations(`${LONG}\n### Що змінити у плані тренувань`)).toContain(
+			'long-heading',
+		)
+		expect(findMarkupViolations(`${LONG}\n### Що змінити далі`)).not.toContain('long-heading')
+	})
+
+	it('flags headings and lists in a reply of 1–2 lines', () => {
+		expect(findMarkupViolations('### Порада\nСпи більше')).toContain('block-in-short')
+		expect(findMarkupViolations('- сон\n- вода')).toContain('block-in-short')
+		expect(findMarkupViolations('Так.\n\n- сон\n- вода\n- крок')).not.toContain('block-in-short')
+	})
+
+	it('flags more than 2 emoji, and any emoji in a short reply', () => {
+		expect(findMarkupViolations(`${LONG} 🙂🙂🙂`)).toContain('many-emoji')
+		expect(findMarkupViolations(`${LONG} 🙂`)).toEqual([])
+		expect(findMarkupViolations('Записав 🙂')).toEqual(['emoji-in-short'])
 	})
 })

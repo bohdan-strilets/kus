@@ -73,6 +73,20 @@ describe('getCallFacts', () => {
 		])
 	})
 
+	it('marks a show_stats call with advice: true', () => {
+		const facts = getCallFacts(
+			[
+				call('show_stats', { days: 7, advice: true }),
+				call('show_stats', { days: 7, advice: false }),
+			],
+			TODAY,
+		)
+		expect(facts.statsCards).toEqual([
+			{ days: 7, endDate: null, advice: true },
+			{ days: 7, endDate: null },
+		])
+	})
+
 	it('skips broken arguments', () => {
 		const facts = getCallFacts([{ name: 'show_day', arguments: '{oops' }], TODAY)
 		expect(facts.dayCards).toEqual([])

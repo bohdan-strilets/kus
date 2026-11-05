@@ -35,7 +35,10 @@ export const formatStatsAdviceNumbers = (card: StatsCard): string => {
 	return parts.filter((part): part is string => part !== null).join('; ')
 }
 
-/** The tool result of show_stats for the second call (not in the cached prefix). */
-export const buildStatsAdviceToolResult = (card: StatsCard): string =>
-	`Numbers of the period, already counted (count nothing yourself): ${formatStatsAdviceNumbers(card)}. ` +
+/** The tool result of show_stats for the second call from ready numbers (not in the cached prefix). */
+export const buildStatsAdviceToolResultFromNumbers = (numbers: string): string =>
+	`Numbers of the period, already counted (count nothing yourself): ${numbers}. ` +
 	'Answer with reply only: the advice the user asked for, up to ~5 sentences or a short list, numbers only from here, no reproach for days over the goal.'
+
+export const buildStatsAdviceToolResult = (card: StatsCard): string =>
+	buildStatsAdviceToolResultFromNumbers(formatStatsAdviceNumbers(card))

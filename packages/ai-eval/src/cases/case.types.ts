@@ -311,6 +311,15 @@ export const evalCaseSchema = z
 				.optional(),
 			/** The show_stats call: its length in days (and its end day, when given). */
 			stats: z.object({ days: statsDaysSchema, endDate: z.iso.date().optional() }).optional(),
+			/** The reply's attach: "program" = the program card is shown next to the text, null = no card. */
+			replyAttach: z.literal('program').nullable().optional(),
+			/** The show_stats call's advice flag (the user also asked for advice on the period). */
+			statsAdvice: z.boolean().optional(),
+			/**
+			 * The period numbers the backend would send for the second call (the `{{period}}` of the tool
+			 * result). With show_stats advice: true the runner makes that call and judges its reply too.
+			 */
+			statsNumbers: z.string().min(1).optional(),
 			/** Exactly these earlier-entry refs (y1, h1) are copied by the logged items; [] = none copied. */
 			copyRefs: z.array(z.string().regex(COPY_REF_PATTERN)).optional(),
 			/** Exactly these delete_measurement calls; `[]` = none. */

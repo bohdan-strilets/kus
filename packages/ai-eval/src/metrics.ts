@@ -144,13 +144,26 @@ const hasCallDetails = ({ expect }: EvalCase): boolean =>
 	expect.dayCard !== undefined ||
 	expect.closeDay !== undefined ||
 	expect.stats !== undefined ||
+	expect.replyAttach !== undefined ||
+	expect.statsAdvice !== undefined ||
 	expect.copyRefs !== undefined ||
 	expect.deletedMeasurements !== undefined
 
 /** The days the calls named (log, items, day card, deleted measurements) and the item count, as expected. */
 export const isCallDetailsCorrect = (evalCase: EvalCase, result: CaseResult): boolean => {
-	const { logDate, itemDates, maxItems, dayCard, deletedMeasurements, closeDay, stats, copyRefs } =
-		evalCase.expect
+	const {
+		logDate,
+		itemDates,
+		maxItems,
+		dayCard,
+		deletedMeasurements,
+		closeDay,
+		stats,
+		copyRefs,
+		replyAttach,
+		statsAdvice,
+		statsNumbers,
+	} = evalCase.expect
 	const { calls } = result
 	const isLogDayRight = logDate === undefined || calls.logDate === logDate
 	const areItemDaysRight = (itemDates ?? []).every(({ stem, date }) =>
@@ -180,6 +193,13 @@ export const isCallDetailsCorrect = (evalCase: EvalCase, result: CaseResult): bo
 				(got) =>
 					got.days === stats.days && (stats.endDate === undefined || got.endDate === stats.endDate),
 			))
+	const isAttachRight = replyAttach === undefined || (result.replyAttach ?? null) === replyAttach
+	const isAdviceRight =
+		statsAdvice === undefined ||
+		(calls.statsCards.length === 1 &&
+			calls.statsCards.every((got) => (got.advice ?? false) === statsAdvice) &&
+			// an asked-for advice must come back as a reply in the second call
+			(!statsAdvice || statsNumbers === undefined || Boolean(result.statsFollowUp?.text)))
 	const areCopiesRight =
 		copyRefs === undefined ||
 		isSameSet(
@@ -194,6 +214,8 @@ export const isCallDetailsCorrect = (evalCase: EvalCase, result: CaseResult): bo
 		areDeletedRight &&
 		isCloseRight &&
 		isStatsRight &&
+		isAttachRight &&
+		isAdviceRight &&
 		areCopiesRight
 	)
 }

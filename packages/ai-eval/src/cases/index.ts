@@ -8,6 +8,7 @@ import { DECISION_CASES } from './decision.cases.js'
 import { EDIT_CASES } from './edit.cases.js'
 import { EXACT_CASES } from './exact.cases.js'
 import { FOREIGN_VOICE_CASES } from './foreign-voices.cases.js'
+import { LIVE_CHAT_CASES } from './live-chat.cases.js'
 import { MEAL_TYPE_CASES } from './meal-type.cases.js'
 import { MEASUREMENT_CASES } from './measurement.cases.js'
 import { MEMORY_FACT_CASES } from './memory-facts.cases.js'
@@ -50,6 +51,7 @@ export const REPO_CASES: EvalCase[] = [
 	...PROGRAM_CASES,
 	...MEMORY_FOOD_CASES,
 	...MEMORY_FACT_CASES,
+	...LIVE_CHAT_CASES,
 ]
 
 /** Written, but need a context the contract doesn't have yet; not run until it does. None now. */

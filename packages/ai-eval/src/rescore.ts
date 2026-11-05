@@ -48,6 +48,7 @@ export const rescoreResult = (evalCase: EvalCase, saved: CaseResult): CaseResult
 			rawCalls: answer.toolCalls,
 			validationErrors,
 			rawAttempts,
+			statsFollowUp: saved.statsFollowUp,
 		})
 		if ('result' in outcome) return outcome.result
 		validationErrors.push(

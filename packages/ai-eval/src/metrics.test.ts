@@ -476,3 +476,43 @@ describe('workout_or_reply and noAppend', () => {
 		expect(summary.program).toEqual({ correct: 1, total: 2 })
 	})
 })
+
+describe('isCallDetailsCorrect: replyAttach and statsAdvice', () => {
+	const statsCalls = (advice?: true) => ({
+		logDate: null,
+		itemDates: [],
+		dayCards: [],
+		deletedMeasurements: [],
+		closeDays: [],
+		statsCards: [{ days: 7, endDate: null, ...(advice ? { advice } : {}) }],
+		savedFoods: [],
+		facts: [],
+		forgets: [],
+	})
+
+	it('compares the reply attach, a missing one counting as null', () => {
+		const want = (replyAttach: 'program' | null) => evalCase({ decision: 'reply', replyAttach })
+		expect(isCallDetailsCorrect(want('program'), result({ replyAttach: 'program' }))).toBe(true)
+		expect(isCallDetailsCorrect(want('program'), result({ replyAttach: null }))).toBe(false)
+		expect(isCallDetailsCorrect(want(null), result({}))).toBe(true)
+		expect(isCallDetailsCorrect(want(null), result({ replyAttach: 'program' }))).toBe(false)
+	})
+
+	it('compares the advice flag of the show_stats call', () => {
+		const want = (statsAdvice: boolean) => evalCase({ decision: 'stats', statsAdvice })
+		expect(isCallDetailsCorrect(want(false), result({ calls: statsCalls() }))).toBe(true)
+		expect(isCallDetailsCorrect(want(false), result({ calls: statsCalls(true) }))).toBe(false)
+		expect(isCallDetailsCorrect(want(true), result({ calls: statsCalls(true) }))).toBe(true)
+		expect(isCallDetailsCorrect(want(true), result({ calls: statsCalls() }))).toBe(false)
+	})
+
+	it('wants the second call to answer when the case has the numbers', () => {
+		const want = evalCase({ decision: 'stats', statsAdvice: true, statsNumbers: '7 days' })
+		const calls = statsCalls(true)
+		expect(isCallDetailsCorrect(want, result({ calls }))).toBe(false)
+		expect(isCallDetailsCorrect(want, result({ calls, statsFollowUp: { text: null } }))).toBe(false)
+		expect(isCallDetailsCorrect(want, result({ calls, statsFollowUp: { text: 'Порада' } }))).toBe(
+			true,
+		)
+	})
+})

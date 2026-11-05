@@ -1,11 +1,13 @@
 import {
 	AI_VALIDATION_RETRY_COUNT,
+	type AiCompletion,
 	type AiRequestMessage,
 	buildFoodParseMessages,
 	buildRetryMessages,
 	type FoodParseContext,
 	getRawToolCalls,
 	isOutputTruncated,
+	type RawToolCall,
 	shouldShowProgramRules,
 } from '@kus/shared'
 
@@ -18,9 +20,11 @@ import { type EvalModelOptions, requestFoodParse } from './openrouter.js'
 import {
 	failedResult,
 	OUTPUT_TRUNCATED,
+	type ScoreInput,
 	scoreAttempt,
 	toValidationAttempt,
 } from './score-attempt.js'
+import { findStatsCall, requestStatsFollowUp } from './stats-follow-up.js'
 
 /** Fixed clock, so meal-type guesses and reruns compare like for like. */
 export const BASE_CONTEXT: FoodParseContext = {
@@ -49,6 +53,51 @@ export const buildCaseContext = (evalCase: EvalCase): FoodParseContext => {
 	return hasProgramRules ? { ...context, hasProgramRules } : context
 }
 
+type Usage = Pick<
+	CaseResult,
+	'costUsd' | 'latencyMs' | 'inputTokens' | 'outputTokens' | 'cachedTokens' | 'textOnlyAnswers'
+>
+
+const addUsage = (usage: Usage, completion: AiCompletion, latencyMs: number): void => {
+	usage.latencyMs += latencyMs
+	usage.costUsd += completion.usage?.cost ?? 0
+	usage.inputTokens += completion.usage?.prompt_tokens ?? 0
+	usage.outputTokens += completion.usage?.completion_tokens ?? 0
+	usage.cachedTokens += completion.usage?.prompt_tokens_details?.cached_tokens ?? 0
+}
+
+interface StatsFollowUpInput {
+	evalCase: EvalCase
+	context: FoodParseContext
+	options: EvalModelOptions
+	usage: Usage
+	rawCalls: RawToolCall[]
+	result: CaseResult
+}
+
+/**
+ * The backend's second call for «summary and advice»: only for a case with `statsNumbers` whose
+ * answer is show_stats with advice: true. Without `statsNumbers` the case runs as before.
+ */
+const getStatsFollowUp = async ({
+	evalCase,
+	context,
+	options,
+	usage,
+	rawCalls,
+	result,
+}: StatsFollowUpInput): Promise<{ text: string | null } | null> => {
+	const numbers = evalCase.expect.statsNumbers
+	const statsCall = findStatsCall(rawCalls)
+	if (numbers === undefined || !statsCall) return null
+	if (result.decision !== 'stats' || !result.calls.statsCards.some(({ advice }) => advice)) {
+		return null
+	}
+	const followUp = await requestStatsFollowUp(options, context, evalCase.text, statsCall, numbers)
+	addUsage(usage, followUp.completion, followUp.latencyMs)
+	return { text: followUp.text }
+}
+
 export const runCase = async (
 	evalCase: EvalCase,
 	options: EvalModelOptions,
@@ -72,11 +121,7 @@ export const runCase = async (
 		for (let attempt = 1; attempt <= 1 + AI_VALIDATION_RETRY_COUNT; attempt += 1) {
 			attemptsMade = attempt
 			const { completion, latencyMs } = await requestFoodParse(options, messages)
-			usage.latencyMs += latencyMs
-			usage.costUsd += completion.usage?.cost ?? 0
-			usage.inputTokens += completion.usage?.prompt_tokens ?? 0
-			usage.outputTokens += completion.usage?.completion_tokens ?? 0
-			usage.cachedTokens += completion.usage?.prompt_tokens_details?.cached_tokens ?? 0
+			addUsage(usage, completion, latencyMs)
 
 			const rawCalls = getRawToolCalls(completion)
 			const isTruncated = isOutputTruncated(completion)
@@ -94,7 +139,7 @@ export const runCase = async (
 					rawAttempts,
 				})
 			if (rawCalls.length === 0) usage.textOnlyAnswers += 1
-			const outcome = scoreAttempt({
+			const scoreInput: ScoreInput = {
 				evalCase,
 				context,
 				base,
@@ -103,8 +148,22 @@ export const runCase = async (
 				rawCalls,
 				validationErrors,
 				rawAttempts,
-			})
-			if ('result' in outcome) return outcome.result
+			}
+			const outcome = scoreAttempt(scoreInput)
+			if ('result' in outcome) {
+				const statsFollowUp = await getStatsFollowUp({
+					evalCase,
+					context,
+					options,
+					usage,
+					rawCalls,
+					result: outcome.result,
+				})
+				if (!statsFollowUp) return outcome.result
+				// scored again with the advice: the usage now includes the second call
+				const withAdvice = scoreAttempt({ ...scoreInput, statsFollowUp })
+				return 'result' in withAdvice ? withAdvice.result : outcome.result
+			}
 			validationErrors.push(
 				toValidationAttempt(
 					attempt,

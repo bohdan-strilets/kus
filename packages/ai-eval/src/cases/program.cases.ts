@@ -95,7 +95,7 @@ const PROGRAM_HISTORY: ExerciseContext[] = [TEMPLATE_A, TEMPLATE_B].flatMap(({ e
 	),
 )
 
-const WITH_PROGRAM: Partial<FoodParseContext> = {
+export const WITH_PROGRAM: Partial<FoodParseContext> = {
 	...EVENING,
 	program: ROTATE_PROGRAM,
 	exercises: PROGRAM_HISTORY,

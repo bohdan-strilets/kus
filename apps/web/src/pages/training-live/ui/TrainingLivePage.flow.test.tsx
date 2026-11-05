@@ -346,9 +346,9 @@ describe('TrainingLivePage: a planned cardio', () => {
 	it('cardio without a plan starts the first «+» at NEW_CARDIO_MIN, then steps by one', async () => {
 		current = withId(makeLiveResponse({ plan: [cardioPlan({ durationMin: null })] }))
 		renderPage()
-		fireEvent.click(await screen.findByRole('button', { name: /^Доріжка/ }))
 
-		fireEvent.click(screen.getByRole('button', { name: 'Більше хвилин' }))
+		// the planned cardio is first, so it is already in hand and open
+		fireEvent.click(await screen.findByRole('button', { name: 'Більше хвилин' }))
 
 		await expectMinutesShown(String(NEW_CARDIO_MIN))
 
@@ -360,9 +360,8 @@ describe('TrainingLivePage: a planned cardio', () => {
 	it('cardio WITH a plan: the first «+» sets the plan minutes, not NEW_CARDIO_MIN', async () => {
 		current = withId(makeLiveResponse({ plan: [cardioPlan({ durationMin: 25 })] }))
 		renderPage()
-		fireEvent.click(await screen.findByRole('button', { name: /^Доріжка/ }))
 
-		fireEvent.click(screen.getByRole('button', { name: 'Більше хвилин' }))
+		fireEvent.click(await screen.findByRole('button', { name: 'Більше хвилин' }))
 
 		await expectMinutesShown('25')
 	})

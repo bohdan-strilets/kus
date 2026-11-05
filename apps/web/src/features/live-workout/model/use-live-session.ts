@@ -24,8 +24,9 @@ import {
 } from '../lib/live-draft-edit'
 import {
 	applyProgressHint,
+	findNextTodoAfter,
 	findNextTodoRef,
-	getCurrentSet,
+	getFocusRef,
 	type LiveSetRef,
 	shiftRefAfterExerciseRemoval,
 	shiftRefAfterSetRemoval,
@@ -61,6 +62,14 @@ const isValidRef = (draft: LiveDraft, ref: LiveSetRef | null): ref is LiveSetRef
 	return exercise.kind === 'CARDIO' || ref.setIndex < exercise.sets.length
 }
 
+const findRefAfterDone = (draft: LiveDraft, done: LiveSetRef): LiveSetRef | null => {
+	const setIndex = draft.exercises[done.exerciseIndex]?.sets.findIndex((set) => set.doneAt === null)
+	if (setIndex !== undefined && setIndex !== -1) {
+		return { exerciseIndex: done.exerciseIndex, setIndex }
+	}
+	return findNextTodoAfter(draft, done.exerciseIndex)
+}
+
 /**
  * The state of the live screen: the draft (the server's session plus what was never sent), every
  * change written to the sync at once, the chat's edits taken in when `editedAt` moves (with the
@@ -88,6 +97,8 @@ export const useLiveSession = (live: LiveWorkoutResponse): LiveSession => {
 	if (live.editedAt !== seenEditedAt) {
 		setSeenEditedAt(live.editedAt)
 		setDraft((previous) => adoptServerExercises(previous, live))
+		// the chat rewrote the session: a kept selection is indices only and may now be another exercise
+		setSelected(null)
 		setChatEdits((count) => count + 1)
 	}
 	useEffect(() => {
@@ -100,7 +111,7 @@ export const useLiveSession = (live: LiveWorkoutResponse): LiveSession => {
 		schedule(toLiveExerciseInputs(next))
 	}
 
-	const current = isValidRef(draft, selected) ? selected : getCurrentSet(draft)
+	const current = isValidRef(draft, selected) ? selected : getFocusRef(draft)
 
 	return {
 		draft,
@@ -121,8 +132,10 @@ export const useLiveSession = (live: LiveWorkoutResponse): LiveSession => {
 			const set = exercise?.sets[ref.setIndex]
 			if (!exercise || !set) return
 			const isDone = set.doneAt !== null
-			commit(setSetDone(draftRef.current, ref, isDone ? null : new Date().toISOString()))
-			setSelected(null)
+			const next = setSetDone(draftRef.current, ref, isDone ? null : new Date().toISOString())
+			commit(next)
+			// removing a ✓ stays put; a ✓ stays on the exercise while it has sets left, then moves on
+			setSelected(isDone ? ref : findRefAfterDone(next, ref))
 			if (isDone || exercise.clientKey === null) return
 			notifySetDone({
 				workoutId,
@@ -216,6 +229,8 @@ export const useLiveSession = (live: LiveWorkoutResponse): LiveSession => {
 		},
 		changeCardioMinutes: (exerciseIndex, minutes) => {
 			commit(setCardioMinutes(draftRef.current, exerciseIndex, minutes))
+			// «+» on a cardio keeps it in hand: the person moves on through «далі · …»
+			setSelected({ exerciseIndex, setIndex: 0 })
 		},
 	}
 }

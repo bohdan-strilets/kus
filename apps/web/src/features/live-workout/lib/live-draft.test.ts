@@ -33,7 +33,14 @@ import {
 	setCardioMinutes,
 	setSetDone,
 } from './live-draft-edit'
-import { applyProgressHint, getCurrentSet, getElapsedMinutes, getNextSet } from './live-set-helpers'
+import {
+	applyProgressHint,
+	findNextTodoAfter,
+	getCurrentSet,
+	getElapsedMinutes,
+	getFocusRef,
+	getNextSet,
+} from './live-set-helpers'
 
 const KEY_1 = '0199b3a4-0000-7000-8000-0000000000d1'
 const KEY_2 = '0199b3a4-0000-7000-8000-0000000000d2'
@@ -529,6 +536,102 @@ describe('current and next set', () => {
 
 		expect(getCurrentSet(draftOf(last))).toEqual({ exerciseIndex: 0, setIndex: 0 })
 		expect(getNextSet(draftOf(last))).toBeNull()
+	})
+})
+
+describe('getFocusRef and findNextTodoAfter', () => {
+	const doneEx = (key: string): LiveDraftExercise =>
+		exercise({ rowKey: key, clientKey: key, sets: [set({ doneAt: DONE_AT })] })
+	const todoEx = (key: string): LiveDraftExercise =>
+		exercise({ rowKey: key, clientKey: key, sets: [set({ doneAt: DONE_AT }), set()] })
+	const chatEx = (key: string): LiveDraftExercise =>
+		exercise({ rowKey: key, clientKey: null, readOnly: true, sets: [set()] })
+	const cardioEx = (durationMin: number | null): LiveDraftExercise =>
+		exercise({ kind: 'CARDIO', sets: [], durationMin })
+
+	describe('getFocusRef', () => {
+		it('is an unstarted cardio when it comes first', () => {
+			expect(getFocusRef(draftOf(cardioEx(null), todoEx('a')))).toEqual({
+				exerciseIndex: 0,
+				setIndex: 0,
+			})
+		})
+
+		it('skips a cardio with minutes and takes the next exercise to do', () => {
+			expect(getFocusRef(draftOf(cardioEx(20), todoEx('a')))).toEqual({
+				exerciseIndex: 1,
+				setIndex: 1,
+			})
+		})
+
+		it('is null when everything is done, only chat exercises are left or there is nothing', () => {
+			expect(getFocusRef(draftOf(cardioEx(20), doneEx('a')))).toBeNull()
+			expect(getFocusRef(draftOf(chatEx('c')))).toBeNull()
+			expect(getFocusRef(draftOf())).toBeNull()
+		})
+	})
+
+	describe('findNextTodoAfter', () => {
+		it('goes forward to the next exercise to do, at its first set to do', () => {
+			expect(findNextTodoAfter(draftOf(todoEx('a'), todoEx('b'), todoEx('c')), 0)).toEqual({
+				exerciseIndex: 1,
+				setIndex: 1,
+			})
+		})
+
+		it('wraps to the start when nothing is left ahead', () => {
+			const draft = draftOf(todoEx('a'), doneEx('b'), todoEx('c'))
+
+			expect(findNextTodoAfter(draft, 2)).toEqual({ exerciseIndex: 0, setIndex: 1 })
+		})
+
+		it('prefers one ahead over a skipped earlier one', () => {
+			const draft = draftOf(todoEx('a'), doneEx('b'), todoEx('c'))
+
+			expect(findNextTodoAfter(draft, 1)).toEqual({ exerciseIndex: 2, setIndex: 1 })
+		})
+
+		it('is never the current exercise, even when it is the only one left to do', () => {
+			expect(findNextTodoAfter(draftOf(doneEx('a'), todoEx('b'), doneEx('c')), 1)).toBeNull()
+		})
+
+		it('skips done exercises', () => {
+			expect(findNextTodoAfter(draftOf(todoEx('a'), doneEx('b'), todoEx('c')), 0)).toEqual({
+				exerciseIndex: 2,
+				setIndex: 1,
+			})
+		})
+
+		it('skips a chat exercise ahead and during the wrap', () => {
+			const draft = draftOf(chatEx('c1'), todoEx('a'), chatEx('c2'), doneEx('b'))
+
+			expect(findNextTodoAfter(draft, 1)).toBeNull()
+			expect(
+				findNextTodoAfter(draftOf(chatEx('c1'), todoEx('a'), chatEx('c2'), todoEx('b')), 3),
+			).toEqual({
+				exerciseIndex: 1,
+				setIndex: 1,
+			})
+		})
+
+		it('takes the first exercise for -1', () => {
+			expect(findNextTodoAfter(draftOf(todoEx('a'), todoEx('b')), -1)).toEqual({
+				exerciseIndex: 0,
+				setIndex: 1,
+			})
+		})
+
+		it('is null for a single exercise and for an empty draft', () => {
+			expect(findNextTodoAfter(draftOf(todoEx('a')), 0)).toBeNull()
+			expect(findNextTodoAfter(draftOf(), 0)).toBeNull()
+		})
+
+		it('counts an unstarted cardio as a todo, with the set index 0', () => {
+			expect(findNextTodoAfter(draftOf(todoEx('a'), cardioEx(null)), 0)).toEqual({
+				exerciseIndex: 1,
+				setIndex: 0,
+			})
+		})
 	})
 })
 

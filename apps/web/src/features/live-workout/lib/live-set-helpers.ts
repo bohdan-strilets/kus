@@ -20,7 +20,10 @@ const getPendingSetRefs = (draft: LiveDraft): LiveSetRef[] =>
 			: [],
 	)
 
-/** The first set not done yet; null when everything is done (or there is no set). */
+/**
+ * The first strength set not done yet; null when everything is done (or there is no set). Strength
+ * only on purpose: the rest timer counts the sets still ahead, and an unstarted cardio is not one.
+ */
 export const getCurrentSet = (draft: LiveDraft): LiveSetRef | null =>
 	getPendingSetRefs(draft)[0] ?? null
 
@@ -72,23 +75,43 @@ export const shiftRefAfterExerciseRemoval = (
 		: selected
 }
 
+const hasTodo = (exercise: LiveDraftExercise): boolean =>
+	!exercise.readOnly &&
+	(exercise.kind === 'CARDIO'
+		? exercise.durationMin === null
+		: exercise.sets.some((set) => set.doneAt === null))
+
+const toTodoRef = (exercise: LiveDraftExercise, exerciseIndex: number): LiveSetRef => ({
+	exerciseIndex,
+	setIndex: Math.max(
+		0,
+		exercise.sets.findIndex((set) => set.doneAt === null),
+	),
+})
+
 /** The first exercise from `fromIndex` on that the person still has to do (a set or cardio minutes); its first set to do. */
 export const findNextTodoRef = (draft: LiveDraft, fromIndex: number): LiveSetRef | null => {
 	const exerciseIndex = draft.exercises.findIndex(
-		(exercise, index) =>
-			index >= fromIndex &&
-			!exercise.readOnly &&
-			(exercise.kind === 'CARDIO'
-				? exercise.durationMin === null
-				: exercise.sets.some((set) => set.doneAt === null)),
+		(exercise, index) => index >= fromIndex && hasTodo(exercise),
 	)
 	const exercise = draft.exercises[exerciseIndex]
-	if (!exercise) return null
-	return {
-		exerciseIndex,
-		setIndex: Math.max(
-			0,
-			exercise.sets.findIndex((set) => set.doneAt === null),
-		),
+	return exercise ? toTodoRef(exercise, exerciseIndex) : null
+}
+
+/** What is in hand when nothing was picked: the first thing still to do, a planned cardio included. */
+export const getFocusRef = (draft: LiveDraft): LiveSetRef | null => findNextTodoRef(draft, 0)
+
+/**
+ * The next exercise to do after `exerciseIndex`: forward first, then from the start. Never the
+ * exercise itself; done and chat exercises are skipped.
+ */
+export const findNextTodoAfter = (draft: LiveDraft, exerciseIndex: number): LiveSetRef | null => {
+	const count = draft.exercises.length
+	for (let step = 1; step <= count; step += 1) {
+		const index = (exerciseIndex + step + count) % count
+		if (index === exerciseIndex) continue
+		const exercise = draft.exercises[index]
+		if (exercise && hasTodo(exercise)) return toTodoRef(exercise, index)
 	}
+	return null
 }

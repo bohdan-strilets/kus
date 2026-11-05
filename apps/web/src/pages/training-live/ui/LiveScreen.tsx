@@ -12,6 +12,7 @@ import { ExercisePickerSheet, formatWorkoutMinutes } from '@/entities/workout'
 import {
 	ClosedByChatCard,
 	countDoneSets,
+	findNextTodoAfter,
 	ExitWorkoutDialog,
 	getElapsedMinutes,
 	isExerciseDone,
@@ -59,7 +60,7 @@ export const LiveScreen = ({ live, onFinished, isClosed }: LiveScreenProps) => {
 	const [isPickerOpen, setIsPickerOpen] = useState(false)
 	// the rest sheet lies over the content: the content keeps this much room under it
 	const [restPanelHeight, setRestPanelHeight] = useState(0)
-	const restTimer = useRestTimer(draft)
+	const restTimer = useRestTimer(draft, current)
 	const wakeLock = useWakeLock(restTimer.state.status === 'running')
 	const doneSets = countDoneSets(draft)
 	const exercisesRef = useRef<HTMLDivElement>(null)
@@ -123,9 +124,7 @@ export const LiveScreen = ({ live, onFinished, isClosed }: LiveScreenProps) => {
 		)
 	}
 
-	const nextIndex = draft.exercises.findIndex(
-		(exercise, index) => index > focusIndex && !exercise.readOnly && !isExerciseDone(exercise),
-	)
+	const nextIndex = findNextTodoAfter(draft, focusIndex)?.exerciseIndex ?? -1
 	const segments = draft.exercises.map((exercise, index): LiveBarSegment => {
 		if (index === focusIndex) return 'current'
 		return isExerciseDone(exercise) ? 'done' : 'todo'

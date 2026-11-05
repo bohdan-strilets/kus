@@ -13,6 +13,7 @@ export type {
 } from './lib/live-draft.types'
 export {
 	applyProgressHint,
+	findNextTodoAfter,
 	getCurrentSet,
 	getElapsedMinutes,
 	getNextSet,

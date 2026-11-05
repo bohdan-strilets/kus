@@ -6,7 +6,7 @@ import { getLastDoneSet } from '../lib/get-last-done-set'
 import { getRestState, REST_EXTEND_SEC, type RestState } from '../lib/get-rest-state'
 import type { LiveDraft, LiveDraftExercise, LiveDraftSet } from '../lib/live-draft.types'
 import { getWorkingNumber } from '../lib/live-draft-edit'
-import { getCurrentSet } from '../lib/live-set-helpers'
+import { getCurrentSet, type LiveSetRef } from '../lib/live-set-helpers'
 
 const TICK_MS = 500
 /** The signal is for an end the person is looking at; an end met on coming back is silent. */
@@ -38,6 +38,13 @@ interface RestAdjust {
 	isSkipped: boolean
 }
 
+const isSetToDo = (draft: LiveDraft, ref: LiveSetRef | null): ref is LiveSetRef => {
+	if (ref === null) return false
+	const exercise = draft.exercises[ref.exerciseIndex]
+	if (exercise === undefined || exercise.readOnly || exercise.kind === 'CARDIO') return false
+	return exercise.sets[ref.setIndex]?.doneAt === null
+}
+
 const isVisible = (): boolean => document.visibilityState === 'visible'
 
 /**
@@ -45,9 +52,12 @@ const isVisible = (): boolean => document.visibilityState === 'visible'
  * reload and a locked phone. The tick only re-renders; «+15 с» and «Пропустити» are local and
  * die with the next ✓. The signal fires once, when the end comes while the screen is visible.
  */
-export const useRestTimer = (draft: LiveDraft): RestTimer => {
+export const useRestTimer = (draft: LiveDraft, selected: LiveSetRef | null = null): RestTimer => {
 	const last = getLastDoneSet(draft)
-	const nextRef = getCurrentSet(draft)
+	// only strength sets ahead start a rest: an unstarted cardio is not one
+	const firstTodoRef = getCurrentSet(draft)
+	// «Далі» names the set in hand when it is still to do, otherwise the first one ahead
+	const nextRef = isSetToDo(draft, selected) ? selected : firstTodoRef
 	const [adjust, setAdjust] = useState<RestAdjust | null>(null)
 	const [nowMs, setNowMs] = useState(() => Date.now())
 
@@ -57,7 +67,7 @@ export const useRestTimer = (draft: LiveDraft): RestTimer => {
 		restSec: last?.restSec ?? 0,
 		extraSec: ownAdjust?.extraSec ?? 0,
 		isSkipped: ownAdjust?.isSkipped ?? false,
-		hasNextSet: nextRef !== null && last?.isFollowedByCardio !== true,
+		hasNextSet: firstTodoRef !== null && last?.isFollowedByCardio !== true,
 		nowMs,
 	})
 

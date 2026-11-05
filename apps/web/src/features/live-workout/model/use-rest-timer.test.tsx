@@ -331,3 +331,35 @@ describe('useRestTimer: warm-up and cardio', () => {
 		expect(result.current.state.status).toBe('running')
 	})
 })
+
+describe('useRestTimer: the set in hand and cardio', () => {
+	const cardio = (): LiveDraftExercise => ({
+		...exercise('run', []),
+		kind: 'CARDIO',
+		muscleGroup: null,
+	})
+	const twoExercises = (): LiveDraft =>
+		draft([exercise('bench', [set(iso(0)), set(null)]), exercise('legs', [set(null)])])
+
+	it('«Далі» is the set in hand when it is still to do', () => {
+		const value = twoExercises()
+		const { result } = renderHook(() => useRestTimer(value, { exerciseIndex: 1, setIndex: 0 }))
+
+		expect(result.current.next?.exercise.name).toBe('legs')
+	})
+
+	it('a hand on a done set falls back to the first set ahead', () => {
+		const value = twoExercises()
+		const { result } = renderHook(() => useRestTimer(value, { exerciseIndex: 0, setIndex: 0 }))
+
+		expect(result.current.next?.exercise.name).toBe('bench')
+	})
+
+	it('no rest starts when only an unstarted cardio is left', () => {
+		const value = draft([exercise('bench', [set(iso(0))]), cardio()])
+		const { result } = renderHook(() => useRestTimer(value, { exerciseIndex: 1, setIndex: 0 }))
+
+		expect(result.current.state.status).toBe('idle')
+		expect(result.current.next).toBeNull()
+	})
+})

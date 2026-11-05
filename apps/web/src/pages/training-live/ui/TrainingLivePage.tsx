@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { Navigate, useNavigate } from 'react-router'
 
 import { useLiveWorkout } from '@/entities/workout'
-import { useLastSeenLive } from '@/features/live-workout'
+import { useLastSeenLive, useLiveOwnerId } from '@/features/live-workout'
 import { ROUTES } from '@/shared/config'
 import { useDelayedFlag } from '@/shared/lib'
 import { InlineError, Loader } from '@/shared/ui'
@@ -20,7 +20,7 @@ const LOADER_SIZE = 96
  * under it — the chat closed it, and the screen says so — and the summary replaces it after
  * «Завершити», because the finished session is no longer «open».
  */
-export const TrainingLivePage = () => {
+const LivePageBody = () => {
 	const { t } = useTranslation()
 	const navigate = useNavigate()
 	const query = useLiveWorkout()
@@ -69,4 +69,14 @@ export const TrainingLivePage = () => {
 			{isLoaderShown && <Loader size={LOADER_SIZE} ariaLabel={t('common.loading')} />}
 		</div>
 	)
+}
+
+/**
+ * The screen's own copies (`shown`, `finished`) belong to whoever was signed in when they were taken.
+ * The store drops `lastSeen` and changes `ownerId` in one step, so keying on the owner starts the
+ * body over with both already settled: it can neither show nor sync another account's session.
+ */
+export const TrainingLivePage = () => {
+	const ownerId = useLiveOwnerId()
+	return <LivePageBody key={ownerId ?? 'nobody'} />
 }

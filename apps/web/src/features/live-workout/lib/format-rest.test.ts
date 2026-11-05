@@ -9,6 +9,7 @@ const t = i18n.t.bind(i18n)
 
 const set = (overrides: Partial<LiveDraftSet> = {}): LiveDraftSet => ({
 	rowKey: 'set-key',
+	isEdited: false,
 	reps: 12,
 	weightKg: 52.5,
 	durationSec: null,

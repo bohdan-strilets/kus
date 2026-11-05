@@ -10,6 +10,7 @@ const T3 = '2026-11-04T10:10:00.000Z'
 
 const set = (doneAt: string | null): LiveDraftSet => ({
 	rowKey: 'set-key',
+	isEdited: false,
 	reps: 8,
 	weightKg: 50,
 	durationSec: null,

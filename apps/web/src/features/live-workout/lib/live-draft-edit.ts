@@ -202,7 +202,7 @@ export const carryDoneSetForward = (
 		(set, position) => position > setIndex && !set.isWarmup && set.doneAt === null,
 	)
 	const target = exercise.sets[targetIndex]
-	if (!target || target.isEdited === true) return draft
+	if (!target || target.isEdited) return draft
 	const weightKg = isBodyweightExercise(exercise) ? null : source.weightKg
 	return mapExercise(draft, exerciseIndex, (current) => ({
 		...current,

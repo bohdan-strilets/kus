@@ -8,8 +8,8 @@ export interface LiveDraftSet {
 	durationSec: number | null
 	distanceM: number | null
 	isWarmup: boolean
-	/** Local only (never in the PUT; missing = false): the person changed weight or reps by hand, so a done set must not carry its values over this one. */
-	isEdited?: boolean
+	/** Local only (never in the PUT): the person changed weight or reps by hand, so a done set must not carry its values over this one. */
+	isEdited: boolean
 	/** ISO: set when the person marks the set done; null = still to do. */
 	doneAt: string | null
 }

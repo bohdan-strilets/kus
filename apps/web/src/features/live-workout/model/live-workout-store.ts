@@ -158,3 +158,6 @@ export const useUnsentSnapshot = (workoutId: string | null): UnsentSnapshot | nu
 /** The last open session the server showed this device, or null; for an offline cold start. */
 export const useLastSeenLive = (): LiveWorkoutResponse | null =>
 	useLiveWorkoutStore((state) => state.lastSeen)
+
+/** The user the stored session and snapshots belong to: it changes in the same step that drops them. */
+export const useLiveOwnerId = (): string | null => useLiveWorkoutStore((state) => state.ownerId)

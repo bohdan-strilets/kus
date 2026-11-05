@@ -20,7 +20,12 @@ export {
 	type LiveSetRef,
 } from './lib/live-set-helpers'
 export type { LiveSyncState, LiveSyncStatus } from './model/create-live-sync'
-export { useLastSeenLive, useLiveWorkoutStore, useUnsentSnapshot } from './model/live-workout-store'
+export {
+	useLastSeenLive,
+	useLiveOwnerId,
+	useLiveWorkoutStore,
+	useUnsentSnapshot,
+} from './model/live-workout-store'
 export { notifySetDone, onSetDone, type SetDoneEvent } from './model/set-done-registry'
 export { useLiveSync, type UseLiveSync } from './model/use-live-sync'
 export { useLiveSession, type LiveSession } from './model/use-live-session'

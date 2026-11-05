@@ -26,6 +26,7 @@ const DONE_AT = '2026-11-02T09:20:00.000Z'
 
 const set = (overrides: Partial<LiveDraftSet> = {}): LiveDraftSet => ({
 	rowKey: 'row-a',
+	isEdited: false,
 	reps: 8,
 	weightKg: 50,
 	durationSec: 30,

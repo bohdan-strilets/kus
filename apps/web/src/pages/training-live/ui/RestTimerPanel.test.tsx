@@ -25,6 +25,7 @@ const next = (overrides: Partial<RestNext> = {}): RestNext => ({
 	},
 	set: {
 		rowKey: 'set-key',
+		isEdited: false,
 		reps: 8,
 		weightKg: 52.5,
 		durationSec: null,
@@ -141,6 +142,7 @@ describe('RestTimerPanel', () => {
 describe('RestTimerPanel: warm-up and other set shapes', () => {
 	const warmupSet = {
 		rowKey: 'set-key',
+		isEdited: false,
 		reps: 10,
 		weightKg: 40,
 		durationSec: null,

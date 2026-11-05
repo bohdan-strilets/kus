@@ -20,6 +20,7 @@ const iso = (offsetMs: number): string => new Date(T0 + offsetMs).toISOString()
 
 const set = (doneAt: string | null): LiveDraftSet => ({
 	rowKey: 'set-key',
+	isEdited: false,
 	reps: 8,
 	weightKg: 50,
 	durationSec: null,

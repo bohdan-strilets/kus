@@ -33,7 +33,7 @@ export type WorkoutStatsTopSet = z.infer<typeof workoutStatsTopSetSchema>
 export const workoutStatsBucketSchema = z.object({
 	from: z.iso.date(),
 	to: z.iso.date(),
-	/** A day of the current week that has not come yet: drawn without a bar. */
+	/** Only the days of the «week» period after today are true: drawn without a bar. A week bucket counts in full, so it is always false. */
 	isFuture: z.boolean().default(false),
 	workoutCount: z.number(),
 	setCount: z.number(),

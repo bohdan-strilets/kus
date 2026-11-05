@@ -1,11 +1,5 @@
 export { type ApiMessage, translateApiMessage } from './api-message'
-export {
-	type ApiError,
-	getApiError,
-	HTTP_STATUS,
-	isUnauthorizedError,
-	isUnreachableError,
-} from './api-error'
+export { type ApiError, getApiError, HTTP_STATUS, isUnauthorizedError } from './api-error'
 export {
 	attachRefreshInterceptor,
 	type RefreshInterceptorOptions,

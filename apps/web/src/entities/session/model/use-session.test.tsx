@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { QueryClient } from '@tanstack/react-query'
-import { waitFor } from '@testing-library/react'
+import { onlineManager, QueryClient } from '@tanstack/react-query'
+import { act, waitFor } from '@testing-library/react'
 import { AxiosError, AxiosHeaders } from 'axios'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
@@ -29,7 +29,47 @@ const renderSession = () =>
 	renderHookWithProviders(() => useSession(), { queryClient: new QueryClient() })
 
 afterEach(() => {
+	onlineManager.setOnline(true)
 	vi.clearAllMocks()
+})
+
+describe('useSession: paused without a connection', () => {
+	it('is an error with isNetworkError, not an endless pending, and goes on when the network is back', async () => {
+		onlineManager.setOnline(false)
+		getMock.mockResolvedValue({
+			data: {
+				data: {
+					id: '0199a000-0000-7000-8000-000000000001',
+					email: 'me@kus.app',
+					name: 'Me',
+					addressAs: null,
+					addressForm: 'NEUTRAL',
+					locale: 'uk',
+					timezone: 'Europe/Warsaw',
+					createdAt: '2026-10-01T00:00:00.000Z',
+					pendingDeletion: false,
+					purgeAt: null,
+				},
+			},
+		})
+
+		const { result } = renderSession()
+
+		await waitFor(() => {
+			expect(result.current.status).toBe('error')
+		})
+		expect(result.current.isNetworkError).toBe(true)
+		expect(getMock).not.toHaveBeenCalled()
+
+		act(() => {
+			onlineManager.setOnline(true)
+		})
+
+		await waitFor(() => {
+			expect(result.current.status).toBe('authenticated')
+		})
+		expect(result.current.isNetworkError).toBe(false)
+	})
 })
 
 describe('useSession: isNetworkError', () => {

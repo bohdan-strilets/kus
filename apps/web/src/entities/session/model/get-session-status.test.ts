@@ -21,6 +21,12 @@ describe('getSessionStatus', () => {
 		expect(getSessionStatus({ data: undefined, isPending: true, isError: false })).toBe('pending')
 	})
 
+	it('is error, not pending, when the first check is paused without a connection', () => {
+		expect(
+			getSessionStatus({ data: undefined, isPending: true, isError: false, isPaused: true }),
+		).toBe('error')
+	})
+
 	it('is authenticated with a user, even if a refetch failed later', () => {
 		expect(getSessionStatus({ data: user, isPending: false, isError: true })).toBe('authenticated')
 	})

@@ -5,7 +5,6 @@ import { Navigate, useNavigate } from 'react-router'
 
 import { useLiveWorkout } from '@/entities/workout'
 import { useLastSeenLive } from '@/features/live-workout'
-import { isUnreachableError } from '@/shared/api'
 import { ROUTES } from '@/shared/config'
 import { useDelayedFlag } from '@/shared/lib'
 import { InlineError, Loader } from '@/shared/ui'
@@ -30,13 +29,10 @@ export const TrainingLivePage = () => {
 	const [shown, setShown] = useState<LiveWorkoutResponse | null>(null)
 	const [finished, setFinished] = useState<WorkoutFinished | null>(null)
 	if (query.data && query.data !== shown) setShown(query.data)
-	// No answer yet (offline cold start: the read never reached the server or waits for the network):
-	// the last one the server gave stands in, and then it is the screen's own like any read one, so a
-	// close from the chat later still says so. An answer of the server, even a 5xx, is not «offline».
-	const isServerUnreached =
-		(query.isError && isUnreachableError(query.error)) || query.fetchStatus === 'paused'
-	const hasNoAnswer = query.data === undefined && isServerUnreached
-	if (hasNoAnswer && shown === null && lastSeen) setShown(lastSeen)
+	// No answer yet (the read is on its way, waits for the network, never reached the server or got a
+	// 5xx): the last one the server gave stands in at once, and then it is the screen's own like any
+	// read one, so a close from the chat later still says so. A fresh answer replaces it.
+	if (query.data === undefined && shown === null && lastSeen) setShown(lastSeen)
 
 	if (finished) {
 		return (

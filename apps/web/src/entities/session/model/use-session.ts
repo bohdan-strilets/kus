@@ -14,9 +14,16 @@ export interface Session {
 
 export const useSession = (): Session => {
 	const query = useQuery(sessionQueryOptions)
+	const isPausedWithoutUser = query.data === undefined && query.isPaused
 	return {
-		status: getSessionStatus(query),
-		isNetworkError: query.isError && getApiError(query.error).kind === 'network',
+		status: getSessionStatus({
+			data: query.data,
+			isPending: query.isPending,
+			isError: query.isError,
+			isPaused: isPausedWithoutUser,
+		}),
+		isNetworkError:
+			isPausedWithoutUser || (query.isError && getApiError(query.error).kind === 'network'),
 		retry: () => {
 			void query.refetch()
 		},

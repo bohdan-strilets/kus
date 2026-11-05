@@ -138,6 +138,40 @@ describe('getReturnPath', () => {
 	})
 })
 
+describe('getRouteGuardDecision — pending check with a kept live workout', () => {
+	const pending = { ...base, guard: 'protected', status: 'pending', hasOfflineLive: true } as const
+
+	it('renders the live route at once, ignoring query and hash', () => {
+		expect(getRouteGuardDecision({ ...pending, path: '/app/training/live' })).toEqual({
+			action: 'render',
+		})
+		expect(getRouteGuardDecision({ ...pending, path: '/app/training/live?x=1#top' })).toEqual({
+			action: 'render',
+		})
+	})
+
+	it('keeps the loader on any other route', () => {
+		expect(getRouteGuardDecision({ ...pending, path: '/app/today' })).toEqual({
+			action: 'loading',
+		})
+		expect(getRouteGuardDecision({ ...pending, path: '/app/training/live-other' })).toEqual({
+			action: 'loading',
+		})
+	})
+
+	it('keeps the loader without a kept session (or when it belongs to another owner)', () => {
+		expect(
+			getRouteGuardDecision({ ...pending, hasOfflineLive: false, path: '/app/training/live' }),
+		).toEqual({ action: 'loading' })
+	})
+
+	it('keeps the loader on a guest route', () => {
+		expect(
+			getRouteGuardDecision({ ...pending, guard: 'guest', path: '/app/training/live' }),
+		).toEqual({ action: 'loading' })
+	})
+})
+
 describe('getRouteGuardDecision — offline live workout', () => {
 	const offline = {
 		...base,
@@ -190,7 +224,12 @@ describe('getRouteGuardDecision — offline live workout', () => {
 			getRouteGuardDecision({ ...offline, status: 'anonymous', path: '/app/training/live' }),
 		).toMatchObject({ action: 'redirect', to: '/login' })
 		expect(
-			getRouteGuardDecision({ ...offline, status: 'pending', path: '/app/training/live' }),
+			getRouteGuardDecision({
+				...offline,
+				status: 'pending',
+				hasOfflineLive: false,
+				path: '/app/training/live',
+			}),
 		).toEqual({ action: 'loading' })
 	})
 })

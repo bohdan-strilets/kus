@@ -23,7 +23,10 @@ interface GuardInput {
 	 * API's error format (a proxy in front) counts too: the API is unreachable, which is offline for us.
 	 */
 	isNetworkError?: boolean
-	/** The device holds the last live session of its last known user (`lastSeen` in the live store). */
+	/**
+	 * The device holds the last live session of its last known user (`lastSeen` in the live store).
+	 * Lets the live screen render while the session check is still pending or has failed offline.
+	 */
 	hasOfflineLive?: boolean
 	/** pathname + search + hash of the current location. */
 	path: string
@@ -74,7 +77,12 @@ export const getRouteGuardDecision = ({
 	isPendingDeletion,
 }: GuardInput): GuardDecision => {
 	// nothing renders until the session is known: no flash of the login form or of the app
-	if (status === 'pending') return { action: 'loading' }
+	if (status === 'pending') {
+		// a lie-fi start: the check may hang for a minute, the live session of the last user needn't wait
+		const canShowLive =
+			guard === 'protected' && hasOfflineLive && getPathname(path) === TRAINING_LIVE_ROUTE
+		return canShowLive ? { action: 'render' } : { action: 'loading' }
+	}
 
 	if (guard === 'protected') {
 		if (status === 'authenticated') return getAuthenticatedDecision(path, isPendingDeletion)

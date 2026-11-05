@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import type { AuthUser } from '@kus/shared'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { onlineManager, QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { AxiosError, AxiosHeaders } from 'axios'
 import { I18nextProvider } from 'react-i18next'
@@ -63,6 +63,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+	onlineManager.setOnline(true)
 	cleanup()
 	vi.clearAllMocks()
 })
@@ -115,6 +116,32 @@ describe('SessionGuard: offline with a kept live workout', () => {
 		renderGuard(TRAINING_LIVE_ROUTE)
 
 		expect(await screen.findByText('LIVE SCREEN', {}, { timeout: RETRY_WAIT_MS })).toBeTruthy()
+	})
+
+	it('renders the live route from lastSeen while the check is paused (offline), no endless loader', async () => {
+		onlineManager.setOnline(false)
+		useLiveWorkoutStore.setState({ ownerId: OWNER, lastSeen: makeLiveResponse() })
+		renderGuard(TRAINING_LIVE_ROUTE)
+
+		expect(await screen.findByText('LIVE SCREEN')).toBeTruthy()
+		expect(getMock).not.toHaveBeenCalled()
+	})
+
+	it('offers «retry» and the way into the session on another route while the check is paused', async () => {
+		onlineManager.setOnline(false)
+		useLiveWorkoutStore.setState({ ownerId: OWNER, lastSeen: makeLiveResponse() })
+		renderGuard('/app/today')
+
+		expect(await screen.findByRole('button', { name: RESUME })).toBeTruthy()
+		expect(screen.getByRole('button', { name: RETRY })).toBeTruthy()
+	})
+
+	it('renders the live route while the check hangs online (pending, no answer yet)', async () => {
+		getMock.mockReturnValue(new Promise(() => undefined))
+		useLiveWorkoutStore.setState({ ownerId: OWNER, lastSeen: makeLiveResponse() })
+		renderGuard(TRAINING_LIVE_ROUTE)
+
+		expect(await screen.findByText('LIVE SCREEN')).toBeTruthy()
 	})
 
 	it('has no resume button without a kept session, and the live route stays on «retry»', async () => {

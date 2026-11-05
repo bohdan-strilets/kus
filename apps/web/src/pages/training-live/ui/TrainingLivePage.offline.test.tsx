@@ -11,6 +11,7 @@ import { useLiveWorkoutStore } from '@/features/live-workout'
 import { httpClient } from '@/shared/api'
 import { ROUTES, TRAINING_LIVE_ROUTE } from '@/shared/config'
 import {
+	makeExercise,
 	makeLiveResponse,
 	makePlanExercise,
 	makeWorkout,
@@ -27,6 +28,8 @@ const deleteMock = vi.spyOn(httpClient, 'delete')
 const OWNER = '0199b3a4-0000-7000-8000-00000000000a'
 const WORKOUT_ID = '0199b3a4-0000-7000-8000-0000000000f1'
 const MESSAGE_ID = '0199b3a4-0000-7000-8000-0000000000aa'
+const OTHER_WORKOUT_ID = '0199b3a4-0000-7000-8000-0000000000f2'
+const CHAT_EXERCISE_ID = '0199b3a4-0000-7000-8000-0000000000e9'
 
 const reply = (data: unknown): AxiosResponse => ({
 	data: { data },
@@ -98,7 +101,7 @@ describe('TrainingLivePage: offline start from lastSeen', () => {
 		expect(screen.queryByText('Жим лежачи')).toBeNull()
 	})
 
-	it('an online 5xx answer does not put lastSeen on the screen: it stays the error with «retry»', async () => {
+	it('a 5xx answer keeps lastSeen on the screen, not the error with «retry»', async () => {
 		keepLastSeen(seen('Верх А'))
 		const config = { headers: new AxiosHeaders() }
 		getMock.mockRejectedValue(
@@ -112,21 +115,52 @@ describe('TrainingLivePage: offline start from lastSeen', () => {
 		)
 		renderPage()
 
-		expect(await screen.findByText('Не вдалося завантажити тренування.')).toBeTruthy()
-		expect(screen.queryByText('Жим лежачи')).toBeNull()
+		expect(await screen.findByText('Жим лежачи')).toBeTruthy()
+		await waitFor(() => {
+			expect(getMock).toHaveBeenCalled()
+		})
+		expect(screen.queryByText('Не вдалося завантажити тренування.')).toBeNull()
+		expect(screen.getByText('Жим лежачи')).toBeTruthy()
 	})
 
-	it('an online load in progress does not put lastSeen on the screen', async () => {
+	it('a read that does not answer shows lastSeen at once, with no loader', async () => {
 		keepLastSeen(seen('Верх А'))
 		getMock.mockReturnValue(new Promise(() => undefined))
 		renderPage()
 
+		expect(await screen.findByText('Жим лежачи')).toBeTruthy()
+		expect(screen.getByText('Верх А')).toBeTruthy()
+		expect(screen.queryByLabelText('Завантаження')).toBeNull()
+	})
+
+	it('a newer answer replaces lastSeen and the toast says the chat changed the session', async () => {
+		keepLastSeen(seen('Верх А'))
+		let answer: (value: AxiosResponse) => void = () => undefined
+		getMock.mockReturnValue(
+			new Promise<AxiosResponse>((resolve) => {
+				answer = resolve
+			}),
+		)
+		renderPage()
+		await screen.findByText('Жим лежачи')
+
+		const base = seen('Верх А')
 		await act(async () => {
+			answer(
+				reply({
+					...base,
+					editedAt: '2026-11-05T12:00:00.000Z',
+					workout: {
+						...base.workout,
+						exercises: [makeExercise({ id: CHAT_EXERCISE_ID, name: 'Присід', clientKey: null })],
+					},
+				}),
+			)
 			await Promise.resolve()
 		})
 
-		expect(screen.queryByText('Жим лежачи')).toBeNull()
-		expect(screen.queryByText('Верх А')).toBeNull()
+		expect(await screen.findByText('Присід')).toBeTruthy()
+		expect(await screen.findByText('Тренування змінилось у чаті — оновив.')).toBeTruthy()
 	})
 
 	it('an online answer wins over lastSeen', async () => {
@@ -135,6 +169,8 @@ describe('TrainingLivePage: offline start from lastSeen', () => {
 			reply(
 				makeLiveResponse({
 					templateName: 'Низ Б',
+					// another session: the screen starts over with it
+					workout: makeWorkout({ id: OTHER_WORKOUT_ID, source: 'LIVE', exercises: [] }),
 					plan: [makePlanExercise({ name: 'Присідання' })],
 				}),
 			),
@@ -145,13 +181,20 @@ describe('TrainingLivePage: offline start from lastSeen', () => {
 		expect(screen.queryByText('Жим лежачи')).toBeNull()
 	})
 
-	it('an online «no open session» (null) leaves for the tab, lastSeen is not shown', async () => {
+	it('an answer «no open session» (null) after lastSeen was shown says the chat closed it', async () => {
 		keepLastSeen(seen('Верх А'))
 		getMock.mockResolvedValue(reply(null))
 		renderPage()
 
-		expect(await screen.findByText('TRAINING TAB')).toBeTruthy()
+		expect(await screen.findByText('Це тренування вже закрите в чаті.')).toBeTruthy()
 		expect(screen.queryByText('Жим лежачи')).toBeNull()
+	})
+
+	it('without lastSeen an answer null leaves for the tab', async () => {
+		getMock.mockResolvedValue(reply(null))
+		renderPage()
+
+		expect(await screen.findByText('TRAINING TAB')).toBeTruthy()
 	})
 
 	it('the session closed in the chat after an offline start shows the closed card and drops lastSeen', async () => {

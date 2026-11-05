@@ -1,7 +1,10 @@
 import { cva } from 'class-variance-authority'
 
-/** The clipping frame of the row: the action lives behind it and shows as the row moves away. */
-export const swipeFrameVariants = cva('relative touch-pan-y overflow-hidden', {
+/**
+ * The clipping frame of the row: the action lives behind it and shows as the row moves away.
+ * `shrink-0`: overflow-hidden zeroes the min-height, so in a flex column the row would be squeezed.
+ */
+export const swipeFrameVariants = cva('relative shrink-0 touch-pan-y overflow-hidden', {
 	variants: {
 		radius: { tile: 'rounded-tile', chip: 'rounded-chip' },
 	},

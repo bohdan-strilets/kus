@@ -130,6 +130,89 @@ describe('FillScreen: the plan', () => {
 	})
 })
 
+describe('FillScreen: layout', () => {
+	it('the swipe rows are not direct children of the scroll column, so they are never squeezed', () => {
+		renderScreen()
+
+		const row = rowButton('Жим лежачи').closest('[data-swipe-row]')
+		const list = row?.parentElement
+
+		expect(row).toBeTruthy()
+		expect(list?.className).not.toContain('overflow-y-auto')
+		expect(list?.parentElement?.className).toContain('overflow-y-auto')
+		expect(list?.parentElement?.classList.contains('flex')).toBe(false)
+	})
+})
+
+describe('FillScreen: focus after deleting an exercise', () => {
+	const getMock = vi.spyOn(httpClient, 'get')
+
+	const addExercise = async (name: string): Promise<void> => {
+		fireEvent.click(screen.getByRole('button', { name: 'Вправа' }))
+		fireEvent.change(await screen.findByRole('textbox', { name: 'Пошук вправи' }), {
+			target: { value: name },
+		})
+		fireEvent.click(await screen.findByRole('button', { name: `Нова вправа «${name}»` }))
+		await screen.findByRole('button', { name: new RegExp(`^${name}`) })
+	}
+
+	const deleteExercise = (name: string): void => {
+		fireEvent.click(rowButton(name))
+		fireEvent.click(
+			screen.getAllByRole('button', { name: `Видалити вправу «${name}»` })[0] as HTMLElement,
+		)
+	}
+
+	const renderWithAdded = async (names: string[]): Promise<void> => {
+		getMock.mockResolvedValue(reply([]))
+		renderScreen()
+		for (const name of names) await addExercise(name)
+	}
+
+	it('deleting a middle exercise focuses the one that took its place (the row count comes from the wrapper)', async () => {
+		await renderWithAdded(['Альфа', 'Браво', 'Чарлі'])
+
+		deleteExercise('Браво')
+
+		await waitFor(() => {
+			expect(screen.queryByRole('button', { name: /^Браво/ })).toBeNull()
+		})
+		await waitFor(() => {
+			expect(document.activeElement).toBe(rowButton('Чарлі'))
+		})
+	})
+
+	it('deleting the last exercise focuses the previous one', async () => {
+		await renderWithAdded(['Альфа', 'Браво'])
+
+		deleteExercise('Браво')
+
+		await waitFor(() => {
+			expect(document.activeElement).toBe(rowButton('Альфа'))
+		})
+	})
+
+	it('deleting the first added exercise focuses the next added one, not the planned one above', async () => {
+		await renderWithAdded(['Альфа', 'Браво'])
+
+		deleteExercise('Альфа')
+
+		await waitFor(() => {
+			expect(document.activeElement).toBe(rowButton('Браво'))
+		})
+	})
+
+	it('deleting the only added exercise focuses the planned one above it', async () => {
+		await renderWithAdded(['Альфа'])
+
+		deleteExercise('Альфа')
+
+		await waitFor(() => {
+			expect(document.activeElement).toBe(rowButton('Жим лежачи'))
+		})
+	})
+})
+
 describe('FillScreen: deviations', () => {
 	it('a changed set turns «Як за планом» off and says what changed', () => {
 		renderScreen()

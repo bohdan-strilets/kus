@@ -98,69 +98,68 @@ export const FillScreen = ({ template, now }: FillScreenProps) => {
 				</div>
 			</header>
 			{/* layoutScroll: the sets glide inside a scrolling parent, Motion has to know its scroll */}
-			<motion.div
-				layoutScroll
-				ref={listRef}
-				className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-gutter pb-4"
-			>
-				<div className="grid grid-cols-2 gap-2">
-					<FillWhenCard form={form} today={now.localDate} onApply={applyWhen} />
-					<Controller
-						control={form.control}
-						name="durationMin"
-						render={({ field, fieldState }) => (
-							<FormField
-								label={t('training.form.duration')}
-								error={fieldState.error?.message}
-								attemptCount={form.formState.submitCount}
-								endSlot={
-									<Text as="span" variant="caption" tone="muted">
-										{t('training.live.unitMin')}
-									</Text>
-								}
-							>
-								{(controlProps) => (
-									<Input
-										{...controlProps}
-										inputMode="numeric"
-										autoComplete="off"
-										value={field.value === null ? '' : String(field.value)}
-										onChange={(event) => {
-											const digits = event.target.value.replace(/\D/g, '')
-											changeDuration(digits === '' ? null : Number(digits))
-										}}
-										onBlur={field.onBlur}
-									/>
-								)}
-							</FormField>
-						)}
-					/>
-				</div>
-				<SwipeGroup>
-					{exercises.fields.map((field, index) => (
-						<ExercisePlanRow
-							key={field.key}
-							exercise={field}
-							onChange={(next) => {
-								exercises.update(index, next)
-							}}
-							onRemove={(row) => {
-								if (listRef.current && row)
-									rememberFocus(countSwipeRowsBefore(listRef.current, row))
-								removeExercise(index)
-							}}
+			<motion.div layoutScroll className="min-h-0 flex-1 overflow-y-auto px-gutter pb-4">
+				{/* the scroll element is not a flex container: the cards keep their full height */}
+				<div ref={listRef} className="flex flex-col gap-2">
+					<div className="grid grid-cols-2 gap-2">
+						<FillWhenCard form={form} today={now.localDate} onApply={applyWhen} />
+						<Controller
+							control={form.control}
+							name="durationMin"
+							render={({ field, fieldState }) => (
+								<FormField
+									label={t('training.form.duration')}
+									error={fieldState.error?.message}
+									attemptCount={form.formState.submitCount}
+									endSlot={
+										<Text as="span" variant="caption" tone="muted">
+											{t('training.live.unitMin')}
+										</Text>
+									}
+								>
+									{(controlProps) => (
+										<Input
+											{...controlProps}
+											inputMode="numeric"
+											autoComplete="off"
+											value={field.value === null ? '' : String(field.value)}
+											onChange={(event) => {
+												const digits = event.target.value.replace(/\D/g, '')
+												changeDuration(digits === '' ? null : Number(digits))
+											}}
+											onBlur={field.onBlur}
+										/>
+									)}
+								</FormField>
+							)}
 						/>
-					))}
-				</SwipeGroup>
-				<DashedAction
-					ref={addExerciseRef}
-					isDisabled={exercises.fields.length >= MAX_EXERCISES_PER_WORKOUT}
-					onClick={() => {
-						setIsPickerOpen(true)
-					}}
-				>
-					{t('program.editor.addExercise')}
-				</DashedAction>
+					</div>
+					<SwipeGroup>
+						{exercises.fields.map((field, index) => (
+							<ExercisePlanRow
+								key={field.key}
+								exercise={field}
+								onChange={(next) => {
+									exercises.update(index, next)
+								}}
+								onRemove={(row) => {
+									if (listRef.current && row)
+										rememberFocus(countSwipeRowsBefore(listRef.current, row))
+									removeExercise(index)
+								}}
+							/>
+						))}
+					</SwipeGroup>
+					<DashedAction
+						ref={addExerciseRef}
+						isDisabled={exercises.fields.length >= MAX_EXERCISES_PER_WORKOUT}
+						onClick={() => {
+							setIsPickerOpen(true)
+						}}
+					>
+						{t('program.editor.addExercise')}
+					</DashedAction>
+				</div>
 			</motion.div>
 			<div className="flex flex-col gap-2 px-gutter pt-2 pb-4">
 				{exercisesError && (

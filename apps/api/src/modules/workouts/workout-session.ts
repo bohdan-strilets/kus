@@ -1,4 +1,9 @@
-import { isWorkoutOpen, type WorkoutCard, type WorkoutRecordType } from '@kus/shared'
+import {
+	isWorkoutOpen,
+	normalizeExerciseName,
+	type WorkoutCard,
+	type WorkoutRecordType,
+} from '@kus/shared'
 
 import type { WorkoutPlace } from '../../generated/prisma/enums'
 import { isLiveIdle } from './live-session'
@@ -157,3 +162,39 @@ export const getRecordKeys = (
 /** A record the session did not hold before the turn: the one the sound is for. */
 export const hasNewRecord = (before: ReadonlySet<string>, after: ReadonlySet<string>): boolean =>
 	[...after].some((key) => !before.has(key))
+
+/** A cardio told again with a «все» is the same one only within this window of the first telling. */
+export const CARDIO_REPEAT_WINDOW_MIN = 15
+const MS_IN_MIN = 60 * 1000
+
+interface CardioKey {
+	name: string
+	kind: string
+	durationMin: number | null
+	distanceM: number | null
+}
+
+/**
+ * Whether a cardio of a closing call is the one the session already has: the same normalized name,
+ * duration and distance (null equals null), added (performedAt) at most CARDIO_REPEAT_WINDOW_MIN ago.
+ */
+export const isRepeatedCardio = ({
+	candidate,
+	exercises,
+	now,
+}: {
+	candidate: CardioKey
+	exercises: readonly (CardioKey & { performedAt: Date })[]
+	now: Date
+}): boolean => {
+	if (candidate.kind !== 'CARDIO') return false
+	const name = normalizeExerciseName(candidate.name)
+	return exercises.some(
+		(entry) =>
+			entry.kind === 'CARDIO' &&
+			normalizeExerciseName(entry.name) === name &&
+			entry.durationMin === candidate.durationMin &&
+			entry.distanceM === candidate.distanceM &&
+			now.getTime() - entry.performedAt.getTime() <= CARDIO_REPEAT_WINDOW_MIN * MS_IN_MIN,
+	)
+}

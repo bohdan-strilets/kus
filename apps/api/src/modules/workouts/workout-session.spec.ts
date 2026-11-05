@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+	CARDIO_REPEAT_WINDOW_MIN,
 	FINISH_AT_MESSAGE_MAX_GAP_MIN,
 	findSessionToClose,
 	getFinishedAt,
@@ -9,6 +10,7 @@ import {
 	getSessionMessageIds,
 	hasNewRecord,
 	inheritEntryOrigins,
+	isRepeatedCardio,
 	placeAfter,
 	toWorkoutCard,
 } from './workout-session'
@@ -273,5 +275,70 @@ describe('getFinishedAt', () => {
 	it('ends at the message when the message itself adds exercises', () => {
 		const workout = withLastEntry(120)
 		expect(getFinishedAt({ workout, addsExercises: true, now: NOW })).toEqual(NOW)
+	})
+})
+
+describe('isRepeatedCardio', () => {
+	const MIN_MS = 60 * 1000
+	const cardio: {
+		name: string
+		kind: string
+		durationMin: number | null
+		distanceM: number | null
+	} = {
+		name: 'Доріжка',
+		kind: 'CARDIO',
+		durationMin: 10,
+		distanceM: null,
+	}
+	const entry = (overrides: Partial<typeof cardio & { performedAt: Date }> = {}) => ({
+		...cardio,
+		performedAt: new Date(NOW.getTime() - 5 * MIN_MS),
+		...overrides,
+	})
+	const check = (candidate = cardio, exercises = [entry()]) =>
+		isRepeatedCardio({ candidate, exercises, now: NOW })
+
+	it('is a repeat: same name (normalized), duration and distance, a few minutes ago', () => {
+		expect(check()).toBe(true)
+		expect(check({ ...cardio, name: ' доріжка ' })).toBe(true)
+	})
+
+	it('is not a repeat after the window, or with another duration, distance or name', () => {
+		expect(check(cardio, [entry({ performedAt: new Date(NOW.getTime() - 60 * MIN_MS) })])).toBe(
+			false,
+		)
+		expect(check({ ...cardio, durationMin: 20 })).toBe(false)
+		expect(check({ ...cardio, distanceM: 1000 })).toBe(false)
+		expect(check({ ...cardio, name: 'Велосипед' })).toBe(false)
+	})
+
+	it('treats exactly the window as a repeat and a second more as not', () => {
+		const at = (ms: number) => [entry({ performedAt: new Date(NOW.getTime() - ms) })]
+		expect(check(cardio, at(CARDIO_REPEAT_WINDOW_MIN * MIN_MS))).toBe(true)
+		expect(check(cardio, at(CARDIO_REPEAT_WINDOW_MIN * MIN_MS + 1000))).toBe(false)
+	})
+
+	it('compares distance with null equal to null only', () => {
+		expect(check({ ...cardio, distanceM: null }, [entry({ distanceM: null })])).toBe(true)
+		expect(check({ ...cardio, distanceM: null }, [entry({ distanceM: 1000 })])).toBe(false)
+		expect(check({ ...cardio, distanceM: 1000 }, [entry({ distanceM: null })])).toBe(false)
+		expect(check({ ...cardio, distanceM: 1000 }, [entry({ distanceM: 1000 })])).toBe(true)
+	})
+
+	it('normalizes case and inner spaces of both names', () => {
+		expect(check({ ...cardio, name: 'ДОРІЖКА' }, [entry({ name: 'доріжка ' })])).toBe(true)
+		expect(
+			check({ ...cardio, name: 'Біг  на  доріжці' }, [entry({ name: 'біг на доріжці' })]),
+		).toBe(true)
+	})
+
+	it('is not a repeat in an empty session', () => {
+		expect(check(cardio, [])).toBe(false)
+	})
+
+	it('never treats a strength exercise as a repeat', () => {
+		const strength = { ...cardio, kind: 'STRENGTH' }
+		expect(check(strength, [entry({ kind: 'STRENGTH' })])).toBe(false)
 	})
 })

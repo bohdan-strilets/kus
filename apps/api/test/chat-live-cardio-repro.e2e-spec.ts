@@ -69,7 +69,7 @@ describe('live + chat cardio (investigation, fake model)', () => {
 	let app: NestExpressApplication
 	let prisma: PrismaService
 	vi.spyOn(Logger.prototype, 'log').mockImplementation(() => undefined)
-	vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined)
+	const warn = vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined)
 
 	const start = async (): Promise<TestUser> => {
 		fake.reset()
@@ -170,16 +170,75 @@ describe('live + chat cardio (investigation, fake model)', () => {
 		expect(await names(id)).toEqual(['Жим лежачи', 'Доріжка 10', 'Доріжка 10'])
 	})
 
-	// No server-side dedupe of identical cardio: a model-behaviour issue seen in UI check S5. The author
-	// decided not to handle it in 0.10.3 (see the 0.10.4 backlog in plan-0.10.3.md: eval case and a prompt
-	// candidate). Kept skipped as evidence: it would fail until that is decided.
-	it.skip('DEFECT-PROOF: the same cardio told twice in a row is not stored twice', async () => {
+	// A «все» that repeats the cardio the session got a moment ago closes the session and adds nothing
+	// (CARDIO_REPEAT_WINDOW_MIN). Without finish the repeat is stored: the test above documents it.
+	it('a repeated cardio with finish is not stored twice; the session still closes', async () => {
 		const owner = await start()
 		const id = await openLive(owner, [liveExercise()])
 		fake.respond(createCompletion([cardioCall({ appendRef: 'w1' })]))
 		await send(owner, 'ще 10 хв доріжки')
-		fake.respond(createCompletion([cardioCall({ appendRef: 'w1' })]))
+		fake.respond(createCompletion([cardioCall({ appendRef: 'w1', finish: true })]))
 		await send(owner, 'все')
+		expect(await names(id)).toEqual(['Жим лежачи', 'Доріжка 10'])
+		const row = await prisma.workout.findUniqueOrThrow({ where: { id } })
+		expect(row.finishedAt).not.toBeNull()
+	})
+
+	// Moves the session back: the rows themselves, as the idle check refuses a fake clock.
+	const moveBack = async (workoutId: string, minutes: number) => {
+		const ago = new Date(Date.now() - minutes * 60 * 1000)
+		await prisma.workout.update({ where: { id: workoutId }, data: { startedAt: ago } })
+		await prisma.exerciseSet.updateMany({
+			where: { exerciseEntry: { workoutId } },
+			data: { doneAt: ago },
+		})
+		await prisma.exerciseEntry.updateMany({ where: { workoutId }, data: { performedAt: ago } })
+	}
+
+	it('the same cardio with finish after 60 minutes is a second treadmill, not a repeat', async () => {
+		const owner = await start()
+		const id = await openLive(owner, [liveExercise()])
+		fake.respond(createCompletion([cardioCall({ appendRef: 'w1' })]))
+		await send(owner, 'доріжка 10 хв')
+		await moveBack(id, 60)
+		fake.respond(createCompletion([cardioCall({ appendRef: 'w1', finish: true })]))
+		await send(owner, 'ще доріжка 10 хв, все')
+		expect(await names(id)).toEqual(['Жим лежачи', 'Доріжка 10', 'Доріжка 10'])
+		const row = await prisma.workout.findUniqueOrThrow({ where: { id } })
+		expect(row.finishedAt).not.toBeNull()
+	})
+
+	it('finish with a cardio of another duration right after the first adds both', async () => {
+		const owner = await start()
+		const id = await openLive(owner, [liveExercise()])
+		fake.respond(createCompletion([cardioCall({ appendRef: 'w1' })]))
+		await send(owner, 'доріжка 10 хв')
+		fake.respond(
+			createCompletion([
+				cardioCall({
+					appendRef: 'w1',
+					finish: true,
+					exercises: [{ ...CARDIO, durationMin: 20 }],
+				}),
+			]),
+		)
+		await send(owner, 'ще 20 хв, все')
+		expect(await names(id)).toEqual(['Жим лежачи', 'Доріжка 10', 'Доріжка 20'])
+		const row = await prisma.workout.findUniqueOrThrow({ where: { id } })
+		expect(row.finishedAt).not.toBeNull()
+	})
+
+	it('a skipped repeat is logged as repeated-cardio without the exercise name', async () => {
+		const owner = await start()
+		const id = await openLive(owner, [liveExercise()])
+		fake.respond(createCompletion([cardioCall({ appendRef: 'w1' })]))
+		await send(owner, 'доріжка 10 хв')
+		warn.mockClear()
+		fake.respond(createCompletion([cardioCall({ appendRef: 'w1', finish: true })]))
+		await send(owner, 'все')
+		const lines = warn.mock.calls.map(([message]) => String(message))
+		expect(lines.some((line) => line.includes('reason=repeated-cardio'))).toBe(true)
+		expect(lines.some((line) => line.includes('Доріжка'))).toBe(false)
 		expect(await names(id)).toEqual(['Жим лежачи', 'Доріжка 10'])
 	})
 

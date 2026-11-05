@@ -19,6 +19,7 @@ import {
 	getRecordKeys,
 	getSessionMessageIds,
 	inheritEntryOrigins,
+	isRepeatedCardio,
 } from './workout-session'
 import { getLiveFinishFields, isLiveIdle, isOpenLive } from './live-session'
 import { LiveSessionsService } from './live-sessions.service'
@@ -249,7 +250,15 @@ export class WorkoutSessionsService {
 		const before = prepared
 		const exercises = await this.toExerciseWrites(
 			// positions after the session's rows are set by the repository, in the write
-			{ userId, refIds, exercises: input.exercises, performedAt: now, firstPosition: 0 },
+			{
+				userId,
+				refIds,
+				exercises: input.finish
+					? this.skipRepeatedCardio(input.exercises, before, now)
+					: input.exercises,
+				performedAt: now,
+				firstPosition: 0,
+			},
 			tx,
 		)
 		const fields: SessionFields = {
@@ -289,6 +298,28 @@ export class WorkoutSessionsService {
 			recordsBefore: getRecordKeys(readWorkoutRecords(before), before.exercises),
 			messageIds: movedSummary === null ? [] : [movedSummary],
 		}
+	}
+
+	/** A cardio the closing call tells again right after the session got it is not added twice. */
+	private skipRepeatedCardio(
+		exercises: LogWorkoutInput['exercises'],
+		session: WorkoutWithExercises,
+		now: Date,
+	): LogWorkoutInput['exercises'] {
+		return exercises.filter((exercise) => {
+			const isRepeat = isRepeatedCardio({
+				candidate: {
+					name: exercise.name,
+					kind: exercise.kind,
+					durationMin: exercise.durationMin,
+					distanceM: toDistanceM(exercise.distanceKm),
+				},
+				exercises: session.exercises,
+				now,
+			})
+			if (isRepeat) this.logger.warn(`reason=repeated-cardio workoutId=${session.id}`)
+			return !isRepeat
+		})
 	}
 
 	/**

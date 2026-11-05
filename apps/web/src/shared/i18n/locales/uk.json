@@ -1000,6 +1000,14 @@
 		"perWeek_few": "{{count}} рази на тиждень",
 		"perWeek_many": "{{count}} разів на тиждень",
 		"perWeek_other": "{{count}} рази на тиждень",
+		"view": {
+			"title_one": "Твоя програма: {{count}} тренування",
+			"title_few": "Твоя програма: {{count}} тренування",
+			"title_many": "Твоя програма: {{count}} тренувань",
+			"title_other": "Твоя програма: {{count}} тренування",
+			"version": "Версія від {{date}}.",
+			"open": "Відкрити програму"
+		},
 		"card": {
 			"title_one": "Програма: {{count}} тренування",
 			"title_few": "Програма: {{count}} тренування",

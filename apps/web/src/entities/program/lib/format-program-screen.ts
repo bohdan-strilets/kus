@@ -1,4 +1,4 @@
-import type { ProgramResponse, ProgramVersionItem } from '@kus/shared'
+import type { ProgramResponse, ProgramVersionItem, ProgramView } from '@kus/shared'
 import type { TFunction } from 'i18next'
 
 import { DETAIL_SEPARATOR } from '@/entities/workout'
@@ -65,3 +65,23 @@ export const formatProgramCreated = (
 				templates: t('program.templateCount', { count: program.templates.length }),
 				mode: t(`program.mode.${program.mode}`).toLocaleLowerCase(),
 			})
+
+/**
+ * «Все тіло · по черзі · 3 рази на тиждень · наступне — А»: the line under the title of the view
+ * card; the parts the program has no value for are skipped.
+ */
+export const formatProgramViewSubtitle = (
+	view: Pick<ProgramView, 'program' | 'nextTemplateKey'>,
+	t: TFunction,
+): string => {
+	const { program, nextTemplateKey } = view
+	const next = program.templates.find((template) => template.key === nextTemplateKey)
+	return [
+		program.title,
+		t(`program.mode.${program.mode}`).toLocaleLowerCase(),
+		program.perWeek === null ? null : t('program.perWeek', { count: program.perWeek }),
+		next === undefined ? null : `${t('program.screen.next')} — ${getTemplateShortLabel(next.name)}`,
+	]
+		.filter((part): part is string => part !== null)
+		.join(DETAIL_SEPARATOR)
+}

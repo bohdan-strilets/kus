@@ -39,6 +39,7 @@ export {
 	formatProgramCreated,
 	formatProgramSubtitle,
 	formatProgramVersionWhen,
+	formatProgramViewSubtitle,
 	formatRotateHint,
 } from './lib/format-program-screen'
 export {
@@ -52,3 +53,4 @@ export type { ProgramCardAction, ProgramCardControls } from './ui/program-card.t
 export { ProgramChangeList } from './ui/ProgramChangeList'
 export { ProgramDiffCard } from './ui/ProgramDiffCard'
 export { ProgramProposalCard } from './ui/ProgramProposalCard'
+export { ProgramViewCard } from './ui/program-view-card'

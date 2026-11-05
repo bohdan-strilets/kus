@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import type { ChatMessage, ProgramCard, TrainingOnboardingState } from '@kus/shared'
+import type { ChatMessage, ProgramCard, ProgramView, TrainingOnboardingState } from '@kus/shared'
 import { cleanup, screen } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -57,6 +57,28 @@ const programCard: ProgramCard = {
 		],
 	},
 	changes: { v: 1, initial: true, lines: [], unchangedTemplates: 0 },
+}
+
+const [templateA] = programCard.program.templates
+if (templateA === undefined) throw new Error('fixture has no template')
+
+const programView: ProgramView = {
+	v: 1,
+	versionId: '0199b3a4-0000-7000-8000-0000000000aa',
+	versionCreatedAt: '2026-11-01T10:00:00.000Z',
+	program: {
+		...programCard.program,
+		title: 'Все тіло',
+		templates: [
+			...programCard.program.templates,
+			{
+				...templateA,
+				key: '0199b3a4-0000-7000-8000-000000000002',
+				name: 'Тренування Б',
+			},
+		],
+	},
+	nextTemplateKey: '0199b3a4-0000-7000-8000-000000000002',
 }
 
 const invitation = (state: TrainingOnboardingState | null): Partial<ChatMessage> => ({
@@ -123,4 +145,27 @@ describe('KusikReply: program and training onboarding routing', () => {
 			expect(screen.queryByRole('button', { name: 'Пізніше' })).toBeNull()
 		},
 	)
+	it('shows the program in force: the words above, the card with its subtitle, version and link', () => {
+		renderReply({ content: 'Ось твоя програма.', programView })
+
+		expect(screen.getByText('Ось твоя програма.')).toBeTruthy()
+		expect(screen.getByText('Твоя програма: 2 тренування')).toBeTruthy()
+		expect(screen.getByText('Все тіло · по черзі · 3 рази на тиждень · наступне — Б')).toBeTruthy()
+		expect(screen.getByText('Версія від 01.11.')).toBeTruthy()
+		expect(screen.getByRole('link', { name: 'Відкрити програму' }).getAttribute('href')).toBe(
+			'/app/training/program',
+		)
+		expect(getKind()).toBe('reply')
+	})
+
+	it('the proposal card wins when a message has both cards', () => {
+		renderReply({
+			programCard,
+			programCardState: { status: 'OPEN', versionCreatedAt: null },
+			programView,
+		})
+
+		expect(screen.getByRole('button', { name: 'Прийняти' })).toBeTruthy()
+		expect(screen.queryByText('Версія від 01.11.')).toBeNull()
+	})
 })

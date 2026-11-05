@@ -3,6 +3,7 @@ import { type ChatMessage, isTrainingOnboardingQuestion } from '@kus/shared'
 import { pickAchievement } from '@/entities/achievement'
 import { StatsCard, useGoalCelebrationStore } from '@/entities/stats'
 import { KusikRow, type KusikReplyKind, MessageBubble, RichText } from '@/entities/message'
+import { ProgramViewCard } from '@/entities/program'
 import { FactProposalPlaque } from '@/features/answer-fact-proposal'
 
 import { getClarificationPlacement } from '../lib/get-clarification-placement'
@@ -45,7 +46,7 @@ const getReplyKind = ({
 }: ReplyKindParams): KusikReplyKind => {
 	const { replyToId, meals, measurements, clarifications } = message
 	// Kusik's own onboarding questions and a rebased card have no user turn, but are no welcome back
-	if (message.programCard || message.trainingOnboarding) return 'reply'
+	if (message.programCard || message.programView || message.trainingOnboarding) return 'reply'
 	// the only message Kusik writes on his own, without a user turn: the welcome back after a restore
 	if (replyToId === null) return 'welcomeBack'
 	if (photoStatus === 'FAILED') return 'photoFail'
@@ -192,6 +193,24 @@ export const KusikReply = ({
 				)}
 				<KusikRow kind={kind}>
 					<ProgramReplyCard message={message} isFromOnboarding={isFromOnboarding} />
+				</KusikRow>
+			</div>
+		)
+	}
+
+	// the program in force on request: his words above, the read-only card next to his head
+	if (message.programView) {
+		return (
+			<div className="flex flex-col gap-1.5 self-stretch">
+				{content && (
+					<div className={ATTACHMENTS_CLASS}>
+						<MessageBubble>
+							<RichText text={content} />
+						</MessageBubble>
+					</div>
+				)}
+				<KusikRow kind={kind}>
+					<ProgramViewCard view={message.programView} />
 				</KusikRow>
 			</div>
 		)

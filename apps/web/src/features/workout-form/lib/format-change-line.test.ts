@@ -113,8 +113,10 @@ describe('formatChangeLine: plural forms', () => {
 	})
 })
 
-describe('formatChangeLine: deleting a warm-up only', () => {
-	it('the card is CHANGED but there is no line saying what changed (pins current behaviour)', () => {
+describe('formatChangeLine: changed without ordinals or a different count', () => {
+	const CHANGED_PLAIN = 'Змінено · план: 3 підходи · 66 кг × 12'
+
+	it('a warm-up removed only says what it is compared with', () => {
 		const exercise = planned()
 		const mark = (sets: FormExerciseValue['sets']): FormExerciseValue['sets'] =>
 			sets.map((set, index) => (index === 0 ? { ...set, isWarmup: true } : set))
@@ -129,6 +131,25 @@ describe('formatChangeLine: deleting a warm-up only', () => {
 		expect(getExerciseState(withWarmup)).toBe('PLANNED')
 		expect(getExerciseState(removed)).toBe('CHANGED')
 		expect(getChangedSetNumbers(removed)).toEqual([])
-		expect(formatChangeLine(removed, t)).toBeNull()
+		expect(formatChangeLine(removed, t)).toBe('Змінено · план: 2 підходи · 66 кг × 12')
+	})
+
+	it('a warm-up added', () => {
+		const base = addFormSet(planned())
+		const added = {
+			...base,
+			sets: base.sets.map((set, index) => (index === 3 ? { ...set, isWarmup: true } : set)),
+		}
+
+		expect(getExerciseState(added)).toBe('CHANGED')
+		expect(getChangedSetNumbers(added)).toEqual([])
+		expect(formatChangeLine(added, t)).toBe(CHANGED_PLAIN)
+	})
+
+	it('one set removed and another added', () => {
+		const swapped = addFormSet(removeFormSet(planned(), 0))
+
+		expect(getExerciseState(swapped)).toBe('CHANGED')
+		expect(formatChangeLine(swapped, t)).toBe(CHANGED_PLAIN)
 	})
 })

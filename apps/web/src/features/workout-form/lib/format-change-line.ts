@@ -1,6 +1,6 @@
 import type { TFunction } from 'i18next'
 
-import { getChangedSetNumbers, getPlanCountChange } from './build-form-draft'
+import { getChangedSetNumbers, getExerciseState, getPlanCountChange } from './build-form-draft'
 import { formatPlanSummary } from './format-plan-summary'
 import type { FormExerciseValue } from './workout-form.types'
 
@@ -43,5 +43,6 @@ export const formatChangeLine = (exercise: FormExerciseValue, t: TFunction): str
 	if (count !== null && sets !== null) return t(CHANGED_BOTH_KEY, { count, sets, plan })
 	if (count !== null) return t('training.form.changedOnlyCount', { count })
 	if (sets !== null) return t('training.form.changed', { sets, plan })
-	return null
+	// a warm-up removed or added, or one set removed and another added: the card is changed, no ordinal or count says how
+	return getExerciseState(exercise) === 'CHANGED' ? t('training.form.changedPlain', { plan }) : null
 }

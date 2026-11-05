@@ -6,6 +6,33 @@ All notable changes to Kusik are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.10.4] — 2026-11-05
+
+Training polish: one set notation everywhere, a rest timer, deleting sets and exercises with undo, live mode motion and an offline launch of an unfinished live workout. No migrations. No prompt, tool or model-context changes, so no eval.
+
+### Added
+
+- Rest timer in live mode: counted from the last done strength set's `doneAt` and the plan's rest (or the default), so it survives a reload and keeps real time after the screen locks; «+15 с», «Пропустити», «Далі: …» (warm-up included), «Час! Підхід N» / «Час! Розминка» with the `remind` sound only when it ends on a visible screen; none after cardio; Screen Wake Lock while it runs, a hint inside the sheet without it ([634cb66], [3f6a9af], [0d5cd82], [615f7e6])
+- Deleting a set, a warm-up or an exercise in live mode and in the form: a 44 px trash button and a swipe (72 px opens the action, past half the width deletes, vertical scroll is kept), a 6 s «Скасувати» toast for the last action; in the form a planned exercise swipes to «Не робили»; live deletes go out in the next PUT snapshot right away and undo brings the item back with the same key ([fdec224])
+- Offline launch of an unfinished live workout: the last live response is kept in the live store with its owner and validated on read; with no network the live screen opens from it, other screens offer «Продовжити тренування»; it is cleared on finish, discard, close by chat, another user and logout ([279cd1b])
+- Live mode motion: the live screen opens over the tabs from the mini strip (the tab underneath is kept and made inert), set done, next exercise, add and delete with exit motion, stepper roll and set number crossfade; reduced motion falls back to opacity ([7b3cf72], [e28f621], [c92abb3], [615f7e6])
+- Hamster with a trophy on the record finish screen ([279cd1b])
+
+### Changed
+
+- Set notation: «70 кг × 6» with «×» only between kg and reps, set counts in words («— 3 підходи»), plans without «×» («3 підходи · 8–12 повт.»), a «Підхід · Вага · Повтори» table where sets are edited, separate «Вправ» and «Підходів» tiles, cardio «10 хв · 1,2 км»; the model context keeps its own notation ([561057d], [6ed8d93], [e4b86cd])
+- Program changes show «4 підходи замість 3» when only the set count changed; the form marks an added exercise « · додано» and highlights only the changed set row ([6ed8d93], [e4b86cd], [615f7e6])
+- Design import for 0.10.4 and architecture notes for deletion, the rest timer, the offline launch and the route over tabs ([03b4d6a], [9d83b9c])
+
+### Fixed
+
+- A workout form can no longer finish in the future (the finish is capped at now); a `clientRequestId` that is a chat message id returns 409 `CLIENT_MESSAGE_ID_REUSED` instead of 500 ([6c14274])
+- The «Нічого не записано» toast stays visible after leaving live mode; an unknown total duration in training stats shows «—» ([279cd1b])
+
+### Removed
+
+- `overview.kcal` from the training stats API (the web reads `overview.burned`); an installed 0.10.3 PWA may show one stats error until it updates ([6c14274])
+
 ## [0.10.3] — 2026-11-03
 
 Live workout mode, the fill form and a workout kcal estimate. One additive migration (new nullable columns and a partial unique index; no data is rewritten). No prompt or tool changes.
@@ -620,7 +647,23 @@ Design sync with `design/` v0.5.2. Web only: no API, shared-package or migration
 
 ## 0.2.0 / 0.1.0 — see tags
 
-[Unreleased]: https://github.com/bohdan-strilets/kus/compare/v0.10.3...HEAD
+[Unreleased]: https://github.com/bohdan-strilets/kus/compare/v0.10.4...HEAD
+[0.10.4]: https://github.com/bohdan-strilets/kus/compare/v0.10.3...v0.10.4
+[6c14274]: https://github.com/bohdan-strilets/kus/commit/6c142744d933337c6c0b33f070df5cb0214e0238
+[561057d]: https://github.com/bohdan-strilets/kus/commit/561057d2b24c1bf2424a9caabfe4fe268822f692
+[6ed8d93]: https://github.com/bohdan-strilets/kus/commit/6ed8d93f5237aae48ffa5443e444a45925d5d0c6
+[e4b86cd]: https://github.com/bohdan-strilets/kus/commit/e4b86cda9bc360ca3be1b8191cf7002aad49ec13
+[fdec224]: https://github.com/bohdan-strilets/kus/commit/fdec224724c3e373d482bca1ed616c3333525b24
+[634cb66]: https://github.com/bohdan-strilets/kus/commit/634cb6681ed1501f155fb84ee0c8bfc3d02534e6
+[3f6a9af]: https://github.com/bohdan-strilets/kus/commit/3f6a9afa7f60d094bc17b6633c33927959efe01e
+[7b3cf72]: https://github.com/bohdan-strilets/kus/commit/7b3cf7274042d9247f109cce9ab052657b3773f6
+[279cd1b]: https://github.com/bohdan-strilets/kus/commit/279cd1b5b22f71baa4b1dbc8ab50902eea7cad47
+[e28f621]: https://github.com/bohdan-strilets/kus/commit/e28f621c001437c6011fe32dfde9a6bc7c85c609
+[0d5cd82]: https://github.com/bohdan-strilets/kus/commit/0d5cd82ccdce7fb96fde505571d893b79647d290
+[c92abb3]: https://github.com/bohdan-strilets/kus/commit/c92abb373960612a7ffc62a5838eb738b54d8608
+[615f7e6]: https://github.com/bohdan-strilets/kus/commit/615f7e60a4d288ef9c2aa0b7f99642ce135a2b87
+[9d83b9c]: https://github.com/bohdan-strilets/kus/commit/9d83b9cc27624ee99cc4d3edf959231a291fde13
+[03b4d6a]: https://github.com/bohdan-strilets/kus/commit/03b4d6afb566a6cb8b65d91c0465f386a4dc4d11
 [0.10.3]: https://github.com/bohdan-strilets/kus/compare/v0.10.2.1...v0.10.3
 [5df30dc]: https://github.com/bohdan-strilets/kus/commit/5df30dc07d9b29c1f8e57bfea25bb938bcf708ac
 [1606ac7]: https://github.com/bohdan-strilets/kus/commit/1606ac7b59f356aeb3678c61f68aafeb404da12a

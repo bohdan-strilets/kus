@@ -1237,7 +1237,6 @@
 			"changedCount": "{{sets}} замість {{planned}}",
 			"changedOnlyCount": "Змінено: {{count}}",
 			"changedBoth": "Змінено: {{count}}, {{sets}} · план: {{plan}}",
-			"changedCountWithPlan": "Змінено: {{count}} · план: {{plan}}",
 			"changedPlain": "Змінено · план: {{plan}}",
 			"noSets": "без підходів",
 			"changedNoSets": "Змінено: без підходів · план: {{plan}}",

@@ -4,9 +4,6 @@ import { getChangedSetNumbers, getExerciseState, getPlanCountChange } from './bu
 import { formatPlanSummary } from './format-plan-summary'
 import type { FormExerciseValue } from './workout-form.types'
 
-/** Which text says «number and values changed»; the other one (`changedCountWithPlan`) is the shorter fallback. */
-const CHANGED_BOTH_KEY = 'training.form.changedBoth'
-
 /** «2-й і 3-й»: the changed sets as ordinals, the last one joined with «і». */
 const formatChangedSets = (numbers: readonly number[], t: TFunction): string => {
 	const ordinals = numbers.map((n) => t('training.form.setOrdinal', { n }))
@@ -40,7 +37,7 @@ export const formatChangeLine = (exercise: FormExerciseValue, t: TFunction): str
 					list: formatChangedSets(changed, t),
 				})
 			: null
-	if (count !== null && sets !== null) return t(CHANGED_BOTH_KEY, { count, sets, plan })
+	if (count !== null && sets !== null) return t('training.form.changedBoth', { count, sets, plan })
 	if (count !== null) return t('training.form.changedOnlyCount', { count })
 	if (sets !== null) return t('training.form.changed', { sets, plan })
 	// a warm-up removed or added, or one set removed and another added: the card is changed, no ordinal or count says how

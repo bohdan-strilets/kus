@@ -16,6 +16,7 @@ import {
 	getStatsPeriodRange,
 	isInRange,
 	MS_IN_DAY,
+	type StatsBucketRange,
 	toTime,
 } from './workout-stats-period'
 import type { StatsEntryRow, StatsWorkoutRow } from './workout-stats.types'
@@ -81,8 +82,9 @@ const getDurations = (
 	}
 }
 
+/** `workouts` and `entries` are the whole query window: an edge week counts in full, past the period. */
 const getBuckets = (
-	buckets: readonly DateRange[],
+	buckets: readonly StatsBucketRange[],
 	workouts: readonly StatsWorkoutRow[],
 	entries: readonly StatsEntryRow[],
 ): WorkoutStatsBucket[] =>
@@ -130,7 +132,12 @@ const getCardio = (
 		sessionCount: new Set(cardio.map((entry) => entry.workoutId)).size,
 		durationMin: sum(cardio.map((entry) => entry.durationMin ?? 0)),
 		distanceM: sum(cardio.map((entry) => entry.distanceM ?? 0)),
-		buckets: buckets.map(({ from, to, cardioMin }) => ({ from, to, minutes: cardioMin })),
+		buckets: buckets.map(({ from, to, isFuture, cardioMin }) => ({
+			from,
+			to,
+			isFuture,
+			minutes: cardioMin,
+		})),
 		byExercise: byExercise.sort((a, b) => b.durationMin - a.durationMin),
 	}
 }
@@ -160,7 +167,7 @@ export const buildWorkoutStats = ({
 	const periodWorkouts = workouts.filter((workout) => isInRange(workout.localDate, range))
 	const periodEntries = entries.filter((entry) => isInRange(entry.workoutLocalDate, range))
 	const durations = getDurations(periodWorkouts)
-	const buckets = getBuckets(range.buckets, periodWorkouts, periodEntries)
+	const buckets = getBuckets(range.buckets, workouts, entries)
 	return {
 		period,
 		from: range.from,

@@ -142,6 +142,51 @@ describe('buildWorkoutStats overview', () => {
 	})
 })
 
+describe('buildWorkoutStats buckets', () => {
+	it('puts a workout of the edge week before the month into the first bar, outside the totals', () => {
+		// 2026-11-01 is a Sunday: the first week of November starts on 26.10
+		const stats = buildWorkoutStats({
+			period: 'month',
+			today: '2026-11-05',
+			workouts: [
+				makeWorkout({ id: 'w1', localDate: '2026-10-27' }),
+				makeWorkout({ id: 'w2', localDate: '2026-11-04' }),
+			],
+			entries: [
+				makeEntry({ workoutId: 'w1', workoutLocalDate: '2026-10-27', sets: [makeSet()] }),
+				makeEntry({
+					workoutId: 'w2',
+					workoutLocalDate: '2026-11-04',
+					sets: [makeSet(), makeSet()],
+				}),
+			],
+			allTimeStrengthEntries: [],
+		})
+		expect(stats.overview.buckets.map(({ from, to }) => ({ from, to }))).toEqual([
+			{ from: '2026-10-26', to: '2026-11-01' },
+			{ from: '2026-11-02', to: '2026-11-08' },
+		])
+		expect(stats.overview.buckets[0]).toMatchObject({ workoutCount: 1, setCount: 1 })
+		expect(stats.overview.buckets[1]).toMatchObject({ workoutCount: 1, setCount: 2 })
+		expect(stats.overview.workoutCount).toBe(1)
+		expect(stats.overview.setCount).toBe(2)
+	})
+
+	it('a week gives 7 days, the ones after today are future', () => {
+		const { buckets } = build([makeWorkout()], []).overview
+		expect(buckets.map((bucket) => bucket.isFuture)).toEqual([
+			false,
+			false,
+			false,
+			true,
+			true,
+			true,
+			true,
+		])
+		expect(buckets[3]).toMatchObject({ workoutCount: 0, setCount: 0, cardioMin: 0 })
+	})
+})
+
 describe('buildWorkoutStats duration and kcal', () => {
 	it('sums named durations and averages them', () => {
 		const stats = build(
@@ -218,7 +263,12 @@ describe('buildWorkoutStats cardio', () => {
 			{ exerciseId: EX_RUN, name: 'Біг', sessionCount: 2, durationMin: 50, distanceM: 8000 },
 		])
 		expect(stats.cardio.buckets).toHaveLength(7)
-		expect(stats.cardio.buckets[2]).toEqual({ from: '2026-10-28', to: '2026-10-28', minutes: 100 })
+		expect(stats.cardio.buckets[2]).toEqual({
+			from: '2026-10-28',
+			to: '2026-10-28',
+			isFuture: false,
+			minutes: 100,
+		})
 	})
 })
 

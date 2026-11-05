@@ -33,6 +33,8 @@ export type WorkoutStatsTopSet = z.infer<typeof workoutStatsTopSetSchema>
 export const workoutStatsBucketSchema = z.object({
 	from: z.iso.date(),
 	to: z.iso.date(),
+	/** A day of the current week that has not come yet: drawn without a bar. */
+	isFuture: z.boolean().default(false),
 	workoutCount: z.number(),
 	setCount: z.number(),
 	cardioMin: z.number(),
@@ -87,6 +89,7 @@ export type WorkoutStatsExercise = z.infer<typeof workoutStatsExerciseSchema>
 export const workoutStatsCardioBucketSchema = z.object({
 	from: z.iso.date(),
 	to: z.iso.date(),
+	isFuture: z.boolean().default(false),
 	minutes: z.number(),
 })
 

@@ -10,7 +10,7 @@ export const getBucketLabel = (from: string, period: WorkoutStatsPeriod): string
 }
 
 export interface BucketBarsOptions {
-	buckets: readonly { from: string }[]
+	buckets: readonly { from: string; isFuture?: boolean }[]
 	period: WorkoutStatsPeriod
 	values: readonly number[]
 	/** Spoken form of one bar; the screen reader reads every bar even when its caption is thinned out. */
@@ -27,5 +27,10 @@ export const getBucketBars = ({
 	buckets.map((bucket, index) => {
 		const label = getBucketLabel(bucket.from, period)
 		const value = values[index] ?? 0
-		return { label, value, ariaLabel: describe(label, value) }
+		return {
+			label,
+			value,
+			ariaLabel: describe(label, value),
+			isPending: bucket.isFuture ?? false,
+		}
 	})

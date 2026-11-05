@@ -41,12 +41,12 @@ export const BarChart = ({
 								key={`${index}-${bar.label}`}
 								className="flex min-w-0 flex-1 flex-col items-center justify-end gap-1"
 							>
-								{isValueShown && (
+								{isValueShown && !bar.isPending && (
 									<Text as="span" variant="small" weight="bold" tone="mutedStrong" isTabular>
 										{bar.valueLabel ?? formatInteger(bar.value)}
 									</Text>
 								)}
-								{ratio === 0 ? (
+								{bar.isPending ? null : ratio === 0 ? (
 									<span
 										data-bar-stub=""
 										className="h-1 w-full max-w-5.5 shrink-0 rounded-checkbox bg-muted-soft/40"
@@ -80,11 +80,13 @@ export const BarChart = ({
 			</div>
 			{!summary && (
 				<ul aria-label={listLabel} className="sr-only">
-					{bars.map((bar, index) => (
-						<li key={`${index}-${bar.label}`}>
-							{bar.ariaLabel ?? `${bar.label}: ${bar.valueLabel ?? formatInteger(bar.value)}`}
-						</li>
-					))}
+					{bars.map((bar, index) =>
+						bar.isPending ? null : (
+							<li key={`${index}-${bar.label}`}>
+								{bar.ariaLabel ?? `${bar.label}: ${bar.valueLabel ?? formatInteger(bar.value)}`}
+							</li>
+						),
+					)}
 				</ul>
 			)}
 		</div>

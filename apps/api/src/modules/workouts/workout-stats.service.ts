@@ -23,7 +23,11 @@ export class WorkoutStatsService {
 	async getStats(userId: string, period: WorkoutStatsPeriod): Promise<WorkoutStatsResponse> {
 		const today = await this.getToday(userId)
 		const range = getStatsPeriodRange(period, today)
-		const window = { userId, from: toDbDate(range.previous.from), to: toDbDate(range.to) }
+		// the current week may end after the month: its bucket counts in full. The first week starts
+		// after previous.from, so the lower edge is already covered
+		const lastBucketEnd = range.buckets.at(-1)?.to ?? range.to
+		const windowEnd = lastBucketEnd > range.to ? lastBucketEnd : range.to
+		const window = { userId, from: toDbDate(range.previous.from), to: toDbDate(windowEnd) }
 		const [workouts, entries] = await Promise.all([
 			this.statsRepository.findWorkoutsInRange(window),
 			this.statsRepository.findEntriesInRange(window),

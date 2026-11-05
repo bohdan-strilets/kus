@@ -41,9 +41,35 @@ describe('BarChart', () => {
 		expect(screen.getByRole('list', { name: 'Тижні' }).children[12]?.textContent).toBe('13.10: 13')
 	})
 
+	it('a pending bar has only its caption: no stub, no value, not in the hidden list', () => {
+		const bars = [...BARS, { label: '13.10', value: 0, isPending: true }]
+		const { container } = render(<BarChart bars={bars} listLabel="Тижні" />)
+
+		expect(container.querySelectorAll('[data-bar-stub]')).toHaveLength(1)
+		expect(container.querySelectorAll('.tabular-nums')).toHaveLength(3)
+		expect(screen.getAllByText('13.10')).toHaveLength(1)
+		expect(screen.getByRole('list', { name: 'Тижні' }).children).toHaveLength(3)
+	})
+
 	it('without a summary reads the bars from a hidden list', () => {
 		render(<BarChart bars={BARS} listLabel="Тижні" />)
 
 		expect(screen.getByRole('list', { name: 'Тижні' }).children).toHaveLength(3)
+	})
+})
+
+describe('BarChart pending bar', () => {
+	const bars = [
+		{ label: 'пн', value: 3, ariaLabel: 'пн: 3' },
+		{ label: 'вт', value: 0, ariaLabel: 'вт: 0', isPending: true },
+	]
+
+	it('keeps the caption but has no value, no stub and no entry in the hidden list', () => {
+		const { container } = render(<BarChart bars={bars} listLabel="Дні" />)
+
+		expect(screen.getByText('вт')).toBeTruthy()
+		expect(container.querySelectorAll('[data-bar-stub]')).toHaveLength(0)
+		const items = screen.getAllByRole('listitem').map((item) => item.textContent)
+		expect(items).toEqual(['пн: 3'])
 	})
 })

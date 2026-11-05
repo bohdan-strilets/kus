@@ -2,10 +2,15 @@ import type { WorkoutStatsPeriod } from '@kus/shared'
 
 export type DateRange = { from: string; to: string }
 
+export type StatsBucketRange = DateRange & {
+	/** A day of the current week that has not come yet. */
+	isFuture: boolean
+}
+
 export type StatsPeriodRange = DateRange & {
 	previous: DateRange
-	/** Days for a week, Monday–Sunday weeks clipped to the period otherwise. */
-	buckets: DateRange[]
+	/** Days for a week; full Monday–Sunday weeks up to the current one otherwise. */
+	buckets: StatsBucketRange[]
 }
 
 export const MS_IN_DAY = 24 * 60 * 60 * 1000
@@ -55,17 +60,20 @@ export const getWeekStart = (date: string): string => {
 export const isInRange = (date: string, range: DateRange): boolean =>
 	date >= range.from && date <= range.to
 
-const getDayBuckets = ({ from, to }: DateRange): DateRange[] => {
-	const buckets: DateRange[] = []
-	for (let day = from; day <= to; day = addDays(day, 1)) buckets.push({ from: day, to: day })
+const getDayBuckets = ({ from, to }: DateRange, today: string): StatsBucketRange[] => {
+	const buckets: StatsBucketRange[] = []
+	for (let day = from; day <= to; day = addDays(day, 1)) {
+		buckets.push({ from: day, to: day, isFuture: day > today })
+	}
 	return buckets
 }
 
-const getWeekBuckets = ({ from, to }: DateRange): DateRange[] => {
-	const buckets: DateRange[] = []
-	for (let start = getWeekStart(from); start <= to; start = addDays(start, DAYS_IN_WEEK)) {
-		const end = addDays(start, DAYS_IN_WEEK - 1)
-		buckets.push({ from: start < from ? from : start, to: end > to ? to : end })
+/** Whole weeks from the one the period starts in to the current one: an edge week is not clipped. */
+const getWeekBuckets = (from: string, today: string): StatsBucketRange[] => {
+	const buckets: StatsBucketRange[] = []
+	const lastStart = getWeekStart(today)
+	for (let start = getWeekStart(from); start <= lastStart; start = addDays(start, DAYS_IN_WEEK)) {
+		buckets.push({ from: start, to: addDays(start, DAYS_IN_WEEK - 1), isFuture: false })
 	}
 	return buckets
 }
@@ -73,7 +81,7 @@ const getWeekBuckets = ({ from, to }: DateRange): DateRange[] => {
 /**
  * Calendar period around `today` (the user's local date), the previous one shifted to the same
  * point (Mon–Wed against the previous Mon–Wed), and the chart buckets. `to` is the end of the
- * period, which may be after today.
+ * period, which may be after today; the last week bucket may end after it too.
  */
 export const getStatsPeriodRange = (
 	period: WorkoutStatsPeriod,
@@ -85,7 +93,7 @@ export const getStatsPeriodRange = (
 		return {
 			...range,
 			previous: { from: addDays(from, -DAYS_IN_WEEK), to: addDays(today, -DAYS_IN_WEEK) },
-			buckets: getDayBuckets(range),
+			buckets: getDayBuckets(range, today),
 		}
 	}
 	const monthsInPeriod = period === 'month' ? 1 : QUARTER_MONTHS
@@ -99,6 +107,6 @@ export const getStatsPeriodRange = (
 			from: addMonthsClamped(range.from, -monthsInPeriod),
 			to: addMonthsClamped(today, -monthsInPeriod),
 		},
-		buckets: getWeekBuckets(range),
+		buckets: getWeekBuckets(range.from, today),
 	}
 }

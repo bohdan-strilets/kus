@@ -6,6 +6,8 @@ export interface BarChartBar {
 	valueLabel?: string
 	/** Spoken form of the bar, used in the hidden list when the chart has no `summary`. */
 	ariaLabel?: string
+	/** Not yet happened (a future day): no stub, no value, only the caption; left out of the hidden list. */
+	isPending?: boolean
 }
 
 export interface BarChartProps {

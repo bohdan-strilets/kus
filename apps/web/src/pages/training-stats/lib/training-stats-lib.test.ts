@@ -59,6 +59,19 @@ describe('getBucketBars', () => {
 	})
 })
 
+describe('getBucketBars weeks', () => {
+	it('labels a week column by its Monday and passes the future flag on', () => {
+		const bars = getBucketBars({
+			buckets: [{ from: '2026-10-26' }, { from: '2026-11-02', isFuture: true }],
+			period: 'month',
+			values: [2, 0],
+			describe: (label, value) => `${label}: ${value}`,
+		})
+		expect(bars.map((bar) => bar.label)).toEqual(['26.10', '02.11'])
+		expect(bars.map((bar) => bar.isPending)).toEqual([false, true])
+	})
+})
+
 describe('getOverviewTiles: unknown total', () => {
 	const { overview } = makeWorkoutStats()
 

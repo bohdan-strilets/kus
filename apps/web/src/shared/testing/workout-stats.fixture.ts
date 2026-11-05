@@ -24,9 +24,30 @@ export const makeWorkoutStats = (
 		hasEstimatedDuration: true,
 		burned: null,
 		buckets: [
-			{ from: '2026-09-28', to: '2026-10-04', workoutCount: 2, setCount: 6, cardioMin: 40 },
-			{ from: '2026-10-05', to: '2026-10-11', workoutCount: 3, setCount: 8, cardioMin: 0 },
-			{ from: '2026-10-12', to: '2026-10-18', workoutCount: 1, setCount: 0, cardioMin: 20 },
+			{
+				from: '2026-09-28',
+				to: '2026-10-04',
+				isFuture: false,
+				workoutCount: 2,
+				setCount: 6,
+				cardioMin: 40,
+			},
+			{
+				from: '2026-10-05',
+				to: '2026-10-11',
+				isFuture: false,
+				workoutCount: 3,
+				setCount: 8,
+				cardioMin: 0,
+			},
+			{
+				from: '2026-10-12',
+				to: '2026-10-18',
+				isFuture: false,
+				workoutCount: 1,
+				setCount: 0,
+				cardioMin: 20,
+			},
 		],
 		groups: [
 			{ muscleGroup: 'CHEST', setCount: 8 },
@@ -65,9 +86,9 @@ export const makeWorkoutStats = (
 		durationMin: 60,
 		distanceM: 3000,
 		buckets: [
-			{ from: '2026-09-28', to: '2026-10-04', minutes: 40 },
-			{ from: '2026-10-05', to: '2026-10-11', minutes: 0 },
-			{ from: '2026-10-12', to: '2026-10-18', minutes: 20 },
+			{ from: '2026-09-28', to: '2026-10-04', isFuture: false, minutes: 40 },
+			{ from: '2026-10-05', to: '2026-10-11', isFuture: false, minutes: 0 },
+			{ from: '2026-10-12', to: '2026-10-18', isFuture: false, minutes: 20 },
 		],
 		byExercise: [
 			{

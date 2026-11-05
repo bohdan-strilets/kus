@@ -169,6 +169,41 @@ describe('workout stats (e2e, real DB)', () => {
 		expect(data.cardio).toMatchObject({ sessionCount: 0, durationMin: 0, byExercise: [] })
 	})
 
+	it('month buckets are whole Monday–Sunday weeks ending with the current one', async () => {
+		await start()
+		const owner = await registerUser('owner@kus.app')
+		const exercises = await seedExercises(owner.userId)
+		await seedWorkout(owner.userId, exercises)
+
+		const response = await owner.agent.get(STATS_URL).query({ period: 'month' }).expect(200)
+
+		const { buckets } = statsResponse.parse(response.body).data.overview
+		const last = buckets.at(-1)
+		expect(buckets.length).toBeGreaterThanOrEqual(1)
+		for (const bucket of buckets) {
+			expect(new Date(`${bucket.from}T00:00:00Z`).getUTCDay()).toBe(1)
+			expect(Date.parse(`${bucket.to}T00:00:00Z`) - Date.parse(`${bucket.from}T00:00:00Z`)).toBe(
+				6 * 86_400_000,
+			)
+			expect(bucket.isFuture).toBe(false)
+		}
+		expect(last && last.from <= today && today <= last.to).toBe(true)
+		expect(last?.workoutCount).toBe(1)
+	})
+
+	it('week buckets are 7 days and the ones after today are future', async () => {
+		await start()
+		const owner = await registerUser('owner@kus.app')
+
+		const response = await owner.agent.get(STATS_URL).query({ period: 'week' }).expect(200)
+
+		const { buckets } = statsResponse.parse(response.body).data.overview
+		expect(buckets).toHaveLength(7)
+		expect(buckets.map((bucket) => bucket.isFuture)).toEqual(
+			buckets.map((bucket) => bucket.from > today),
+		)
+	})
+
 	it('rejects an unknown period with VALIDATION_ERROR', async () => {
 		await start()
 		const owner = await registerUser('owner@kus.app')

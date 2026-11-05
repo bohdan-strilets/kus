@@ -60,6 +60,7 @@ const set = (overrides: Partial<LiveDraftSet> = {}): LiveDraftSet => ({
 	durationSec: null,
 	distanceM: null,
 	isWarmup: false,
+	isEdited: false,
 	doneAt: null,
 	...overrides,
 })

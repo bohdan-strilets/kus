@@ -13,6 +13,7 @@ const emptySet = (): LiveDraftSet => ({
 	durationSec: null,
 	distanceM: null,
 	isWarmup: false,
+	isEdited: false,
 	doneAt: null,
 })
 
@@ -47,7 +48,7 @@ export const patchSet = (
 	mapExercise(draft, exerciseIndex, (exercise) => ({
 		...exercise,
 		sets: exercise.sets.map((set, position) =>
-			position === setIndex ? { ...set, ...patch } : set,
+			position === setIndex ? { ...set, ...patch, isEdited: true } : set,
 		),
 	}))
 
@@ -66,7 +67,10 @@ export const addSet = (draft: LiveDraft, exerciseIndex: number): LiveDraft =>
 		const last = [...exercise.sets].reverse().find((set) => !set.isWarmup)
 		return {
 			...exercise,
-			sets: [...exercise.sets, { ...(last ?? emptySet()), rowKey: createUuid(), doneAt: null }],
+			sets: [
+				...exercise.sets,
+				{ ...(last ?? emptySet()), rowKey: createUuid(), doneAt: null, isEdited: false },
+			],
 		}
 	})
 
@@ -180,4 +184,30 @@ export const restoreExercise = (
 		...draft,
 		exercises: [...draft.exercises.slice(0, at), exercise, ...draft.exercises.slice(at)],
 	}
+}
+
+/**
+ * A working set marked done hands its reps and weight to the nearest working set still to do after
+ * it, unless the person changed that one by hand. The carried values do not count as hand edits, so
+ * the chain goes on (2 → 3 → 4). A warm-up, an undone set and the last set carry nothing.
+ */
+export const carryDoneSetForward = (
+	draft: LiveDraft,
+	{ exerciseIndex, setIndex }: LiveSetRef,
+): LiveDraft => {
+	const exercise = draft.exercises[exerciseIndex]
+	const source = exercise?.sets[setIndex]
+	if (!exercise || !source || source.isWarmup || source.doneAt === null) return draft
+	const targetIndex = exercise.sets.findIndex(
+		(set, position) => position > setIndex && !set.isWarmup && set.doneAt === null,
+	)
+	const target = exercise.sets[targetIndex]
+	if (!target || target.isEdited === true) return draft
+	const weightKg = isBodyweightExercise(exercise) ? null : source.weightKg
+	return mapExercise(draft, exerciseIndex, (current) => ({
+		...current,
+		sets: current.sets.map((set, position) =>
+			position === targetIndex ? { ...set, reps: source.reps, weightKg } : set,
+		),
+	}))
 }

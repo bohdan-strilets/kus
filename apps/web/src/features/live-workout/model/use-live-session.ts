@@ -14,6 +14,7 @@ import {
 	appendExercise,
 	createLiveExercise,
 	getWorkingNumber,
+	carryDoneSetForward,
 	patchSet,
 	removeExercise,
 	removeSet,
@@ -132,7 +133,9 @@ export const useLiveSession = (live: LiveWorkoutResponse): LiveSession => {
 			const set = exercise?.sets[ref.setIndex]
 			if (!exercise || !set) return
 			const isDone = set.doneAt !== null
-			const next = setSetDone(draftRef.current, ref, isDone ? null : new Date().toISOString())
+			const marked = setSetDone(draftRef.current, ref, isDone ? null : new Date().toISOString())
+			// the done set hands its reps and weight to the next one (a ✓ taken back hands nothing)
+			const next = isDone ? marked : carryDoneSetForward(marked, ref)
 			commit(next)
 			// removing a ✓ stays put; a ✓ stays on the exercise while it has sets left, then moves on
 			setSelected(isDone ? ref : findRefAfterDone(next, ref))

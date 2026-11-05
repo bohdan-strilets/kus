@@ -55,6 +55,7 @@ const fromServerExercise = (exercise: WorkoutExerciseResponse): LiveDraftExercis
 		durationSec,
 		distanceM,
 		isWarmup,
+		isEdited: false,
 		doneAt,
 	})),
 	plan: null,
@@ -72,7 +73,7 @@ const fromInput = (input: LiveExerciseInput): LiveDraftExercise => ({
 	isBodyweight: input.isBodyweight,
 	durationMin: input.durationMin,
 	distanceM: input.distanceM,
-	sets: input.sets.map((set) => ({ ...set, rowKey: createUuid() })),
+	sets: input.sets.map((set) => ({ ...set, rowKey: createUuid(), isEdited: false })),
 	plan: null,
 })
 
@@ -97,6 +98,7 @@ const fromPlan = (plan: LivePlanExercise, clientKey: string): LiveDraftExercise 
 		durationSec: null,
 		distanceM: null,
 		isWarmup: false,
+		isEdited: false,
 		doneAt: null,
 	})),
 	plan: toPlan(plan),

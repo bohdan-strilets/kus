@@ -1,9 +1,9 @@
 import type { WorkoutStatsGroup } from '@kus/shared'
 import { useTranslation } from 'react-i18next'
 
-import { formatWorkoutTotal, GroupDot, StatsPanel } from '@/entities/workout'
+import { formatWorkoutTotal, getGroupInkClass, StatsPanel } from '@/entities/workout'
 import { formatInteger } from '@/shared/lib'
-import { Text } from '@/shared/ui'
+import { MeterBar, Text } from '@/shared/ui'
 
 import { getGroupRows } from '../lib/get-group-rows'
 
@@ -45,11 +45,11 @@ export const GroupsCard = ({ groups, cardioMin }: GroupsCardProps) => {
 								? t('training.stats.overview.groups.other')
 								: t(`muscle.${row.group}`)}
 						</Text>
-						<span className="flex-1 rounded-full bg-track">
-							<span className="block" style={{ width: `${row.widthPercent}%` }}>
-								<GroupDot group={row.group} className="h-2.5 w-full" />
-							</span>
-						</span>
+						<MeterBar
+							percent={row.widthPercent}
+							fillClassName={getGroupInkClass(row.group)}
+							className="flex-1"
+						/>
 						<Text as="span" variant="caption" weight="bold" isTabular className="w-8 text-right">
 							{formatInteger(row.setCount)}
 						</Text>

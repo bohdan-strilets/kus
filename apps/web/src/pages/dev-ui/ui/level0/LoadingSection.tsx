@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 
-import { ProgressBar, Skeleton, Surface, Text } from '@/shared/ui'
+import { MeterBar, ProgressBar, Skeleton, Surface, Text } from '@/shared/ui'
 
 import { useReplay } from '../../model/use-replay'
 import { DemoButton } from '../DemoButton'
@@ -12,6 +12,8 @@ const MACROS = [
 	{ labelKey: 'devUi.level0.carbs', tone: 'carbs', value: 160, max: 225 },
 	{ labelKey: 'devUi.level0.fat', tone: 'fat', value: 48, max: 80 },
 ] as const
+
+const METER_PERCENTS = [0, 3, 50, 100] as const
 
 export const LoadingSection = () => {
 	const { t } = useTranslation()
@@ -45,6 +47,16 @@ export const LoadingSection = () => {
 							max={macro.max}
 							index={index}
 						/>
+					</div>
+				))}
+			</Surface>
+			<Surface className="flex flex-col gap-3 p-4">
+				{METER_PERCENTS.map((percent) => (
+					<div key={percent} className="flex items-center gap-2.5">
+						<Text as="span" variant="caption" weight="bold" isTabular className="w-10">
+							{percent}%
+						</Text>
+						<MeterBar percent={percent} fillClassName="bg-success" className="flex-1" />
 					</div>
 				))}
 			</Surface>

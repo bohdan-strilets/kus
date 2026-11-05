@@ -52,3 +52,7 @@ export const groupDotVariants = cva('inline-block flex-none rounded-full', {
 })
 
 export type GroupDotVariantProps = VariantProps<typeof groupDotVariants>
+
+/** The ink colour of the group as a background class (null is «Інше»), for bars. */
+export const getGroupInkClass = (group: TrainingGroupKey | null): string =>
+	INK_CLASSES[group ?? 'OTHER']

@@ -8,6 +8,8 @@ interface StatTileProps extends StatTileVariantProps {
 	label: string
 	value: string
 	note?: string | null
+	/** A second line under `note`. */
+	extraNote?: string | null
 	/** Spoken addition to a value that is a dash. */
 	srNote?: string
 	/** A record tile: a trophy beside the label (the label already says it, so the icon is decoration). */
@@ -19,6 +21,7 @@ export const StatTile = ({
 	label,
 	value,
 	note = null,
+	extraNote = null,
 	srNote,
 	tone,
 	isRecord = false,
@@ -37,6 +40,11 @@ export const StatTile = ({
 		{note !== null && (
 			<Text as="span" variant="small" tone="mutedStrong" isTabular>
 				{note}
+			</Text>
+		)}
+		{extraNote !== null && (
+			<Text as="span" variant="small" tone="mutedStrong" isTabular>
+				{extraNote}
 			</Text>
 		)}
 	</div>

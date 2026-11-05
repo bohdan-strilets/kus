@@ -46,6 +46,7 @@ export const OverviewTab = ({ stats, period }: OverviewTabProps) => {
 					value={tiles.total}
 					srNote={tiles.isTotalUnknown ? t('training.stats.overview.totalUnknown') : undefined}
 					note={tiles.perSession}
+					extraNote={tiles.withoutDuration}
 				/>
 			</div>
 			{overview.burned !== null && <KcalTile burned={overview.burned} period={period} />}

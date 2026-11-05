@@ -128,6 +128,8 @@ describe('workout stats (e2e, real DB)', () => {
 			workoutCount: 1,
 			exerciseCount: 1,
 			setCount: 2,
+			durationMin: 60,
+			durationWorkoutCount: 1,
 			avgPerWeek: 1,
 		})
 		expect(data.exercises).toHaveLength(1)
@@ -185,6 +187,7 @@ describe('workout stats (e2e, real DB)', () => {
 			workoutCountPrev: 0,
 			setCount: 0,
 			durationMin: 0,
+			durationWorkoutCount: 0,
 			avgDurationMin: null,
 			groups: [],
 		})

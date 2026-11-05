@@ -14,6 +14,8 @@ export interface OverviewTiles {
 	isTotalUnknown: boolean
 	/** «≈ 58 хв за раз», the «≈» only while an estimated duration is in the sum. */
 	perSession: string | null
+	/** «2 тренування без часу», only while some (not all, not none) workouts have no duration. */
+	withoutDuration: string | null
 }
 
 export const getOverviewTiles = (
@@ -23,7 +25,12 @@ export const getOverviewTiles = (
 ): OverviewTiles => {
 	const { avgPerWeek, avgDurationMin, hasEstimatedDuration } = overview
 	const isTotalUnknown = overview.workoutCount > 0 && avgDurationMin === null
+	const withoutDurationCount = overview.workoutCount - overview.durationWorkoutCount
+	const hasPartialDuration = overview.durationWorkoutCount > 0 && withoutDurationCount > 0
 	return {
+		withoutDuration: hasPartialDuration
+			? t('training.stats.overview.withoutDuration', { count: withoutDurationCount })
+			: null,
 		workoutCount: overview.workoutCount,
 		perWeek:
 			avgPerWeek === null || period === 'week'

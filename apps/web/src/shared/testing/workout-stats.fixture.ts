@@ -20,6 +20,7 @@ export const makeWorkoutStats = (
 		exerciseCount: 2,
 		setCount: 14,
 		durationMin: 310,
+		durationWorkoutCount: 6,
 		avgDurationMin: 52,
 		hasEstimatedDuration: true,
 		burned: null,

@@ -205,6 +205,7 @@ export const buildWorkoutStats = ({
 			exerciseCount: countStrengthExercises(periodEntries),
 			setCount: countWorkingSets(periodEntries),
 			durationMin: sum(durations.named),
+			durationWorkoutCount: durations.named.length,
 			avgDurationMin:
 				durations.named.length === 0
 					? null

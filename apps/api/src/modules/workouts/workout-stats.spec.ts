@@ -198,6 +198,7 @@ describe('buildWorkoutStats duration and kcal', () => {
 		)
 		expect(stats.overview).toMatchObject({
 			durationMin: 91,
+			durationWorkoutCount: 2,
 			avgDurationMin: 46,
 			hasEstimatedDuration: false,
 		})
@@ -218,6 +219,7 @@ describe('buildWorkoutStats duration and kcal', () => {
 		)
 		expect(stats.overview).toMatchObject({
 			durationMin: 90,
+			durationWorkoutCount: 2,
 			avgDurationMin: 45,
 			hasEstimatedDuration: true,
 		})
@@ -225,7 +227,11 @@ describe('buildWorkoutStats duration and kcal', () => {
 
 	it('has no average when no workout has a duration', () => {
 		const stats = build([makeWorkout({ durationMin: null })], [])
-		expect(stats.overview).toMatchObject({ durationMin: 0, avgDurationMin: null })
+		expect(stats.overview).toMatchObject({
+			durationMin: 0,
+			durationWorkoutCount: 0,
+			avgDurationMin: null,
+		})
 	})
 
 	describe('avgPerWeek', () => {

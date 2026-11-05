@@ -62,6 +62,8 @@ export const workoutStatsOverviewSchema = z.object({
 	exerciseCount: z.number(),
 	setCount: z.number(),
 	durationMin: z.number(),
+	/** Workouts with a named or estimated duration: the ones `durationMin` and the average count. */
+	durationWorkoutCount: z.number().int().nonnegative().default(0),
 	avgDurationMin: z.number().nullable(),
 	/** At least one workout had no named duration, so the sum includes an estimate («≈»). */
 	hasEstimatedDuration: z.boolean(),

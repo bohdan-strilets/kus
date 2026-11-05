@@ -105,3 +105,26 @@ describe('getOverviewTiles: unknown total', () => {
 		expect(tiles.total).toBe('5 год 10 хв')
 	})
 })
+
+describe('getOverviewTiles: workouts without a duration', () => {
+	const { overview } = makeWorkoutStats()
+	const tilesWith = (durationWorkoutCount: number, extra: object = {}) =>
+		getOverviewTiles({ ...overview, workoutCount: 6, durationWorkoutCount, ...extra }, 'month', t)
+
+	it('has no note when every workout has a duration', () => {
+		expect(tilesWith(6).withoutDuration).toBeNull()
+	})
+
+	it('has no note when none has one: the total is a dash', () => {
+		const tiles = tilesWith(0, { durationMin: 0, avgDurationMin: null })
+
+		expect(tiles.withoutDuration).toBeNull()
+		expect(tiles.total).toBe('—')
+	})
+
+	it('counts the workouts without a duration with Ukrainian plurals', () => {
+		expect(tilesWith(5).withoutDuration).toBe('1 тренування без часу')
+		expect(tilesWith(3).withoutDuration).toBe('3 тренування без часу')
+		expect(tilesWith(1).withoutDuration).toBe('5 тренувань без часу')
+	})
+})

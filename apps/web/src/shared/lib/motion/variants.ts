@@ -33,6 +33,12 @@ export const sheetVariants: Variants = {
 	visible: { y: 0, transition: TRANSITION.slow },
 }
 
+/** Reduced motion: the sheet does not travel, it only fades. */
+export const sheetReducedVariants: Variants = {
+	hidden: { opacity: 0, transition: TRANSITION.exit },
+	visible: { opacity: 1, transition: TRANSITION.slow },
+}
+
 export const scrimVariants: Variants = {
 	hidden: { opacity: 0, transition: TRANSITION.exit },
 	visible: { opacity: 1, transition: TRANSITION.slow },
@@ -48,6 +54,12 @@ export const tabContentVariants: Variants = {
 export const popInVariants: Variants = {
 	hidden: { scale: 0 },
 	visible: { scale: [0, 1.25, 1], transition: { ...TRANSITION.pop, times: [0, 0.6, 1] } },
+}
+
+/** Reduced motion: the pop has no scale, it only fades in. */
+export const popInReducedVariants: Variants = {
+	hidden: { opacity: 0 },
+	visible: { opacity: 1, transition: TRANSITION.base },
 }
 
 /** Hamster hop on mood change — run through animate controls or a key. */

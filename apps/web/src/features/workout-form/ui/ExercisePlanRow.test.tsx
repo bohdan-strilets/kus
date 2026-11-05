@@ -110,6 +110,20 @@ describe('ExercisePlanRow: subtitle and changed set', () => {
 	})
 })
 
+describe('ExercisePlanRow: CHANGED state tint', () => {
+	it('the card is not tinted, only the changed set row is, and «змінено» is shown', () => {
+		const { container } = renderWithProviders(<Harness initial={plannedExercise()} />)
+		fireEvent.click(screen.getByRole('button', { name: /^Жим лежачи/ }))
+		fireEvent.click(screen.getByRole('button', { name: '+ Підхід' }))
+
+		const label = screen.getByText('змінено')
+		expect(label).toBeTruthy()
+		expect(getCard(container).className).not.toContain('bg-muscle-arms-bg')
+		expect(getCard(container).className).toContain('bg-surface/85')
+		expect((label.parentElement as HTMLElement).className).toContain('bg-muscle-arms-bg')
+	})
+})
+
 describe('ExercisePlanRow: 44 px tap targets', () => {
 	it('the exercise name control and «Повернути» carry min-h-tap', () => {
 		renderWithProviders(<Harness initial={{ ...plannedExercise(), isSkipped: true }} />)

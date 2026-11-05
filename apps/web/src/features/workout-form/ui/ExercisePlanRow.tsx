@@ -103,12 +103,7 @@ export const ExercisePlanRow = ({ exercise, onChange, onRemove }: ExercisePlanRo
 		changed.includes(index + 1) && exercise.plan !== null
 
 	const body = (
-		<div
-			className={cn(
-				'flex flex-col gap-2 rounded-tile bg-surface/85 p-3',
-				state === 'CHANGED' && 'bg-muscle-arms-bg',
-			)}
-		>
+		<div className="flex flex-col gap-2 rounded-tile bg-surface/85 p-3">
 			<div className="flex min-h-11 items-center gap-2.5">
 				<GroupDot group={group} />
 				<button

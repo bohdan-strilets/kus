@@ -37,7 +37,6 @@ import { LiveExerciseBar, type LiveBarSegment } from './LiveExerciseBar'
 import { LiveExerciseList } from './LiveExerciseList'
 import { LiveHeader } from './LiveHeader'
 import { RestTimerPanel } from './RestTimerPanel'
-import { WakeLockHint } from './WakeLockHint'
 
 /**
  * mockups/training-live.html: the full screen of an open session (no bottom nav). One exercise is
@@ -152,7 +151,6 @@ export const LiveScreen = ({ live, onFinished, isClosed }: LiveScreenProps) => {
 				}}
 			/>
 			<SyncNotice status={sync.status} onRetry={sync.retry} />
-			{wakeLock.isUnavailable && <WakeLockHint />}
 			{/* layoutScroll: the rows glide inside a scrolling parent, Motion has to know its scroll */}
 			<motion.div layoutScroll className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto pb-4">
 				<LiveExerciseBar segments={segments} />
@@ -189,7 +187,11 @@ export const LiveScreen = ({ live, onFinished, isClosed }: LiveScreenProps) => {
 					<div aria-hidden="true" className="flex-none pb-safe-bottom" />
 				)}
 			</motion.div>
-			<RestTimerPanel timer={restTimer} onHeightChange={setRestPanelHeight} />
+			<RestTimerPanel
+				timer={restTimer}
+				onHeightChange={setRestPanelHeight}
+				isWakeLockUnavailable={wakeLock.isUnavailable}
+			/>
 			<ExercisePickerSheet
 				isOpen={isPickerOpen}
 				onOpenChange={setIsPickerOpen}

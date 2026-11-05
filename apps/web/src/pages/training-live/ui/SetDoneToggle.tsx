@@ -1,8 +1,8 @@
-import { motion } from 'motion/react'
+import { motion, useReducedMotion } from 'motion/react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { cn, popInVariants, PRESS } from '@/shared/lib'
+import { cn, popInReducedVariants, popInVariants, PRESS } from '@/shared/lib'
 import { Icon, ICON_SIZE } from '@/shared/ui'
 
 interface SetDoneToggleProps {
@@ -22,6 +22,7 @@ export const SetDoneToggle = ({
 	isPoppedOnMount = false,
 }: SetDoneToggleProps) => {
 	const { t } = useTranslation()
+	const isReduced = useReducedMotion() === true
 	const [wasDone, setWasDone] = useState(isDone)
 	const [hasBecomeDone, setHasBecomeDone] = useState(false)
 	if (isDone !== wasDone) {
@@ -46,7 +47,7 @@ export const SetDoneToggle = ({
 		>
 			<motion.span
 				key={isDone ? 'done' : 'todo'}
-				variants={popInVariants}
+				variants={isReduced ? popInReducedVariants : popInVariants}
 				initial={shouldPop ? 'hidden' : false}
 				animate="visible"
 				className="flex"

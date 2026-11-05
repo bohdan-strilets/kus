@@ -152,3 +152,21 @@ describe('TrainingLivePage: the rest timer and cardio', () => {
 		})
 	})
 })
+
+describe('TrainingLivePage: the Wake Lock strip', () => {
+	const HINT = 'Екран може гаснути — тримай Kusik відкритим, щоб почути сигнал.'
+
+	it('no timer: no strip in the flow; after the check it is inside the rest panel', async () => {
+		expect('wakeLock' in navigator).toBe(false)
+		current = withNewId(makeLiveResponse({ plan: [makePlanExercise({ sets: 3 })] }))
+		renderPage()
+		const done = await screen.findByRole('button', { name: 'Підхід виконано' })
+		expect(screen.queryByText(HINT)).toBeNull()
+
+		fireEvent.click(done)
+
+		const timer = await screen.findByRole('timer', { name: REST_NAME })
+		const strip = await screen.findByText(HINT)
+		expect(timer.closest('section')?.contains(strip)).toBe(true)
+	})
+})

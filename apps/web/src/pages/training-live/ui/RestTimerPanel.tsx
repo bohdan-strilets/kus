@@ -1,5 +1,5 @@
 import type { TFunction } from 'i18next'
-import { AnimatePresence, motion } from 'motion/react'
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useTranslation } from 'react-i18next'
 
 import {
@@ -8,10 +8,11 @@ import {
 	type RestNext,
 	type RestTimer,
 } from '@/features/live-workout'
-import { sheetVariants, useElementHeight } from '@/shared/lib'
+import { sheetReducedVariants, sheetVariants, useElementHeight } from '@/shared/lib'
 import { Button, Heading, Text } from '@/shared/ui'
 
 import { RestRing } from './RestRing'
+import { WakeLockHint } from './WakeLockHint'
 
 const ignoreHeight = (): void => undefined
 
@@ -19,6 +20,8 @@ interface RestTimerPanelProps {
 	timer: RestTimer
 	/** The height the panel takes over the content (0 when it is gone): the content keeps that much room. */
 	onHeightChange?: (heightPx: number) => void
+	/** Wake Lock is not available: while the timer runs the sheet says the screen may go dark. */
+	isWakeLockUnavailable?: boolean
 }
 
 const getNextText = (next: RestNext | null, isEnded: boolean, t: TFunction): string | null => {
@@ -50,8 +53,13 @@ const getTitle = (next: RestNext | null, isEnded: boolean, t: TFunction): string
  * announced to a screen reader (`aria-live="assertive"`). The «на паузі» state of the mockup is
  * not made: the time is counted from `doneAt`, so there is nothing to pause.
  */
-export const RestTimerPanel = ({ timer, onHeightChange }: RestTimerPanelProps) => {
+export const RestTimerPanel = ({
+	timer,
+	onHeightChange,
+	isWakeLockUnavailable = false,
+}: RestTimerPanelProps) => {
 	const { t } = useTranslation()
+	const isReduced = useReducedMotion() === true
 	const heightRef = useElementHeight(onHeightChange ?? ignoreHeight)
 	const { state, next } = timer
 	const isShown = state.status !== 'idle'
@@ -65,13 +73,14 @@ export const RestTimerPanel = ({ timer, onHeightChange }: RestTimerPanelProps) =
 			{isShown && (
 				<motion.section
 					ref={heightRef}
-					variants={sheetVariants}
+					variants={isReduced ? sheetReducedVariants : sheetVariants}
 					initial="hidden"
 					animate="visible"
 					exit="hidden"
 					className="absolute inset-x-0 bottom-0 z-10 rounded-t-sheet bg-ink pb-safe-bottom"
 				>
 					<div className="flex flex-col gap-3 px-gutter pt-4 pb-4">
+						{isWakeLockUnavailable && state.status === 'running' && <WakeLockHint />}
 						<div className="flex items-center gap-4">
 							<RestRing
 								fraction={remainingSec / totalSec}

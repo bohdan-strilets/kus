@@ -21,6 +21,7 @@ const createCard = (overrides: Partial<StatsCardData> = {}): StatsCardData => ({
 	goalKcal: 2200,
 	weightChangeKg: -1.6,
 	proteinGoalG: 140,
+	hasAdvice: false,
 	weightStartKg: 84,
 	weightEndKg: 82.4,
 	days: [],

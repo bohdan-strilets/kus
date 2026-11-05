@@ -134,7 +134,13 @@ export type FoodParseDecision =
 	/** `date` null = today. */
 	| { kind: 'day'; date: string | null; text: string }
 	| { kind: 'close_day'; date: string | null; estimatedTotalKcal: number | null; text: string }
-	| { kind: 'stats'; days: ShowStatsInput['days']; endDate: string | null; text: string }
+	| {
+			kind: 'stats'
+			days: ShowStatsInput['days']
+			endDate: string | null
+			text: string
+			advice: boolean
+	  }
 	/** A new or changed training program: a card to accept, nothing saved. */
 	| { kind: 'program'; program: ProposeProgramInput }
 
@@ -537,6 +543,7 @@ const decide = (
 				days: statsCall.days,
 				endDate: statsCall.endDate,
 				text: statsCall.reply,
+				advice: statsCall.advice,
 			},
 			errors: [],
 		}

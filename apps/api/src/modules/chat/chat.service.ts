@@ -8,7 +8,7 @@ import {
 import { formatDbDate, getLocalDate } from '../../common/time'
 import { MeasurementKind, MessageStatus, Prisma } from '../../generated/prisma/client'
 import { AiUsageService } from '../ai/ai-usage.service'
-import { AiService } from '../ai/ai.service'
+import { AiService, type ParseFoodParams } from '../ai/ai.service'
 import { MeasurementsService } from '../measurements/measurements.service'
 import { MemoryService } from '../memory/memory.service'
 import { UsersService } from '../users/users.service'
@@ -251,7 +251,7 @@ export class ChatService {
 					memory: memory.context,
 					...(programOnboarding ? { programOnboarding } : {}),
 				})
-			const decision = await this.aiService.parseFood({
+			const parseParams: ParseFoodParams = {
 				userId,
 				messageId: message.id,
 				localDate: params.localDate,
@@ -271,7 +271,8 @@ export class ChatService {
 				image: photo
 					? { mimeType: photo.mimeType, base64: photo.bytes.toString('base64') }
 					: undefined,
-			})
+			}
+			const decision = await this.aiService.parseFood(parseParams)
 			const edited = await this.chatTurn.saveDecision(params, decision, {
 				memory,
 				refIds,
@@ -279,6 +280,11 @@ export class ChatService {
 				copyRefIds,
 				factRefIds,
 				templateRefIds,
+				requestStatsAdvice:
+					decision.kind === 'stats' && decision.advice
+						? (card) =>
+								this.aiService.requestStatsAdvice({ params: parseParams, stats: decision, card })
+						: undefined,
 			})
 			this.logger.log(`Chat turn ${decision.kind} user=${userId} message=${message.id}`)
 			if (autoClosedSummaryId === null) return edited

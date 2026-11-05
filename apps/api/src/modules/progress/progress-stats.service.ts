@@ -81,6 +81,7 @@ export class ProgressStatsService {
 			weightChangeKg:
 				firstWeight && lastWeight ? subtractTenths(lastWeight.value, firstWeight.value) : null,
 			proteinGoalG: lastGoal?.protein ?? null,
+			hasAdvice: false,
 			weightStartKg: firstWeight?.value ?? null,
 			weightEndKg: lastWeight?.value ?? null,
 			days: logged.map(({ localDate, kcal, goalKcal }) => ({

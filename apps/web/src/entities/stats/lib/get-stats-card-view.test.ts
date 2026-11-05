@@ -22,6 +22,7 @@ const card = (overrides: Partial<StatsCard>): StatsCard => ({
 	goalKcal: 2200,
 	weightChangeKg: null,
 	proteinGoalG: null,
+	hasAdvice: false,
 	weightStartKg: null,
 	weightEndKg: null,
 	days: [],

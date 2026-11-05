@@ -39,7 +39,11 @@ import {
 	type ProposalCardResult,
 } from '../programs/program-proposals.service'
 import { ProgramsService } from '../programs/programs.service'
-import { PROGRAM_BASE_CHANGED_REPLY, PROGRAM_UNCHANGED_REPLY } from './chat.constants'
+import {
+	PROGRAM_BASE_CHANGED_REPLY,
+	PROGRAM_UNCHANGED_REPLY,
+	STATS_ADVICE_FAILED_REPLY,
+} from './chat.constants'
 import { ChatCloseDayService } from './chat-close-day.service'
 import { ChatDayCardService } from './chat-day-card.service'
 import { ChatEditsService, type EditedMessages, NO_EDITED_MESSAGES } from './chat-edits.service'
@@ -113,6 +117,9 @@ const getReplyText = (decision: FoodParseDecision): string => {
 	}
 }
 
+/** Asks the model for advice on a stats card; null when nothing usable came back. */
+export type RequestStatsAdvice = (card: StatsCard) => Promise<string | null>
+
 const getMealKey = (day: string, mealType: string): string => `${day}|${mealType}`
 
 /** The earlier entry's values for a portion of `grams`: scaled by the backend, its provenance kept. */
@@ -185,6 +192,7 @@ export class ChatTurnService {
 			copyRefIds,
 			factRefIds = NO_FACT_REFS,
 			templateRefIds = NO_TEMPLATE_REFS,
+			requestStatsAdvice,
 		}: {
 			memory: RelevantFoods
 			refIds: EditRefIds
@@ -195,11 +203,18 @@ export class ChatTurnService {
 			factRefIds?: ReadonlyMap<string, string>
 			/** `t1…` of «Program»; omitted where the context had no program. */
 			templateRefIds?: TemplateRefIds
+			/** The second model call of «summary and advice»; without it a stats card is just the card. */
+			requestStatsAdvice?: RequestStatsAdvice
 		},
 	): Promise<TurnResult> {
 		// the numbers of the card are counted before the turn is written; a card is a snapshot anyway
 		const dayCard = await this.buildDayCard({ userId, message, now, localDate }, decision)
-		const statsCard = await this.buildStatsCard({ userId, localDate }, decision)
+		const builtStatsCard = await this.buildStatsCard({ userId, localDate }, decision)
+		const advice = await this.buildStatsAdvice(
+			{ userId, messageId: message.id },
+			{ decision, card: builtStatsCard, requestAdvice: requestStatsAdvice },
+		)
+		const statsCard = advice?.card ?? builtStatsCard
 		const proposal = await this.buildProgramCard(userId, decision, {
 			templateRefIds,
 			workoutRefIds,
@@ -213,11 +228,13 @@ export class ChatTurnService {
 		const replyText =
 			decision.kind === 'stats' && !statsCard
 				? STATS_EMPTY_REPLY
-				: proposal?.status === 'UNCHANGED'
-					? PROGRAM_UNCHANGED_REPLY
-					: proposal?.status === 'BASE_CHANGED'
-						? PROGRAM_BASE_CHANGED_REPLY
-						: getReplyText(decision)
+				: advice
+					? advice.text
+					: proposal?.status === 'UNCHANGED'
+						? PROGRAM_UNCHANGED_REPLY
+						: proposal?.status === 'BASE_CHANGED'
+							? PROGRAM_BASE_CHANGED_REPLY
+							: getReplyText(decision)
 		const memoryTurn: MemoryTurn | null =
 			(decision.kind === 'log' || decision.kind === 'reply' || decision.kind === 'edit') &&
 			hasMemoryActions(decision.memory)
@@ -549,6 +566,30 @@ export class ChatTurnService {
 			today: formatDbDate(localDate),
 		})
 		return card ?? undefined
+	}
+
+	/**
+	 * show_stats with advice: the second model call over the counted card. A failed call keeps the
+	 * card and says so in a sentence of our own (the user can ask again); never throws for the model.
+	 */
+	private async buildStatsAdvice(
+		{ userId, messageId }: { userId: string; messageId: string },
+		{
+			decision,
+			card,
+			requestAdvice,
+		}: {
+			decision: FoodParseDecision
+			card: StatsCard | undefined
+			requestAdvice: RequestStatsAdvice | undefined
+		},
+	): Promise<{ card: StatsCard; text: string } | null> {
+		if (decision.kind !== 'stats' || !decision.advice || !card || !requestAdvice) return null
+		const text = await requestAdvice(card)
+		if (text === null) {
+			this.logger.warn(`Stats advice failed user=${userId} message=${messageId}`)
+		}
+		return { card: { ...card, hasAdvice: true }, text: text ?? STATS_ADVICE_FAILED_REPLY }
 	}
 
 	/** close_day: the gap up to the user's total is logged, then the card is written onto the reply. */

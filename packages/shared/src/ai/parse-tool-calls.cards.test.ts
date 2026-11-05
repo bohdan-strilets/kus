@@ -110,7 +110,10 @@ describe('show_stats', () => {
 			days: 30,
 			endDate: '2026-10-10',
 			text: 'Ось тиждень',
+			advice: false,
 		})
+		const advised = parseToolCalls([showStats({ advice: true })], refs)
+		expect(advised.ok && advised.decision).toMatchObject({ kind: 'stats', advice: true })
 	})
 
 	it('takes days from 2 to 92 and nothing else', () => {

@@ -73,6 +73,8 @@ export const statsCardSchema = z.object({
 	weightEndKg: z.number().nullable().default(null),
 	/** Days of the period with something logged, oldest first. Absent (empty) in older snapshots. */
 	days: z.array(statsCardDaySchema).default([]),
+	/** The reply under the card is advice on the period (or the sentence that it failed). Absent in older snapshots. */
+	hasAdvice: z.boolean().default(false),
 })
 
 export type StatsCard = z.infer<typeof statsCardSchema>

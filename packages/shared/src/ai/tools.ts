@@ -328,6 +328,10 @@ export const showStatsInputSchema = z.object({
 	reply: replyTextSchema.describe(
 		'One short sentence in the language of the user next to the card. No numbers — the card shows them.',
 	),
+	advice: z
+		.boolean()
+		.default(false)
+		.describe('true when the user also asks for advice on the period; see "Stats"'),
 })
 
 export type ShowStatsInput = z.infer<typeof showStatsInputSchema>

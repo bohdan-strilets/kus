@@ -265,6 +265,7 @@ describe('chatMessageSchema 0.7.0 fields', () => {
 		weightStartKg: 82.4,
 		weightEndKg: 82,
 		days: [{ date: '2026-10-17', kcal: 1900, verdict: 'on_goal' }],
+		hasAdvice: false,
 	}
 
 	it('reads a day card stored before verdict and isClosing existed', () => {
@@ -303,6 +304,7 @@ describe('chatMessageSchema 0.7.0 fields', () => {
 			weightStartKg: null,
 			weightEndKg: null,
 			days: [],
+			hasAdvice: false,
 		})
 	})
 

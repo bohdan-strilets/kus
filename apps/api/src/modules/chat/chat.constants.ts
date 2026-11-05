@@ -26,6 +26,10 @@ export const PROGRAM_REBASED_REPLY = 'Перерахував від поточн
 export const PROGRAM_BASE_CHANGED_REPLY =
 	'Програму щойно змінено в редакторі — напиши ще раз, що змінити.'
 
+/** Kusik's reply under a stats card when the second model call (advice) did not come back. */
+export const STATS_ADVICE_FAILED_REPLY =
+	'Поради зараз не вийшли — напиши «дай поради», і я спробую ще раз.'
+
 const DECIMAL = 10
 const HUNDRED = 100
 

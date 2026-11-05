@@ -3,6 +3,7 @@ import { STATS_EMPTY_REPLY } from '@kus/shared'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { TemplateRefIds } from '../programs/program-chat-context'
+import { STATS_ADVICE_FAILED_REPLY } from './chat.constants'
 import { TurnCopySourceMissingException, TurnDateOutOfRangeException } from './chat.exceptions'
 import { ChatTurnService } from './chat-turn.service'
 
@@ -85,6 +86,7 @@ const createService = () => {
 		decision: never,
 		copyRefIds: Map<string, string> = new Map(),
 		templateRefIds?: TemplateRefIds,
+		requestStatsAdvice?: (card: never) => Promise<string | null>,
 	) =>
 		service.saveDecision(
 			{
@@ -100,6 +102,7 @@ const createService = () => {
 				refIds: {},
 				copyRefIds,
 				...(templateRefIds ? { templateRefIds } : {}),
+				...(requestStatsAdvice ? { requestStatsAdvice } : {}),
 			} as never,
 		)
 	return {
@@ -436,6 +439,57 @@ describe('ChatTurnService.saveDecision show_stats', () => {
 		const params: unknown = completeTurn.mock.calls[0]?.[0]
 		expect((params as { statsCard?: unknown }).statsCard).toBeUndefined()
 		expect(params).toMatchObject({ replyText: STATS_EMPTY_REPLY })
+	})
+})
+
+describe('ChatTurnService.saveDecision show_stats with advice', () => {
+	const toAdviceDecision = (advice: boolean) =>
+		({ kind: 'stats', days: 7, endDate: null, text: 'Ось тиждень', advice }) as never
+	const card = { version: 1, period: 'week', hasAdvice: false }
+
+	it('stores the advice as the reply and marks the card', async () => {
+		const { save, buildStats, completeTurn } = createService()
+		buildStats.mockResolvedValue(card)
+		const requestAdvice = vi.fn().mockResolvedValue('Додай білка на вечерю.')
+
+		await save(toAdviceDecision(true), new Map(), undefined, requestAdvice)
+
+		expect(requestAdvice).toHaveBeenCalledWith(card)
+		expect(completeTurn).toHaveBeenCalledWith(
+			expect.objectContaining({
+				replyText: 'Додай білка на вечерю.',
+				statsCard: { ...card, hasAdvice: true },
+			}),
+			expect.anything(),
+		)
+	})
+
+	it('keeps the card and says that advice failed when the second call gave nothing', async () => {
+		const { save, buildStats, completeTurn } = createService()
+		buildStats.mockResolvedValue(card)
+
+		await save(toAdviceDecision(true), new Map(), undefined, vi.fn().mockResolvedValue(null))
+
+		expect(completeTurn).toHaveBeenCalledWith(
+			expect.objectContaining({
+				replyText: STATS_ADVICE_FAILED_REPLY,
+				statsCard: { ...card, hasAdvice: true },
+			}),
+			expect.anything(),
+		)
+	})
+
+	it('makes no second call without advice or without a card', async () => {
+		const { save, buildStats, completeTurn } = createService()
+		const requestAdvice = vi.fn()
+		buildStats.mockResolvedValue(card)
+
+		await save(toAdviceDecision(false), new Map(), undefined, requestAdvice)
+		buildStats.mockResolvedValue(null)
+		await save(toAdviceDecision(true), new Map(), undefined, requestAdvice)
+
+		expect(requestAdvice).not.toHaveBeenCalled()
+		expect(completeTurn.mock.calls[1]?.[0]).toMatchObject({ replyText: STATS_EMPTY_REPLY })
 	})
 })
 

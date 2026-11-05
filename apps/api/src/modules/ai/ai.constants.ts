@@ -19,6 +19,11 @@ export const CHAT_TURN_DB_BUDGET_MS = seconds(20)
  * retry): 2 attempts × the 45 s default fit, and with the DB budget it ends before Vercel's 120 s.
  */
 export const AI_PARSE_DEADLINE_MS = seconds(95)
+/**
+ * The second call of «summary and advice» (a short reply on counted numbers). Its worst case sits
+ * on top of AI_PARSE_DEADLINE_MS and the DB budget; a normal parse is far below its own limit.
+ */
+export const AI_STATS_ADVICE_DEADLINE_MS = seconds(25)
 
 /** AiToolCall rows hold food data and are kept only for prompt debugging (docs/database.md). */
 export const TOOL_CALL_RETENTION_DAYS = 30

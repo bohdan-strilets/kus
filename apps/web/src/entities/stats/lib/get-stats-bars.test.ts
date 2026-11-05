@@ -16,6 +16,7 @@ const card = (from: string, to: string, overrides: Partial<StatsCard> = {}): Sta
 	goalKcal: 2000,
 	weightChangeKg: null,
 	proteinGoalG: null,
+	hasAdvice: false,
 	weightStartKg: null,
 	weightEndKg: null,
 	days: [],

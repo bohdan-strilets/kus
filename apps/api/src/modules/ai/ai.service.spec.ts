@@ -343,4 +343,57 @@ describe('AiService.parseFood', () => {
 			await expect(service.parseFood(params)).rejects.toBeInstanceOf(AiUnavailableException)
 		})
 	})
+
+	describe('requestStatsAdvice', () => {
+		const stats = {
+			kind: 'stats' as const,
+			days: 7,
+			endDate: null,
+			text: 'Ось тиждень',
+			advice: true,
+		}
+		const card = {
+			version: 1 as const,
+			period: 'week' as const,
+			periodDays: 7,
+			from: '2026-10-01',
+			to: '2026-10-07',
+			loggedDays: 5,
+			daysInNorm: 4,
+			avgKcal: 2000,
+			avgProteinG: 100,
+			goalKcal: 2100,
+			weightChangeKg: null,
+			proteinGoalG: null,
+			weightStartKg: null,
+			weightEndKg: null,
+			days: [],
+			hasAdvice: false,
+		}
+		const reply = (text: string) => ({ name: 'reply', args: { text } })
+
+		it('asks for reply after the show_stats call and its numbers, as a separate CHAT_REPLY run', async () => {
+			fake.respond(createCompletion([reply('Більше білка.')]))
+
+			const text = await service.requestStatsAdvice({ params, stats, card })
+
+			expect(text).toBe('Більше білка.')
+			const body = fake.bodies[0] as { tool_choice: unknown; messages: { role: string }[] }
+			expect(body.tool_choice).toBe('auto')
+			expect(body.messages.slice(-2).map(({ role }) => role)).toEqual(['assistant', 'tool'])
+			expect(JSON.stringify(body.messages.at(-1))).toContain('already counted')
+			expect(repository.createRun).toHaveBeenCalledWith(
+				expect.objectContaining({ purpose: 'CHAT_REPLY', status: 'SUCCEEDED' }),
+			)
+		})
+
+		it('gives null, not an error, when the model sends no usable reply', async () => {
+			fake.respond(createCompletion([logFoodCall()]))
+
+			await expect(service.requestStatsAdvice({ params, stats, card })).resolves.toBeNull()
+			expect(repository.createRun).toHaveBeenCalledWith(
+				expect.objectContaining({ purpose: 'CHAT_REPLY', status: 'FAILED' }),
+			)
+		})
+	})
 })

@@ -357,7 +357,15 @@ export const LIVE_CHAT_CASES: EvalCase[] = [
 			stats: { days: 7 },
 			statsAdvice: true,
 			statsNumbers: WEEK_NUMBERS,
-			replyExcludes: [...JUDGING_STEMS, ' вага', ' вагу', ' ваги', ' кг'],
+			// "нічого не компенсуй" is the right advice after a day over the goal: the stem stays a flag
+			// in findJudgingWords, but it does not fail this case
+			replyExcludes: [
+				...JUDGING_STEMS.filter((stem) => stem !== 'компенсу'),
+				' вага',
+				' вагу',
+				' ваги',
+				' кг',
+			],
 		},
 		reference:
 			'Summary + advice: show_stats days 7 with advice true; the second call gets the counted numbers and answers with advice, no judging words, no weight',

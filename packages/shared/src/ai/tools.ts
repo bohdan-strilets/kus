@@ -244,6 +244,11 @@ export const replyInputSchema = z.object({
 	text: replyTextSchema.describe(
 		`The answer in the language of the user's message: 1–2 sentences for small talk, up to ~6 when the user asks for advice or an explanation`,
 	),
+	attach: z
+		.enum(['program'])
+		.nullable()
+		.default(null)
+		.describe('"program" shows the active program as a card next to the text; see "Program"'),
 })
 
 export type ReplyInput = z.infer<typeof replyInputSchema>

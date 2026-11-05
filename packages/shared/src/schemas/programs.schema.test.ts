@@ -6,6 +6,7 @@ import {
 	PROGRESS_STEP_OPTIONS_KG,
 	programCardSchema,
 	programDraftSchema,
+	programViewSchema,
 	programTemplateSchema,
 	templateExerciseTargetSchema,
 	weekdaysSchema,
@@ -230,5 +231,27 @@ describe('programCardSchema', () => {
 	it('rejects an invalid program inside the card', () => {
 		const program = { ...validProgram, templates: [] }
 		expect(programCardSchema.safeParse({ ...validCard, program }).success).toBe(false)
+	})
+})
+
+describe('programViewSchema', () => {
+	const view = {
+		v: 1,
+		versionId: uuid(9),
+		versionCreatedAt: '2026-11-05T10:00:00.000Z',
+		program: validProgram,
+		nextTemplateKey: uuid(1),
+	}
+
+	it('accepts a snapshot with and without a next template', () => {
+		expect(programViewSchema.safeParse(view).success).toBe(true)
+		expect(programViewSchema.safeParse({ ...view, nextTemplateKey: null }).success).toBe(true)
+	})
+
+	it('rejects another version of the form and a broken program', () => {
+		expect(programViewSchema.safeParse({ ...view, v: 2 }).success).toBe(false)
+		expect(
+			programViewSchema.safeParse({ ...view, program: { ...validProgram, templates: [] } }).success,
+		).toBe(false)
 	})
 })

@@ -5,6 +5,7 @@ import {
 	type NextTemplate,
 	type ProgramDraft,
 	type ProgramResponse,
+	type ProgramView,
 	type ProgramVersionListResponse,
 	type SaveTemplateRequest,
 	type UpdateProgramSettingsRequest,
@@ -53,6 +54,22 @@ export class ProgramsService {
 		const program = await this.programsRepository.findActive(userId)
 		if (!hasActiveVersion(program)) return null
 		return this.toResponse(userId, program)
+	}
+
+	/** The active version as a snapshot for the chat («покажи програму»); null without a program. */
+	async getActiveView(userId: string): Promise<ProgramView | null> {
+		const program = await this.programsRepository.findActive(userId)
+		if (!hasActiveVersion(program)) return null
+		const draft = toProgramDraft(program)
+		if (!draft) return null
+		const next = await this.getNext(userId, program)
+		return {
+			v: 1,
+			versionId: program.activeVersion.id,
+			versionCreatedAt: program.activeVersion.createdAt.toISOString(),
+			program: draft,
+			nextTemplateKey: next?.key ?? null,
+		}
 	}
 
 	/** Whether the user has a live program (the training onboarding is offered only without one). */

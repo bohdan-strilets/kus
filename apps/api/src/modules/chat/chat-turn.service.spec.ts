@@ -62,6 +62,7 @@ const createService = () => {
 	const logWorkouts = vi.fn().mockResolvedValue({ sourceMessageIds: [], hasNewRecord: false })
 	const buildProposalCard = vi.fn().mockResolvedValue({ status: 'UNCHANGED' })
 	const resolveTemplateIds = vi.fn().mockResolvedValue(new Set())
+	const getActiveView = vi.fn().mockResolvedValue(null)
 	const service = new ChatTurnService(
 		{ $transaction: (callback: (tx: unknown) => unknown) => callback({}) } as never,
 		{ completeTurn, setDayCard } as never,
@@ -77,6 +78,7 @@ const createService = () => {
 		{ logWorkouts } as never,
 		{ apply: vi.fn() } as never,
 		{ buildProposalCard, resolveTemplateIds } as never,
+		{ getActiveView } as never,
 		{ storeAnswer: vi.fn(), offerAfterWorkout: vi.fn() } as never,
 	)
 	const save = (
@@ -114,6 +116,7 @@ const createService = () => {
 		recordForTurn,
 		buildProposalCard,
 		resolveTemplateIds,
+		getActiveView,
 		logWorkouts,
 	}
 }
@@ -615,5 +618,49 @@ describe('ChatTurnService.saveDecision programs', () => {
 		expect(logWorkouts.mock.calls[0]?.[0]).toMatchObject({
 			templateIds: new Map([['t1', 'template-a']]),
 		})
+	})
+})
+
+describe('ChatTurnService.saveDecision reply with attach program', () => {
+	const toReply = (attach: 'program' | null) => ({
+		kind: 'reply',
+		text: 'Ось програма',
+		attach,
+		measurements: [],
+		measurementDeletions: [],
+		memory: { foods: [], fact: null, forgets: [] },
+	})
+
+	it('stores the active program snapshot of the token user with the reply', async () => {
+		const { save, completeTurn, getActiveView } = createService()
+		const view = { v: 1, versionId: 'ver-1' }
+		getActiveView.mockResolvedValue(view)
+
+		await save(toReply('program') as never)
+
+		expect(getActiveView).toHaveBeenCalledWith('u1')
+		expect(completeTurn).toHaveBeenCalledWith(
+			expect.objectContaining({ replyText: 'Ось програма', programView: view }),
+			expect.anything(),
+		)
+	})
+
+	it('keeps only the text without an active program', async () => {
+		const { save, completeTurn } = createService()
+
+		await save(toReply('program') as never)
+
+		expect(completeTurn).toHaveBeenCalledWith(
+			expect.objectContaining({ replyText: 'Ось програма', programView: undefined }),
+			expect.anything(),
+		)
+	})
+
+	it('does not look the program up for a plain reply', async () => {
+		const { save, getActiveView } = createService()
+
+		await save(toReply(null) as never)
+
+		expect(getActiveView).not.toHaveBeenCalled()
 	})
 })

@@ -23,6 +23,7 @@ const message = (overrides: Partial<ChatMessage>): ChatMessage => ({
 	statsCard: null,
 	programCard: null,
 	programCardState: null,
+	programView: null,
 	trainingOnboarding: null,
 	trainingOnboardingState: null,
 	savedFoods: [],

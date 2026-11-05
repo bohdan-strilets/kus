@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common'
-import type { DayCard, ProgramCard, StatsCard, TrainingOnboarding } from '@kus/shared'
+import type { DayCard, ProgramCard, ProgramView, StatsCard, TrainingOnboarding } from '@kus/shared'
 
 import {
 	AttachmentStatus,
@@ -187,6 +187,7 @@ export class ChatRepository {
 			dayCard,
 			statsCard,
 			programCard,
+			programView,
 			trainingOnboarding,
 		}: {
 			userId: string
@@ -196,6 +197,7 @@ export class ChatRepository {
 			dayCard?: DayCard
 			statsCard?: StatsCard
 			programCard?: ProgramCard
+			programView?: ProgramView
 			trainingOnboarding?: TrainingOnboarding
 		},
 		tx: Prisma.TransactionClient,
@@ -215,6 +217,7 @@ export class ChatRepository {
 				...(dayCard ? { dayCard } : {}),
 				...(statsCard ? { statsCard } : {}),
 				...(programCard ? { programCard } : {}),
+				...(programView ? { programView } : {}),
 				...(trainingOnboarding ? { trainingOnboarding } : {}),
 			},
 		})

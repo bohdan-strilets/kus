@@ -254,6 +254,10 @@ describe('parseToolCalls', () => {
 		expect(notFood).toMatchObject({ ok: true, decision: { kind: 'not_food' } })
 		const reply = parseToolCalls([call('reply', { text: 'Привіт!' })], options)
 		expect(reply).toMatchObject({ ok: true, decision: { kind: 'reply', text: 'Привіт!' } })
+		expect(reply).toMatchObject({ decision: { attach: null } })
+		const withProgram = parseToolCalls([call('reply', { text: 'Ось', attach: 'program' })], options)
+		expect(withProgram).toMatchObject({ ok: true, decision: { kind: 'reply', attach: 'program' } })
+		expect(parseToolCalls([call('reply', { text: 'Ось', attach: 'plan' })], options).ok).toBe(false)
 	})
 
 	describe('photo_unusable', () => {

@@ -134,6 +134,17 @@ export const programCardSchema = z.object({
 })
 export type ProgramCard = z.infer<typeof programCardSchema>
 
+/** The active program on request («покажи програму»): a snapshot of the version, never refreshed. */
+export const programViewSchema = z.object({
+	v: z.literal(1),
+	versionId: z.uuid(),
+	versionCreatedAt: z.iso.datetime(),
+	program: programDraftSchema,
+	/** The key of the template that comes next; null when there is none. */
+	nextTemplateKey: z.uuid().nullable(),
+})
+export type ProgramView = z.infer<typeof programViewSchema>
+
 /**
  * Derived when the chat is read, never stored: ACCEPTED — a version came from this card; REPLACED —
  * a newer card exists; OUTDATED — the program moved on (or was removed) since the card was made.

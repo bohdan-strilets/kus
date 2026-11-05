@@ -413,3 +413,30 @@ describe('chatMessageSchema memory fields', () => {
 		})
 	})
 })
+
+describe('chatMessageSchema programView', () => {
+	const base = {
+		id: clientMessageId,
+		role: 'ASSISTANT',
+		content: 'Ось програма',
+		status: 'COMPLETED',
+		clientMessageId: null,
+		replyToId: clientMessageId,
+		createdAt: '2026-11-05T10:00:00.000Z',
+		photo: null,
+		meals: [],
+		clarifications: [],
+		measurements: [],
+		achievements: [],
+	}
+
+	it('defaults to null without the field', () => {
+		expect(chatMessageSchema.parse(base).programView).toBeNull()
+	})
+
+	it('reads an old or broken form as null and keeps the message', () => {
+		const parsed = chatMessageSchema.parse({ ...base, programView: { v: 2, program: 'x' } })
+		expect(parsed.programView).toBeNull()
+		expect(parsed.content).toBe('Ось програма')
+	})
+})

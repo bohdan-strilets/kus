@@ -35,6 +35,7 @@ export const makeChatMessage = (overrides: Partial<ChatMessage> = {}): ChatMessa
 	statsCard: null,
 	programCard: null,
 	programCardState: null,
+	programView: null,
 	trainingOnboarding: null,
 	trainingOnboardingState: null,
 	savedFoods: [],

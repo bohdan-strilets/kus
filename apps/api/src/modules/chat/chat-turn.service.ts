@@ -13,6 +13,7 @@ import {
 	type LogFoodInput,
 	type LogMeasurementInput,
 	type MemoryActions,
+	type ProgramView,
 	STATS_EMPTY_REPLY,
 	type StatsCard,
 } from '@kus/shared'
@@ -37,6 +38,7 @@ import {
 	ProgramProposalsService,
 	type ProposalCardResult,
 } from '../programs/program-proposals.service'
+import { ProgramsService } from '../programs/programs.service'
 import { PROGRAM_BASE_CHANGED_REPLY, PROGRAM_UNCHANGED_REPLY } from './chat.constants'
 import { ChatCloseDayService } from './chat-close-day.service'
 import { ChatDayCardService } from './chat-day-card.service'
@@ -169,6 +171,7 @@ export class ChatTurnService {
 		private readonly workoutsTurn: WorkoutsTurnService,
 		private readonly turnMemory: ChatTurnMemoryService,
 		private readonly programProposals: ProgramProposalsService,
+		private readonly programs: ProgramsService,
 		private readonly trainingOnboarding: ChatTrainingOnboardingAnswersService,
 	) {}
 
@@ -202,6 +205,7 @@ export class ChatTurnService {
 			workoutRefIds,
 		})
 		const programCard = proposal?.status === 'CARD' ? proposal.card : undefined
+		const programView = await this.buildProgramView(userId, decision)
 		const templateIds = await this.resolveTemplateIds(userId, decision, templateRefIds)
 		// nothing logged in the period: the model's text would talk about a card that is not there;
 		// a program that already is what the model proposed, or that changed in the editor since the
@@ -228,6 +232,7 @@ export class ChatTurnService {
 					dayCard,
 					statsCard,
 					programCard,
+					programView,
 				},
 				tx,
 			)
@@ -452,6 +457,15 @@ export class ChatTurnService {
 			await this.chatRepository.setReplyContent({ userId, id: replyId, content }, tx)
 		}
 		return result.savedFoods
+	}
+
+	/** reply(attach: program) only: the active program as it is now; undefined without one. */
+	private async buildProgramView(
+		userId: string,
+		decision: FoodParseDecision,
+	): Promise<ProgramView | undefined> {
+		if (decision.kind !== 'reply' || decision.attach !== 'program') return undefined
+		return (await this.programs.getActiveView(userId)) ?? undefined
 	}
 
 	/** propose_program only (undefined otherwise), against the version the turn's context showed. */

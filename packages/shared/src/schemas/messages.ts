@@ -16,7 +16,7 @@ import { dayVerdictSchema } from './day-verdict.js'
 import { factProposalSchema } from './facts.js'
 import { measurementCardSchema } from './measurements.js'
 import { PHOTOS_PER_MESSAGE_LIMIT } from './photo-limits.js'
-import { programCardSchema, programCardStateSchema } from './programs.js'
+import { programCardSchema, programCardStateSchema, programViewSchema } from './programs.js'
 import { statsCardSchema } from './stats-card.js'
 import {
 	onboardingAnswerRequestSchema,
@@ -284,6 +284,11 @@ export const chatMessageSchema = z.object({
 	programCard: programCardSchema.nullable().default(null).catch(null),
 	/** With programCard only: what became of the card, derived when the chat is read. */
 	programCardState: programCardStateSchema.nullable().default(null).catch(null),
+	/**
+	 * Replies with attach "program" only: the active program as it was when asked. null elsewhere,
+	 * without an active program, in payloads of older servers and when the snapshot cannot be read.
+	 */
+	programView: programViewSchema.nullable().default(null).catch(null),
 	/**
 	 * Kusik's training onboarding messages only: the invitation or a question (its text comes from
 	 * i18n by `step`, `content` is null). null elsewhere and in payloads of older servers.

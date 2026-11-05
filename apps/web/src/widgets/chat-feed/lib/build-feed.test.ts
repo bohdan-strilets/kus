@@ -28,6 +28,7 @@ const message = (overrides: Partial<ChatMessage> & Pick<ChatMessage, 'createdAt'
 		statsCard: null,
 		programCard: null,
 		programCardState: null,
+		programView: null,
 		trainingOnboarding: null,
 		trainingOnboardingState: null,
 		savedFoods: [],

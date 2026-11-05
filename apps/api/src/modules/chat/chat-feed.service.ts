@@ -26,6 +26,7 @@ import {
 	type OnboardingView,
 } from './chat-training-onboarding-views.service'
 import { InvalidCursorException } from './chat.exceptions'
+import { readStoredProgramView } from './program-card'
 import {
 	type ClarificationWithEntries,
 	ClarificationsRepository,
@@ -124,6 +125,7 @@ const toChatMessage = (
 		statsCard: statsCards.get(message.id) ?? null,
 		programCard: programCards.get(message.id)?.card ?? null,
 		programCardState: programCards.get(message.id)?.state ?? null,
+		programView: readStoredProgramView(message.programView),
 		trainingOnboarding: onboarding.get(message.id)?.payload ?? null,
 		trainingOnboardingState: onboarding.get(message.id)?.state ?? null,
 		// saved foods are live only (the response of the turn adds them)

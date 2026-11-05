@@ -79,7 +79,7 @@ describe('formatProgramSection', () => {
 		])
 		expect(lines[4]).toBe(FIRST_RULE)
 		expect(lines.at(-1)).toBe(LAST_RULE)
-		expect(lines).toHaveLength(11)
+		expect(lines).toHaveLength(12)
 	})
 
 	it('leaves out what the program does not have', () => {
@@ -95,7 +95,7 @@ describe('formatProgramSection', () => {
 
 		expect(lines[0]).toBe('# Program')
 		expect(lines[1]).toBe(FIRST_RULE)
-		expect(lines).toHaveLength(8)
+		expect(lines).toHaveLength(9)
 	})
 
 	it('asks for a program on the last onboarding step', () => {

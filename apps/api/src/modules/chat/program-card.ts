@@ -1,4 +1,9 @@
-import { type ProgramCard, programCardSchema } from '@kus/shared'
+import {
+	type ProgramCard,
+	programCardSchema,
+	type ProgramView,
+	programViewSchema,
+} from '@kus/shared'
 
 export interface StoredProgramCard {
 	card: ProgramCard | null
@@ -13,4 +18,10 @@ export const readStoredProgramCard = (value: unknown): StoredProgramCard => {
 	return parsed.success
 		? { card: parsed.data, isUnreadable: false }
 		: { card: null, isUnreadable: true }
+}
+
+/** The snapshot as stored in `messages.program_view`; a value that doesn't parse reads as none. */
+export const readStoredProgramView = (value: unknown): ProgramView | null => {
+	const parsed = programViewSchema.safeParse(value)
+	return parsed.success ? parsed.data : null
 }

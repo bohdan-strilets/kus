@@ -527,6 +527,9 @@ model Message {
   // assistant reply to propose_program: the proposed program and its diff as they were when written (a snapshot;
   // the card state - open, accepted, replaced, outdated - is derived on read)
   programCard        Json?         @map("program_card")
+  // assistant reply to reply(attach: program): the active program as it was when asked (a snapshot, never refreshed;
+  // form programViewSchema in packages/shared)
+  programView        Json?         @map("program_view")
   // Kusik's training onboarding message: the invitation (step 0) or a question (1-5) and the stored answer
   // (form trainingOnboardingSchema in packages/shared); open / answered / closed is derived on read
   trainingOnboarding Json?         @map("training_onboarding")

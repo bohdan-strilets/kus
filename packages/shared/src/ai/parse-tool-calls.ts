@@ -125,6 +125,8 @@ export type FoodParseDecision =
 	| {
 			kind: 'reply'
 			text: string
+			/** "program": the reply carries the active program as a card. */
+			attach: ReplyInput['attach']
 			measurements: LogMeasurementInput[]
 			measurementDeletions: DeleteMeasurementInput[]
 			memory: MemoryActions
@@ -606,6 +608,7 @@ const decide = (
 			decision: {
 				kind: 'reply',
 				text: reply.text,
+				attach: reply.attach,
 				measurements,
 				measurementDeletions: deletions,
 				memory,

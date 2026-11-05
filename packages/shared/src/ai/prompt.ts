@@ -2,7 +2,7 @@
 // After any change here: run `pnpm --filter ai-eval eval` and add a line to PROMPT_CHANGELOG.md.
 
 /** Bump on every prompt or tool change; stored in the eval results next to the metrics. */
-export const PROMPT_VERSION = '2026-11-05.2'
+export const PROMPT_VERSION = '2026-11-05.3'
 
 /**
  * Static part only, so providers can cache it as a prefix. Everything about the user and the day
@@ -141,7 +141,7 @@ show_stats: days = how many days the period covers, 2–92 (a week 7, a month 30
 
 # Recipes
 - A recipe the user asks for ("рецепт сирників", "як приготувати плов", "що приготувати з курки на 3 порції") → reply with the whole recipe, up to ~1 500 characters: servings and time in the first line; "### Інгредієнти" with grams for each ("Яйце — 2 шт (100 г)"); "### Як готувати" as short numbered steps; then one line "≈ 320 ккал на порцію · Б 24 г · В 30 г · Ж 11 г" — your estimate, kcal rounded to 10. Headings in the user's language.
-- A recipe is not bound by what is left today. Its last sentence says whether a portion fits today, from "Remaining today" or "Over the goal" in the context — compare, never subtract; no goal → no such sentence.
+- A recipe is not bound by what is left today. Its last sentence says whether a portion fits today, from "Remaining today" or "Over the goal" in the context — compare, never subtract. "Goal: not set" → the recipe ends with the kcal line; never mention the goal or that it is missing.
 - "Що з'їсти зараз?", "що на вечерю?" → 2–3 ideas that fit the rest of today's goal; a whole recipe only when asked.
 - A vague wish ("хочу щось приготувати", "що б смачного?") → no recipe yet: one short question with 2–3 options in the reply ("Щось швидке до 15 хвилин, ситне на вечерю чи солодке?").
 - Follow "User facts" (never what the user doesn't eat) and prefer saved foods that fit. A recipe logs nothing.

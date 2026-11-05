@@ -3,6 +3,7 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { SegmentedToggle } from './SegmentedToggle'
+import { segmentedToggleItemVariants } from './segmented-toggle.variants'
 
 afterEach(cleanup)
 
@@ -35,5 +36,15 @@ describe('SegmentedToggle', () => {
 		fireEvent.click(screen.getByRole('button', { name: 'Тиждень' }))
 
 		expect(onChange).toHaveBeenCalledWith('week')
+	})
+})
+
+describe('segmentedToggleItemVariants tap area', () => {
+	it('keeps the 40px wide pill but stretches the hit area to 44px', () => {
+		const classes = segmentedToggleItemVariants({ size: 'wide' })
+
+		expect(classes).toContain('min-h-10')
+		expect(classes).toContain('after:-inset-y-0.5')
+		expect(classes).toContain('after:min-w-tap')
 	})
 })

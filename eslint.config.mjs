@@ -81,6 +81,10 @@ export default tseslint.config(
 					selector: "CallExpression[callee.name='forwardRef']",
 					message: 'React 19 passes ref as a prop — forwardRef is not needed.',
 				},
+				{
+					selector: "JSXAttribute[name.name='dangerouslySetInnerHTML']",
+					message: 'Model and user text is rendered as React nodes only (CLAUDE.md §10).',
+				},
 			],
 		},
 	},

@@ -36,6 +36,13 @@ describe('UserMessage', () => {
 		expect(container.querySelector('img')).toBeNull()
 	})
 
+	it('shows markdown markers of the user literally, without bold', () => {
+		const { container } = renderWithProviders(<UserMessage item={createItem({ text: '**x**' })} />)
+
+		expect(container.querySelector('strong')).toBeNull()
+		expect(screen.getByText('**x**')).toBeTruthy()
+	})
+
 	it('draws the thumb of a stored photo with the words under it', () => {
 		const { container } = renderWithProviders(
 			<UserMessage

@@ -1,5 +1,6 @@
 import type { MeasurementCard } from '@kus/shared'
 import { motion } from 'motion/react'
+import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 
@@ -21,7 +22,7 @@ export interface WeightCardProps {
 	/** `YYYY-MM-DD` in the user's timezone: the last chart label says «сьогодні» only on this day. */
 	today: string
 	/** Kusik's words (no numbers): they follow the numeric sentence inside the card. */
-	note?: string
+	note?: ReactNode
 	/** Next to Kusik's head; under his words it is an attachment without the tail. */
 	hasTail?: boolean
 	/** The reply just arrived: the card rises in softly (reduced motion drops the move). */
@@ -57,7 +58,6 @@ export const WeightCard = ({
 		paceKey && card.weekChange !== null
 			? formatPaceSentence(t, paceKey, card.weekChange, kind)
 			: null
-	const sentence = [pace, note].filter(Boolean).join(' ')
 	const chartLabel =
 		hasHistory && first && last
 			? t(`measurement.chart.range.${kind}`, {
@@ -147,7 +147,13 @@ export const WeightCard = ({
 					</div>
 				)}
 
-				{sentence && <Text>{sentence}</Text>}
+				{(pace || note) && (
+					<Text>
+						{pace}
+						{pace && note ? ' ' : null}
+						{note}
+					</Text>
+				)}
 
 				<div className="flex items-center justify-between gap-3">
 					<Link

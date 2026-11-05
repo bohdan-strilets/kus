@@ -1,7 +1,7 @@
 import type { MeasurementCard as MeasurementCardData } from '@kus/shared'
 
 import { DeletedMeasurementRow, WeightCard } from '@/entities/measurement'
-import { freshKey, useFreshOnMount, useFreshReplyStore } from '@/entities/message'
+import { freshKey, RichText, useFreshOnMount, useFreshReplyStore } from '@/entities/message'
 import { useEditMeasurementStore } from '@/features/edit-measurement'
 
 interface MeasurementCardProps {
@@ -24,7 +24,7 @@ export const MeasurementCard = ({ card, today, note, hasTail }: MeasurementCardP
 		<WeightCard
 			card={card}
 			today={today}
-			note={note}
+			note={note ? <RichText text={note} variant="inline" /> : undefined}
 			hasTail={hasTail}
 			isFresh={isFresh}
 			onEdit={() => {

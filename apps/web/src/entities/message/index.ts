@@ -15,3 +15,4 @@ export { MessageBubble, type MessageBubbleProps } from './ui/message-bubble/Mess
 export { PhotoTile, type PhotoTileProps } from './ui/photo-tile'
 export { TimeDivider } from './ui/time-divider/TimeDivider'
 export { TypingIndicator, type TypingIndicatorProps } from './ui/typing-indicator/TypingIndicator'
+export { RichText, type RichTextProps } from './ui/rich-text/RichText'

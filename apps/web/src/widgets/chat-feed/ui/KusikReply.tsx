@@ -2,9 +2,8 @@ import { type ChatMessage, isTrainingOnboardingQuestion } from '@kus/shared'
 
 import { pickAchievement } from '@/entities/achievement'
 import { StatsCard, useGoalCelebrationStore } from '@/entities/stats'
-import { KusikRow, type KusikReplyKind, MessageBubble } from '@/entities/message'
+import { KusikRow, type KusikReplyKind, MessageBubble, RichText } from '@/entities/message'
 import { FactProposalPlaque } from '@/features/answer-fact-proposal'
-import { Text } from '@/shared/ui'
 
 import { getClarificationPlacement } from '../lib/get-clarification-placement'
 import { getWorkoutCards } from '../lib/get-workout-cards'
@@ -187,7 +186,7 @@ export const KusikReply = ({
 				{content && (
 					<div className={ATTACHMENTS_CLASS}>
 						<MessageBubble>
-							<Text>{content}</Text>
+							<RichText text={content} />
 						</MessageBubble>
 					</div>
 				)}
@@ -224,7 +223,7 @@ export const KusikReply = ({
 			<KusikRow kind={kind}>
 				<MessageBubble>
 					<div className="flex flex-col gap-2.5">
-						{content && <Text>{content}</Text>}
+						{content && <RichText text={content} />}
 						{factPlaque}
 						{invitation}
 					</div>

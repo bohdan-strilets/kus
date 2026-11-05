@@ -2,6 +2,7 @@ import type { DayCard as DayCardData } from '@kus/shared'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 
+import { RichText } from '@/entities/message'
 import { CalorieGauge, getDayStats, MacroTiles } from '@/entities/stats'
 import { ROUTES } from '@/shared/config'
 import {
@@ -45,9 +46,9 @@ export const DayCard = ({ card, today, note, hasTail = true }: DayCardProps) => 
 	const isOver = remainingKcal !== null && remainingKcal < 0
 	// The link follows the snapshot's date, not its kind: a «today» card from yesterday opens yesterday.
 	const isSnapshotToday = getDayRelation(localDate, today) === 'today'
-	const sentence = verdictView
-		? verdictView.sentence && t(verdictView.sentence.key, verdictView.sentence.values)
-		: note
+	const verdictSentence = verdictView?.sentence
+		? t(verdictView.sentence.key, verdictView.sentence.values)
+		: null
 	const getTitle = (): string =>
 		isClosing && isSnapshotToday
 			? t('chat.dayCard.todayDated', { date: formatShortDate(toCalendarDate(localDate)) })
@@ -125,7 +126,13 @@ export const DayCard = ({ card, today, note, hasTail = true }: DayCardProps) => 
 					))}
 				</ul>
 			)}
-			{sentence && <Text>{sentence}</Text>}
+			{verdictView
+				? verdictSentence && <Text>{verdictSentence}</Text>
+				: note && (
+						<Text>
+							<RichText text={note} variant="inline" />
+						</Text>
+					)}
 			<Link
 				to={isSnapshotToday ? ROUTES.today : `${ROUTES.today}?date=${localDate}`}
 				replace

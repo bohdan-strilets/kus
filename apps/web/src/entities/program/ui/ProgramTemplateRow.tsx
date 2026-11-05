@@ -14,7 +14,10 @@ interface ProgramTemplateRowProps {
 	template: ProgramTemplateDraft
 }
 
-/** A template of a proposal: name, meta and groups; a tap unfolds its exercises with their plan. */
+/**
+ * A template of a program card: name, meta and groups; a tap unfolds its exercises. The plan sits
+ * under the name: next to it a long name wrapped onto three lines in the narrow card.
+ */
 export const ProgramTemplateRow = ({ template }: ProgramTemplateRowProps) => {
 	const { t } = useTranslation()
 	const shouldReduceMotion = useReducedMotion()
@@ -74,20 +77,18 @@ export const ProgramTemplateRow = ({ template }: ProgramTemplateRowProps) => {
 					>
 						{template.exercises.map((exercise, index) => {
 							const group = getExerciseGroup(exercise)
+							const plan = formatProgramTarget(exercise, t)
 							return (
-								<li key={`${exercise.name}-${index}`} className="flex items-center gap-2">
+								<li key={`${exercise.name}-${index}`} className="flex items-start gap-2">
 									{group !== null && <GroupDot group={group} />}
-									<Text as="span" variant="cardTitle" className="min-w-0 flex-1">
-										{exercise.name}
-									</Text>
-									<Text
-										as="span"
-										variant="caption"
-										tone="mutedStrong"
-										className="flex-none tabular-nums"
-									>
-										{formatProgramTarget(exercise, t)}
-									</Text>
+									<span className="flex min-w-0 flex-1 flex-col">
+										<Text as="span" variant="cardTitle">
+											{exercise.name}
+										</Text>
+										<Text as="span" variant="caption" tone="mutedStrong" className="tabular-nums">
+											{plan}
+										</Text>
+									</span>
 								</li>
 							)
 						})}

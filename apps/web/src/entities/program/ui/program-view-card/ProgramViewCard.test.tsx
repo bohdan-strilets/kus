@@ -100,6 +100,16 @@ describe('ProgramViewCard', () => {
 		expect(screen.queryByText('Жим Тренування Б')).toBeNull()
 	})
 
+	it('stacks the plan under the exercise name, in separate elements', () => {
+		renderCard(makeView(1))
+		fireEvent.click(screen.getAllByRole('button')[0] as HTMLElement)
+		const name = screen.getByText('Жим Тренування А')
+		const plan = screen.getByText(/3 підходи/)
+		expect(name).not.toBe(plan)
+		expect(name.parentElement).toBe(plan.parentElement)
+		expect(name.parentElement?.className).toContain('flex-col')
+	})
+
 	it('tells the date of the version', () => {
 		renderCard(makeView(1))
 		expect(screen.getByText('Версія від 31.10.')).toBeTruthy()

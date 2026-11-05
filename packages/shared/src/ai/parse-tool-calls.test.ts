@@ -260,6 +260,12 @@ describe('parseToolCalls', () => {
 		expect(parseToolCalls([call('reply', { text: 'Ось', attach: 'plan' })], options).ok).toBe(false)
 	})
 
+	it('reads an empty attach from the model as no card, without a validation error', () => {
+		const result = parseToolCalls([call('reply', { text: 'Так, доріжка є.', attach: '' })], options)
+
+		expect(result).toMatchObject({ ok: true, decision: { kind: 'reply', attach: null } })
+	})
+
 	describe('photo_unusable', () => {
 		const unusable = call('photo_unusable', { reason: 'unreadable', reply: 'Сфотографуй ще раз' })
 

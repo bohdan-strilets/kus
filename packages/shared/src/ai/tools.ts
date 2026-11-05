@@ -245,10 +245,12 @@ export const replyInputSchema = z.object({
 	text: replyLongTextSchema.describe(
 		`The answer in the language of the user's message; length and format as in "Tone"`,
 	),
+	// the model sometimes sends "" for "no card"; reading it as null spares a validation retry
 	attach: z
-		.enum(['program'])
-		.nullable()
-		.default(null)
+		.preprocess(
+			(value: unknown) => (value === '' ? null : value),
+			z.enum(['program']).nullable().default(null),
+		)
 		.describe('"program" shows the active program as a card next to the text; see "Program"'),
 })
 

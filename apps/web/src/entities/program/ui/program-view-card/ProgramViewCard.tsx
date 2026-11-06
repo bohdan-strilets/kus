@@ -7,6 +7,7 @@ import { formatShortDate } from '@/shared/lib'
 import { Icon, ICON_SIZE, Surface, Text } from '@/shared/ui'
 
 import { formatProgramViewSubtitle } from '../../lib/format-program-screen'
+import { getShownTemplates } from '../../lib/get-shown-templates'
 import { ProgramTemplateRow } from '../ProgramTemplateRow'
 
 const CALENDAR_ICON_SIZE = 20
@@ -19,6 +20,7 @@ interface ProgramViewCardProps {
 export const ProgramViewCard = ({ view }: ProgramViewCardProps) => {
 	const { t } = useTranslation()
 	const { program } = view
+	const { templates, otherCount } = getShownTemplates(program)
 
 	return (
 		<Surface className="flex flex-col gap-2.5 p-3.5">
@@ -31,7 +33,7 @@ export const ProgramViewCard = ({ view }: ProgramViewCardProps) => {
 				</span>
 				<div className="flex min-w-0 flex-col">
 					<Text as="p" role="heading" aria-level={3} variant="body" weight="extrabold">
-						{t('program.view.title', { count: program.templates.length })}
+						{t('program.view.title', { count: templates.length })}
 					</Text>
 					<Text variant="small" tone="muted" weight="regular">
 						{formatProgramViewSubtitle(view, t)}
@@ -39,10 +41,15 @@ export const ProgramViewCard = ({ view }: ProgramViewCardProps) => {
 				</div>
 			</div>
 			<ul className="flex flex-col">
-				{program.templates.map((template) => (
+				{templates.map((template) => (
 					<ProgramTemplateRow key={template.key} template={template} />
 				))}
 			</ul>
+			{otherCount > 0 && (
+				<Text variant="small" tone="muted" weight="regular">
+					{t('program.view.otherTemplates', { count: otherCount })}
+				</Text>
+			)}
 			<Text variant="small" tone="muted" weight="regular">
 				{t('program.view.version', {
 					date: formatShortDate(new Date(view.versionCreatedAt)),

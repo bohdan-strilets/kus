@@ -1006,6 +1006,10 @@
 			"title_many": "Твоя програма: {{count}} тренувань",
 			"title_other": "Твоя програма: {{count}} тренування",
 			"version": "Версія від {{date}}.",
+			"otherTemplates_one": "+{{count}} шаблон у програмі",
+			"otherTemplates_few": "+{{count}} шаблони у програмі",
+			"otherTemplates_many": "+{{count}} шаблонів у програмі",
+			"otherTemplates_other": "+{{count}} шаблону у програмі",
 			"open": "Відкрити програму"
 		},
 		"card": {

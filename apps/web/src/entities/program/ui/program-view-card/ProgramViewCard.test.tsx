@@ -115,6 +115,24 @@ describe('ProgramViewCard', () => {
 		expect(screen.getByText('Версія від 31.10.')).toBeTruthy()
 	})
 
+	it('shows only the pinned template in SINGLE, with the others as one quiet line', () => {
+		const view = makeView(2)
+		renderCard({ ...view, program: { ...view.program, mode: 'SINGLE', pinnedKey: KEY_A } })
+		expect(screen.getByRole('heading', { level: 3 }).textContent).toBe(
+			'Твоя програма: 1 тренування',
+		)
+		expect(screen.getAllByRole('button')).toHaveLength(1)
+		expect(screen.getByText(/Тренування А/)).toBeTruthy()
+		expect(screen.queryByText(/Тренування Б/)).toBeNull()
+		expect(screen.getByText('+1 шаблон у програмі')).toBeTruthy()
+	})
+
+	it('has no «шаблон у програмі» line in the rotation', () => {
+		renderCard(makeView(3))
+		expect(screen.getAllByRole('button')).toHaveLength(3)
+		expect(screen.queryByText(/шаблон.* у програмі/)).toBeNull()
+	})
+
 	it('navigates to the program screen on «Відкрити програму»', () => {
 		renderCard(makeView(1))
 		const link = screen.getByRole('link', { name: 'Відкрити програму' })

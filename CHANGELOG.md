@@ -6,6 +6,21 @@ All notable changes to Kusik are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.10.5.3] — 2026-11-06
+
+Fixes from the 0.10.5 iPhone testing: the «Пам'ять» lists scroll, the program card counts the right number of workouts and its text is short, the record trophies are recomputed after every change. No migrations. Prompt 2026-11-06.2 (`PROGRAM_RULES` only) with eval 12/12; the web version is 0.10.5+3 (semver build metadata).
+
+### Fixed
+
+- «Пам'ять» → «Продукти» did not scroll to the end (a shrunk column clipped the rounded list card); the facts list kept its bottom room ([6aaeca6])
+- The program card in «Завжди одне» says «1 тренування», lists only the pinned template and adds a quiet «+N шаблон у програмі» line for the rest ([b6c4bbb])
+- Record trophies are recomputed chronologically for all sessions of the affected exercises in the same transaction after a form save (also backdated), «Завершити», a chat change, delete and restore (UI and chat); the exercise history uses the same function (the «Рекорди» summary stays the absolute maximum); a reps record needs a bodyweight exercise. A lone session of an exercise no longer shows a trophy ([935dcff])
+
+### Changed
+
+- The text next to the program card is at most 2 short sentences and never lists exercises, sets, reps or weights (`PROGRAM_RULES`, prompt 2026-11-06.2); eval gets `replyExcludesWords` and `program-show-single` ([47fb984])
+- The tool-schema hash test pins the `save_fact` length from 0.10.5.2 ([7e6bd1f]); CLAUDE.md: run the `packages/shared` tests before any push and do not commit while an agent writes to the working tree ([c7743f5])
+
 ## [0.10.5.2] — 2026-11-06
 
 The model sees what earlier turns wrote and what became of it, so a deletion in the app or a saved fact no longer reads as its own lie. One additive migration (`my_foods.source_message_id`, `user_facts.answered_at`, `user_facts.confirmed_message_id`, all nullable). Prompt 2026-11-06.1 (prompt text unchanged, `save_fact` description) with eval 18/18; the web version is 0.10.5+2 (semver build metadata).
@@ -698,7 +713,14 @@ Design sync with `design/` v0.5.2. Web only: no API, shared-package or migration
 
 ## 0.2.0 / 0.1.0 — see tags
 
-[Unreleased]: https://github.com/bohdan-strilets/kus/compare/v0.10.5.2...HEAD
+[Unreleased]: https://github.com/bohdan-strilets/kus/compare/v0.10.5.3...HEAD
+[0.10.5.3]: https://github.com/bohdan-strilets/kus/compare/v0.10.5.2...v0.10.5.3
+[6aaeca6]: https://github.com/bohdan-strilets/kus/commit/6aaeca6518f145ff4688c5fdc7f074a80948e3cc
+[b6c4bbb]: https://github.com/bohdan-strilets/kus/commit/b6c4bbb827db3efe605b71bc04b44a56da13bf9d
+[935dcff]: https://github.com/bohdan-strilets/kus/commit/935dcff46ce5bd895928ff761df6f4aba4564384
+[47fb984]: https://github.com/bohdan-strilets/kus/commit/47fb9840ea2f4d46d30368570fd453922a7fffa9
+[7e6bd1f]: https://github.com/bohdan-strilets/kus/commit/7e6bd1f380d526b9f4767f4708e22c401f335190
+[c7743f5]: https://github.com/bohdan-strilets/kus/commit/c7743f51b509ffd848b1cddb38ca70e5229b72f7
 [0.10.5.2]: https://github.com/bohdan-strilets/kus/compare/v0.10.5.1...v0.10.5.2
 [fabbb37]: https://github.com/bohdan-strilets/kus/commit/fabbb37fd804736d0b9a02f34acc7a1704c192de
 [c7e1863]: https://github.com/bohdan-strilets/kus/commit/c7e1863528ac6c23253d8fef76058f45c2b1d758

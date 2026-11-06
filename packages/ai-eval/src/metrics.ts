@@ -30,6 +30,9 @@ export const getErrorPct = (expected: ExpectedValue, actual: number, minBase: nu
 	return (Math.abs(actual - bound) / Math.max(bound, minBase)) * PERCENT
 }
 
+/** A stem at the start of a word; \p{L}, not \b: word boundaries do not know Cyrillic. */
+const startsWord = (stem: string): RegExp => new RegExp(String.raw`(?<!\p{L})${stem}`, 'u')
+
 export const isDecisionCorrect = (
 	evalCase: EvalCase,
 	actual: ActualDecision,
@@ -44,13 +47,15 @@ export const isDecisionCorrect = (
 	const mustIncludeAny = evalCase.expect.replyIncludesAny ?? []
 	const mustExclude = evalCase.expect.replyExcludes ?? []
 	const mustMatch = evalCase.expect.replyMatches ?? []
+	const mustExcludeWords = evalCase.expect.replyExcludesWords ?? []
 	const { replyLang } = evalCase.expect
 	return (
 		(replyLang === undefined || detectLanguage(replyText ?? '') === replyLang) &&
 		mustInclude.every((part) => (replyText ?? '').includes(part)) &&
 		mustMatch.every((pattern) => new RegExp(pattern).test(replyText ?? '')) &&
 		(mustIncludeAny.length === 0 || mustIncludeAny.some((part) => text.includes(part))) &&
-		mustExclude.every((stem) => !text.includes(stem))
+		mustExclude.every((stem) => !text.includes(stem)) &&
+		mustExcludeWords.every((stem) => !startsWord(stem).test(text))
 	)
 }
 

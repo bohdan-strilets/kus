@@ -407,6 +407,18 @@ describe('isDecisionCorrect: honest replies', () => {
 		)
 		expect(isDecisionCorrect(honest, 'reply', 'Змінив борщ на суп.')).toBe(false)
 	})
+
+	it('fails a stem only at the start of a word', () => {
+		const noExercises = {
+			id: 'x',
+			text: 'x',
+			reference: 'x',
+			expect: { decision: 'reply' as const, replyExcludesWords: ['жим'] },
+		}
+		expect(isDecisionCorrect(noExercises, 'reply', 'Режим по черзі, далі А.')).toBe(true)
+		expect(isDecisionCorrect(noExercises, 'reply', 'Почни з жиму лежачи.')).toBe(false)
+		expect(isDecisionCorrect(noExercises, 'reply', 'Жим лежачи першим.')).toBe(false)
+	})
 })
 
 describe('countMealMatches', () => {

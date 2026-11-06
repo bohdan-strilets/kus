@@ -101,6 +101,12 @@ export const WITH_PROGRAM: Partial<FoodParseContext> = {
 	exercises: PROGRAM_HISTORY,
 }
 
+/** «Завжди А»: the same two templates, only A is done. */
+export const WITH_SINGLE_PROGRAM: Partial<FoodParseContext> = {
+	...WITH_PROGRAM,
+	program: { ...ROTATE_PROGRAM, mode: 'SINGLE' },
+}
+
 const ONBOARDING_ANSWERS =
 	'place GYM; usually STRENGTH_AND_CARDIO; level EXPERIENCED; 3 per week; equipment FULL_GYM, PULL_UP_BAR'
 

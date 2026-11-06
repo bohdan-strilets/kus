@@ -279,6 +279,8 @@ export const evalCaseSchema = z
 			replyMatches: z.array(z.string().min(1)).optional(),
 			/** Lower-case stems the answer must not contain — claims of a change that didn't happen ("змінив"). */
 			replyExcludes: z.array(z.string()).optional(),
+			/** Lower-case stems that must not start a word ("жим" catches «жиму», not «режим»). */
+			replyExcludesWords: z.array(z.string().min(1)).optional(),
 			/** The reply's language when the message's letters can't tell it (a Polish text without diacritics). */
 			replyLang: replyLanguageSchema.optional(),
 			edits: expectedEditsSchema.optional(),

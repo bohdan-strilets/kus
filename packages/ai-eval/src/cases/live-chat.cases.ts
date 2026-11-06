@@ -6,7 +6,12 @@ import type { FoodParseContext, MemoryFoodContext, TodayWorkoutContext } from '@
 import { atClock, entry, NO_MEMORY_CALLS } from './case-builders.js'
 import type { EvalCase } from './case.types.js'
 import { CONTEXT_PRESETS, DAY_WITH_GOAL } from './context-presets.js'
-import { WITH_PROGRAM } from './program.cases.js'
+import { WITH_PROGRAM, WITH_SINGLE_PROGRAM } from './program.cases.js'
+
+/** The program card speaks for itself: the text is one or two sentences (at most two «.», «!» or «?» runs). */
+const AT_MOST_TWO_SENTENCES = '^(?:[^.!?]*[.!?]+){0,2}[^.!?]*$'
+/** The exercises of the program fixture, as stems at a word start («жим» but not «режим»). */
+const PROGRAM_EXERCISE_STEMS = ['жим', 'тяг', 'присід', 'згинан', 'розгинан']
 
 const EVENING = atClock('2026-10-07 19:30, Wednesday')
 const PREVIOUS_DAY = '2026-10-06'
@@ -254,9 +259,25 @@ export const LIVE_CHAT_CASES: EvalCase[] = [
 			decision: 'reply',
 			replyAttach: 'program',
 			replyExcludes: ['підход', 'повт'],
+			replyMatches: [AT_MOST_TWO_SENTENCES],
+			replyExcludesWords: PROGRAM_EXERCISE_STEMS,
 		},
 		reference:
-			'Program rules: attach "program" and one sentence, the exercises and sets stay on the card',
+			'Program rules: attach "program" and at most 2 sentences; the exercises and sets stay on the card',
+	},
+	{
+		id: 'program-show-single',
+		text: 'покажи мою програму',
+		context: WITH_SINGLE_PROGRAM,
+		expect: {
+			decision: 'reply',
+			replyAttach: 'program',
+			replyExcludes: ['підход', 'повт'],
+			replyMatches: [AT_MOST_TWO_SENTENCES],
+			replyExcludesWords: PROGRAM_EXERCISE_STEMS,
+		},
+		reference:
+			'«Завжди А»: the card, at most 2 sentences, no exercises — the same rule as for the rotation',
 	},
 	{
 		id: 'program-show-none',

@@ -134,7 +134,7 @@ describe('live chat cases (0.10.5)', () => {
 	]
 
 	it('are valid cases and are part of the repo set', () => {
-		expect(LIVE_CHAT_CASES).toHaveLength(18)
+		expect(LIVE_CHAT_CASES).toHaveLength(19)
 		for (const item of LIVE_CHAT_CASES) {
 			expect(evalCaseSchema.safeParse(item).success, item.id).toBe(true)
 			expect(REPO_CASES).toContain(item)

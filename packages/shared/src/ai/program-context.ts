@@ -100,7 +100,7 @@ const PROGRAM_RULES = [
 	'- weightKg only when the user named it or "Exercises" has a past weight for it; for a beginner or without history leave it null. Never invent weights.',
 	'- Level: a beginner → 2 workouts of simple moves, 3 sets of 10–15; some experience → 2–3 by rotation; confident and 4+ per week → more templates (upper / lower). At home without equipment → bodyweight only. Cardio 5–10 min at the start if the user does cardio.',
 	'- Names: "Тренування А", "Тренування Б"… unless the user names them.',
-	'- "Яка в мене програма?", "покажи програму" → reply with attach "program" and one short sentence (its idea or what is next), no exercises or numbers: the card shows the active program. No active program → say so; never present a proposal as the program.',
+	'- "Яка в мене програма?", "покажи програму" → reply with attach "program" and at most 2 short sentences: the program\'s idea or what is next. Never list exercises, sets, reps or weights — the card under the text already shows them all. No active program → say so; never present a proposal as the program.',
 	"- Removing the program: only «Прибрати програму» on the program screen; you can't remove it — say where it is.",
 ] as const
 

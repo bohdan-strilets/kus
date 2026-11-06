@@ -3,6 +3,7 @@ import { CATEGORY_CASES } from './category.cases.js'
 import { DATE_CASES } from './date.cases.js'
 import { DAY_CARD_CASES } from './day-card.cases.js'
 import { HISTORY_CARD_CASES } from './history-cards.cases.js'
+import { HISTORY_MARKER_CASES } from './history-markers.cases.js'
 import { DAY_CASES } from './day.cases.js'
 import { DECISION_CASES } from './decision.cases.js'
 import { EDIT_CASES } from './edit.cases.js'
@@ -51,6 +52,7 @@ export const REPO_CASES: EvalCase[] = [
 	...PROGRAM_CASES,
 	...MEMORY_FOOD_CASES,
 	...MEMORY_FACT_CASES,
+	...HISTORY_MARKER_CASES,
 	...LIVE_CHAT_CASES,
 ]
 

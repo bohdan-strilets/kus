@@ -66,7 +66,9 @@ const oneLineSchema = z
 	.pipe(z.string().min(1).max(FACT_TEXT_MAX_LENGTH))
 
 export const saveFactInputSchema = z.object({
-	text: oneLineSchema.describe('One short sentence without gender forms, e.g. "Не їсть рибу"'),
+	text: oneLineSchema.describe(
+		`One short sentence (≤ ${FACT_TEXT_MAX_LENGTH} characters) without gender forms, e.g. "Не їсть рибу"`,
+	),
 	category: factCategorySchema.describe('FOOD, SCHEDULE, TRAINING or OTHER'),
 	explicit: z
 		.boolean()

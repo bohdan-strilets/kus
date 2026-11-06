@@ -37,7 +37,9 @@ export const MemoryPage = () => {
 				subtitle={getMemorySubtitle({ productsCount, factsCount }, t)}
 				backTo={ROUTES.profile}
 			/>
-			<div className="flex min-h-0 flex-1 flex-col px-gutter pt-2.5 pb-5">
+			{/* no min-h-0: the column grows with the list and <main> scrolls; a shrunk column clipped the
+			    rounded list card (overflow-hidden) to the screen height */}
+			<div className="flex flex-1 flex-col px-gutter pt-2.5 pb-5">
 				<MemoryTabs
 					value={tab}
 					onValueChange={selectTab}

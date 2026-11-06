@@ -32,7 +32,7 @@ export const MemoryTabs = ({
 			onValueChange={(next) => {
 				if (isMemoryTab(next)) onValueChange(next)
 			}}
-			className="flex min-h-0 flex-1 flex-col gap-3"
+			className="flex flex-1 flex-col gap-3"
 		>
 			<Tabs.List
 				aria-label={t('memory.tabs')}
@@ -49,7 +49,7 @@ export const MemoryTabs = ({
 				))}
 			</Tabs.List>
 			{TAB_ORDER.map((tab) => (
-				<Tabs.Content key={tab} value={tab} className="flex min-h-0 flex-1 flex-col gap-3">
+				<Tabs.Content key={tab} value={tab} className="flex flex-1 flex-col gap-3">
 					{panels[tab]}
 				</Tabs.Content>
 			))}

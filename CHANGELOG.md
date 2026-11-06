@@ -6,6 +6,18 @@ All notable changes to Kusik are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.10.5.2] — 2026-11-06
+
+The model sees what earlier turns wrote and what became of it, so a deletion in the app or a saved fact no longer reads as its own lie. One additive migration (`my_foods.source_message_id`, `user_facts.answered_at`, `user_facts.confirmed_message_id`, all nullable). Prompt 2026-11-06.1 (prompt text unchanged, `save_fact` description) with eval 18/18; the web version is 0.10.5+2 (semver build metadata).
+
+### Added
+
+- History markers on the user's earlier turns: food `[logged: e1, e2; deleted later: e2]`, workouts, weight and waist, facts (`saved`, `updated`, `proposed`, `declined`, `forgotten`) and saved foods, with «deleted later» when the row is gone; no new prefix rule ([fabbb37])
+
+### Changed
+
+- The `save_fact` text description states the 120-character limit: facts over it cost a hidden validation retry on most memory turns ([c7e1863])
+
 ## [0.10.5.1] — 2026-11-06
 
 Hotfix for «Kusik зараз не зміг розібрати повідомлення» in turns that touch the memory. No migrations, no prompt or tool description changes; the web version is 0.10.5+1 (semver build metadata).
@@ -686,7 +698,10 @@ Design sync with `design/` v0.5.2. Web only: no API, shared-package or migration
 
 ## 0.2.0 / 0.1.0 — see tags
 
-[Unreleased]: https://github.com/bohdan-strilets/kus/compare/v0.10.5.1...HEAD
+[Unreleased]: https://github.com/bohdan-strilets/kus/compare/v0.10.5.2...HEAD
+[0.10.5.2]: https://github.com/bohdan-strilets/kus/compare/v0.10.5.1...v0.10.5.2
+[fabbb37]: https://github.com/bohdan-strilets/kus/commit/fabbb37fd804736d0b9a02f34acc7a1704c192de
+[c7e1863]: https://github.com/bohdan-strilets/kus/commit/c7e1863528ac6c23253d8fef76058f45c2b1d758
 [0.10.5.1]: https://github.com/bohdan-strilets/kus/compare/v0.10.5...v0.10.5.1
 [ae061b2]: https://github.com/bohdan-strilets/kus/commit/ae061b2ec4179054af2a6953f995e422952e0e51
 [0.10.5]: https://github.com/bohdan-strilets/kus/compare/v0.10.4...v0.10.5

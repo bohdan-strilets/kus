@@ -381,6 +381,13 @@ const MEMORY_ANSWER_ERROR =
 	'save_food, save_fact and forget_fact go together with log_food or reply (also next to edit tools) — not with not_food, photo_unusable, show_day, close_day, show_stats, or log_workout without log_food'
 const ONE_FACT_ERROR = 'save_fact: at most one per message'
 
+/**
+ * Rules that need only the tool names, reported next to a broken call too: the model has one retry,
+ * and an error it learns only on that retry turns into «не зміг розібрати».
+ */
+const getCallCountErrors = (rawCalls: readonly RawToolCall[]): string[] =>
+	rawCalls.filter((call) => call.name === AI_TOOL_NAMES.saveFact).length > 1 ? [ONE_FACT_ERROR] : []
+
 const MEASUREMENT_WITH_ANSWER_ERROR =
 	'log_measurement goes together with exactly one log_food or reply — not with not_food, photo_unusable or edit tools'
 
@@ -639,7 +646,9 @@ export const parseToolCalls = (
 	const results = rawCalls.map(validateCall)
 	const calls = results.map((result) => result.parsed)
 	const callErrors = calls.flatMap((call) => (call.error === null ? [] : [call.error]))
-	if (callErrors.length > 0) return { ok: false, errors: callErrors, calls }
+	if (callErrors.length > 0) {
+		return { ok: false, errors: [...callErrors, ...getCallCountErrors(rawCalls)], calls }
+	}
 
 	const valid = results.flatMap((result) => (result.valid ? [result.valid] : []))
 	const { decision, errors } = decide(valid, refs, message)

@@ -166,6 +166,21 @@ describe('parseToolCalls with the memory tools', () => {
 		)
 	})
 
+	it('reports a second save_fact next to a too long one, so one retry fixes both', () => {
+		const errors = getErrors([
+			saveFact({ text: 'а'.repeat(121) }),
+			saveFact({ explicit: false }),
+			reply,
+		])
+
+		expect(errors).toContain('save_fact: text')
+		expect(errors).toContain('save_fact: at most one')
+	})
+
+	it('reports only the broken call when there is one save_fact', () => {
+		expect(getErrors([saveFact({ text: 'а'.repeat(121) }), reply])).not.toContain('at most one')
+	})
+
 	it('rejects more than five foods and five forgets', () => {
 		const foods = Array.from({ length: 6 }, (_, index) => fromValues({ name: `Їжа ${index}` }))
 		expect(getErrors([...foods, reply])).toContain('save_food: at most 5')

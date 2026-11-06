@@ -154,4 +154,22 @@ export const MEMORY_FACT_CASES: EvalCase[] = [
 		expect: { decision: 'reply', memory: { fact: null } },
 		reference: '«Proposed fact» already says it: no second save_fact',
 	},
+	{
+		// 05.11 in prod: the schedule was saved again unasked next to the gym proposal — two save_fact
+		id: 'fact-saved-no-resave',
+		text: 'в зал ходжу у вихідні або перед нічною, тому в один тиждень тренувань більше, в інший менше',
+		context: {
+			facts: [NO_FISH, SHIFTS],
+			history: [
+				{ role: 'user', content: "запам'ятай: працюю тиждень удень, тиждень уночі" },
+				{ role: 'assistant', content: "Запам'ятав твій графік: тиждень удень, тиждень уночі." },
+			],
+		},
+		expect: {
+			decision: 'reply',
+			memory: { foods: [], fact: { explicit: false, isOptional: true }, forgets: [] },
+		},
+		reference:
+			'The schedule is already in «User facts»: no forget_fact and no second save of it; the gym habit is at most one proposal',
+	},
 ]

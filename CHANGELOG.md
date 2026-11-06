@@ -6,6 +6,14 @@ All notable changes to Kusik are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.10.5.1] — 2026-11-06
+
+Hotfix for «Kusik зараз не зміг розібрати повідомлення» in turns that touch the memory. No migrations, no prompt or tool description changes; the web version is 0.10.5+1 (semver build metadata).
+
+### Fixed
+
+- A too long `save_fact` no longer hides the «at most one save_fact» rule until the only validation retry: name-only rules are reported together with the per-call errors, so a turn with a re-saved fact and a proposal is fixed in one retry instead of ending in AI_UNAVAILABLE ([ae061b2])
+
 ## [0.10.5] — 2026-11-05
 
 Live chat: Kusik's longer answers get light formatting, the training program shows as a card on request, recipes, advice next to a stats card from the backend's numbers, a gentler tone, and fixes from a real gym session (live mode order and weights, resume, the fill form, training stats). One additive migration (`messages.program_view`, nullable). Prompt 2026-11-05.1–.3 with eval; the cached prefix ceiling is now 25 000 tokens (measured 20 036).
@@ -678,7 +686,9 @@ Design sync with `design/` v0.5.2. Web only: no API, shared-package or migration
 
 ## 0.2.0 / 0.1.0 — see tags
 
-[Unreleased]: https://github.com/bohdan-strilets/kus/compare/v0.10.5...HEAD
+[Unreleased]: https://github.com/bohdan-strilets/kus/compare/v0.10.5.1...HEAD
+[0.10.5.1]: https://github.com/bohdan-strilets/kus/compare/v0.10.5...v0.10.5.1
+[ae061b2]: https://github.com/bohdan-strilets/kus/commit/ae061b2ec4179054af2a6953f995e422952e0e51
 [0.10.5]: https://github.com/bohdan-strilets/kus/compare/v0.10.4...v0.10.5
 [6e8bfd5]: https://github.com/bohdan-strilets/kus/commit/6e8bfd58c2e4588ec06f67ad9c18ac9285b06ad7
 [4b1c209]: https://github.com/bohdan-strilets/kus/commit/4b1c209ed086567dd53bba0d5e19dd02bb193ff9

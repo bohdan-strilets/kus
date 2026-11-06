@@ -1,6 +1,6 @@
 {
 	"name": "@kus/web",
-	"version": "0.10.5",
+	"version": "0.10.5+1",
 	"private": true,
 	"type": "module",
 	"scripts": {

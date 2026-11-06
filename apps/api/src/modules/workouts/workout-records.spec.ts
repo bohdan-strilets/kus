@@ -291,9 +291,9 @@ describe('WorkoutRecordsService.recompute', () => {
 		const result = await service.recompute('u1', [EX_A], tx)
 		expect(result.get('w1')).toEqual([])
 		expect(result.get('w2')).toEqual([{ exerciseEntryId: 'e2', type: 'WEIGHT' }])
-		expect(setRecords).toHaveBeenCalledWith({ id: 'w1', records: [] }, tx)
+		expect(setRecords).toHaveBeenCalledWith({ id: 'w1', userId: 'u1', records: [] }, tx)
 		expect(setRecords).toHaveBeenCalledWith(
-			{ id: 'w2', records: [{ exerciseEntryId: 'e2', type: 'WEIGHT' }] },
+			{ id: 'w2', userId: 'u1', records: [{ exerciseEntryId: 'e2', type: 'WEIGHT' }] },
 			tx,
 		)
 	})
@@ -342,7 +342,7 @@ describe('WorkoutRecordsService.recompute', () => {
 		])
 		const result = await service.recompute('u1', [EX_A], tx)
 		expect(result.get('w1')).toEqual([])
-		expect(setRecords).toHaveBeenCalledWith({ id: 'w1', records: [] }, tx)
+		expect(setRecords).toHaveBeenCalledWith({ id: 'w1', userId: 'u1', records: [] }, tx)
 	})
 
 	it('treats unparsable stored records as none and skips entries without a workout', async () => {

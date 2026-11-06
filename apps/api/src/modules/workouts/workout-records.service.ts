@@ -1,8 +1,11 @@
 import { Injectable } from '@nestjs/common'
-import { isBodyweightByName } from '@kus/shared'
 
 import type { Prisma } from '../../generated/prisma/client'
-import { computeChronologicalRecords, type RecordEntryInput } from './workout-records'
+import {
+	computeChronologicalRecords,
+	type RecordEntryInput,
+	resolveIsBodyweight,
+} from './workout-records'
 import type { WorkoutRecord } from './workout-turn'
 import { readWorkoutRecords } from './workouts.mapper'
 import { WorkoutsRepository } from './workouts.repository'
@@ -19,8 +22,11 @@ const toRecordEntry = (row: RecordEntryRow): RecordEntryInput | null => {
 		performedAt: row.performedAt,
 		position: row.position,
 		distanceM: row.distanceM,
-		// the entry's own flag, then the dictionary's, then the name
-		isBodyweight: row.isBodyweight ?? row.exercise?.isBodyweight ?? isBodyweightByName(row.name),
+		isBodyweight: resolveIsBodyweight({
+			entryFlag: row.isBodyweight,
+			exerciseFlag: row.exercise?.isBodyweight,
+			name: row.name,
+		}),
 		sets: row.sets.map((set) => ({
 			reps: set.reps,
 			weightKg: set.weightKg,
@@ -72,7 +78,7 @@ export class WorkoutRecordsService {
 			const next = [...kept, ...(computed.get(workoutId) ?? [])]
 			result.set(workoutId, next)
 			if (JSON.stringify(next) === JSON.stringify(stored)) continue
-			await this.workoutsRepository.setRecords({ id: workoutId, records: next }, tx)
+			await this.workoutsRepository.setRecords({ id: workoutId, userId, records: next }, tx)
 		}
 		return result
 	}

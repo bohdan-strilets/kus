@@ -384,10 +384,10 @@ export class WorkoutsRepository {
 	}
 
 	setRecords(
-		{ id, records }: { id: string; records: Prisma.InputJsonValue },
-		tx: Prisma.TransactionClient,
+		{ id, userId, records }: { id: string; userId: string; records: Prisma.InputJsonValue },
+		tx?: Prisma.TransactionClient,
 	): Promise<unknown> {
-		return tx.workout.update({ where: { id }, data: { records } })
+		return (tx ?? this.prisma).workout.updateMany({ where: { id, userId }, data: { records } })
 	}
 
 	/** The user's dictionary, for a message to be matched against. */

@@ -1,7 +1,6 @@
 import {
 	type ExerciseKind,
 	type ExerciseStatsResponse,
-	isBodyweightByName,
 	type MuscleGroup,
 	type WorkoutRecordType,
 	type WorkoutStatsPeriod,
@@ -17,7 +16,11 @@ import {
 	getWorkingSets,
 	isBodyweightExercise,
 } from './exercise-progress'
-import { computeChronologicalRecords, type RecordEntryInput } from './workout-records'
+import {
+	computeChronologicalRecords,
+	type RecordEntryInput,
+	resolveIsBodyweight,
+} from './workout-records'
 import { getStatsPeriodRange, isInRange } from './workout-stats-period'
 import type { StatsEntryRow } from './workout-stats.types'
 
@@ -44,9 +47,11 @@ const toRecordEntry = (entry: StatsEntryRow): RecordEntryInput | null => {
 		performedAt: entry.performedAt,
 		position: entry.position,
 		distanceM: entry.distanceM,
-		// the entry's own flag, then the dictionary's, then the name
-		isBodyweight:
-			entry.isBodyweight ?? entry.exercise?.isBodyweight ?? isBodyweightByName(entry.name),
+		isBodyweight: resolveIsBodyweight({
+			entryFlag: entry.isBodyweight,
+			exerciseFlag: entry.exercise?.isBodyweight,
+			name: entry.name,
+		}),
 		sets: entry.sets,
 	}
 }

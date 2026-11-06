@@ -1,4 +1,4 @@
-import type { WorkoutRecordType } from '@kus/shared'
+import { isBodyweightByName, type WorkoutRecordType } from '@kus/shared'
 
 import type { WorkoutRecord } from './workout-turn'
 
@@ -22,6 +22,20 @@ export interface RecordEntryInput {
 	isBodyweight: boolean
 	sets: readonly RecordSet[]
 }
+
+/**
+ * The one rule for «bodyweight» in the records: the entry's own flag, then the dictionary's,
+ * then the name. The journal and the exercise screen both go through it.
+ */
+export const resolveIsBodyweight = ({
+	entryFlag,
+	exerciseFlag,
+	name,
+}: {
+	entryFlag: boolean | null | undefined
+	exerciseFlag: boolean | null | undefined
+	name: string
+}): boolean => entryFlag ?? exerciseFlag ?? isBodyweightByName(name)
 
 /** The order records are listed in on a session. */
 const TYPE_ORDER: readonly WorkoutRecordType[] = ['WEIGHT', 'DISTANCE', 'REPS']

@@ -36,6 +36,20 @@ export class MemoryRepository {
 		})
 	}
 
+	/** Foods the user messages saved, deleted ones too: what the model's history says about them. */
+	findBySourceMessages({
+		userId,
+		messageIds,
+	}: {
+		userId: string
+		messageIds: string[]
+	}): Promise<MyFood[]> {
+		return this.prisma.myFood.findMany({
+			where: { userId, sourceMessageId: { in: messageIds } },
+			orderBy: { createdAt: 'asc' },
+		})
+	}
+
 	createFood(
 		{ userId, data }: { userId: string; data: NewMyFood },
 		tx: Prisma.TransactionClient,
@@ -48,11 +62,15 @@ export class MemoryRepository {
 	 * index, while a violation would abort the turn's transaction. null = the name is taken.
 	 */
 	async createFoodIfFree(
-		{ userId, data }: { userId: string; data: NewMyFood },
+		{
+			userId,
+			data,
+			sourceMessageId,
+		}: { userId: string; data: NewMyFood; sourceMessageId: string | null },
 		tx: Prisma.TransactionClient,
 	): Promise<MyFood | null> {
 		const { count } = await tx.myFood.createMany({
-			data: [{ ...data, userId }],
+			data: [{ ...data, userId, sourceMessageId }],
 			skipDuplicates: true,
 		})
 		if (count === 0) return null

@@ -313,6 +313,29 @@ export class AiService {
 		}
 	}
 
+	/** How many facts the model forgot in each user message (successful forget_fact calls). */
+	async countForgottenFacts(
+		userId: string,
+		messageIds: string[],
+	): Promise<ReadonlyMap<string, number>> {
+		const counts = new Map<string, number>()
+		if (messageIds.length === 0) return counts
+		const rows = await this.aiRepository.findForgetCallMessageIds({ userId, messageIds })
+		// a message parsed twice (a turn retried after its write failed) counts only its latest run
+		const latestRunByMessage = new Map<string, { aiRunId: string; at: number }>()
+		for (const { messageId, aiRunId, runCreatedAt } of rows) {
+			const latest = latestRunByMessage.get(messageId)
+			if (!latest || runCreatedAt.getTime() > latest.at) {
+				latestRunByMessage.set(messageId, { aiRunId, at: runCreatedAt.getTime() })
+			}
+		}
+		for (const { messageId, aiRunId } of rows) {
+			if (latestRunByMessage.get(messageId)?.aiRunId !== aiRunId) continue
+			counts.set(messageId, (counts.get(messageId) ?? 0) + 1)
+		}
+		return counts
+	}
+
 	private async recordRun(
 		params: ParseFoodParams,
 		{

@@ -8,6 +8,7 @@ import {
 	type TodayEntryContext,
 } from './edit-context.js'
 import { type EarlierEntryContext, formatEarlierEntries } from './history-context.js'
+import { formatHistoryMarkers, type HistoryMarkerFields } from './history-markers.js'
 import type { MeasurementPoint } from './measurements.js'
 import { type FactContext, formatFacts, toContextText } from './memory-context.js'
 import {
@@ -61,37 +62,24 @@ export interface MemoryFoodContext {
 	category: FoodCategory
 }
 
-export interface HistoryTurn {
+export interface HistoryTurn extends HistoryMarkerFields {
 	role: 'user' | 'assistant'
 	content: string
 	/** The user turn carried a photo; the model sees a marker, never the image again. */
 	hasPhoto?: boolean
-	/** Refs of today's entries this user turn logged; the model must not log them again. */
-	loggedRefs?: string[]
-	/** The user turn logged entries, but none of them is in today's context window: no ref to show. */
-	hasLoggedEntries?: boolean
 }
 
 /** In the user's language, like the chat itself: the model answers in it anyway. */
 export const PHOTO_HISTORY_MARKER = '[фото]'
 
-// first, so that cutting a long message never drops it
-const formatLoggedMarker = ({
-	role,
-	loggedRefs = [],
-	hasLoggedEntries = false,
-}: HistoryTurn): string => {
-	if (role !== 'user') return ''
-	if (loggedRefs.length > 0) return `[logged: ${loggedRefs.join(', ')}] `
-	return hasLoggedEntries ? '[logged] ' : ''
-}
-
 const toHistoryText = (turn: HistoryTurn): string => {
-	const { content, hasPhoto = false } = turn
-	const marker = formatLoggedMarker(turn)
-	if (!hasPhoto) return `${marker}${content}`
+	const { role, content, hasPhoto = false } = turn
+	// first, so that cutting a long message never drops them; the model's own turns have none
+	const markers = role === 'user' ? formatHistoryMarkers(turn) : []
+	const prefix = markers.length > 0 ? `${markers.join(' ')} ` : ''
+	if (!hasPhoto) return `${prefix}${content}`
 	const withPhoto = content.length > 0 ? `${PHOTO_HISTORY_MARKER} ${content}` : PHOTO_HISTORY_MARKER
-	return `${marker}${withPhoto}`
+	return `${prefix}${withPhoto}`
 }
 
 /** A stored value of the last days, listed so the model can fix or delete it. */

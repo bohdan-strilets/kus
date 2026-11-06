@@ -21,7 +21,7 @@ import {
 } from '@kus/shared'
 
 import { addDays, formatDbDate, formatLocalTime, getZonedMoment } from '../../common/time'
-import { MeasurementKind } from '../../generated/prisma/client'
+import { MeasurementKind, MessageRole } from '../../generated/prisma/client'
 import { type DaySummary, EntriesService } from '../entries/entries.service'
 import { FactsService } from '../facts/facts.service'
 import { GoalsService } from '../goals/goals.service'
@@ -32,6 +32,7 @@ import { ProgramProposalsService } from '../programs/program-proposals.service'
 import { type WorkoutRefIds, WorkoutsTurnService } from '../workouts/workouts-turn.service'
 import { ChatRepository, type MessageWithAttachments } from './chat.repository'
 import { ChatEarlierService } from './chat-earlier.service'
+import { ChatHistoryMarkersService } from './chat-history-markers.service'
 import { ChatProgramCardsService } from './chat-program-cards.service'
 import { ClarificationsRepository } from './clarifications.repository'
 import { buildDaysContext } from './days-context'
@@ -55,6 +56,8 @@ interface BuildContextParams {
 	now: Date
 	localDate: Date
 	memory: MemoryFoodContext[]
+	/** Saved food id → its `m1…` in `memory`: the history says which turn saved it. */
+	foodRefById?: ReadonlyMap<string, string>
 	/** The last step of the training onboarding: its answers, formatted for «Program». */
 	programOnboarding?: string
 }
@@ -70,6 +73,9 @@ const groupEntryIdsBySourceMessage = (
 	}
 	return grouped
 }
+
+const getDeletedEntryIds = (entries: { id: string; isDeleted: boolean }[]): Set<string> =>
+	new Set(entries.filter(({ isDeleted }) => isDeleted).map(({ id }) => id))
 
 const FACT_REF_PREFIX = 'f'
 const CONTEXT_WEIGHT_COUNT = 2
@@ -89,6 +95,7 @@ export class ChatContextService {
 		private readonly chatRepository: ChatRepository,
 		private readonly clarificationsRepository: ClarificationsRepository,
 		private readonly chatEarlier: ChatEarlierService,
+		private readonly historyMarkers: ChatHistoryMarkersService,
 		private readonly entriesService: EntriesService,
 		private readonly goalsService: GoalsService,
 		private readonly measurementsService: MeasurementsService,
@@ -184,6 +191,7 @@ export class ChatContextService {
 		now,
 		localDate,
 		memory,
+		foodRefById = new Map(),
 		programOnboarding,
 	}: BuildContextParams): Promise<{
 		context: FoodParseContext
@@ -226,11 +234,30 @@ export class ChatContextService {
 			this.factsService.findContextFacts(userId),
 			this.programCards.findOpenCard(userId),
 		])
-		// after the workouts: an exercise of the program shows its x-ref when «Exercises» lists it
-		const programContext = await this.programProposals.getContext(userId, {
-			exerciseRefs: new Map([...workouts.refIds.exercises].map(([ref, id]) => [id, ref])),
-			pending: openCard?.program ?? null,
-		})
+		const factRefs = facts.confirmed.map(({ id, text }, index) => ({
+			id,
+			ref: `${FACT_REF_PREFIX}${index + 1}`,
+			text,
+		}))
+		const factContexts: FactContext[] = factRefs.map(({ ref, text }) => ({ ref, text }))
+		const userMessageIds = history
+			.filter(({ role }) => role === MessageRole.USER)
+			.map(({ id }) => id)
+		const [programContext, markers] = await Promise.all([
+			// after the workouts: an exercise of the program shows its x-ref when «Exercises» lists it
+			this.programProposals.getContext(userId, {
+				exerciseRefs: new Map([...workouts.refIds.exercises].map(([ref, id]) => [id, ref])),
+				pending: openCard?.program ?? null,
+			}),
+			// after the workouts and facts: the refs they got in this request are what the markers show
+			this.historyMarkers.getMarkers({
+				userId,
+				messageIds: userMessageIds,
+				workoutRefIds: workouts.refIds,
+				factRefById: new Map(factRefs.map(({ id, ref }) => [id, ref])),
+				foodRefById,
+			}),
+		])
 		const clarifications = await this.clarificationsRepository.findOpenClarifications({
 			userId,
 			entryIds: editable.active.map((entry) => entry.id),
@@ -251,14 +278,13 @@ export class ChatContextService {
 		// all the day's entries, not only the windowed ones: a turn whose entries lost their refs
 		// must still read as logged
 		const entryIdsBySourceMessageId = groupEntryIdsBySourceMessage(editable.sourceMessages)
-		const confirmedIds = facts.confirmed.map(({ id }) => id)
-		const factContexts: FactContext[] = facts.confirmed.map(({ text }, index) => ({
-			ref: `${FACT_REF_PREFIX}${index + 1}`,
-			text,
-		}))
-		const historyTurns = history
-			.reverse()
-			.flatMap((turn) => toHistoryTurns(turn, refByEntryId, entryIdsBySourceMessageId))
+		const deletedEntryIds = getDeletedEntryIds(editable.sourceMessages)
+		const historyTurns = history.reverse().flatMap((turn) =>
+			toHistoryTurns(turn, refByEntryId, entryIdsBySourceMessageId, {
+				deletedEntryIds,
+				markers: markers.get(turn.id),
+			}),
+		)
 		const hasProgramRules = shouldShowProgramRules({
 			text,
 			history: historyTurns,
@@ -308,7 +334,7 @@ export class ChatContextService {
 			refIds,
 			workoutRefIds: workouts.refIds,
 			copyRefIds: earlier.copyRefIds,
-			factRefIds: new Map(factContexts.map(({ ref }, index) => [ref, confirmedIds[index] ?? ''])),
+			factRefIds: new Map(factRefs.map(({ id, ref }) => [ref, id])),
 			templateRefIds: programContext.refIds,
 		}
 	}

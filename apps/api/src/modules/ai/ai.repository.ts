@@ -1,11 +1,7 @@
 import { Injectable } from '@nestjs/common'
+import { AI_TOOL_NAMES } from '@kus/shared'
 
-import {
-	type AiRunPurpose,
-	type AiRunStatus,
-	Prisma,
-	type ToolCallStatus,
-} from '../../generated/prisma/client'
+import { AiRunPurpose, AiRunStatus, Prisma, ToolCallStatus } from '../../generated/prisma/client'
 import { PrismaService } from '../../prisma'
 
 export interface CreateAiRunData {
@@ -22,6 +18,12 @@ export interface CreateAiRunData {
 	status: AiRunStatus
 	errorCode: string | null
 	toolCalls: { name: string; input: Prisma.InputJsonValue; status: ToolCallStatus }[]
+}
+
+export interface ForgetCallRow {
+	messageId: string
+	aiRunId: string
+	runCreatedAt: Date
 }
 
 interface DailyUsageKey {
@@ -98,6 +100,37 @@ export class AiRepository {
 			where: { userId, localDate },
 			data: { aiCostUsd: { increment: costUsd } },
 		})
+	}
+
+	/**
+	 * The successful forget_fact calls of the messages' successful parse runs, one row per call.
+	 * Only the ids leave: the inputs of the calls stay in the table.
+	 */
+	async findForgetCallMessageIds({
+		userId,
+		messageIds,
+	}: {
+		userId: string
+		messageIds: string[]
+	}): Promise<ForgetCallRow[]> {
+		const calls = await this.prisma.aiToolCall.findMany({
+			where: {
+				name: AI_TOOL_NAMES.forgetFact,
+				status: ToolCallStatus.SUCCEEDED,
+				aiRun: {
+					userId,
+					messageId: { in: messageIds },
+					purpose: AiRunPurpose.PARSE_FOOD,
+					status: AiRunStatus.SUCCEEDED,
+				},
+			},
+			select: { aiRunId: true, aiRun: { select: { messageId: true, createdAt: true } } },
+		})
+		return calls.flatMap(({ aiRunId, aiRun }) =>
+			aiRun.messageId === null
+				? []
+				: [{ messageId: aiRun.messageId, aiRunId, runCreatedAt: aiRun.createdAt }],
+		)
 	}
 
 	async deleteToolCallsBefore(cutoff: Date): Promise<number> {

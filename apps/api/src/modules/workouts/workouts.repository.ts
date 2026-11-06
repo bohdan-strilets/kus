@@ -7,6 +7,13 @@ import { PrismaService } from '../../prisma'
 import { placeAfter } from './workout-session'
 import { HIDE_OPEN_LIVE } from './workout-visibility'
 
+/** A workout and the message it started; `deletedAt` tells it was deleted since. */
+export interface WorkoutStart {
+	id: string
+	sourceMessageId: string | null
+	deletedAt: Date | null
+}
+
 /**
  * A workout with its live exercises and their sets, in the order they were done; the dictionary
  * row's group is the one shown.
@@ -198,6 +205,25 @@ export class WorkoutsRepository {
 				],
 			},
 			include: WITH_EXERCISES,
+			orderBy: { createdAt: 'asc' },
+		})
+	}
+
+	/**
+	 * Which workouts the user messages started and whether they were deleted since, for the markers
+	 * of the model's history. A discarded open live session stays out: nobody brings that draft back.
+	 */
+	findStartedByMessages(
+		{ userId, messageIds }: { userId: string; messageIds: string[] },
+		tx?: Prisma.TransactionClient,
+	): Promise<WorkoutStart[]> {
+		return (tx ?? this.prisma).workout.findMany({
+			where: {
+				userId,
+				sourceMessageId: { in: messageIds },
+				OR: [{ deletedAt: null }, HIDE_OPEN_LIVE],
+			},
+			select: { id: true, sourceMessageId: true, deletedAt: true },
 			orderBy: { createdAt: 'asc' },
 		})
 	}

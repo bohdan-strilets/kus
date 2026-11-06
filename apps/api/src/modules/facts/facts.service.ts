@@ -126,6 +126,7 @@ export class FactsService {
 			id,
 			from: 'PROPOSED',
 			to: target,
+			answeredAt: new Date(),
 		})
 		const current = await this.factsRepository.findById({ userId, id })
 		if (!current || current.deletedAt !== null) throw new FactNotFoundException()
@@ -161,7 +162,13 @@ export class FactsService {
 		if (existing) {
 			// «Запам'ятай» for what is waiting as a proposal confirms that proposal
 			await this.factsRepository.changeStatus(
-				{ userId, id: existing.id, from: 'PROPOSED', to: 'CONFIRMED' },
+				{
+					userId,
+					id: existing.id,
+					from: 'PROPOSED',
+					to: 'CONFIRMED',
+					confirmedMessageId: input.sourceMessageId,
+				},
 				tx,
 			)
 			const confirmed = await this.factsRepository.findById({ userId, id: existing.id }, tx)
@@ -216,6 +223,12 @@ export class FactsService {
 	findProposalsByMessages(userId: string, messageIds: string[]): Promise<UserFact[]> {
 		if (messageIds.length === 0) return Promise.resolve([])
 		return this.factsRepository.findByMessages({ userId, messageIds })
+	}
+
+	/** Facts the given user messages proposed, saved or confirmed, deleted ones too: history markers. */
+	findForHistory(userId: string, messageIds: string[]): Promise<UserFact[]> {
+		if (messageIds.length === 0) return Promise.resolve([])
+		return this.factsRepository.findForHistory({ userId, messageIds })
 	}
 
 	private async getActiveConfirmed(userId: string, id: string): Promise<UserFact> {

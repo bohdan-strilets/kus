@@ -17,6 +17,7 @@ import { ChatContextService } from './chat-context.service'
 import { ChatCloseDayService } from './chat-close-day.service'
 import { ChatDayCardService } from './chat-day-card.service'
 import { ChatEarlierService } from './chat-earlier.service'
+import { ChatHistoryMarkersService } from './chat-history-markers.service'
 import { ChatEditsService } from './chat-edits.service'
 import { ChatFeedService } from './chat-feed.service'
 import { ChatGreetingsService } from './chat-greetings.service'
@@ -73,6 +74,7 @@ import { TrainingOnboardingMessagesRepository } from './training-onboarding-mess
 		ChatContextService,
 		ChatDayCardService,
 		ChatEarlierService,
+		ChatHistoryMarkersService,
 		ChatEditsService,
 		ChatMeasurementCardsService,
 		ChatPhotosService,

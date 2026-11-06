@@ -1,0 +1,258 @@
+import { describe, expect, it } from 'vitest'
+
+import { HISTORY_MESSAGE_MAX_CHARS, selectHistory } from './context.js'
+import { formatHistoryMarkers, type HistoryMarkerFields } from './history-markers.js'
+
+const render = (
+	fields: HistoryMarkerFields & { hasPhoto?: boolean },
+	content = 'текст',
+): string => {
+	const [turn] = selectHistory([{ role: 'user', content, ...fields }])
+	return turn?.content ?? ''
+}
+
+describe('food markers', () => {
+	it('lists the logged refs', () => {
+		expect(formatHistoryMarkers({ loggedRefs: ['e1', 'e2'] })).toEqual(['[logged: e1, e2]'])
+	})
+
+	it('names the refs deleted later', () => {
+		expect(formatHistoryMarkers({ loggedRefs: ['e1', 'e2'], deletedLoggedRefs: ['e2'] })).toEqual([
+			'[logged: e1, e2; deleted later: e2]',
+		])
+	})
+
+	it('names all the refs when all were deleted', () => {
+		expect(formatHistoryMarkers({ loggedRefs: ['e1'], deletedLoggedRefs: ['e1'] })).toEqual([
+			'[logged: e1; deleted later: e1]',
+		])
+	})
+
+	it('says logged without refs, and deleted later when all of them are', () => {
+		expect(formatHistoryMarkers({ hasLoggedEntries: true })).toEqual(['[logged]'])
+		expect(formatHistoryMarkers({ hasLoggedEntries: true, areLoggedEntriesDeleted: true })).toEqual(
+			['[logged; deleted later]'],
+		)
+	})
+})
+
+describe('workout markers', () => {
+	it('shows the ref and the deleted state', () => {
+		expect(
+			formatHistoryMarkers({ workout: { refs: ['w1'], deletedRefs: [], isDeleted: false } }),
+		).toEqual(['[workout logged: w1]'])
+		expect(
+			formatHistoryMarkers({ workout: { refs: ['w1'], deletedRefs: ['w1'], isDeleted: true } }),
+		).toEqual(['[workout logged: w1; deleted later: w1]'])
+	})
+
+	it('has no ref when the workout is not in the context', () => {
+		expect(
+			formatHistoryMarkers({ workout: { refs: [], deletedRefs: [], isDeleted: false } }),
+		).toEqual(['[workout logged]'])
+		expect(
+			formatHistoryMarkers({ workout: { refs: [], deletedRefs: [], isDeleted: true } }),
+		).toEqual(['[workout logged; deleted later]'])
+	})
+})
+
+describe('measurement markers', () => {
+	it('names the kind and the deleted state', () => {
+		expect(
+			formatHistoryMarkers({
+				measurements: [
+					{ kind: 'weight', isDeleted: false },
+					{ kind: 'waist', isDeleted: true },
+				],
+			}),
+		).toEqual(['[weight logged]', '[waist logged; deleted later]'])
+		expect(formatHistoryMarkers({ measurements: [{ kind: 'weight', isDeleted: true }] })).toEqual([
+			'[weight logged; deleted later]',
+		])
+		expect(formatHistoryMarkers({ measurements: [{ kind: 'waist', isDeleted: false }] })).toEqual([
+			'[waist logged]',
+		])
+	})
+})
+
+describe('fact markers', () => {
+	it('shows a saved fact with its current ref, or without one', () => {
+		expect(
+			formatHistoryMarkers({ facts: [{ kind: 'saved', ref: 'f11', isDeleted: false }] }),
+		).toEqual(['[fact saved: f11]'])
+		expect(
+			formatHistoryMarkers({ facts: [{ kind: 'saved', ref: null, isDeleted: false }] }),
+		).toEqual(['[fact saved]'])
+	})
+
+	it('drops the ref of a deleted fact', () => {
+		expect(
+			formatHistoryMarkers({ facts: [{ kind: 'saved', ref: null, isDeleted: true }] }),
+		).toEqual(['[fact saved; deleted later]'])
+	})
+
+	it('tells a proposal without an answer, and a declined one', () => {
+		expect(formatHistoryMarkers({ facts: [{ kind: 'proposed', isDeclined: false }] })).toEqual([
+			'[fact proposed]',
+		])
+		expect(formatHistoryMarkers({ facts: [{ kind: 'proposed', isDeclined: true }] })).toEqual([
+			'[fact proposed; declined]',
+		])
+	})
+
+	it('marks every forgotten fact', () => {
+		expect(formatHistoryMarkers({ facts: [{ kind: 'forgotten' }, { kind: 'forgotten' }] })).toEqual(
+			['[fact forgotten]', '[fact forgotten]'],
+		)
+	})
+
+	it('merges one forgotten and one saved fact into an update', () => {
+		expect(
+			formatHistoryMarkers({
+				facts: [{ kind: 'forgotten' }, { kind: 'saved', ref: 'f11', isDeleted: false }],
+			}),
+		).toEqual(['[fact updated: f11]'])
+		expect(
+			formatHistoryMarkers({
+				facts: [{ kind: 'saved', ref: null, isDeleted: true }, { kind: 'forgotten' }],
+			}),
+		).toEqual(['[fact updated; deleted later]'])
+	})
+
+	it('does not merge two forgotten, two saved, or a proposal instead of a save', () => {
+		expect(
+			formatHistoryMarkers({
+				facts: [
+					{ kind: 'forgotten' },
+					{ kind: 'forgotten' },
+					{ kind: 'saved', ref: 'f2', isDeleted: false },
+				],
+			}),
+		).toEqual(['[fact forgotten]', '[fact forgotten]', '[fact saved: f2]'])
+		expect(
+			formatHistoryMarkers({
+				facts: [
+					{ kind: 'forgotten' },
+					{ kind: 'saved', ref: 'f2', isDeleted: false },
+					{ kind: 'saved', ref: 'f3', isDeleted: false },
+				],
+			}),
+		).toEqual(['[fact forgotten]', '[fact saved: f2]', '[fact saved: f3]'])
+		expect(
+			formatHistoryMarkers({
+				facts: [{ kind: 'forgotten' }, { kind: 'proposed', isDeclined: false }],
+			}),
+		).toEqual(['[fact forgotten]', '[fact proposed]'])
+	})
+
+	it('puts the forgotten before the saved, whatever the input order', () => {
+		expect(
+			formatHistoryMarkers({
+				facts: [
+					{ kind: 'saved', ref: 'f2', isDeleted: false },
+					{ kind: 'forgotten' },
+					{ kind: 'forgotten' },
+				],
+			}),
+		).toEqual(['[fact forgotten]', '[fact forgotten]', '[fact saved: f2]'])
+	})
+})
+
+describe('saved food markers', () => {
+	it('shows the m-ref when there is one', () => {
+		expect(formatHistoryMarkers({ savedFoods: [{ ref: 'm3', isDeleted: false }] })).toEqual([
+			'[food saved: m3]',
+		])
+		expect(formatHistoryMarkers({ savedFoods: [{ ref: null, isDeleted: false }] })).toEqual([
+			'[food saved]',
+		])
+	})
+
+	it('says deleted later without the ref', () => {
+		expect(formatHistoryMarkers({ savedFoods: [{ ref: 'm3', isDeleted: true }] })).toEqual([
+			'[food saved; deleted later]',
+		])
+	})
+})
+
+describe('history text', () => {
+	it('puts the kinds in the fixed order, before the text', () => {
+		expect(
+			render({
+				loggedRefs: ['e1', 'e2'],
+				deletedLoggedRefs: ['e2'],
+				workout: { refs: ['w1'], deletedRefs: [], isDeleted: false },
+				measurements: [{ kind: 'weight', isDeleted: true }],
+				facts: [{ kind: 'saved', ref: 'f3', isDeleted: false }],
+				savedFoods: [{ ref: 'm3', isDeleted: false }],
+			}),
+		).toBe(
+			'[logged: e1, e2; deleted later: e2] [workout logged: w1] [weight logged; deleted later] [fact saved: f3] [food saved: m3] текст',
+		)
+	})
+
+	it('matches the examples of the brief', () => {
+		expect(
+			render(
+				{
+					loggedRefs: ['e1', 'e2'],
+					deletedLoggedRefs: ['e2'],
+					facts: [{ kind: 'saved', ref: 'f3', isDeleted: false }],
+				},
+				"вівсянка і банан, і запам'ятай, що не п'ю каву",
+			),
+		).toBe(
+			"[logged: e1, e2; deleted later: e2] [fact saved: f3] вівсянка і банан, і запам'ятай, що не п'ю каву",
+		)
+		expect(
+			render(
+				{
+					workout: { refs: ['w1'], deletedRefs: [], isDeleted: false },
+					measurements: [{ kind: 'weight', isDeleted: true }],
+				},
+				'жим 80×8, вага 82',
+			),
+		).toBe('[workout logged: w1] [weight logged; deleted later] жим 80×8, вага 82')
+		expect(
+			render(
+				{
+					hasPhoto: true,
+					facts: [{ kind: 'forgotten' }, { kind: 'saved', ref: 'f11', isDeleted: false }],
+				},
+				'ось новий графік',
+			),
+		).toBe('[fact updated: f11] [фото] ось новий графік')
+	})
+
+	it('keeps all the markers when a long message is cut', () => {
+		const long = 'x'.repeat(HISTORY_MESSAGE_MAX_CHARS * 2)
+		const text = render(
+			{
+				loggedRefs: ['e1'],
+				workout: { refs: [], deletedRefs: [], isDeleted: false },
+				facts: [{ kind: 'forgotten' }],
+			},
+			long,
+		)
+		expect(text.startsWith('[logged: e1] [workout logged] [fact forgotten] ')).toBe(true)
+		expect(text).toHaveLength(HISTORY_MESSAGE_MAX_CHARS)
+	})
+
+	it('gives an assistant turn no markers', () => {
+		const [turn] = selectHistory([
+			{
+				role: 'assistant',
+				content: 'Записано',
+				workout: { refs: ['w1'], deletedRefs: [], isDeleted: false },
+				facts: [{ kind: 'forgotten' }],
+				measurements: [{ kind: 'weight', isDeleted: false }],
+				savedFoods: [{ ref: 'm1', isDeleted: false }],
+			},
+		])
+		expect(turn?.content).toBe('Записано')
+	})
+
+	it('adds nothing for a turn without markers', () => {
+		expect(render({})).toBe('текст')
+	})
+})

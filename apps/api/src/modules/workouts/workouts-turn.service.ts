@@ -20,7 +20,11 @@ import { WorkoutSessionsService } from './workout-sessions.service'
 import { getLastPerformedAt, toExerciseContext, toWorkoutContext } from './workout-turn'
 import { WorkoutKcalService } from './workout-kcal.service'
 import { WorkoutRecordsService } from './workout-records.service'
-import { type WorkoutWithExercises, WorkoutsRepository } from './workouts.repository'
+import {
+	type WorkoutStart,
+	type WorkoutWithExercises,
+	WorkoutsRepository,
+} from './workouts.repository'
 
 export { NO_WORKOUT_REFS, type WorkoutRefIds } from './workout-refs'
 
@@ -219,6 +223,12 @@ export class WorkoutsTurnService {
 			{ userId, ids: refs.map((ref) => toId(refIds.deletedWorkouts, ref)), isDeleted: false },
 			tx,
 		)
+	}
+
+	/** The workouts user messages started, deleted ones too: what the model's history says about them. */
+	findStartedByMessages(userId: string, messageIds: string[]): Promise<WorkoutStart[]> {
+		if (messageIds.length === 0) return Promise.resolve([])
+		return this.workoutsRepository.findStartedByMessages({ userId, messageIds })
 	}
 
 	/**

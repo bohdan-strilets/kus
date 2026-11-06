@@ -45,6 +45,10 @@ interface Mocks {
 	program?: unknown
 	/** The newest card while OPEN. */
 	openCard?: unknown
+	/** What the history markers service returns: message id → markers. */
+	markers?: Map<string, unknown>
+	/** The user's confirmed facts, oldest first. */
+	facts?: { id: string; text: string }[]
 }
 
 const createService = ({
@@ -55,9 +59,12 @@ const createService = ({
 	range = {},
 	program = { program: null, pendingProgram: null, refIds: NO_TEMPLATE_REFS },
 	openCard = null,
+	markers = new Map(),
+	facts = [],
 }: Mocks = {}) => {
 	const getProgramContext = vi.fn().mockResolvedValue(program)
-	const findContextFacts = vi.fn().mockResolvedValue({ confirmed: [], proposal: null })
+	const findContextFacts = vi.fn().mockResolvedValue({ confirmed: facts, proposal: null })
+	const getMarkers = vi.fn().mockResolvedValue(markers)
 	const getEditableEntries = vi.fn().mockResolvedValue(editable)
 	const getDaysKcal = vi.fn().mockResolvedValue(daysKcal)
 	const findInRange = vi
@@ -67,6 +74,7 @@ const createService = ({
 		{ findHistory: vi.fn().mockResolvedValue(history) } as never,
 		{ findOpenClarifications: vi.fn().mockResolvedValue([]) } as never,
 		{ getContext: vi.fn().mockResolvedValue({ earlier: [], copyRefIds: new Map() }) } as never,
+		{ getMarkers } as never,
 		{
 			getDaySummary: vi.fn().mockResolvedValue({ totals: {}, meals: [] }),
 			getEditableEntries,
@@ -102,6 +110,7 @@ const createService = ({
 		findInRange,
 		findContextFacts,
 		getProgramContext,
+		getMarkers,
 	}
 }
 
@@ -137,6 +146,90 @@ describe('ChatContextService.buildContext history markers', () => {
 			{ role: 'user', content: 'борщ', hasLoggedEntries: true },
 			{ role: 'user', content: 'чай', loggedRefs: ['e1'] },
 		])
+	})
+})
+
+describe('ChatContextService.buildContext history marker sources', () => {
+	it('names the entries of a turn that were deleted later', async () => {
+		const { service } = createService({
+			history: [toUserMessage('m2', 'вівсянка і чай')],
+			editable: {
+				active: [toEntry('kept', 'm2')],
+				deleted: [toEntry('gone', 'm2')],
+				sourceMessages: [
+					{ id: 'kept', sourceMessageId: 'm2', isDeleted: false },
+					{ id: 'gone', sourceMessageId: 'm2', isDeleted: true },
+				],
+			},
+		})
+
+		const { context } = await build(service)
+
+		expect(context.history).toEqual([
+			{
+				role: 'user',
+				content: 'вівсянка і чай',
+				loggedRefs: ['e1', 'e2'],
+				deletedLoggedRefs: ['e2'],
+			},
+		])
+	})
+
+	it('says the turn is deleted later when no entry of it has a ref', async () => {
+		const { service } = createService({
+			history: [toUserMessage('m1', 'борщ')],
+			editable: {
+				active: [],
+				deleted: [],
+				sourceMessages: [{ id: 'old', sourceMessageId: 'm1', isDeleted: true }],
+			},
+		})
+
+		const { context } = await build(service)
+
+		expect(context.history).toEqual([
+			{ role: 'user', content: 'борщ', hasLoggedEntries: true, areLoggedEntriesDeleted: true },
+		])
+	})
+
+	it('adds the markers of the other kinds to their turn, asking for the user turns only', async () => {
+		const workout = { refs: ['w1'], deletedRefs: [], isDeleted: false }
+		const { service, getMarkers } = createService({
+			history: [
+				{ id: 'a1', role: MessageRole.ASSISTANT, content: 'Записано', attachments: [] },
+				toUserMessage('m2', 'жим 80×8'),
+			],
+			markers: new Map([['m2', { workout }]]),
+		})
+
+		const { context } = await build(service)
+
+		expect(getMarkers).toHaveBeenCalledWith(expect.objectContaining({ messageIds: ['m2'] }))
+		expect(context.history).toEqual([
+			{ role: 'user', content: 'жим 80×8', workout },
+			{ role: 'assistant', content: 'Записано' },
+		])
+	})
+
+	it('hands the f-refs of the facts of the request to the markers', async () => {
+		const { service, getMarkers } = createService({
+			history: [toUserMessage('m2', "запам'ятай")],
+			facts: [
+				{ id: 'fact-a', text: 'А' },
+				{ id: 'fact-b', text: 'Б' },
+			],
+		})
+
+		await build(service)
+
+		expect(getMarkers).toHaveBeenCalledWith(
+			expect.objectContaining({
+				factRefById: new Map([
+					['fact-a', 'f1'],
+					['fact-b', 'f2'],
+				]),
+			}),
+		)
 	})
 })
 

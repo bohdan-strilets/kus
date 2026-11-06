@@ -250,6 +250,7 @@ export class ChatService {
 				await this.chatContext.buildContext({
 					...params,
 					memory: memory.context,
+					foodRefById: new Map([...memory.byRef].map(([ref, food]) => [food.id, ref])),
 					...(programOnboarding ? { programOnboarding } : {}),
 				})
 			const parseParams: ParseFoodParams = {

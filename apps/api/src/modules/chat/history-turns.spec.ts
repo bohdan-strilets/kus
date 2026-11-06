@@ -107,4 +107,71 @@ describe('toHistoryTurns', () => {
 	it('drops a message without text and photo', () => {
 		expect(toHistoryTurns(toMessage({ content: null }), REFS, new Map())).toEqual([])
 	})
+
+	describe('deleted entries and other markers', () => {
+		const DELETED = new Set(['entry-b'])
+
+		it('names the refs deleted later, in ref order', () => {
+			const turns = toHistoryTurns(toMessage({}), REFS, new Map([['m1', ['entry-b', 'entry-a']]]), {
+				deletedEntryIds: DELETED,
+			})
+			expect(turns).toEqual([
+				{
+					role: 'user',
+					content: 'вівсянка і чай',
+					loggedRefs: ['e1', 'e2'],
+					deletedLoggedRefs: ['e2'],
+				},
+			])
+		})
+
+		it('names every ref when all the entries were deleted', () => {
+			const turns = toHistoryTurns(toMessage({}), REFS, new Map([['m1', ['entry-b']]]), {
+				deletedEntryIds: DELETED,
+			})
+			expect(turns[0]).toMatchObject({ loggedRefs: ['e2'], deletedLoggedRefs: ['e2'] })
+			expect(turns[0]?.areLoggedEntriesDeleted).toBeUndefined()
+		})
+
+		it('says deleted later without refs only when all the entries are deleted', () => {
+			const allGone = toHistoryTurns(toMessage({}), REFS, new Map([['m1', ['old-1', 'old-2']]]), {
+				deletedEntryIds: new Set(['old-1', 'old-2']),
+			})
+			expect(allGone).toEqual([
+				{
+					role: 'user',
+					content: 'вівсянка і чай',
+					hasLoggedEntries: true,
+					areLoggedEntriesDeleted: true,
+				},
+			])
+
+			const someGone = toHistoryTurns(toMessage({}), REFS, new Map([['m1', ['old-1', 'old-2']]]), {
+				deletedEntryIds: new Set(['old-1']),
+			})
+			expect(someGone).toEqual([
+				{ role: 'user', content: 'вівсянка і чай', hasLoggedEntries: true },
+			])
+		})
+
+		it('merges the markers of the other kinds into a user turn', () => {
+			const markers = { facts: [{ kind: 'forgotten' as const }] }
+			const turns = toHistoryTurns(toMessage({}), REFS, new Map([['m1', ['entry-a']]]), {
+				markers,
+			})
+			expect(turns).toEqual([
+				{ role: 'user', content: 'вівсянка і чай', loggedRefs: ['e1'], facts: markers.facts },
+			])
+		})
+
+		it('gives an assistant turn no markers at all', () => {
+			const turns = toHistoryTurns(
+				toMessage({ role: MessageRole.ASSISTANT, content: 'Записано' }),
+				REFS,
+				new Map([['m1', ['entry-b']]]),
+				{ deletedEntryIds: DELETED, markers: { facts: [{ kind: 'forgotten' }] } },
+			)
+			expect(turns).toEqual([{ role: 'assistant', content: 'Записано' }])
+		})
+	})
 })

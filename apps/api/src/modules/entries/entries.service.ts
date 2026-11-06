@@ -192,7 +192,7 @@ export class EntriesService {
 		active: EntryWithMealType[]
 		deleted: EntryWithMealType[]
 		/** Every entry of the day before the context limits: tells which messages logged something. */
-		sourceMessages: { id: string; sourceMessageId: string | null }[]
+		sourceMessages: { id: string; sourceMessageId: string | null; isDeleted: boolean }[]
 	}> {
 		const entries = await this.entriesRepository.findDayEntries({ userId, localDate, otherDays })
 		const deleted = entries.flatMap((entry) =>
@@ -204,7 +204,11 @@ export class EntriesService {
 				.sort((a, b) => b.deletedAt - a.deletedAt)
 				.slice(0, MAX_CONTEXT_DELETED_ENTRIES)
 				.map(({ entry }) => entry),
-			sourceMessages: entries.map(({ id, sourceMessageId }) => ({ id, sourceMessageId })),
+			sourceMessages: entries.map(({ id, sourceMessageId, deletedAt }) => ({
+				id,
+				sourceMessageId,
+				isDeleted: deletedAt !== null,
+			})),
 		}
 	}
 

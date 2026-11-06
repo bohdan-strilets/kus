@@ -114,7 +114,7 @@ export class ChatTurnMemoryService {
 	}
 
 	private async saveFood(
-		{ userId, foodsByRef, entryIds, hasPhoto }: MemoryTurnParams,
+		{ userId, messageId, foodsByRef, entryIds, hasPhoto }: MemoryTurnParams,
 		input: SaveFoodInput,
 		tx: Prisma.TransactionClient,
 	): Promise<MyFood | null> {
@@ -124,7 +124,7 @@ export class ChatTurnMemoryService {
 		const data = toNewChatFood(input, { entry, hasPhoto })
 		if (!data) return null
 
-		const food = await this.createOrUpdate({ userId, input, data, foodsByRef }, tx)
+		const food = await this.createOrUpdate({ userId, messageId, input, data, foodsByRef }, tx)
 		if (food && entry) {
 			await this.entriesService.linkMyFood({ userId, entryId: entry.id, myFoodId: food.id }, tx)
 		}
@@ -134,18 +134,22 @@ export class ChatTurnMemoryService {
 	private async createOrUpdate(
 		{
 			userId,
+			messageId,
 			input,
 			data,
 			foodsByRef,
 		}: {
 			userId: string
+			messageId: string
 			input: SaveFoodInput
 			data: NonNullable<ReturnType<typeof toNewChatFood>>
 			foodsByRef: ReadonlyMap<string, MyFood>
 		},
 		tx: Prisma.TransactionClient,
 	): Promise<MyFood | null> {
-		if (input.updateRef === null) return this.myFoods.saveFromChat(userId, data, tx)
+		if (input.updateRef === null) {
+			return this.myFoods.saveFromChat({ userId, data, sourceMessageId: messageId }, tx)
+		}
 		const target = foodsByRef.get(input.updateRef)
 		// the parser accepts only refs of this request; a miss here is a bug
 		if (!target) throw new Error('save_food updateRef is not mapped')

@@ -1,6 +1,6 @@
 import { Logger } from '@nestjs/common'
 import { FACT_TEXT_MAX_LENGTH, FACTS_MAX } from '@kus/shared'
-import { afterAll, beforeEach, describe, expect, it, vi, type Mocked } from 'vitest'
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi, type Mocked } from 'vitest'
 
 import type { Prisma, UserFact } from '../../generated/prisma/client'
 import type { FactsRepository } from './facts.repository'
@@ -17,6 +17,8 @@ const makeFact = (overrides: Partial<UserFact> = {}): UserFact => ({
 	category: 'SCHEDULE',
 	status: 'CONFIRMED',
 	sourceMessageId: null,
+	confirmedMessageId: null,
+	answeredAt: null,
 	createdAt: new Date('2026-10-01T08:00:00Z'),
 	updatedAt: new Date('2026-10-01T08:00:00Z'),
 	deletedAt: null,
@@ -148,7 +150,13 @@ describe('FactsService.saveFromChat', () => {
 
 		expect(result).toEqual({ kind: 'saved', fact: confirmed })
 		expect(repository.changeStatus).toHaveBeenCalledWith(
-			{ userId: USER_ID, id: open.id, from: 'PROPOSED', to: 'CONFIRMED' },
+			{
+				userId: USER_ID,
+				id: open.id,
+				from: 'PROPOSED',
+				to: 'CONFIRMED',
+				confirmedMessageId: 'msg-1',
+			},
 			TX,
 		)
 		expect(repository.create).not.toHaveBeenCalled()
@@ -182,5 +190,59 @@ describe('FactsService.saveFromChat', () => {
 
 	it('rejects an empty text as EMPTY', async () => {
 		expect(await save({ text: ' \n ' })).toEqual({ kind: 'rejected', issue: 'EMPTY' })
+	})
+})
+
+describe('FactsService.answer', () => {
+	const NOW = new Date('2026-11-06T10:00:00Z')
+	let repository: Mocked<Pick<FactsRepository, 'findById' | 'changeStatus' | 'countConfirmed'>>
+	let service: FactsService
+	const proposal = makeFact({ status: 'PROPOSED' })
+
+	beforeEach(() => {
+		vi.useFakeTimers()
+		vi.setSystemTime(NOW)
+		repository = {
+			findById: vi.fn().mockResolvedValue(proposal),
+			changeStatus: vi.fn().mockResolvedValue(true),
+			countConfirmed: vi.fn().mockResolvedValue(0),
+		}
+		service = new FactsService(repository as unknown as FactsRepository)
+	})
+
+	afterEach(() => {
+		vi.useRealTimers()
+	})
+
+	it('stamps answeredAt on «Так» and never sets confirmedMessageId', async () => {
+		await service.answer(USER_ID, proposal.id, { accept: true })
+
+		expect(repository.changeStatus).toHaveBeenCalledWith({
+			userId: USER_ID,
+			id: proposal.id,
+			from: 'PROPOSED',
+			to: 'CONFIRMED',
+			answeredAt: NOW,
+		})
+	})
+
+	it('stamps answeredAt on «Ні»', async () => {
+		await service.answer(USER_ID, proposal.id, { accept: false })
+
+		expect(repository.changeStatus).toHaveBeenCalledWith({
+			userId: USER_ID,
+			id: proposal.id,
+			from: 'PROPOSED',
+			to: 'REJECTED',
+			answeredAt: NOW,
+		})
+	})
+
+	it('writes nothing when the same answer comes again', async () => {
+		repository.findById.mockResolvedValue(makeFact({ status: 'REJECTED', answeredAt: NOW }))
+
+		await service.answer(USER_ID, proposal.id, { accept: false })
+
+		expect(repository.changeStatus).not.toHaveBeenCalled()
 	})
 })

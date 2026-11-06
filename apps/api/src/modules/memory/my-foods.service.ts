@@ -82,13 +82,15 @@ export class MyFoodsService {
 		return toMyFoodResponse(await this.getActiveFood(userId, id))
 	}
 
-	/** The chat's save_food: a new food, or null when the name is taken (a race, or a ref-less repeat). */
+	/**
+	 * The chat's save_food: a new food remembering the message that saved it, or null when the name
+	 * is taken (a race, or a ref-less repeat).
+	 */
 	saveFromChat(
-		userId: string,
-		data: NewMyFood,
+		{ userId, data, sourceMessageId }: { userId: string; data: NewMyFood; sourceMessageId: string },
 		tx: Prisma.TransactionClient,
 	): Promise<MyFood | null> {
-		return this.memoryRepository.createFoodIfFree({ userId, data }, tx)
+		return this.memoryRepository.createFoodIfFree({ userId, data, sourceMessageId }, tx)
 	}
 
 	/** The chat's save_food with an agreed updateRef; null = the food is gone (deleted meanwhile). */

@@ -79,6 +79,23 @@ export class FactsRepository {
 	}
 
 	/**
+	 * Facts a user message proposed, saved or confirmed with its words, any status and deleted ones
+	 * too: what the model's history says about that message.
+	 */
+	findForHistory(
+		{ userId, messageIds }: { userId: string; messageIds: string[] },
+		tx?: Prisma.TransactionClient,
+	): Promise<UserFact[]> {
+		return (tx ?? this.prisma).userFact.findMany({
+			where: {
+				userId,
+				OR: [{ sourceMessageId: { in: messageIds } }, { confirmedMessageId: { in: messageIds } }],
+			},
+			orderBy: { createdAt: 'asc' },
+		})
+	}
+
+	/**
 	 * Conflict-safe insert: ON CONFLICT DO NOTHING honours the partial unique index, and a violation
 	 * inside a transaction would abort it. null = a live fact of this text exists already.
 	 */
@@ -106,14 +123,35 @@ export class FactsRepository {
 		return count === 1
 	}
 
-	/** Moves an active fact from one status to another; false = it wasn't in `from`. */
+	/**
+	 * Moves an active fact from one status to another; false = it wasn't in `from`. `answeredAt`
+	 * and `confirmedMessageId` are written in the same update, only when given.
+	 */
 	async changeStatus(
-		{ userId, id, from, to }: { userId: string; id: string; from: FactStatus; to: FactStatus },
+		{
+			userId,
+			id,
+			from,
+			to,
+			answeredAt,
+			confirmedMessageId,
+		}: {
+			userId: string
+			id: string
+			from: FactStatus
+			to: FactStatus
+			answeredAt?: Date
+			confirmedMessageId?: string | null
+		},
 		tx?: Prisma.TransactionClient,
 	): Promise<boolean> {
 		const { count } = await (tx ?? this.prisma).userFact.updateMany({
 			where: { id, userId, status: from, deletedAt: null },
-			data: { status: to },
+			data: {
+				status: to,
+				...(answeredAt !== undefined && { answeredAt }),
+				...(confirmedMessageId !== undefined && { confirmedMessageId }),
+			},
 		})
 		return count === 1
 	}

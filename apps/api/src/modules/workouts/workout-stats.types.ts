@@ -10,6 +10,8 @@ export type StatsSetRow = {
 }
 
 export type StatsEntryRow = {
+	id: string
+	performedAt: Date
 	workoutId: string
 	workoutLocalDate: string
 	position: number

@@ -15,6 +15,7 @@ import { formatLocalClock } from '../../common/time'
 import type { Prisma } from '../../generated/prisma/client'
 import { isExerciseNamed } from './exercise-names'
 import { toId, type WorkoutRefIds } from './workout-refs'
+import { getRecordExerciseIds } from './workout-records'
 import { getRecordKeys, getSessionMessageIds, hasNewRecord, toWorkoutCard } from './workout-session'
 import { WorkoutSessionsService } from './workout-sessions.service'
 import { getLastPerformedAt, toExerciseContext, toWorkoutContext } from './workout-turn'
@@ -192,7 +193,13 @@ export class WorkoutsTurnService {
 				tx,
 			)
 			if (change === null) continue
-			const records = await this.records.computeRecords(userId, change.workout, tx)
+			// the exercises it held before too: a lowered or removed result moves their trophies
+			const recomputed = await this.records.recompute(
+				userId,
+				[...change.exerciseIdsBefore, ...getRecordExerciseIds(change.workout.exercises)],
+				tx,
+			)
+			const records = recomputed.get(change.workout.id) ?? []
 			const recordsAfter = getRecordKeys(records, change.workout.exercises)
 			isNewRecord ||= hasNewRecord(change.recordsBefore, recordsAfter)
 			for (const id of change.messageIds) sourceMessageIds.add(id)
@@ -261,14 +268,19 @@ export class WorkoutsTurnService {
 		tx: Prisma.TransactionClient,
 	): Promise<string[]> {
 		const messageIds: string[] = []
+		const exerciseIds: string[] = []
 		for (const id of ids) {
 			const changed = isDeleted
 				? await this.workoutsRepository.softDelete({ userId, id }, tx)
 				: await this.workoutsRepository.restore({ userId, id }, tx)
 			const workout = await this.workoutsRepository.findOwned({ userId, id }, tx)
+			if (!changed || !workout) continue
 			// every message showing a part of the session gets its card turned into the line
-			if (changed && workout) messageIds.push(...getSessionMessageIds(workout))
+			messageIds.push(...getSessionMessageIds(workout))
+			exerciseIds.push(...getRecordExerciseIds(workout.exercises))
 		}
+		// a session leaving or coming back moves the trophies after it
+		await this.records.recompute(userId, exerciseIds, tx)
 		return [...new Set(messageIds)]
 	}
 }

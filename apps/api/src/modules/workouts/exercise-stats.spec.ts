@@ -121,14 +121,89 @@ describe('buildExerciseStats history record', () => {
 
 	it('marks the first max-reps workout of a bodyweight exercise with REPS', () => {
 		expect(
-			records([
-				entryOn('a', '2026-09-01', [{ weightKg: null, reps: 8 }]),
-				entryOn('b', '2026-09-10', [{ weightKg: null, reps: 12 }]),
-				entryOn('c', '2026-09-20', [{ weightKg: null, reps: 12 }]),
-			]),
+			records(
+				[
+					entryOn('a', '2026-09-01', [{ weightKg: null, reps: 8 }]),
+					entryOn('b', '2026-09-10', [{ weightKg: null, reps: 12 }]),
+					entryOn('c', '2026-09-20', [{ weightKg: null, reps: 12 }]),
+				].map((entry) => ({ ...entry, isBodyweight: true })),
+			),
 		).toEqual([
 			['c', null],
 			['b', 'REPS'],
+			['a', null],
+		])
+	})
+
+	it('prefers WEIGHT over REPS over DISTANCE when a session holds several', () => {
+		const flagged = (
+			workoutId: string,
+			localDate: string,
+			sets: Parameters<typeof makeSet>[0][],
+		) => ({
+			...entryOn(workoutId, localDate, sets),
+			isBodyweight: true,
+		})
+		expect(
+			records([
+				flagged('a', '2026-09-01', [
+					{ weightKg: 10, reps: 5 },
+					{ weightKg: null, reps: 8 },
+				]),
+				flagged('b', '2026-09-10', [
+					{ weightKg: 15, reps: 5 },
+					{ weightKg: null, reps: 12 },
+				]),
+				flagged('c', '2026-09-20', [
+					{ weightKg: 15, reps: 5 },
+					{ weightKg: null, reps: 14 },
+				]),
+			]),
+		).toEqual([
+			['c', 'REPS'],
+			['b', 'WEIGHT'],
+			['a', null],
+		])
+		expect(
+			records([
+				{ ...entryOn('a', '2026-09-01', []), distanceM: 3000 },
+				{ ...entryOn('b', '2026-09-10', []), distanceM: 5000 },
+			]),
+		).toEqual([
+			['b', 'DISTANCE'],
+			['a', null],
+		])
+	})
+
+	it('gives a single session no trophy, but the summary keeps the absolute max', () => {
+		const stats = build([entryOn('a', '2026-10-10', [{ weightKg: 100, reps: 3 }])])
+		expect(stats.history.map((item) => item.record)).toEqual([null])
+		expect(stats.best.topSet).toEqual({ weightKg: 100, reps: 3, localDate: '2026-10-10' })
+	})
+
+	it('never gives REPS to an unflagged exercise', () => {
+		const unflagged = (workoutId: string, localDate: string, reps: number) => ({
+			...entryOn(workoutId, localDate, [{ weightKg: null, reps }]),
+			isBodyweight: false,
+		})
+		expect(
+			records([unflagged('a', '2026-09-01', 8), unflagged('b', '2026-09-10', 15)]).map(
+				([, record]) => record,
+			),
+		).toEqual([null, null])
+	})
+
+	it('ignores a heavier warm-up and an equal result', () => {
+		expect(
+			records([
+				entryOn('a', '2026-09-01', [{ weightKg: 80, reps: 5 }]),
+				entryOn('b', '2026-09-10', [
+					{ weightKg: 120, reps: 3, isWarmup: true },
+					{ weightKg: 80, reps: 5 },
+				]),
+			]),
+		).toEqual([
+			['b', null],
 			['a', null],
 		])
 	})

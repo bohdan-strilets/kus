@@ -1,8 +1,10 @@
-import type {
-	ExerciseKind,
-	ExerciseStatsResponse,
-	MuscleGroup,
-	WorkoutStatsPeriod,
+import {
+	type ExerciseKind,
+	type ExerciseStatsResponse,
+	isBodyweightByName,
+	type MuscleGroup,
+	type WorkoutRecordType,
+	type WorkoutStatsPeriod,
 } from '@kus/shared'
 
 import {
@@ -11,11 +13,11 @@ import {
 	getMaxSessionReps,
 	getPointValue,
 	getProgressPoints,
-	getRecordWorkout,
 	getTopSet,
 	getWorkingSets,
 	isBodyweightExercise,
 } from './exercise-progress'
+import { computeChronologicalRecords, type RecordEntryInput } from './workout-records'
 import { getStatsPeriodRange, isInRange } from './workout-stats-period'
 import type { StatsEntryRow } from './workout-stats.types'
 
@@ -30,10 +32,42 @@ export type StatsExerciseRow = {
 
 type HistoryItem = ExerciseStatsResponse['history'][number]
 
-const toHistory = (
-	entries: readonly StatsEntryRow[],
-	recordWorkout: ReturnType<typeof getRecordWorkout>,
-): HistoryItem[] => {
+/** The screen shows one trophy per session. */
+const RECORD_PRIORITY: readonly WorkoutRecordType[] = ['WEIGHT', 'REPS', 'DISTANCE']
+
+const toRecordEntry = (entry: StatsEntryRow): RecordEntryInput | null => {
+	if (entry.exerciseId === null) return null
+	return {
+		entryId: entry.id,
+		workoutId: entry.workoutId,
+		exerciseId: entry.exerciseId,
+		performedAt: entry.performedAt,
+		position: entry.position,
+		distanceM: entry.distanceM,
+		// the entry's own flag, then the dictionary's, then the name
+		isBodyweight:
+			entry.isBodyweight ?? entry.exercise?.isBodyweight ?? isBodyweightByName(entry.name),
+		sets: entry.sets,
+	}
+}
+
+/** The trophy of each session by the same rule the journal uses (chronological). */
+const getSessionRecords = (entries: readonly StatsEntryRow[]): Map<string, WorkoutRecordType> => {
+	const records = computeChronologicalRecords(
+		entries.flatMap((entry) => toRecordEntry(entry) ?? []),
+	)
+	const result = new Map<string, WorkoutRecordType>()
+	for (const [workoutId, sessionRecords] of records) {
+		const type = RECORD_PRIORITY.find((candidate) =>
+			sessionRecords.some((record) => record.type === candidate),
+		)
+		if (type !== undefined) result.set(workoutId, type)
+	}
+	return result
+}
+
+const toHistory = (entries: readonly StatsEntryRow[]): HistoryItem[] => {
+	const records = getSessionRecords(entries)
 	const byWorkout = new Map<string, StatsEntryRow[]>()
 	for (const entry of entries) {
 		byWorkout.set(entry.workoutId, [...(byWorkout.get(entry.workoutId) ?? []), entry])
@@ -44,7 +78,7 @@ const toHistory = (
 			return {
 				workoutId,
 				localDate: ordered[0]?.workoutLocalDate ?? '',
-				record: recordWorkout?.workoutId === workoutId ? recordWorkout.record : null,
+				record: records.get(workoutId) ?? null,
 				// warm-ups are shown here, and only here
 				sets: ordered.flatMap((entry) =>
 					entry.sets.map((set) => ({
@@ -104,6 +138,6 @@ export const buildExerciseStats = ({
 			topWeightKg,
 			maxReps,
 		})),
-		history: toHistory(entries, getRecordWorkout(sets, isBodyweight)),
+		history: toHistory(entries),
 	}
 }

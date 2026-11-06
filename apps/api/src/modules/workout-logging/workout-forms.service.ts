@@ -10,6 +10,7 @@ import { ProgramTemplateNotFoundException } from '../programs/programs.exception
 import { ProgramsService } from '../programs/programs.service'
 import { UsersService } from '../users/users.service'
 import { WorkoutKcalService } from '../workouts/workout-kcal.service'
+import { getRecordExerciseIds } from '../workouts/workout-records'
 import { WorkoutRecordsService } from '../workouts/workout-records.service'
 import { WorkoutNotFoundException } from '../workouts/workouts.exceptions'
 import { readWorkoutRecords } from '../workouts/workouts.mapper'
@@ -113,7 +114,12 @@ export class WorkoutFormsService {
 					},
 					tx,
 				)
-				const records = await this.records.computeRecords(userId, workout, tx)
+				const recomputed = await this.records.recompute(
+					userId,
+					getRecordExerciseIds(workout.exercises),
+					tx,
+				)
+				const records = recomputed.get(workout.id) ?? []
 				const posted = await this.summary.postSummary(
 					{
 						userId,

@@ -14,6 +14,9 @@ import {
 import { formatDbDate, toDbDate } from '../../common/time'
 import type { Prisma } from '../../generated/prisma/client'
 import type { ExerciseKind, MuscleGroup } from '../../generated/prisma/enums'
+import { PrismaService } from '../../prisma'
+import { getRecordExerciseIds } from './workout-records'
+import { WorkoutRecordsService } from './workout-records.service'
 import { WorkoutNotFoundException } from './workouts.exceptions'
 import { WorkoutKcalService } from './workout-kcal.service'
 import { type WorkoutWithExercises, WorkoutsRepository } from './workouts.repository'
@@ -68,6 +71,8 @@ export class WorkoutsService {
 	constructor(
 		private readonly workoutsRepository: WorkoutsRepository,
 		private readonly kcal: WorkoutKcalService,
+		private readonly prisma: PrismaService,
+		private readonly records: WorkoutRecordsService,
 	) {}
 
 	/** The workouts of one day, in the order they were logged. */
@@ -102,20 +107,34 @@ export class WorkoutsService {
 		return this.toOneResponse(userId, workout)
 	}
 
+	/** Deletes the workout; the trophies of its exercises are recomputed in the same transaction. */
 	async remove(userId: string, id: string): Promise<void> {
-		if (!(await this.workoutsRepository.softDelete({ userId, id }))) {
-			throw new WorkoutNotFoundException()
-		}
+		await this.prisma.$transaction(async (tx) => {
+			const workout = await this.workoutsRepository.findOwned({ userId, id }, tx)
+			if (!workout || !(await this.workoutsRepository.softDelete({ userId, id }, tx))) {
+				throw new WorkoutNotFoundException()
+			}
+			await this.records.recompute(userId, getRecordExerciseIds(workout.exercises), tx)
+		})
 		this.logger.log(`Workout deleted user=${userId} workout=${id}`)
 	}
 
 	/** Idempotent: a workout that was not deleted comes back as it is. */
 	async restore(userId: string, id: string): Promise<WorkoutResponse> {
-		if (await this.workoutsRepository.restore({ userId, id })) {
-			this.logger.log(`Workout restored user=${userId} workout=${id}`)
-		}
-		const workout = await this.workoutsRepository.findOwned({ userId, id })
-		if (!workout) throw new WorkoutNotFoundException()
+		const { workout, isRestored } = await this.prisma.$transaction(async (tx) => {
+			const isRestored = await this.workoutsRepository.restore({ userId, id }, tx)
+			const found = await this.workoutsRepository.findOwned({ userId, id }, tx)
+			if (!found) throw new WorkoutNotFoundException()
+			if (isRestored) {
+				await this.records.recompute(userId, getRecordExerciseIds(found.exercises), tx)
+			}
+			// the records may have just been rewritten
+			const workout = isRestored
+				? ((await this.workoutsRepository.findOwned({ userId, id }, tx)) ?? found)
+				: found
+			return { workout, isRestored }
+		})
+		if (isRestored) this.logger.log(`Workout restored user=${userId} workout=${id}`)
 		return this.toOneResponse(userId, workout)
 	}
 

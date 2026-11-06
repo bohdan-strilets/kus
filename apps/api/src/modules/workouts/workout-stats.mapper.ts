@@ -15,6 +15,8 @@ export const toStatsWorkoutRow = (workout: StatsWorkoutRecord): StatsWorkoutRow 
 
 /** The dictionary name is the consistent one; the snapshot on the entry is as the person wrote it. */
 export const toStatsEntryRow = (entry: StatsEntryRecord): StatsEntryRow => ({
+	id: entry.id,
+	performedAt: entry.performedAt,
 	workoutId: entry.workout?.id ?? '',
 	workoutLocalDate: formatDbDate(entry.workout?.localDate ?? entry.localDate),
 	position: entry.position,

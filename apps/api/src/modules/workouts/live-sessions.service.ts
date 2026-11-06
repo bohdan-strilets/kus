@@ -3,6 +3,7 @@ import { Injectable, Logger } from '@nestjs/common'
 import type { Prisma } from '../../generated/prisma/client'
 import { getLiveFinishFields, hasDoneWork, isLiveIdle } from './live-session'
 import { LiveSessionsRepository } from './live-sessions.repository'
+import { getRecordExerciseIds } from './workout-records'
 import { WorkoutRecordsService } from './workout-records.service'
 import { getRecordKeys, hasNewRecord } from './workout-session'
 import type { WorkoutRecord } from './workout-turn'
@@ -103,7 +104,12 @@ export class LiveSessionsService {
 		if (!isClaimed) return null
 		const finished = await this.workoutsRepository.findLiveOwned({ userId, id: workout.id }, tx)
 		if (!finished) throw new WorkoutNotFoundException()
-		const records = await this.records.computeRecords(userId, finished, tx)
+		const recomputed = await this.records.recompute(
+			userId,
+			getRecordExerciseIds(finished.exercises),
+			tx,
+		)
+		const records = recomputed.get(finished.id) ?? []
 		return {
 			kind: 'FINISHED',
 			workout: finished,

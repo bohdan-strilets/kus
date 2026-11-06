@@ -24,6 +24,7 @@ import {
 import { getLiveFinishFields, isLiveIdle, isOpenLive } from './live-session'
 import { LiveSessionsService } from './live-sessions.service'
 import { carryLiveFields, getEditTime, matchOldEntries } from './workout-live-carry'
+import { getRecordExerciseIds } from './workout-records'
 import { expandSets, getLastPerformedAt, toDistanceM } from './workout-turn'
 import {
 	WorkoutDateOutOfRangeException,
@@ -45,6 +46,8 @@ export interface SessionChange {
 	workout: WorkoutWithExercises
 	/** By exercise and type; empty for a new session. */
 	recordsBefore: Set<string>
+	/** The dictionary exercises the session held before the call: their trophies move too. */
+	exerciseIdsBefore: string[]
 	/** Earlier user messages whose workout cards changed. */
 	messageIds: string[]
 }
@@ -141,7 +144,7 @@ export class WorkoutSessionsService {
 		tx: Prisma.TransactionClient,
 	): Promise<SessionChange> {
 		const workout = await this.workoutsRepository.create(await this.toWrite(params, tx), tx)
-		return { workout, recordsBefore: new Set(), messageIds: [] }
+		return { workout, recordsBefore: new Set(), exerciseIdsBefore: [], messageIds: [] }
 	}
 
 	/**
@@ -208,6 +211,7 @@ export class WorkoutSessionsService {
 		return {
 			workout,
 			recordsBefore: getRecordKeys(readWorkoutRecords(before), before.exercises),
+			exerciseIdsBefore: getRecordExerciseIds(before.exercises),
 			messageIds: [
 				...getSessionMessageIds(before),
 				...getSessionMessageIds(workout),
@@ -296,6 +300,7 @@ export class WorkoutSessionsService {
 		return {
 			workout,
 			recordsBefore: getRecordKeys(readWorkoutRecords(before), before.exercises),
+			exerciseIdsBefore: getRecordExerciseIds(before.exercises),
 			messageIds: movedSummary === null ? [] : [movedSummary],
 		}
 	}
@@ -365,6 +370,7 @@ export class WorkoutSessionsService {
 		return {
 			workout,
 			recordsBefore: getRecordKeys(readWorkoutRecords(prepared), prepared.exercises),
+			exerciseIdsBefore: getRecordExerciseIds(prepared.exercises),
 			messageIds: [],
 		}
 	}

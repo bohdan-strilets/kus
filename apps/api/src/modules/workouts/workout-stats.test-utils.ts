@@ -14,6 +14,9 @@ export const makeSet = (overrides: Partial<StatsSetRow> = {}): StatsSetRow => ({
 })
 
 export const makeEntry = (overrides: Partial<StatsEntryRow> = {}): StatsEntryRow => ({
+	id: 'e1',
+	// the day of the workout, so a set of entries on different days is in time order
+	performedAt: new Date(`${overrides.workoutLocalDate ?? '2026-10-28'}T12:00:00Z`),
 	workoutId: 'w1',
 	workoutLocalDate: '2026-10-28',
 	position: 0,

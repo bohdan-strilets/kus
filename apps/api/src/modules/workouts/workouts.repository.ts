@@ -579,73 +579,41 @@ export class WorkoutsRepository {
 		})
 	}
 
-	/** The heaviest working (not warm-up) set of the exercise in other live workouts. */
-	async findMaxWeightKg(
-		{
-			userId,
-			exerciseId,
-			exceptWorkoutId,
-		}: { userId: string; exerciseId: string; exceptWorkoutId: string },
+	/**
+	 * Every live entry of the exercises in live workouts (an open live session is not among them),
+	 * oldest first: what the chronological records are computed from.
+	 */
+	findRecordEntries(
+		{ userId, exerciseIds }: { userId: string; exerciseIds: string[] },
 		tx: Prisma.TransactionClient,
-	): Promise<number | null> {
-		const { _max } = await tx.exerciseSet.aggregate({
-			_max: { weightKg: true },
+	) {
+		return tx.exerciseEntry.findMany({
 			where: {
 				userId,
-				isWarmup: false,
-				exerciseEntry: {
-					exerciseId,
-					deletedAt: null,
-					workout: { deletedAt: null, id: { not: exceptWorkoutId }, ...HIDE_OPEN_LIVE },
-				},
-			},
-		})
-		return _max.weightKg === null ? null : _max.weightKg.toNumber()
-	}
-
-	/** The most reps in a working set without weight (none or 0 kg) of the exercise in other live workouts. */
-	async findMaxReps(
-		{
-			userId,
-			exerciseId,
-			exceptWorkoutId,
-		}: { userId: string; exerciseId: string; exceptWorkoutId: string },
-		tx: Prisma.TransactionClient,
-	): Promise<number | null> {
-		const { _max } = await tx.exerciseSet.aggregate({
-			_max: { reps: true },
-			where: {
-				userId,
-				isWarmup: false,
-				OR: [{ weightKg: null }, { weightKg: 0 }],
-				exerciseEntry: {
-					exerciseId,
-					deletedAt: null,
-					workout: { deletedAt: null, id: { not: exceptWorkoutId }, ...HIDE_OPEN_LIVE },
-				},
-			},
-		})
-		return _max.reps
-	}
-
-	/** The longest distance of the exercise in other live workouts, metres. */
-	async findMaxDistanceM(
-		{
-			userId,
-			exerciseId,
-			exceptWorkoutId,
-		}: { userId: string; exerciseId: string; exceptWorkoutId: string },
-		tx: Prisma.TransactionClient,
-	): Promise<number | null> {
-		const { _max } = await tx.exerciseEntry.aggregate({
-			_max: { distanceM: true },
-			where: {
-				userId,
-				exerciseId,
+				exerciseId: { in: exerciseIds },
 				deletedAt: null,
-				workout: { deletedAt: null, id: { not: exceptWorkoutId }, ...HIDE_OPEN_LIVE },
+				workout: { userId, deletedAt: null, ...HIDE_OPEN_LIVE },
+			},
+			orderBy: [{ performedAt: 'asc' }, { id: 'asc' }],
+			select: {
+				id: true,
+				workoutId: true,
+				exerciseId: true,
+				name: true,
+				performedAt: true,
+				position: true,
+				distanceM: true,
+				isBodyweight: true,
+				exercise: { select: { isBodyweight: true } },
+				sets: { select: { reps: true, weightKg: true, isWarmup: true } },
+				// the live entries of the session: a record of an entry that is gone (a replaced exercise) is dropped
+				workout: {
+					select: {
+						records: true,
+						exercises: { where: { deletedAt: null }, select: { id: true } },
+					},
+				},
 			},
 		})
-		return _max.distanceM
 	}
 }

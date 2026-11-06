@@ -604,7 +604,7 @@ export class WorkoutsRepository {
 				position: true,
 				distanceM: true,
 				isBodyweight: true,
-				exercise: { select: { isBodyweight: true } },
+				exercise: { select: { isBodyweight: true, name: true } },
 				sets: { select: { reps: true, weightKg: true, isWarmup: true } },
 				// the live entries of the session: a record of an entry that is gone (a replaced exercise) is dropped
 				workout: {

@@ -245,7 +245,7 @@ describe('WorkoutRecordsService.recompute', () => {
 		position: 0,
 		distanceM: null,
 		isBodyweight: null,
-		exercise: { isBodyweight: false },
+		exercise: { isBodyweight: false, name: 'Жим лежачи' },
 		sets: [{ reps: 8, weightKg: 80, isWarmup: false }],
 		workout: {
 			records: [] as unknown,
@@ -376,5 +376,28 @@ describe('WorkoutRecordsService.recompute', () => {
 		const entryWins = { isBodyweight: false, exercise: { isBodyweight: true } }
 		const own = setup([pullUp('p1', 0, 10, entryWins), pullUp('p2', 1, 12, entryWins)])
 		expect((await own.service.recompute('u1', [EX_A], tx)).get('p2')).toEqual([])
+	})
+
+	it('judges the bodyweight by the dictionary name, not the entry snapshot name', async () => {
+		const repsRows = (snapshotName: string, dictionaryName: string) =>
+			[
+				{ id: 'p1', day: 0, reps: 10 },
+				{ id: 'p2', day: 1, reps: 12 },
+			].map(({ id, day, reps }) =>
+				row({
+					id,
+					workoutId: id,
+					name: snapshotName,
+					performedAt: new Date(BASE + day * DAY_MS),
+					sets: [{ reps, weightKg: null, isWarmup: false }],
+					exercise: { isBodyweight: null, name: dictionaryName },
+				}),
+			)
+		const renamedToBodyweight = setup(repsRows('Жим лежачи', 'Підтягування'))
+		expect((await renamedToBodyweight.service.recompute('u1', [EX_A], tx)).get('p2')).toEqual([
+			{ exerciseEntryId: 'p2', type: 'REPS' },
+		])
+		const renamedFromBodyweight = setup(repsRows('Підтягування', 'Жим лежачи'))
+		expect((await renamedFromBodyweight.service.recompute('u1', [EX_A], tx)).get('p2')).toEqual([])
 	})
 })

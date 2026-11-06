@@ -25,7 +25,7 @@ const toRecordEntry = (row: RecordEntryRow): RecordEntryInput | null => {
 		isBodyweight: resolveIsBodyweight({
 			entryFlag: row.isBodyweight,
 			exerciseFlag: row.exercise?.isBodyweight,
-			name: row.name,
+			name: row.exercise?.name ?? row.name,
 		}),
 		sets: row.sets.map((set) => ({
 			reps: set.reps,

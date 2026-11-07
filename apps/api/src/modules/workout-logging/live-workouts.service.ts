@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common'
 import {
 	LIVE_CURRENT_GRACE_HOURS,
+	type LiveWorkoutFinish,
 	type LiveWorkoutResponse,
 	type WorkoutDiscarded,
 	type WorkoutFinishResponse,
@@ -14,11 +15,13 @@ import { ChatWorkoutSummaryService } from '../chat/chat-workout-summary.service'
 import { ProgramTemplateNotFoundException } from '../programs/programs.exceptions'
 import { ProgramsService } from '../programs/programs.service'
 import { UsersService } from '../users/users.service'
+import { clampLiveFinishAt, getLastDoneAt, getLiveFinishedAt } from '../workouts/live-session'
 import { LiveSessionsService } from '../workouts/live-sessions.service'
 import { WorkoutKcalService } from '../workouts/workout-kcal.service'
 import { WorkoutNotFoundException } from '../workouts/workouts.exceptions'
 import { readWorkoutRecords } from '../workouts/workouts.mapper'
 import type { WorkoutWithExercises } from '../workouts/workouts.repository'
+import { assertUniqueClientKeys, LiveSnapshotWriterService } from './live-snapshot-writer.service'
 import { WorkoutLiveConflictException } from './workout-logging.exceptions'
 import { WorkoutLoggingRepository } from './workout-logging.repository'
 
@@ -48,6 +51,7 @@ export class LiveWorkoutsService {
 		private readonly programsService: ProgramsService,
 		private readonly usersService: UsersService,
 		private readonly kcal: WorkoutKcalService,
+		private readonly writer: LiveSnapshotWriterService,
 	) {}
 
 	/**
@@ -101,14 +105,43 @@ export class LiveWorkoutsService {
 	 * With no set marked done (nothing from the chat either) the session is soft-deleted without a
 	 * summary and the answer is `{ discarded: true }` — again for a repeat on that same session.
 	 */
-	async finish(userId: string, id: string): Promise<WorkoutFinishResponse> {
+	async finish(
+		userId: string,
+		id: string,
+		body: LiveWorkoutFinish = {},
+	): Promise<WorkoutFinishResponse> {
+		const { exercises, knownEditedAt, finishedAt } = body
+		if (exercises) assertUniqueClientKeys(exercises)
 		const now = new Date()
 		const posted = await this.prisma.$transaction(async (tx) => {
-			const workout = await this.liveSessions.findOwnedLiveAnyState(userId, id, tx)
-			if (!workout) throw new WorkoutNotFoundException()
-			if (workout.deletedAt !== null) return this.toDiscardedOrThrow(workout)
-			if (workout.finishedAt !== null) return null
-			const finished = await this.liveSessions.finish({ userId, workout, now }, tx)
+			const found = await this.liveSessions.findOwnedLiveAnyState(userId, id, tx)
+			if (!found) throw new WorkoutNotFoundException()
+			if (found.deletedAt !== null) return this.toDiscardedOrThrow(found)
+			// already finished: the body is ignored, nothing is written after a finish
+			if (found.finishedAt !== null) return null
+			const workout =
+				exercises === undefined && knownEditedAt === undefined
+					? found
+					: await this.applySnapshot({ userId, id, body, now }, tx)
+			if (workout === null) return null
+			// the tap of the phone, never in the future nor before the start or the last set done
+			const tap = clampLiveFinishAt({
+				requestedAt: finishedAt === undefined ? null : new Date(finishedAt),
+				startedAt: workout.startedAt,
+				lastDoneAt: getLastDoneAt(workout),
+				now,
+			})
+			// a new cardio row without sets got the write time; it must not outlive the end of the
+			// session, or the 30-min rule would see activity after the last set
+			if (exercises !== undefined) {
+				const lastDoneAt = getLastDoneAt(workout)
+				const endsAt =
+					lastDoneAt === null
+						? tap
+						: getLiveFinishedAt({ exercises: [{ performedAt: lastDoneAt }] }, tap)
+				await this.repository.capLivePerformedAt({ userId, workoutId: id, at: endsAt }, tx)
+			}
+			const finished = await this.liveSessions.finish({ userId, workout, now: tap }, tx)
 			if (finished === null) return null
 			if (finished.kind === 'DELETED') return DISCARDED
 			const bound = await this.summary.postSummary({ userId, finished, isAutoClosed: false }, tx)
@@ -127,6 +160,43 @@ export class LiveWorkoutsService {
 			messageId: posted.messageId,
 			hasNewRecord: posted.hasNewRecord,
 		}
+	}
+
+	/**
+	 * The snapshot of a finish, written in the finish's own transaction: the session is locked (with
+	 * the edit stamp when it was sent), its exercises written exactly as the PUT does, and read back.
+	 * Null when a parallel request finished or deleted it first; 409 EDITED when the chat replaced it.
+	 */
+	private async applySnapshot(
+		{ userId, id, body, now }: { userId: string; id: string; body: LiveWorkoutFinish; now: Date },
+		tx: Prisma.TransactionClient,
+	): Promise<WorkoutWithExercises | null> {
+		const { exercises, knownEditedAt } = body
+		// no closeIdleLive before: a late finish of an offline phone keeps its sets
+		const isLocked = await this.repository.lockOpenLive(
+			{
+				userId,
+				id,
+				knownEditedAt:
+					knownEditedAt === undefined || knownEditedAt === null
+						? knownEditedAt
+						: new Date(knownEditedAt),
+			},
+			tx,
+		)
+		if (!isLocked) {
+			const current = await this.liveSessions.findOwnedLiveAnyState(userId, id, tx)
+			if (!current) throw new WorkoutNotFoundException()
+			if (current.deletedAt !== null || current.finishedAt !== null) return null
+			throw new WorkoutLiveConflictException('EDITED')
+		}
+		const locked = await this.liveSessions.findOwnedLive(userId, id, tx)
+		if (!locked) throw new WorkoutNotFoundException()
+		if (exercises === undefined) return locked
+		await this.writer.writeSnapshot({ userId, workout: locked, exercises, now }, tx)
+		const written = await this.liveSessions.findOwnedLive(userId, id, tx)
+		if (!written) throw new WorkoutNotFoundException()
+		return written
 	}
 
 	/** «Вийти без збереження»: the open session is soft-deleted; a finished one stays. */

@@ -2,7 +2,9 @@ import { LIVE_FINISH_IDLE_MIN, MAX_WORKOUT_MINUTES } from '@kus/shared'
 import { describe, expect, it } from 'vitest'
 
 import {
+	clampLiveFinishAt,
 	getLastActionAt,
+	getLastDoneAt,
 	getDoneSets,
 	getLastWorkAt,
 	getLiveDurationMin,
@@ -214,6 +216,79 @@ describe('getLiveFinishedAt (late finish)', () => {
 
 	it('is now without any work', () => {
 		expect(getLiveFinishedAt({ exercises: [] }, NOW)).toEqual(NOW)
+	})
+})
+
+describe('clampLiveFinishAt / getLastDoneAt', () => {
+	const startedAt = minutesAgo(60)
+	const lastDoneAt = minutesAgo(20)
+	const clamp = (requestedAt: Date | null, done: Date | null = lastDoneAt): Date =>
+		clampLiveFinishAt({ requestedAt, startedAt, lastDoneAt: done, now: NOW })
+
+	it('keeps a tap between the last set and now', () => {
+		expect(clamp(minutesAgo(5))).toEqual(minutesAgo(5))
+	})
+
+	it('is now without a tap', () => {
+		expect(clamp(null)).toEqual(NOW)
+	})
+
+	it('moves a tap in the future to now', () => {
+		expect(clamp(minutesAgo(-30))).toEqual(NOW)
+	})
+
+	it('moves a tap before the last set to that set', () => {
+		expect(clamp(minutesAgo(30))).toEqual(lastDoneAt)
+	})
+
+	it('moves a tap before the start to the start when no set is done', () => {
+		expect(clamp(minutesAgo(90), null)).toEqual(startedAt)
+	})
+
+	it('never goes past now when the lower bound does', () => {
+		expect(clamp(minutesAgo(30), minutesAgo(-10))).toEqual(NOW)
+	})
+
+	it('a late tap ends the session at the last set (getLiveFinishedAt), not at the tap', () => {
+		const tap = clamp(minutesAgo(1))
+		const exercises = [exerciseDoneAt(minutesAgo(LIVE_FINISH_IDLE_MIN + 25), [minutesAgo(50)])]
+		expect(getLiveFinishedAt({ exercises }, tap)).toEqual(minutesAgo(50))
+	})
+
+	it('a cardio row left at the write time (no sets) with the tap before it: finished at the tap', () => {
+		const tap = minutesAgo(15)
+		const cardio = exerciseDoneAt(NOW)
+		const { finishedAt } = getLiveFinishFields(
+			{ exercises: [cardio], startedAt, durationMin: null },
+			{
+				now: tap,
+			},
+		)
+		expect(finishedAt).toEqual(tap)
+	})
+
+	it('after the write is capped to the end (last set, or the tap), a late tap ends at the last set', () => {
+		const lastSet = minutesAgo(60)
+		const tap = minutesAgo(15)
+		const endsAt = getLiveFinishedAt({ exercises: [exerciseDoneAt(lastSet)] }, tap)
+		// the stored rows: cardio written at NOW, capped by capLivePerformedAt(endsAt)
+		const cap = (date: Date): Date => new Date(Math.min(date.getTime(), endsAt.getTime()))
+		const stored = [
+			exerciseDoneAt(cap(minutesAgo(80)), [minutesAgo(80), lastSet]),
+			exerciseDoneAt(cap(NOW)),
+		]
+		const { finishedAt } = getLiveFinishFields(
+			{ exercises: stored, startedAt, durationMin: null },
+			{ now: tap },
+		)
+		expect(finishedAt).toEqual(lastSet)
+		expect(stored.every((row) => row.performedAt <= finishedAt)).toBe(true)
+	})
+
+	it('getLastDoneAt reads sets only, not performedAt', () => {
+		const exercises = [exerciseDoneAt(NOW), exerciseDoneAt(NOW, [minutesAgo(30), minutesAgo(40)])]
+		expect(getLastDoneAt({ exercises })).toEqual(minutesAgo(30))
+		expect(getLastDoneAt({ exercises: [exerciseDoneAt(NOW)] })).toBeNull()
 	})
 })
 

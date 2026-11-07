@@ -9,6 +9,7 @@ import {
 } from '../ai/workout-tools.js'
 import {
 	liveExerciseInputSchema,
+	liveWorkoutFinishSchema,
 	liveWorkoutUpdateSchema,
 	workoutDiscardedSchema,
 	workoutFinishedSchema,
@@ -186,6 +187,55 @@ describe('liveWorkoutUpdateSchema', () => {
 		expect(liveWorkoutUpdateSchema.safeParse({ knownEditedAt: null, exercises: [] }).success).toBe(
 			true,
 		)
+	})
+})
+
+describe('liveWorkoutFinishSchema', () => {
+	const live = { clientKey: UUID, ...exercise() }
+
+	it('accepts an empty body', () => {
+		expect(liveWorkoutFinishSchema.safeParse({}).success).toBe(true)
+		expect(liveWorkoutFinishSchema.parse(undefined)).toEqual({})
+	})
+
+	it('accepts the tap time, the edit stamp (also null) and the snapshot', () => {
+		const body = {
+			finishedAt: '2026-11-02T10:00:00Z',
+			knownEditedAt: null,
+			exercises: [live],
+		}
+		expect(liveWorkoutFinishSchema.safeParse(body).success).toBe(true)
+	})
+
+	it('requires knownEditedAt (null allowed) when exercises are sent', () => {
+		const noStamp = liveWorkoutFinishSchema.safeParse({ exercises: [live] })
+		expect(noStamp.success).toBe(false)
+		expect(noStamp.error?.issues[0]?.path).toEqual(['knownEditedAt'])
+		expect(
+			liveWorkoutFinishSchema.safeParse({ exercises: [live], knownEditedAt: null }).success,
+		).toBe(true)
+		expect(liveWorkoutFinishSchema.safeParse({ finishedAt: '2026-11-02T10:00:00Z' }).success).toBe(
+			true,
+		)
+		expect(liveWorkoutFinishSchema.safeParse({ knownEditedAt: null }).success).toBe(true)
+	})
+
+	it('rejects a bad datetime', () => {
+		expect(liveWorkoutFinishSchema.safeParse({ finishedAt: 'now' }).success).toBe(false)
+		expect(liveWorkoutFinishSchema.safeParse({ knownEditedAt: 'x' }).success).toBe(false)
+	})
+
+	it('reuses the exercise rules of the PUT', () => {
+		const stamp = { knownEditedAt: null }
+		expect(
+			liveWorkoutFinishSchema.safeParse({ ...stamp, exercises: [{ name: 'x' }] }).success,
+		).toBe(false)
+		const tooMany = Array.from({ length: MAX_EXERCISES_PER_WORKOUT + 1 }, () => live)
+		expect(liveWorkoutFinishSchema.safeParse({ ...stamp, exercises: tooMany }).success).toBe(false)
+	})
+
+	it('strips unknown keys like the PUT schema', () => {
+		expect(liveWorkoutFinishSchema.parse({ extra: 1 })).toEqual({})
 	})
 })
 

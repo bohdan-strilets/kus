@@ -99,6 +99,31 @@ export const getLiveFinishedAt = (workout: Pick<SessionActivity, 'exercises'>, n
 	return now.getTime() - last.getTime() > LIVE_FINISH_IDLE_MIN * MS_PER_MINUTE ? last : now
 }
 
+/** The last set marked done; null without any (a cardio row or a chat exercise has no sets). */
+export const getLastDoneAt = ({ exercises }: Pick<SessionActivity, 'exercises'>): Date | null =>
+	latest(exercises.flatMap((exercise) => (exercise.sets ?? []).map((set) => set.doneAt)))
+
+/**
+ * The moment of «Завершити» as the server believes it: the phone's tap time (or now), never in the
+ * future and never before the start or the last set done.
+ */
+export const clampLiveFinishAt = ({
+	requestedAt,
+	startedAt,
+	lastDoneAt,
+	now,
+}: {
+	requestedAt: Date | null
+	startedAt: Date | null
+	lastDoneAt: Date | null
+	now: Date
+}): Date => {
+	const lower = latest([startedAt, lastDoneAt])
+	const requested = requestedAt ?? now
+	if (lower === null) return new Date(Math.min(requested.getTime(), now.getTime()))
+	return new Date(Math.min(Math.max(requested.getTime(), lower.getTime()), now.getTime()))
+}
+
 /** Whole minutes from the start to the finish, 1–600. */
 export const getLiveDurationMin = ({
 	startedAt,

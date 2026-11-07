@@ -15,7 +15,12 @@ import type { LiveWorkoutResponse, WorkoutFinishResponse } from '@kus/shared'
 import type { Response } from 'express'
 
 import { type AuthenticatedUser, CurrentUser } from '../../common/decorators'
-import { LiveWorkoutParamsDto, LiveWorkoutStartDto, LiveWorkoutUpdateDto } from './dto'
+import {
+	LiveWorkoutFinishDto,
+	LiveWorkoutParamsDto,
+	LiveWorkoutStartDto,
+	LiveWorkoutUpdateDto,
+} from './dto'
 import { LiveSnapshotService } from './live-snapshot.service'
 import { LiveWorkoutsService } from './live-workouts.service'
 import { LIVE_ACTION_THROTTLE, LIVE_SNAPSHOT_THROTTLE } from './workout-logging.constants'
@@ -62,8 +67,9 @@ export class LiveWorkoutsController {
 	finish(
 		@CurrentUser() user: AuthenticatedUser,
 		@Param() { id }: LiveWorkoutParamsDto,
+		@Body() body: LiveWorkoutFinishDto,
 	): Promise<WorkoutFinishResponse> {
-		return this.liveWorkouts.finish(user.sub, id)
+		return this.liveWorkouts.finish(user.sub, id, body)
 	}
 
 	@Delete(':id')

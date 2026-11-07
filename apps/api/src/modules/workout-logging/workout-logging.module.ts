@@ -4,6 +4,7 @@ import { ChatModule } from '../chat/chat.module'
 import { ProgramsModule } from '../programs/programs.module'
 import { UsersModule } from '../users/users.module'
 import { WorkoutsModule } from '../workouts/workouts.module'
+import { LiveSnapshotWriterService } from './live-snapshot-writer.service'
 import { LiveSnapshotService } from './live-snapshot.service'
 import { LiveWorkoutsController } from './live-workouts.controller'
 import { LiveWorkoutsService } from './live-workouts.service'
@@ -19,6 +20,7 @@ import { WorkoutLoggingRepository } from './workout-logging.repository'
 	controllers: [LiveWorkoutsController, WorkoutFormsController],
 	providers: [
 		LiveSnapshotService,
+		LiveSnapshotWriterService,
 		LiveWorkoutsService,
 		LoggedExercisesService,
 		WorkoutFormsService,

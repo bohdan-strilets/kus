@@ -73,6 +73,31 @@ export const liveWorkoutUpdateSchema = z.object({
 })
 export type LiveWorkoutUpdate = z.infer<typeof liveWorkoutUpdateSchema>
 
+/**
+ * POST /live-workouts/:id/finish: the body is optional. An offline phone sends its snapshot with
+ * the time of the tap, so the finish is one atomic call.
+ */
+export const liveWorkoutFinishSchema = z.preprocess(
+	// no body at all (an old client) reads as an empty one
+	(body) => body ?? {},
+	z
+		.object({
+			/** ISO: when «Завершити» was tapped; clamped to [start or last done set, now] by the server. */
+			finishedAt: z.iso.datetime().optional(),
+			/** As in the PUT (null allowed); required with `exercises`, else the stamp is not checked. */
+			knownEditedAt: z.iso.datetime().nullable().optional(),
+			exercises: liveWorkoutUpdateSchema.shape.exercises.optional(),
+		})
+		.refine(
+			({ exercises, knownEditedAt }) => exercises === undefined || knownEditedAt !== undefined,
+			{
+				path: ['knownEditedAt'],
+				message: 'Required',
+			},
+		),
+)
+export type LiveWorkoutFinish = z.infer<typeof liveWorkoutFinishSchema>
+
 /** POST /live-workouts: a session by a template, or an empty one. */
 export const liveWorkoutStartSchema = z.object({ templateId: z.uuid().nullable() })
 export type LiveWorkoutStart = z.infer<typeof liveWorkoutStartSchema>

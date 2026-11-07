@@ -1,4 +1,5 @@
 export {
+	LiveWorkoutFinishDto,
 	LiveWorkoutParamsDto,
 	LiveWorkoutStartDto,
 	LiveWorkoutUpdateDto,

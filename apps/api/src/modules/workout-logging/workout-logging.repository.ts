@@ -86,7 +86,16 @@ export class WorkoutLoggingRepository {
 	 * (`editedAt`): false when it is gone, finished or replaced by the chat meanwhile.
 	 */
 	async lockOpenLive(
-		{ userId, id, knownEditedAt }: { userId: string; id: string; knownEditedAt: Date | null },
+		{
+			userId,
+			id,
+			knownEditedAt,
+		}: {
+			userId: string
+			id: string
+			/** Undefined: the edit stamp is not checked. */
+			knownEditedAt: Date | null | undefined
+		},
 		tx: Prisma.TransactionClient,
 	): Promise<boolean> {
 		const { count } = await tx.workout.updateMany({
@@ -101,6 +110,17 @@ export class WorkoutLoggingRepository {
 			data: { updatedAt: new Date() },
 		})
 		return count > 0
+	}
+
+	/** No exercise of the session happened after `at`: a row written later than a past tap is moved back. */
+	async capLivePerformedAt(
+		{ userId, workoutId, at }: { userId: string; workoutId: string; at: Date },
+		tx: Prisma.TransactionClient,
+	): Promise<void> {
+		await tx.exerciseEntry.updateMany({
+			where: { workoutId, userId, performedAt: { gt: at } },
+			data: { performedAt: at },
+		})
 	}
 
 	/** When each live exercise of the session (by its key) happened, for those already written. */

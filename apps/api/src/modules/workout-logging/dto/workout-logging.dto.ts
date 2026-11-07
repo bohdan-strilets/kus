@@ -1,4 +1,5 @@
 import {
+	liveWorkoutFinishSchema,
 	liveWorkoutParamsSchema,
 	liveWorkoutStartSchema,
 	liveWorkoutUpdateSchema,
@@ -7,6 +8,8 @@ import {
 import { createZodDto } from 'nestjs-zod'
 
 export class LiveWorkoutParamsDto extends createZodDto(liveWorkoutParamsSchema) {}
+
+export class LiveWorkoutFinishDto extends createZodDto(liveWorkoutFinishSchema) {}
 
 export class LiveWorkoutStartDto extends createZodDto(liveWorkoutStartSchema) {}
 

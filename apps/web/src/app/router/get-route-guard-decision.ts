@@ -28,6 +28,10 @@ interface GuardInput {
 	 * Lets the live screen render while the session check is still pending or has failed offline.
 	 */
 	hasOfflineLive?: boolean
+	/** The very first decision of this page lifetime (a cold start), see `route-entry.ts`. */
+	isEntry?: boolean
+	/** The last action in that copy is younger than the 3 h the server keeps a session open. */
+	isOfflineLiveFresh?: boolean
 	/** pathname + search + hash of the current location. */
 	path: string
 	/** location.state, whatever it holds — it can come from history, so it's untrusted. */
@@ -67,15 +71,38 @@ const getOfflineDecision = (path: string, hasOfflineLive: boolean): GuardDecisio
 	return { action: 'error', canResumeLive: true }
 }
 
-export const getRouteGuardDecision = ({
+/**
+ * A cold start with a fresh open workout goes straight into it, with or without a network and
+ * without waiting for the session check. Not for an account awaiting deletion, not when already there.
+ */
+const shouldEnterLive = ({
 	guard,
 	status,
 	isNetworkError = false,
 	hasOfflineLive = false,
+	isEntry = false,
+	isOfflineLiveFresh = false,
 	path,
-	locationState,
 	isPendingDeletion,
-}: GuardInput): GuardDecision => {
+}: GuardInput): boolean => {
+	if (guard !== 'protected' || !isEntry || !hasOfflineLive || !isOfflineLiveFresh) return false
+	if (isPendingDeletion || getPathname(path) === TRAINING_LIVE_ROUTE) return false
+	if (status === 'error') return isNetworkError
+	return status === 'pending' || status === 'authenticated'
+}
+
+export const getRouteGuardDecision = (input: GuardInput): GuardDecision => {
+	if (shouldEnterLive(input)) return { action: 'redirect', to: TRAINING_LIVE_ROUTE }
+	const {
+		guard,
+		status,
+		isNetworkError = false,
+		hasOfflineLive = false,
+		path,
+		locationState,
+		isPendingDeletion,
+	} = input
+
 	// nothing renders until the session is known: no flash of the login form or of the app
 	if (status === 'pending') {
 		// a lie-fi start: the check may hang for a minute, the live session of the last user needn't wait

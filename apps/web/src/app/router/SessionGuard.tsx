@@ -1,10 +1,12 @@
+import { useEffect } from 'react'
 import { Navigate, Outlet, useLocation, useNavigate } from 'react-router'
 
 import { useSession, useSessionUser } from '@/entities/session'
-import { useLastSeenLive, useLiveWorkoutStore } from '@/features/live-workout'
+import { isLiveFresh, useHasOfflineLive, useLastSeenLive } from '@/features/live-workout'
 import { TRAINING_LIVE_ROUTE } from '@/shared/config'
 
 import { getRouteGuardDecision, type RouteGuard } from './get-route-guard-decision'
+import { isRouteEntry, markRouteEntryOver } from './route-entry'
 import { RouteLoader } from './RouteLoader'
 import { SessionErrorState } from './SessionErrorState'
 
@@ -16,12 +18,19 @@ export const SessionGuard = ({ guard }: { guard: RouteGuard }) => {
 	const isPendingDeletion = useSessionUser()?.pendingDeletion ?? false
 	const lastSeen = useLastSeenLive()
 	// the store drops `lastSeen` whenever the owner changes or leaves, so what is left is the last known user's
-	const hasKnownOwner = useLiveWorkoutStore((state) => state.ownerId !== null)
+	const hasOfflineLive = useHasOfflineLive()
+	// read before the effect below closes the entry: every render until the first commit is still the entry
+	const isEntry = isRouteEntry()
+	useEffect(() => {
+		markRouteEntryOver()
+	}, [])
 	const decision = getRouteGuardDecision({
 		guard,
 		status: session.status,
 		isNetworkError: session.isNetworkError,
-		hasOfflineLive: hasKnownOwner && lastSeen !== null,
+		hasOfflineLive,
+		isEntry,
+		isOfflineLiveFresh: lastSeen !== null && isLiveFresh(lastSeen, new Date()),
 		path: `${location.pathname}${location.search}${location.hash}`,
 		locationState: location.state,
 		isPendingDeletion,

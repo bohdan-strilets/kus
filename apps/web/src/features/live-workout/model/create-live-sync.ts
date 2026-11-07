@@ -183,6 +183,12 @@ export const createLiveSync = (options: LiveSyncOptions): LiveSync => {
 					knownEditedAt = live.editedAt
 					attempt = 0
 					conflicts = 0
+					// the server took the sets but had closed the session (3 h of silence): a finished workout
+					// must not go into the live cache; the sets are saved, so the snapshot goes
+					if (live.workout.finishedAt !== null) {
+						close()
+						break
+					}
 					onSynced(live)
 					persist()
 				} catch (error) {

@@ -573,6 +573,29 @@ describe('createLiveSync: the chat meanwhile', () => {
 		expect(h.memory.value).toBeNull()
 	})
 
+	it('a PUT answered with a finished workout closes the session instead of caching it', async () => {
+		const h = setup()
+		const answer = live(EDITED_2)
+		h.put.mockResolvedValue({
+			...answer,
+			workout: { ...answer.workout, finishedAt: '2026-11-02T10:04:00.000Z' },
+		})
+		const sync = createLiveSync(h.options)
+
+		sync.schedule(exA)
+		await settle()
+
+		expect(h.onSynced).not.toHaveBeenCalled()
+		expect(h.onClosed).toHaveBeenCalledTimes(1)
+		expect(h.memory.value).toBeNull()
+		expect(h.states.at(-1)).toEqual({ status: 'idle', closedByChat: true })
+
+		sync.schedule(exB)
+		await settle()
+
+		expect(h.put).toHaveBeenCalledTimes(1)
+	})
+
 	it('409 EDITED with the session gone (null) closes it', async () => {
 		const h = setup()
 		h.put.mockRejectedValue(editedConflict())

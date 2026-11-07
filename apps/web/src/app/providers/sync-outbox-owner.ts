@@ -36,6 +36,8 @@ export const syncOutboxOwner = (queryClient: QueryClient): (() => void) => {
 		useFreshReplyStore.getState().claim(ownerId)
 		useGoalCelebrationStore.getState().claim(ownerId)
 		useLiveWorkoutStore.getState().claim(ownerId)
+		// online data only: the flag follows what the API last said about the account
+		useLiveWorkoutStore.getState().setPendingDeletion(user?.pendingDeletion ?? false)
 	}
 	/**
 	 * The live session the API answered with (GET current, PUT, start) is kept for an offline cold

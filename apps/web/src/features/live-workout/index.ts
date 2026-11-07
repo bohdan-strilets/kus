@@ -20,7 +20,9 @@ export {
 	type LiveSetRef,
 } from './lib/live-set-helpers'
 export type { LiveSyncState, LiveSyncStatus } from './model/create-live-sync'
+export { getLastLiveActionAt, isLiveFresh } from './lib/get-last-live-action'
 export {
+	useHasOfflineLive,
 	useLastSeenLive,
 	useLiveOwnerId,
 	useLiveWorkoutStore,

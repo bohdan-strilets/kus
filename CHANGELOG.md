@@ -6,6 +6,19 @@ All notable changes to Kusik are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.10.5.4] — 2026-11-07
+
+Hotfix: a phone that was offline for hours no longer loses its done sets. No migrations, no prompt changes; the web version is 0.10.5+4 (semver build metadata).
+
+### Fixed
+
+- Sets done offline are kept when the phone syncs late: `GET /live-workouts/current` leaves an idle session open for 24 h (the chat and «Почати» keep 3 h); `PUT` writes the snapshot first and counts the incoming sets' time when it decides the session is idle, then closes it right after the write at its last done set (one auto-closed summary, records recomputed) and answers 200 with the saved session instead of 409/404 that made the client wipe the snapshot. Older than 24 h behaves as before. A session's exercises are ordered by position, then creation time ([8c1f308])
+
+### Changed
+
+- `setRecords` updates a session by `id` and `userId`; one helper decides the bodyweight flag for the record trophies and the exercise screen, both by the dictionary name ([94812bd], [58f94bf])
+- Mockups for 0.10.6 «Зал офлайн»: `training-offline`, `training-reorder`, `training-names` ([f50d045])
+
 ## [0.10.5.3] — 2026-11-06
 
 Fixes from the 0.10.5 iPhone testing: the «Пам'ять» lists scroll, the program card counts the right number of workouts and its text is short, the record trophies are recomputed after every change. No migrations. Prompt 2026-11-06.2 (`PROGRAM_RULES` only) with eval 12/12; the web version is 0.10.5+3 (semver build metadata).
@@ -713,7 +726,12 @@ Design sync with `design/` v0.5.2. Web only: no API, shared-package or migration
 
 ## 0.2.0 / 0.1.0 — see tags
 
-[Unreleased]: https://github.com/bohdan-strilets/kus/compare/v0.10.5.3...HEAD
+[Unreleased]: https://github.com/bohdan-strilets/kus/compare/v0.10.5.4...HEAD
+[0.10.5.4]: https://github.com/bohdan-strilets/kus/compare/v0.10.5.3...v0.10.5.4
+[8c1f308]: https://github.com/bohdan-strilets/kus/commit/8c1f30883d787cd6b14478117d3844489dfe9d74
+[94812bd]: https://github.com/bohdan-strilets/kus/commit/94812bd7ba1c8ea77c36e941f1d78ab76bb537c4
+[58f94bf]: https://github.com/bohdan-strilets/kus/commit/58f94bfdade9b497852a75215202dda9f3facd3b
+[f50d045]: https://github.com/bohdan-strilets/kus/commit/f50d04507bf1938f12570447b35968cf297c228c
 [0.10.5.3]: https://github.com/bohdan-strilets/kus/compare/v0.10.5.2...v0.10.5.3
 [6aaeca6]: https://github.com/bohdan-strilets/kus/commit/6aaeca6518f145ff4688c5fdc7f074a80948e3cc
 [b6c4bbb]: https://github.com/bohdan-strilets/kus/commit/b6c4bbb827db3efe605b71bc04b44a56da13bf9d

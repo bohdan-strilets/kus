@@ -2,20 +2,19 @@ import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useTranslation } from 'react-i18next'
 
 import { cn, TRANSITION } from '@/shared/lib'
-import { Button, Icon, Loader, Text } from '@/shared/ui'
+import { Button, Icon, Text } from '@/shared/ui'
 
 import type { LiveSyncStatus } from '../model/create-live-sync'
 import type { LiveNetPhase } from '../model/live-net-phase.types'
 import { useLiveNetPhase } from '../model/use-live-net-phase'
-import { liveNetPillVariants } from './live-net-status.variants'
+import { liveNetPillVariants, liveSyncRingClass } from './live-net-status.variants'
 
 interface LiveNetStatusProps {
 	status: LiveSyncStatus
 	onRetry: () => void
 }
 
-const SYNC_LOADER_SIZE = 14
-// ICON_SIZE.small is 16; the mockup's pill mark is 14, same as the loader
+// ICON_SIZE.small is 16; the mockup's pill mark is 14, same as the sync ring
 const SAVED_CHECK_SIZE = 14
 const PILL_KEY = {
 	offline: 'training.live.offline',
@@ -24,8 +23,7 @@ const PILL_KEY = {
 } as const satisfies Record<Exclude<LiveNetPhase, 'hidden'>, string>
 
 const PillMark = ({ phase }: { phase: Exclude<LiveNetPhase, 'hidden'> }) => {
-	const { t } = useTranslation()
-	if (phase === 'syncing') return <Loader size={SYNC_LOADER_SIZE} ariaLabel={t('common.loading')} />
+	if (phase === 'syncing') return <span aria-hidden="true" className={liveSyncRingClass} />
 	if (phase === 'saved') return <Icon name="check" size={SAVED_CHECK_SIZE} />
 	return (
 		<span

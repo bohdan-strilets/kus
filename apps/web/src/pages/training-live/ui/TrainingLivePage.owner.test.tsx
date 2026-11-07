@@ -86,7 +86,9 @@ describe('TrainingLivePage: the owner changes while the read is pending', () => 
 		})
 
 		expect(await screen.findByText('TRAINING TAB')).toBeTruthy()
-		expect(screen.queryByText('Це тренування вже закрите в чаті.')).toBeNull()
+		expect(
+			screen.queryByText('Це тренування вже завершено — підходи збережено, підсумок у чаті.'),
+		).toBeNull()
 		expect(putMock).not.toHaveBeenCalled()
 	})
 })

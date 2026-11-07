@@ -66,7 +66,9 @@ describe('LiveNetStatus', () => {
 
 		const pill = screen.getByText('Синхронізую…')
 		expect(pill.className).toContain('text-muted-strong')
-		expect(pill.querySelector('[aria-label="Завантаження"], [role="img"], svg')).not.toBeNull()
+		const ring = pill.querySelector('span[aria-hidden="true"]')
+		expect(ring?.className).toContain('motion-safe:animate-spin')
+		expect(pill.querySelector('[role="img"], svg')).toBeNull()
 		vi.useRealTimers()
 	})
 

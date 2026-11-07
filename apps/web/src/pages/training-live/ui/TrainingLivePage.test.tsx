@@ -231,7 +231,9 @@ describe('TrainingLivePage', () => {
 		fireEvent.click(await screen.findByRole('button', { name: 'Підхід виконано' }))
 		closedRead()
 
-		expect(await screen.findByText('Це тренування вже закрите в чаті.')).toBeTruthy()
+		expect(
+			await screen.findByText('Це тренування вже завершено — підходи збережено, підсумок у чаті.'),
+		).toBeTruthy()
 		expect(screen.getByRole('button', { name: 'Згорнути' })).toBeTruthy()
 		expect(screen.queryByText('Жим лежачи')).toBeNull()
 		expect(screen.queryByRole('timer')).toBeNull()
@@ -252,7 +254,7 @@ describe('TrainingLivePage', () => {
 		act(() => {
 			queryClient.setQueryData(LIVE_WORKOUT_QUERY_KEY, null)
 		})
-		await screen.findByText('Це тренування вже закрите в чаті.')
+		await screen.findByText('Це тренування вже завершено — підходи збережено, підсумок у чаті.')
 
 		fireEvent.click(screen.getByRole('button', { name: 'Згорнути' }))
 
@@ -267,7 +269,9 @@ describe('TrainingLivePage', () => {
 			queryClient.setQueryData(LIVE_WORKOUT_QUERY_KEY, null)
 		})
 
-		expect(await screen.findByText('Це тренування вже закрите в чаті.')).toBeTruthy()
+		expect(
+			await screen.findByText('Це тренування вже завершено — підходи збережено, підсумок у чаті.'),
+		).toBeTruthy()
 		expect(screen.queryByText('Жим лежачи')).toBeNull()
 		expect(screen.queryByRole('timer')).toBeNull()
 		expect(putMock).not.toHaveBeenCalled()
@@ -338,7 +342,7 @@ describe('TrainingLivePage: finishing and leaving', () => {
 		await waitFor(() => {
 			// the pill under the header and the toast of the refused «Завершити»
 			expect(screen.getAllByText(/Без мережі/)).toHaveLength(1)
-			expect(screen.getAllByText(/Немає зв.язку/)).toHaveLength(1)
+			expect(screen.getAllByText(/Підходи збережено на телефоні/)).toHaveLength(1)
 		})
 	})
 

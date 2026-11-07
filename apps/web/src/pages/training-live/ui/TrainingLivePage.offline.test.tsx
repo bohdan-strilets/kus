@@ -186,7 +186,9 @@ describe('TrainingLivePage: offline start from lastSeen', () => {
 		getMock.mockResolvedValue(reply(null))
 		renderPage()
 
-		expect(await screen.findByText('Це тренування вже закрите в чаті.')).toBeTruthy()
+		expect(
+			await screen.findByText('Це тренування вже завершено — підходи збережено, підсумок у чаті.'),
+		).toBeTruthy()
 		expect(screen.queryByText('Жим лежачи')).toBeNull()
 	})
 
@@ -207,7 +209,9 @@ describe('TrainingLivePage: offline start from lastSeen', () => {
 			queryClient.setQueryData(LIVE_WORKOUT_QUERY_KEY, null)
 		})
 
-		expect(await screen.findByText('Це тренування вже закрите в чаті.')).toBeTruthy()
+		expect(
+			await screen.findByText('Це тренування вже завершено — підходи збережено, підсумок у чаті.'),
+		).toBeTruthy()
 		await waitFor(() => {
 			expect(useLiveWorkoutStore.getState().lastSeen).toBeNull()
 		})

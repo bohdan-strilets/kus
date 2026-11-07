@@ -2,7 +2,7 @@ import type { LiveWorkoutResponse } from '@kus/shared'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 
-import { formatElapsed, getElapsedMinutes } from '@/features/live-workout'
+import { formatElapsed } from '@/features/live-workout'
 import { TRAINING_LIVE_ROUTE } from '@/shared/config'
 import { cn, useNow } from '@/shared/lib'
 import { Text } from '@/shared/ui'
@@ -28,7 +28,6 @@ export const WorkoutMiniStrip = ({ live, onWarm, isOffline = false }: WorkoutMin
 	const now = useNow(TICK_MS)
 	const name = live.templateName ?? t('training.live.defaultName')
 	const elapsed = formatElapsed(live.workout.startedAt, now)
-	const minutes = getElapsedMinutes(live.workout.startedAt, now)
 
 	return (
 		<Link
@@ -37,7 +36,6 @@ export const WorkoutMiniStrip = ({ live, onWarm, isOffline = false }: WorkoutMin
 			onPointerDown={onWarm}
 			aria-label={t(isOffline ? 'training.strip.labelOffline' : 'training.strip.label', {
 				name,
-				minutes,
 				elapsed,
 			})}
 			className="mx-gutter flex min-h-12 items-center gap-2.5 rounded-button bg-ink py-0 pr-2 pl-3.5 text-white shadow-float focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-ink"

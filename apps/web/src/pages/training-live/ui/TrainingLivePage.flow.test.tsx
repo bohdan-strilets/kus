@@ -157,7 +157,7 @@ describe('TrainingLivePage: «Завершити» waits for the sets', () => {
 		await waitFor(() => {
 			// the pill under the header and the toast of the refused «Завершити»
 			expect(screen.getAllByText(/Без мережі/)).toHaveLength(1)
-			expect(screen.getAllByText(/Немає зв.язку/)).toHaveLength(1)
+			expect(screen.getAllByText(/Підходи збережено на телефоні/)).toHaveLength(1)
 		})
 		expect(postMock).not.toHaveBeenCalled()
 	})
@@ -458,7 +458,7 @@ describe('TrainingLivePage: limits', () => {
 })
 
 describe('TrainingLivePage: isClosingMyself', () => {
-	const CLOSED_TEXT = 'Це тренування вже закрите в чаті.'
+	const CLOSED_TEXT = 'Це тренування вже завершено — підходи збережено, підсумок у чаті.'
 
 	/** Records whether the «closed in chat» card was in the DOM at any commit. */
 	const watchClosedCard = (): { wasShown: () => boolean; stop: () => void } => {

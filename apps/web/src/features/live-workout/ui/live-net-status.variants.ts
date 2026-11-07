@@ -13,4 +13,8 @@ export const liveNetPillVariants = cva(
 	},
 )
 
+// mockups/training-offline.html: a 14px grey ring, light track, dark top; still under reduced motion
+export const liveSyncRingClass =
+	'box-border size-3.5 flex-none rounded-full border-2 border-line border-t-muted-strong motion-safe:animate-spin'
+
 export type LiveNetPillVariantProps = VariantProps<typeof liveNetPillVariants>

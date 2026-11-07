@@ -2,7 +2,11 @@ import { Injectable, Logger } from '@nestjs/common'
 
 import { type Message, MessageRole, type Prisma } from '../../generated/prisma/client'
 import { PrismaService } from '../../prisma'
-import { type FinishedLive, LiveSessionsService } from '../workouts/live-sessions.service'
+import {
+	type FinishedLive,
+	type LiveFinish,
+	LiveSessionsService,
+} from '../workouts/live-sessions.service'
 import type { WorkoutWithExercises } from '../workouts/workouts.repository'
 import { ChatRepository } from './chat.repository'
 import { getWorkoutSummaryText } from './workout-summary-text'
@@ -87,21 +91,50 @@ export class ChatWorkoutSummaryService {
 	async closeIdleLive({
 		userId,
 		now,
+		maxGapHours,
 	}: {
 		userId: string
 		now: Date
+		/** The idle gap in hours; default WORKOUT_APPEND_MAX_GAP_HOURS. */
+		maxGapHours?: number
 	}): Promise<IdleLiveClosed | null> {
 		return this.prisma.$transaction(async (tx) => {
-			const closed = await this.liveSessions.closeIfIdle({ userId, now }, tx)
-			if (closed === null) return null
-			if (closed.kind === 'DELETED') return { workoutId: closed.workoutId, messageId: null }
-			const { messageId } = await this.postSummary(
-				{ userId, finished: closed, isAutoClosed: true },
-				tx,
-			)
-			this.logger.log(`Live workout auto-closed user=${userId} workout=${closed.workout.id}`)
-			return { workoutId: closed.workout.id, messageId }
+			const closed = await this.liveSessions.closeIfIdle({ userId, now, maxGapHours }, tx)
+			return closed === null ? null : this.postAutoClosed({ userId, closed }, tx)
 		})
+	}
+
+	/**
+	 * Closes the given open session as an auto-close, with no idle check (a snapshot that brought
+	 * the session's last sets when it had already been idle for hours): finished at its last set
+	 * with the auto-closed summary, or removed when nothing was done. Null when a parallel request
+	 * closed it first. The finish is judged against `activityAt` (the session's last action), not
+	 * the real now: a row the snapshot wrote with performedAt = now (cardio without sets) must not
+	 * stretch it.
+	 */
+	async closeLive(
+		{
+			userId,
+			workout,
+			activityAt,
+		}: { userId: string; workout: WorkoutWithExercises; activityAt: Date },
+		tx: Prisma.TransactionClient,
+	): Promise<IdleLiveClosed | null> {
+		const closed = await this.liveSessions.finish({ userId, workout, now: activityAt }, tx)
+		return closed === null ? null : this.postAutoClosed({ userId, closed }, tx)
+	}
+
+	private async postAutoClosed(
+		{ userId, closed }: { userId: string; closed: LiveFinish },
+		tx: Prisma.TransactionClient,
+	): Promise<IdleLiveClosed> {
+		if (closed.kind === 'DELETED') return { workoutId: closed.workoutId, messageId: null }
+		const { messageId } = await this.postSummary(
+			{ userId, finished: closed, isAutoClosed: true },
+			tx,
+		)
+		this.logger.log(`Live workout auto-closed user=${userId} workout=${closed.workout.id}`)
+		return { workoutId: closed.workout.id, messageId }
 	}
 
 	/**

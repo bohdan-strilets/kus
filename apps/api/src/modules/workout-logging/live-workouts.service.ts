@@ -1,9 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common'
-import type {
-	LiveWorkoutResponse,
-	WorkoutDiscarded,
-	WorkoutFinishResponse,
-	WorkoutResponse,
+import {
+	LIVE_CURRENT_GRACE_HOURS,
+	type LiveWorkoutResponse,
+	type WorkoutDiscarded,
+	type WorkoutFinishResponse,
+	type WorkoutResponse,
 } from '@kus/shared'
 
 import { getLocalDate } from '../../common/time'
@@ -49,9 +50,16 @@ export class LiveWorkoutsService {
 		private readonly kcal: WorkoutKcalService,
 	) {}
 
-	/** The open session; one left alone for more than 3 h is closed first (never by the day). */
+	/**
+	 * The open session; one left alone for more than LIVE_CURRENT_GRACE_HOURS (not 3 h: a phone
+	 * offline for hours still holds sets for the next PUT) is closed first, never by the day.
+	 */
 	async getCurrent(userId: string): Promise<LiveWorkoutResponse | null> {
-		await this.summary.closeIdleLive({ userId, now: new Date() })
+		await this.summary.closeIdleLive({
+			userId,
+			now: new Date(),
+			maxGapHours: LIVE_CURRENT_GRACE_HOURS,
+		})
 		const open = await this.liveSessions.findOpen(userId)
 		return open === null ? null : this.toLiveResponse(userId, open)
 	}

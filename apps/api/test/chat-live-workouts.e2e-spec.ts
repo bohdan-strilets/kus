@@ -509,7 +509,7 @@ describe('chat with an open live session (e2e, real DB, fake model)', () => {
 
 			const first = await seedLive(owner, { setMinutesAgo: 5, startedMinutesAgo: 20 })
 			await owner.agent.post(`${LIVE_URL}/${first}/finish`).expect(200)
-			const second = await seedLive(owner, { setMinutesAgo: 4 * 60, startedMinutesAgo: 5 * 60 })
+			const second = await seedLive(owner, { setMinutesAgo: 25 * 60, startedMinutesAgo: 26 * 60 })
 			await owner.agent.get(`${LIVE_URL}/current`).expect(200)
 
 			expect(
@@ -634,11 +634,11 @@ describe('chat with an open live session (e2e, real DB, fake model)', () => {
 			await send(owner, 'присід 100 3×5')
 			await prisma.workout.update({
 				where: { id: workout.id },
-				data: { startedAt: minutesAgo(5 * 60) },
+				data: { startedAt: minutesAgo(26 * 60) },
 			})
 			await prisma.exerciseEntry.updateMany({
 				where: { workoutId: workout.id },
-				data: { performedAt: minutesAgo(4 * 60) },
+				data: { performedAt: minutesAgo(25 * 60) },
 			})
 
 			const current = await owner.agent.get(`${LIVE_URL}/current`).expect(200)
@@ -654,10 +654,10 @@ describe('chat with an open live session (e2e, real DB, fake model)', () => {
 			await start()
 			const owner = await user('owner@kus.app')
 			const id = await seedPlannedOnly(owner)
-			await prisma.workout.update({ where: { id }, data: { startedAt: minutesAgo(5 * 60) } })
+			await prisma.workout.update({ where: { id }, data: { startedAt: minutesAgo(26 * 60) } })
 			await prisma.exerciseEntry.updateMany({
 				where: { workoutId: id },
-				data: { performedAt: minutesAgo(4 * 60) },
+				data: { performedAt: minutesAgo(25 * 60) },
 			})
 
 			await owner.agent.get(`${LIVE_URL}/current`).expect(200)

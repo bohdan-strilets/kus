@@ -21,7 +21,8 @@ export interface WorkoutStart {
 export const WITH_EXERCISES = {
 	exercises: {
 		where: { deletedAt: null },
-		orderBy: { position: 'asc' },
+		// a chat-added row can share a position with a live one: the older goes first
+		orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
 		include: {
 			sets: { orderBy: { position: 'asc' } },
 			exercise: { select: { muscleGroup: true, isBodyweight: true } },

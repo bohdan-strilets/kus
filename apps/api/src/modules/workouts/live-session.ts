@@ -41,12 +41,22 @@ export const getLastActionAt = (workout: SessionActivity): Date | null =>
 	latest([getLastWorkAt(workout), workout.startedAt])
 
 /**
- * A live session left alone for more than WORKOUT_APPEND_MAX_GAP_HOURS since its last action: it is
- * closed on the next look at it. A session past midnight stays open while it goes on.
+ * The last action of a session counting what a snapshot brings: the later of the stored last
+ * action and the given times (the incoming sets' clamped `doneAt`, never the write's `now`).
  */
-export const isLiveIdle = (workout: SessionActivity, now: Date): boolean => {
+export const getLastActionAtWith = (
+	workout: SessionActivity,
+	incoming: readonly Date[],
+): Date | null => latest([getLastActionAt(workout), ...incoming])
+
+/**
+ * A live session left alone for more than `maxGapHours` (default WORKOUT_APPEND_MAX_GAP_HOURS)
+ * since its last action: it is closed on the next look at it. A session past midnight stays open
+ * while it goes on.
+ */
+export const isLiveIdle = (workout: SessionActivity, now: Date, maxGapHours?: number): boolean => {
 	const last = getLastActionAt(workout)
-	return last === null || !isWorkoutOpen(last, now)
+	return last === null || !isWorkoutOpen(last, now, maxGapHours)
 }
 
 type DoneWorkExercise = Pick<

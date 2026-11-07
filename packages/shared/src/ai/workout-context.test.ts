@@ -250,6 +250,15 @@ describe('an open session (a night workout of the day before)', () => {
 		expect(isWorkoutOpen(new Date('2026-10-27T22:29:59Z'), now)).toBe(false)
 	})
 
+	it('judges the gap by the argument, 3 hours by default', () => {
+		const hourMs = 3_600_000
+		const last = (ms: number): Date => new Date(now.getTime() - ms)
+		expect(isWorkoutOpen(last(3 * hourMs), now)).toBe(true)
+		expect(isWorkoutOpen(last(3 * hourMs + 1), now)).toBe(false)
+		expect(isWorkoutOpen(last(24 * hourMs), now, 24)).toBe(true)
+		expect(isWorkoutOpen(last(24 * hourMs + 1), now, 24)).toBe(false)
+	})
+
 	it('is looked up from exactly 3 hours ago', () => {
 		expect(getOpenWorkoutSince(now)).toEqual(new Date('2026-10-27T22:30:00Z'))
 	})

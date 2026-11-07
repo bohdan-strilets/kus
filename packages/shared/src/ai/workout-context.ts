@@ -12,6 +12,11 @@ export const MAX_CONTEXT_EXERCISES = 10
  */
 export const WORKOUT_APPEND_MAX_GAP_HOURS = 3
 /**
+ * How long GET /live-workouts/current (and a PUT's pre-check) leaves an idle live session open: a
+ * phone offline for hours still holds sets that only its next PUT can bring.
+ */
+export const LIVE_CURRENT_GRACE_HOURS = 24
+/**
  * Finishing a live session when the last set was done longer ago than this: it ended with that
  * set (finishedAt = its doneAt), not at the tap of «Завершити». The same for the auto-close.
  */
@@ -22,9 +27,12 @@ const APPEND_MAX_GAP_MS = WORKOUT_APPEND_MAX_GAP_HOURS * MS_IN_HOUR
 /** The earliest last entry a still open session can have. */
 export const getOpenWorkoutSince = (now: Date): Date => new Date(now.getTime() - APPEND_MAX_GAP_MS)
 
-/** A session is open while its last entry is at most WORKOUT_APPEND_MAX_GAP_HOURS old. */
-export const isWorkoutOpen = (lastPerformedAt: Date, now: Date): boolean =>
-	now.getTime() - lastPerformedAt.getTime() <= APPEND_MAX_GAP_MS
+/** A session is open while its last entry is at most `maxGapHours` (default 3) old. */
+export const isWorkoutOpen = (
+	lastPerformedAt: Date,
+	now: Date,
+	maxGapHours: number = WORKOUT_APPEND_MAX_GAP_HOURS,
+): boolean => now.getTime() - lastPerformedAt.getTime() <= maxGapHours * MS_IN_HOUR
 
 /** One set of an exercise, as stored (a «3×8 80» group is three of these). */
 export interface WorkoutSetContext {

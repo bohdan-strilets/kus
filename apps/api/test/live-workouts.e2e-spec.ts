@@ -754,12 +754,12 @@ describe('live workouts (e2e, real DB)', () => {
 			expect(Math.abs((await readTime()).getTime() - minutesAgo(45).getTime())).toBeLessThan(5000)
 		})
 
-		it('a PUT on an idle session is 409 FINISHED and closes it (with work: a summary; empty: deleted)', async () => {
+		it('a PUT on a session idle for more than 24 h is 409 FINISHED and closes it (with work: a summary; empty: deleted)', async () => {
 			await start()
 			const owner = await user('owner@kus.app')
 			const { workout } = await startLive(owner)
 			await putSnapshot(owner, workout.id, [liveExercise()]).expect(200)
-			await backdateStart(workout.id, 5 * 60, minutesAgo(4 * 60))
+			await backdateStart(workout.id, 26 * 60, minutesAgo(25 * 60))
 
 			const response = await putSnapshot(owner, workout.id, [liveExercise()]).expect(409)
 
@@ -769,7 +769,7 @@ describe('live workouts (e2e, real DB)', () => {
 			expect(await readSummaries(owner.userId)).toHaveLength(1)
 
 			const empty = await startLive(owner)
-			await backdateStart(empty.workout.id, 5 * 60)
+			await backdateStart(empty.workout.id, 25 * 60)
 			const emptyResponse = await putSnapshot(owner, empty.workout.id, [liveExercise()]).expect(409)
 			expect(emptyResponse.body).toMatchObject({ details: { reason: 'FINISHED' } })
 			const gone = await prisma.workout.findUniqueOrThrow({ where: { id: empty.workout.id } })
@@ -877,11 +877,11 @@ describe('live workouts (e2e, real DB)', () => {
 			return workout.id
 		}
 
-		it('3 h 01 min since the last set: current closes it at that set with the summary message', async () => {
+		it('24 h 01 min since the last set: current closes it at that set with the summary message', async () => {
 			await start()
 			const owner = await user('owner@kus.app')
-			const lastSet = minutesAgo(3 * 60 + 1)
-			const id = await startWithLastSet(owner, lastSet, 3 * 60 + 21)
+			const lastSet = minutesAgo(24 * 60 + 1)
+			const id = await startWithLastSet(owner, lastSet, 24 * 60 + 21)
 
 			expect(await getCurrent(owner)).toBeNull()
 
@@ -897,15 +897,17 @@ describe('live workouts (e2e, real DB)', () => {
 			expect(await readSummaries(owner.userId)).toHaveLength(1)
 		})
 
-		it('2 h 59 min since the last set: the session stays open, nothing is posted', async () => {
+		it('4 h and 20 h since the last set: current keeps the session open (grace), nothing is posted', async () => {
 			await start()
 			const owner = await user('owner@kus.app')
-			const id = await startWithLastSet(owner, minutesAgo(2 * 60 + 59), 3 * 60 + 20)
+			const id = await startWithLastSet(owner, minutesAgo(4 * 60), 4 * 60 + 20)
 
 			const current = await getCurrent(owner)
 
 			expect(current?.workout.id).toBe(id)
 			expect(current?.workout.finishedAt).toBeNull()
+			await backdateStart(id, 21 * 60, minutesAgo(20 * 60))
+			expect((await getCurrent(owner))?.workout.id).toBe(id)
 			expect(await readSummaries(owner.userId)).toHaveLength(0)
 		})
 
@@ -926,7 +928,7 @@ describe('live workouts (e2e, real DB)', () => {
 			await start()
 			const owner = await user('owner@kus.app')
 			const { workout } = await startLive(owner)
-			await backdateStart(workout.id, 4 * 60)
+			await backdateStart(workout.id, 25 * 60)
 
 			expect(await getCurrent(owner)).toBeNull()
 
@@ -970,8 +972,8 @@ describe('live workouts (e2e, real DB)', () => {
 			expect(current?.workout.localDate).toBe('2026-11-10')
 			expect(await readSummaries(owner.userId)).toHaveLength(0)
 
-			// 3 h 01 min after the last set (01:31Z) the day does not matter either way: now it closes
-			vi.setSystemTime(new Date('2026-11-11T01:31:00Z'))
+			// 24 h 01 min after the last set (22:31Z next day) the day does not matter either way: now it closes
+			vi.setSystemTime(new Date('2026-11-11T22:31:00Z'))
 			await owner.agent
 				.post('/api/v1/auth/login')
 				.send({ email: 'owner@kus.app', password: 'correct-horse-battery' })

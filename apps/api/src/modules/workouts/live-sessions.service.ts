@@ -119,16 +119,16 @@ export class LiveSessionsService {
 	}
 
 	/**
-	 * The open session left alone for more than WORKOUT_APPEND_MAX_GAP_HOURS since its last action:
-	 * without done work it is soft-deleted, with it it is finished (at its last set). Null when there
-	 * is none, it is still going on, or a parallel request closed it.
+	 * The open session left alone for more than `maxGapHours` (default WORKOUT_APPEND_MAX_GAP_HOURS)
+	 * since its last action: without done work it is soft-deleted, with it it is finished (at its
+	 * last set). Null when there is none, it is still going on, or a parallel request closed it.
 	 */
 	async closeIfIdle(
-		{ userId, now }: { userId: string; now: Date },
+		{ userId, now, maxGapHours }: { userId: string; now: Date; maxGapHours?: number },
 		tx: Prisma.TransactionClient,
 	): Promise<LiveFinish | null> {
 		const open = await this.liveSessionsRepository.findOpenLiveSession({ userId }, tx)
-		if (!open || !isLiveIdle(open, now)) return null
+		if (!open || !isLiveIdle(open, now, maxGapHours)) return null
 		const closed = await this.finish({ userId, workout: open, now }, tx)
 		if (closed?.kind === 'FINISHED') {
 			this.logger.log(`Idle live workout closed user=${userId} workout=${open.id} reason=idle`)

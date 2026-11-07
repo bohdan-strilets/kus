@@ -19,7 +19,7 @@ import { SessionGuard } from './SessionGuard'
 
 const OWNER = '0199b3a4-0000-7000-8000-00000000000a'
 const OTHER_OWNER = '0199b3a4-0000-7000-8000-00000000000b'
-const RETRY = 'Повторити'
+const RETRY = 'Спробувати ще раз'
 
 const getMock = vi.spyOn(httpClient, 'get')
 

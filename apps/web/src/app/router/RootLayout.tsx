@@ -6,7 +6,11 @@ import { FEATURES, ROUTES, TRAINING_LIVE_ROUTE } from '@/shared/config'
 import { useUnlockSoundOnFirstTap } from '@/shared/lib'
 import { AppLayout } from '@/shared/ui'
 import { BottomNav, useTodayProgress } from '@/widgets/bottom-nav'
-import { useMiniStripLive, WorkoutMiniStrip } from '@/widgets/workout-mini-strip'
+import {
+	useMiniStripLive,
+	useMiniStripOffline,
+	WorkoutMiniStrip,
+} from '@/widgets/workout-mini-strip'
 
 import { preloadTrainingLive, TrainingPage } from './lazy-pages'
 import { LiveSurface } from './LiveSurface'
@@ -33,6 +37,7 @@ export const RootLayout = () => {
 	const isChat = tabPathname === ROUTES.chat
 	const todayProgress = useTodayProgress()
 	const liveWorkout = useMiniStripLive()
+	const isStripOffline = useMiniStripOffline()
 	// the first tap anywhere in the app lets iOS play the «кусь» later, outside a gesture
 	useUnlockSoundOnFirstTap()
 
@@ -44,7 +49,11 @@ export const RootLayout = () => {
 			isNavInert={isLive}
 			miniStrip={
 				liveWorkout ? (
-					<WorkoutMiniStrip live={liveWorkout} onWarm={preloadTrainingLive} />
+					<WorkoutMiniStrip
+						live={liveWorkout}
+						isOffline={isStripOffline}
+						onWarm={preloadTrainingLive}
+					/>
 				) : undefined
 			}
 		>

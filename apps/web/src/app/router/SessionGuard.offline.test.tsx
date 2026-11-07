@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import type { AuthUser } from '@kus/shared'
 import { onlineManager, QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import { AxiosError, AxiosHeaders } from 'axios'
 import { I18nextProvider } from 'react-i18next'
 import { createMemoryRouter, RouterProvider } from 'react-router'
@@ -19,10 +19,27 @@ import { SessionErrorState } from './SessionErrorState'
 import { SessionGuard } from './SessionGuard'
 
 const OWNER = '0199b3a4-0000-7000-8000-00000000000a'
-const RESUME = 'Продовжити тренування'
-const RETRY = 'Повторити'
+const RETRY = 'Спробувати ще раз'
+const STRIP_LABEL = /без мережі/
 // the session check retries once with the default 1 s backoff before it gives up
 const RETRY_WAIT_MS = 5000
+
+const renderErrorState = (canOpenLive = false): void => {
+	render(
+		<I18nextProvider i18n={i18n}>
+			<QueryClientProvider client={new QueryClient()}>
+				<RouterProvider
+					router={createMemoryRouter([
+						{
+							path: '*',
+							element: <SessionErrorState onRetry={vi.fn()} canOpenLive={canOpenLive} />,
+						},
+					])}
+				/>
+			</QueryClientProvider>
+		</I18nextProvider>,
+	)
+}
 
 const getMock = vi.spyOn(httpClient, 'get')
 
@@ -69,45 +86,39 @@ afterEach(() => {
 })
 
 describe('SessionErrorState', () => {
-	it('shows only «retry» without onResumeLive', () => {
+	it('is «retry» in the shell: bottom nav, no strip without a kept workout', () => {
 		stubMatchMedia()
-		render(
-			<I18nextProvider i18n={i18n}>
-				<SessionErrorState onRetry={vi.fn()} />
-			</I18nextProvider>,
-		)
+		renderErrorState()
 
 		expect(screen.getByRole('button', { name: RETRY })).toBeTruthy()
-		expect(screen.queryByRole('button', { name: RESUME })).toBeNull()
+		expect(screen.getByRole('navigation')).toBeTruthy()
+		expect(screen.queryByRole('link', { name: STRIP_LABEL })).toBeNull()
 	})
 
-	it('shows «Продовжити тренування» that calls onResumeLive', () => {
+	it('shows the mini strip from the kept copy, marked offline, a link to the live screen', () => {
 		stubMatchMedia()
-		const onResumeLive = vi.fn()
-		render(
-			<I18nextProvider i18n={i18n}>
-				<SessionErrorState onRetry={vi.fn()} onResumeLive={onResumeLive} />
-			</I18nextProvider>,
+		useLiveWorkoutStore.setState({ ownerId: OWNER, lastSeen: makeLiveResponse() })
+		renderErrorState(true)
+
+		expect(screen.getByRole('link', { name: STRIP_LABEL }).getAttribute('href')).toBe(
+			TRAINING_LIVE_ROUTE,
 		)
-
-		fireEvent.click(screen.getByRole('button', { name: RESUME }))
-
-		expect(onResumeLive).toHaveBeenCalledTimes(1)
 	})
 })
 
 describe('SessionGuard: offline with a kept live workout', () => {
-	it('offers «Продовжити тренування» on another route and it leads to the live screen', async () => {
+	it('shows the error shell with the strip into the workout on another route', async () => {
 		failWith(new AxiosError('Network Error', AxiosError.ERR_NETWORK))
 		useLiveWorkoutStore.setState({ ownerId: OWNER, lastSeen: makeLiveResponse() })
-		const router = renderGuard('/app/today')
+		renderGuard('/app/today')
 
-		fireEvent.click(await screen.findByRole('button', { name: RESUME }, { timeout: RETRY_WAIT_MS }))
-
-		await waitFor(() => {
-			expect(router.state.location.pathname).toBe(TRAINING_LIVE_ROUTE)
-		})
-		expect(await screen.findByText('LIVE SCREEN')).toBeTruthy()
+		expect(
+			await screen.findByRole('button', { name: RETRY }, { timeout: RETRY_WAIT_MS }),
+		).toBeTruthy()
+		expect(screen.getByRole('navigation')).toBeTruthy()
+		expect(screen.getByRole('link', { name: STRIP_LABEL })).toBeTruthy()
+		expect(screen.queryByText('TODAY')).toBeNull()
+		expect(screen.queryByText('Продовжити тренування')).toBeNull()
 	})
 
 	it('renders the live route itself without the error screen', async () => {
@@ -127,13 +138,13 @@ describe('SessionGuard: offline with a kept live workout', () => {
 		expect(getMock).not.toHaveBeenCalled()
 	})
 
-	it('offers «retry» and the way into the session on another route while the check is paused', async () => {
+	it('offers «retry» and the strip into the session on another route while the check is paused', async () => {
 		onlineManager.setOnline(false)
 		useLiveWorkoutStore.setState({ ownerId: OWNER, lastSeen: makeLiveResponse() })
 		renderGuard('/app/today')
 
-		expect(await screen.findByRole('button', { name: RESUME })).toBeTruthy()
-		expect(screen.getByRole('button', { name: RETRY })).toBeTruthy()
+		expect(await screen.findByRole('button', { name: RETRY })).toBeTruthy()
+		expect(screen.getByRole('link', { name: STRIP_LABEL })).toBeTruthy()
 	})
 
 	it('renders the live route while the check hangs online (pending, no answer yet)', async () => {
@@ -151,7 +162,7 @@ describe('SessionGuard: offline with a kept live workout', () => {
 		expect(
 			await screen.findByRole('button', { name: RETRY }, { timeout: RETRY_WAIT_MS }),
 		).toBeTruthy()
-		expect(screen.queryByRole('button', { name: RESUME })).toBeNull()
+		expect(screen.queryByRole('link', { name: STRIP_LABEL })).toBeNull()
 		expect(screen.queryByText('LIVE SCREEN')).toBeNull()
 	})
 
@@ -163,7 +174,7 @@ describe('SessionGuard: offline with a kept live workout', () => {
 		expect(
 			await screen.findByRole('button', { name: RETRY }, { timeout: RETRY_WAIT_MS }),
 		).toBeTruthy()
-		expect(screen.queryByRole('button', { name: RESUME })).toBeNull()
+		expect(screen.queryByRole('link', { name: STRIP_LABEL })).toBeNull()
 	})
 
 	it('does not open the live screen when the API answered with a 500', async () => {
@@ -184,7 +195,7 @@ describe('SessionGuard: offline with a kept live workout', () => {
 			await screen.findByRole('button', { name: RETRY }, { timeout: RETRY_WAIT_MS }),
 		).toBeTruthy()
 		expect(screen.queryByText('LIVE SCREEN')).toBeNull()
-		expect(screen.queryByRole('button', { name: RESUME })).toBeNull()
+		expect(screen.queryByRole('link', { name: STRIP_LABEL })).toBeNull()
 	})
 
 	// Offline with no cached user the account state is unknown (the session cache is in memory only),

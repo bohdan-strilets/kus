@@ -44,6 +44,7 @@ let hasLiveWorkout = true
 vi.mock('@/widgets/workout-mini-strip', async (importOriginal) => ({
 	...(await importOriginal<Record<string, unknown>>()),
 	useMiniStripLive: () => (hasLiveWorkout ? makeLiveResponse() : null),
+	useMiniStripOffline: () => false,
 }))
 
 const { RootLayout } = await import('./RootLayout')

@@ -112,8 +112,8 @@ describe('getRouteGuardDecision: cold start into a fresh live workout', () => {
 		})
 	})
 
-	it('keeps «resume» for a non-entry or stale offline error on another page', () => {
-		const resume = { action: 'error', canResumeLive: true }
+	it('keeps the error for a non-entry or stale offline error on another page', () => {
+		const resume = { action: 'error' }
 
 		expect(decide({ status: 'error', isNetworkError: true, isEntry: false })).toEqual(resume)
 		expect(decide({ status: 'error', isNetworkError: true, isOfflineLiveFresh: false })).toEqual(

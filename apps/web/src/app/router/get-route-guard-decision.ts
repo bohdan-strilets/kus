@@ -11,8 +11,7 @@ export interface ReturnState {
 export type GuardDecision =
 	| { action: 'render' }
 	| { action: 'loading' }
-	/** `canResumeLive`: offline, with a live session of this device's last user to go back to. */
-	| { action: 'error'; canResumeLive?: true }
+	| { action: 'error' }
 	| { action: 'redirect'; to: string; state?: ReturnState }
 
 interface GuardInput {
@@ -63,12 +62,11 @@ const getAuthenticatedDecision = (path: string, isPendingDeletion: boolean): Gua
 
 /**
  * No connection and no cached user: the live screen alone still works from the copy of the last
- * session, everywhere else it is «retry» with a way back into that session.
+ * session, everywhere else it is «retry» in the shell, with the mini strip as the way back.
  */
 const getOfflineDecision = (path: string, hasOfflineLive: boolean): GuardDecision => {
-	if (!hasOfflineLive) return { action: 'error' }
-	if (getPathname(path) === TRAINING_LIVE_ROUTE) return { action: 'render' }
-	return { action: 'error', canResumeLive: true }
+	if (hasOfflineLive && getPathname(path) === TRAINING_LIVE_ROUTE) return { action: 'render' }
+	return { action: 'error' }
 }
 
 /**

@@ -77,3 +77,40 @@ describe('WorkoutMiniStrip: the live screen unfolds from it', () => {
 		expect(() => fireEvent.pointerDown(screen.getByRole('link'))).not.toThrow()
 	})
 })
+
+describe('WorkoutMiniStrip: offline', () => {
+	it('online: a green dot and the normal spoken label', () => {
+		renderWithProviders(<WorkoutMiniStrip live={makeLiveResponse({ templateName: 'Верх А' })} />)
+
+		const link = screen.getByRole('link')
+
+		expect(link.querySelector('.bg-success')).toBeTruthy()
+		expect(link.getAttribute('aria-label')).toBe('Верх А іде, 23 хв. Відкрити')
+	})
+
+	it('offline: an empty ring instead of the dot and «без мережі» in the label', () => {
+		renderWithProviders(
+			<WorkoutMiniStrip live={makeLiveResponse({ templateName: 'Верх А' })} isOffline />,
+		)
+
+		const link = screen.getByRole('link')
+
+		expect(link.querySelector('.bg-success')).toBeNull()
+		expect(link.querySelector('.border-2')).toBeTruthy()
+		// the wording of mockups/training-offline.html
+		expect(link.getAttribute('aria-label')).toBe(
+			'Іде тренування: Верх А · 23:14, без мережі. Відкрити',
+		)
+	})
+
+	it('offline: still a link to the live screen that warms up on pointerdown', () => {
+		const onWarm = vi.fn()
+		renderWithProviders(<WorkoutMiniStrip live={makeLiveResponse()} isOffline onWarm={onWarm} />)
+
+		const link = screen.getByRole('link')
+		fireEvent.pointerDown(link)
+
+		expect(link.getAttribute('href')).toBe(TRAINING_LIVE_ROUTE)
+		expect(onWarm).toHaveBeenCalledTimes(1)
+	})
+})

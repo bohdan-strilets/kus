@@ -193,14 +193,12 @@ describe('getRouteGuardDecision — offline live workout', () => {
 		})
 	})
 
-	it('offers the way back into the session on any other route', () => {
+	it('is the error (the shell has the strip) on any other route', () => {
 		expect(getRouteGuardDecision({ ...offline, path: '/app/today' })).toEqual({
 			action: 'error',
-			canResumeLive: true,
 		})
 		expect(getRouteGuardDecision({ ...offline, path: '/app/training/live-other' })).toEqual({
 			action: 'error',
-			canResumeLive: true,
 		})
 	})
 

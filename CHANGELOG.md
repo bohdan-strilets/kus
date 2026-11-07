@@ -6,6 +6,25 @@ All notable changes to Kusik are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.10.5.5] — 2026-11-07
+
+The gym without network, first part (web only): a cold start goes straight into the open workout, the connection state is a pill, offline tabs keep the app shell. No API changes, no migrations, no prompt changes; the web version is 0.10.5+5 (semver build metadata).
+
+### Added
+
+- A cold start (the PWA opened from the home screen) goes straight into the live screen when the device holds an open workout whose last action is under 3 h old, also with a network and without waiting for `/users/me`; "entry" is the first guard render of the page lifetime. An account awaiting deletion is never sent there (`pendingDeletion` in the live store, v4, migration from v3/v2 keeps the data) ([ae1adaa])
+- The connection state under the live header is a pill: "Без мережі — усе збережено на телефоні", "Синхронізую…" (only when a save lasts over 300 ms) with the grey ring of the mockup, "Збережено" for 2 s; a normal online save shows nothing, a server error keeps its line with "Повторити". The live save has its own 10 s timeout, so a lie-fi connection turns into "offline" fast ([d66eae1], [93c6b78])
+- Offline tabs ("Немає зв'язку з Kusik", "Спробувати ще раз") keep the app shell with the bottom nav; the mini strip of the workout the device holds is one tap away, marked "без мережі" (an empty ring instead of the green dot) ([57a3e88])
+
+### Changed
+
+- A save answered with a session the server has already finished (a late sync) closes the screen's session instead of putting a finished workout into the live cache ([ae1adaa])
+- Texts: the mini strip spoken label as in the mockups ("Іде тренування: <назва> · mm:ss. Відкрити"); the refused "Завершити" without network says "Підходи збережено на телефоні. Завершити вийде, коли з'явиться мережа."; a session closed by the server says "Це тренування вже завершено — підходи збережено, підсумок у чаті." ([93c6b78])
+
+### Removed
+
+- The "Продовжити тренування" button of the offline error screen: the live screen opens by itself ([57a3e88])
+
 ## [0.10.5.4] — 2026-11-07
 
 Hotfix: a phone that was offline for hours no longer loses its done sets. No migrations, no prompt changes; the web version is 0.10.5+4 (semver build metadata).
@@ -726,7 +745,12 @@ Design sync with `design/` v0.5.2. Web only: no API, shared-package or migration
 
 ## 0.2.0 / 0.1.0 — see tags
 
-[Unreleased]: https://github.com/bohdan-strilets/kus/compare/v0.10.5.4...HEAD
+[Unreleased]: https://github.com/bohdan-strilets/kus/compare/v0.10.5.5...HEAD
+[0.10.5.5]: https://github.com/bohdan-strilets/kus/compare/v0.10.5.4...v0.10.5.5
+[ae1adaa]: https://github.com/bohdan-strilets/kus/commit/ae1adaa7d4f579018aabc9b70f5d6f75f24416be
+[d66eae1]: https://github.com/bohdan-strilets/kus/commit/d66eae17e142cc8a25884aace84d9843d3597a5b
+[57a3e88]: https://github.com/bohdan-strilets/kus/commit/57a3e886048d333fd7a73ac9ee16c296c6cb5362
+[93c6b78]: https://github.com/bohdan-strilets/kus/commit/93c6b78fc2f665e1eb2386bd5d3b386fb71c2e92
 [0.10.5.4]: https://github.com/bohdan-strilets/kus/compare/v0.10.5.3...v0.10.5.4
 [8c1f308]: https://github.com/bohdan-strilets/kus/commit/8c1f30883d787cd6b14478117d3844489dfe9d74
 [94812bd]: https://github.com/bohdan-strilets/kus/commit/94812bd7ba1c8ea77c36e941f1d78ab76bb537c4

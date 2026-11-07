@@ -1,0 +1,16 @@
+import { cva, type VariantProps } from 'class-variance-authority'
+
+export const liveNetPillVariants = cva(
+	'inline-flex min-h-8 items-center gap-2 rounded-tile px-3 text-caption',
+	{
+		variants: {
+			phase: {
+				offline: 'bg-surface/72 text-muted-strong',
+				syncing: 'bg-surface/72 text-muted-strong',
+				saved: 'bg-success-soft text-success-ink',
+			},
+		},
+	},
+)
+
+export type LiveNetPillVariantProps = VariantProps<typeof liveNetPillVariants>

@@ -16,6 +16,8 @@ const liveResponseSchema = createDataResponseSchema(liveWorkoutResponseSchema)
 const finishResponseSchema = createDataResponseSchema(workoutFinishResponseSchema)
 
 const LIVE_WORKOUTS_PATH = '/live-workouts'
+/** Shorter than the default: on a lie-fi connection the save must turn into «offline» fast. */
+const LIVE_PUT_TIMEOUT_MS = 10_000
 
 /** The open live session of the user; null when none (a stale one is closed by the server first). */
 export const getLiveWorkout = async (): Promise<LiveWorkoutResponse | null> => {
@@ -38,7 +40,9 @@ export const putLiveWorkout = async ({
 	update: LiveWorkoutUpdate
 }): Promise<LiveWorkoutResponse> => {
 	try {
-		const response = await httpClient.put<unknown>(`${LIVE_WORKOUTS_PATH}/${workoutId}`, update)
+		const response = await httpClient.put<unknown>(`${LIVE_WORKOUTS_PATH}/${workoutId}`, update, {
+			timeout: LIVE_PUT_TIMEOUT_MS,
+		})
 		return liveResponseSchema.parse(response.data).data
 	} catch (error) {
 		throw toLiveConflictError(error)

@@ -61,7 +61,9 @@ export const useLiveExit = ({
 			// the last sets may still be on their way: the session is finished after they landed
 			const status = await whenIdle()
 			if (status === 'offline' || status === 'error') {
-				toast.show(status === 'offline' ? t('training.live.offline') : t('training.live.syncError'))
+				toast.show(
+					status === 'offline' ? t('training.live.finishOffline') : t('training.live.syncError'),
+				)
 				return
 			}
 			setIsClosingMyself(true)

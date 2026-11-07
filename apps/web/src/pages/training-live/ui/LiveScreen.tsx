@@ -16,7 +16,7 @@ import {
 	ExitWorkoutDialog,
 	getElapsedMinutes,
 	isExerciseDone,
-	SyncNotice,
+	LiveNetStatus,
 	useLiveSession,
 	useRestTimer,
 	useLiveWorkoutStore,
@@ -149,7 +149,7 @@ export const LiveScreen = ({ live, onFinished, isClosed }: LiveScreenProps) => {
 					void exit.finish()
 				}}
 			/>
-			<SyncNotice status={sync.status} onRetry={sync.retry} />
+			<LiveNetStatus status={sync.status} onRetry={sync.retry} />
 			{/* layoutScroll: the rows glide inside a scrolling parent, Motion has to know its scroll */}
 			<motion.div layoutScroll className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto pb-4">
 				<LiveExerciseBar segments={segments} />

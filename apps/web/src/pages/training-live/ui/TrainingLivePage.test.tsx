@@ -330,13 +330,15 @@ describe('TrainingLivePage: finishing and leaving', () => {
 
 		fireEvent.click(await screen.findByRole('button', { name: 'Підхід виконано' }))
 		await waitFor(() => {
-			expect(screen.getByRole('status').textContent).toContain('Немає зв')
+			expect(screen.getByRole('status').textContent).toContain('Без мережі')
 		})
 		fireEvent.click(screen.getByRole('button', { name: 'Завершити' }))
 
 		expect(postMock).not.toHaveBeenCalled()
 		await waitFor(() => {
-			expect(screen.getAllByText(/Немає зв.язку/)).toHaveLength(2)
+			// the pill under the header and the toast of the refused «Завершити»
+			expect(screen.getAllByText(/Без мережі/)).toHaveLength(1)
+			expect(screen.getAllByText(/Немає зв.язку/)).toHaveLength(1)
 		})
 	})
 

@@ -1,6 +1,10 @@
 import type { TemplateExerciseTarget } from '@kus/shared'
 
+import { moveItemBy, orderByKeys } from '@/shared/lib'
+
 import type { DraftExercise } from './template-draft.types'
+
+const getExerciseKey = (exercise: DraftExercise): string => exercise.key
 
 export type TemplateDraftAction =
 	| { type: 'reset'; exercises: DraftExercise[] }
@@ -20,22 +24,12 @@ export const moveExercise = (
 	list: readonly DraftExercise[],
 	key: string,
 	delta: -1 | 1,
-): DraftExercise[] => {
-	const from = list.findIndex((item) => item.key === key)
-	const to = from + delta
-	if (from === -1 || to < 0 || to >= list.length) return [...list]
-	const next = [...list]
-	const [moved] = next.splice(from, 1)
-	if (moved) next.splice(to, 0, moved)
-	return next
-}
-
-/** The list in the order of `keys` (a drag gives the whole new order); a mismatch keeps the list. */
-const orderByKeys = (list: readonly DraftExercise[], keys: readonly string[]): DraftExercise[] => {
-	const byKey = new Map(list.map((item) => [item.key, item]))
-	const ordered = keys.flatMap((key) => byKey.get(key) ?? [])
-	return ordered.length === list.length ? ordered : [...list]
-}
+): DraftExercise[] =>
+	moveItemBy(
+		list,
+		list.findIndex((item) => item.key === key),
+		delta,
+	)
 
 export const templateDraftReducer = (
 	list: DraftExercise[],
@@ -45,7 +39,7 @@ export const templateDraftReducer = (
 		case 'reset':
 			return action.exercises
 		case 'reorder':
-			return orderByKeys(list, action.keys)
+			return orderByKeys(list, action.keys, getExerciseKey)
 		case 'move':
 			return moveExercise(list, action.key, action.delta)
 		case 'remove':

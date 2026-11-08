@@ -3,6 +3,7 @@ import { Reorder } from 'motion/react'
 import { type Dispatch, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { useReorderAnnouncement } from '@/shared/lib'
 import { DashedAction, Surface, Text } from '@/shared/ui'
 
 import { createDraftExercise } from '../lib/new-exercise'
@@ -25,23 +26,16 @@ export const TemplateEditor = ({ exercises, dispatch }: TemplateEditorProps) => 
 	const { t } = useTranslation()
 	const [targetKey, setTargetKey] = useState<string | null>(null)
 	const [isAddOpen, setIsAddOpen] = useState(false)
-	// what a screen reader hears after a keyboard move; a drag by a finger needs no words
-	const [announcement, setAnnouncement] = useState('')
 	const targetExercise = exercises.find((exercise) => exercise.key === targetKey) ?? null
 
-	const move = (exercise: DraftExercise, index: number, delta: -1 | 1): boolean => {
-		const position = index + delta
-		if (position < 0 || position >= exercises.length) return false
-		dispatch({ type: 'move', key: exercise.key, delta })
-		setAnnouncement(
-			t('program.editor.position', {
-				name: exercise.name,
-				position: position + 1,
-				total: exercises.length,
-			}),
-		)
-		return true
-	}
+	const { move, announcement } = useReorderAnnouncement({
+		items: exercises,
+		getName: (exercise) => exercise.name,
+		onMove: (index, delta) => {
+			const exercise = exercises[index]
+			if (exercise) dispatch({ type: 'move', key: exercise.key, delta })
+		},
+	})
 
 	return (
 		<>
@@ -66,7 +60,7 @@ export const TemplateEditor = ({ exercises, dispatch }: TemplateEditorProps) => 
 							onRemove={() => {
 								dispatch({ type: 'remove', key: exercise.key })
 							}}
-							onMove={(delta) => move(exercise, index, delta)}
+							onMove={(delta) => move(index, delta)}
 						/>
 					))}
 				</Reorder.Group>

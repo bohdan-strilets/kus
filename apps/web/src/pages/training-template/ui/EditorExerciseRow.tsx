@@ -1,9 +1,9 @@
 import { Reorder, useDragControls } from 'motion/react'
-import { type KeyboardEvent, useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { cn } from '@/shared/lib'
-import { Icon, ICON_SIZE, IconButton } from '@/shared/ui'
+import { Icon, ICON_SIZE, IconButton, ReorderHandle } from '@/shared/ui'
 
 import type { DraftExercise } from '../lib/template-draft.types'
 import { ExerciseSummary } from './ExerciseSummary'
@@ -34,23 +34,6 @@ export const EditorExerciseRow = ({
 	const { t } = useTranslation()
 	const dragControls = useDragControls()
 	const [isDragging, setIsDragging] = useState(false)
-	const handleRef = useRef<HTMLButtonElement>(null)
-	const isRefocusPending = useRef(false)
-
-	// a move re-orders the DOM, which can drop the focus: put it back on the handle that moved
-	useEffect(() => {
-		if (!isRefocusPending.current) return
-		isRefocusPending.current = false
-		handleRef.current?.focus()
-	}, [index])
-
-	const handleKeyDown = (event: KeyboardEvent<HTMLButtonElement>): void => {
-		if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return
-		event.preventDefault()
-		// an ignored move at an edge changes no index: the flag must not wait for a later one
-		isRefocusPending.current = onMove(event.key === 'ArrowUp' ? -1 : 1)
-	}
-
 	return (
 		<Reorder.Item
 			as="li"
@@ -70,19 +53,14 @@ export const EditorExerciseRow = ({
 					'relative z-10 -mx-2.5 rounded-tile-sm border-transparent bg-surface px-2.5 shadow-float',
 			)}
 		>
-			<button
-				ref={handleRef}
-				type="button"
-				aria-label={t('program.editor.drag', { name: exercise.name })}
-				aria-keyshortcuts="ArrowUp ArrowDown"
+			<ReorderHandle
+				label={t('program.editor.drag', { name: exercise.name })}
+				index={index}
+				onMove={onMove}
 				onPointerDown={(event) => {
 					dragControls.start(event)
 				}}
-				onKeyDown={handleKeyDown}
-				className="-ml-2.5 flex size-11 flex-none cursor-grab touch-none items-center justify-center rounded-full text-muted focus-visible:outline-3 focus-visible:outline-offset-1 focus-visible:outline-ink active:cursor-grabbing"
-			>
-				<Icon name="menu" size={ICON_SIZE.control} />
-			</button>
+			/>
 			<button
 				type="button"
 				onClick={onOpen}

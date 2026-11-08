@@ -105,6 +105,8 @@ export { DEFAULT_FLAG_DELAY_MS, useDelayedFlag } from './use-delayed-flag'
 export { useAutoHeight } from './use-auto-height'
 export { useElementHeight } from './use-element-height'
 export { useEnteringKeys } from './use-entering-keys'
+export { moveItem, moveItemBy, orderByKeys } from './move-item'
+export { useReorderAnnouncement } from './use-reorder-announcement'
 export { COARSE_POINTER_QUERY, useMediaQuery } from './use-media-query'
 export {
 	getViewportBoxStyle,

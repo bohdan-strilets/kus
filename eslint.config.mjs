@@ -43,6 +43,8 @@ const createFsdBoundaries = (layer, index) => {
 
 export default tseslint.config(
 	{ ignores: ['design/**'] },
+	// the author's private eval data and scratch scripts: outside git, not part of the codebase
+	{ ignores: ['packages/ai-eval/data/private/**'] },
 	{
 		ignores: [
 			'**/dist/**',

@@ -31,17 +31,30 @@ export const TrainingRow = ({ row, isDateShown }: TrainingRowProps) => (
 			)}
 		</span>
 		<span aria-hidden="true" className="flex min-w-0 flex-1 flex-col gap-1.25">
-			<span className="flex flex-wrap items-baseline gap-x-1.5">
-				<Text as="span" variant="body" weight="bold">
+			<span className="flex items-baseline gap-x-1.5">
+				<Text
+					as="span"
+					variant="body"
+					weight="bold"
+					title={row.title}
+					className="max-w-full shrink-0 truncate"
+				>
 					{row.title}
 				</Text>
 				{row.time !== null && (
-					<Text as="span" variant="small" weight="regular" tone="muted">
+					<Text as="span" variant="small" weight="regular" tone="muted" className="shrink-0">
 						{`· ${row.time}`}
 					</Text>
 				)}
 				{row.templateName !== null && (
-					<Text as="span" variant="small" weight="regular" tone="muted">
+					<Text
+						as="span"
+						variant="small"
+						weight="regular"
+						tone="muted"
+						title={row.templateName}
+						className="min-w-0 truncate"
+					>
 						{row.templateName}
 					</Text>
 				)}

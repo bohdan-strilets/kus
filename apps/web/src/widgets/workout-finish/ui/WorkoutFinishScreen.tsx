@@ -60,7 +60,9 @@ export const WorkoutFinishScreen = ({ finished, onDone }: WorkoutFinishScreenPro
 			<div className="flex flex-1 flex-col items-center gap-3">
 				<Hamster mood={mood} size={HAMSTER_SIZE} label={t(HAMSTER_LABEL_KEYS[mood])} />
 				<div className="flex flex-col items-center gap-0.5 text-center">
-					<Heading as="h1">{header.title}</Heading>
+					<Heading as="h1" title={header.title} className="line-clamp-2">
+						{header.title}
+					</Heading>
 					<Text variant="caption" tone="muted">
 						{formatFinishSubtitle(workout, t)}
 					</Text>

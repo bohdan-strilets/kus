@@ -59,6 +59,10 @@ export const getExerciseIcon = (
 	)
 }
 
+/** A place the user named: without it the kind is the generic «Тренування», and a template name stands in for it. */
+export const hasKnownPlace = (workout: Pick<WorkoutResponse, 'place'>): boolean =>
+	workout.place !== null && workout.place !== 'OTHER'
+
 /** «Зал», «Вдома», «Біг» (outdoors) or «Тренування». */
 export const formatWorkoutKind = (place: WorkoutResponse['place'], t: TFunction): string =>
 	t(`workout.place.${place ?? 'OTHER'}`)

@@ -510,6 +510,100 @@ describe('programs (e2e, real DB)', () => {
 			expect(await prisma.programVersion.count()).toBe(2)
 		})
 
+		it('makes a new version for a rename alone, with the exercises as they were', async () => {
+			await start()
+			const owner = await registerUser('owner@kus.app')
+			await seedProgram(owner.userId)
+			const before = await getProgram(owner.agent)
+
+			const response = await owner.agent
+				.post(`${PROGRAMS_URL}/versions`)
+				.send({ ...saveBody(before, 0, [bench, pullUps]), name: '  Груди й спина  ' })
+				.expect(201)
+
+			const program = oneResponse.parse(response.body).data
+			expect(program.version.id).not.toBe(before.version.id)
+			expect(program.templates.map((template) => template.name)).toEqual([
+				'Груди й спина',
+				'Тренування Б',
+			])
+			expect(program.templates[0]?.exercises.map((exercise) => exercise.name)).toEqual([
+				'Жим лежачи',
+				'Підтягування',
+			])
+			const versions = versionsResponse.parse(
+				(await owner.agent.get(`${PROGRAMS_URL}/versions`).expect(200)).body,
+			).data
+			expect(versions[0]?.changes.lines).toEqual([
+				expect.objectContaining({
+					op: 'CHANGE',
+					scope: 'TEMPLATE',
+					field: 'name',
+					before: 'Тренування А',
+					after: 'Груди й спина',
+				}),
+			])
+		})
+
+		it('saves the name together with the exercises', async () => {
+			await start()
+			const owner = await registerUser('owner@kus.app')
+			await seedProgram(owner.userId)
+			const before = await getProgram(owner.agent)
+
+			const response = await owner.agent
+				.post(`${PROGRAMS_URL}/versions`)
+				.send({ ...saveBody(before, 1, [squat]), name: 'Ноги' })
+				.expect(201)
+
+			const program = oneResponse.parse(response.body).data
+			expect(program.templates[1]).toMatchObject({ name: 'Ноги' })
+			expect(program.templates[1]?.exercises.map((exercise) => exercise.name)).toEqual([
+				'Присідання',
+			])
+			expect(program.templates[0]?.name).toBe('Тренування А')
+		})
+
+		it('keeps the name when the request has none', async () => {
+			await start()
+			const owner = await registerUser('owner@kus.app')
+			await seedProgram(owner.userId)
+			const before = await getProgram(owner.agent)
+
+			const response = await owner.agent
+				.post(`${PROGRAMS_URL}/versions`)
+				.send(saveBody(before, 0, [bench]))
+				.expect(201)
+
+			expect(
+				oneResponse.parse(response.body).data.templates.map((template) => template.name),
+			).toEqual(['Тренування А', 'Тренування Б'])
+		})
+
+		it('answers 422 for an empty or too long name and 404 for a rename of a foreign template', async () => {
+			await start()
+			const owner = await registerUser('owner@kus.app')
+			const stranger = await registerUser('stranger@kus.app')
+			await seedProgram(owner.userId)
+			await seedProgram(stranger.userId)
+			const own = await getProgram(owner.agent)
+			const foreign = (await getProgram(stranger.agent)).templates[0]
+
+			for (const name of ['', 'а'.repeat(81)]) {
+				const response = await owner.agent
+					.post(`${PROGRAMS_URL}/versions`)
+					.send({ ...saveBody(own, 0, [bench]), name })
+					.expect(422)
+				expect(errorResponse.parse(response.body).errorCode).toBe('VALIDATION_ERROR')
+			}
+			await owner.agent
+				.post(`${PROGRAMS_URL}/versions`)
+				.send({ ...saveBody(own, 0, [bench]), templateId: foreign?.id, name: 'Чуже' })
+				.expect(404)
+			expect((await getProgram(stranger.agent)).templates[0]?.name).toBe('Тренування А')
+			expect(await prisma.programVersion.count()).toBe(2)
+		})
+
 		it('does not let a foreign dictionary exercise id in', async () => {
 			await start()
 			const owner = await registerUser('owner@kus.app')

@@ -13,6 +13,7 @@ const HAMSTER_SIZE = 96
 /** mockups/training-home.html «Наступне» (0.10.2): the template, its exercises with group dots, the hamster. */
 export const NextWorkoutCard = ({ template }: { template: ProgramTemplateResponse }) => {
 	const { t } = useTranslation()
+	const meta = formatProgramTemplateMeta(template, t)
 
 	return (
 		<section
@@ -24,9 +25,16 @@ export const NextWorkoutCard = ({ template }: { template: ProgramTemplateRespons
 			</Text>
 			<Link
 				to={getTrainingTemplatePath(template.id)}
-				className="max-w-60 text-title font-extrabold text-ink after:absolute after:inset-0 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-ink"
+				aria-label={`${template.name}${DETAIL_SEPARATOR}${meta}`}
+				title={template.name}
+				className="flex max-w-60 flex-col gap-0.5 text-ink after:absolute after:inset-0 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-ink"
 			>
-				{`${template.name}${DETAIL_SEPARATOR}${formatProgramTemplateMeta(template, t)}`}
+				<span aria-hidden="true" className="line-clamp-2 text-title font-extrabold">
+					{template.name}
+				</span>
+				<Text as="span" aria-hidden="true" variant="caption" tone="mutedStrong" weight="regular">
+					{meta}
+				</Text>
 			</Link>
 			<ul className="flex max-w-57 flex-col gap-1 pt-0.5 pb-1">
 				{template.exercises.map((exercise) => {

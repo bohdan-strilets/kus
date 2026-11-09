@@ -17,7 +17,7 @@ describe('program cases', () => {
 		for (const evalCase of PROGRAM_CASES) {
 			expect(evalCaseSchema.safeParse(evalCase).success, evalCase.id).toBe(true)
 		}
-		expect(PROGRAM_CASES).toHaveLength(13)
+		expect(PROGRAM_CASES).toHaveLength(14)
 	})
 
 	it('ask for a program only where one is expected', () => {
@@ -25,6 +25,7 @@ describe('program cases', () => {
 		expect(proposing.map(({ id }) => id)).toEqual([
 			'program-propose',
 			'program-swap-leg-press',
+			'program-keeps-custom-names',
 			'program-edit-pending',
 			'program-newbie-home',
 			'program-always-a',

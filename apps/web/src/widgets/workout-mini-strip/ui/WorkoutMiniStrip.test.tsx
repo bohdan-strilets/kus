@@ -27,6 +27,18 @@ describe('WorkoutMiniStrip', () => {
 		expect(link.textContent).toContain('Верх А · 23:14')
 	})
 
+	it('truncates the name and keeps the time apart, with the full name in the title', () => {
+		const name = 'Груди, плечі й трицепс — важкий день'
+		renderWithProviders(<WorkoutMiniStrip live={makeLiveResponse({ templateName: name })} />)
+
+		const nameEl = screen.getByText(name)
+
+		expect(nameEl.className).toContain('truncate')
+		expect(nameEl.parentElement?.getAttribute('title')).toBe(name)
+		expect(screen.getByText('· 23:14').className).toContain('shrink-0')
+		expect(screen.getByRole('link').getAttribute('aria-label')).toContain(name)
+	})
+
 	it('falls back to the default name for a session without a template', () => {
 		renderWithProviders(<WorkoutMiniStrip live={makeLiveResponse()} />)
 

@@ -166,7 +166,7 @@ export class ProgramsService {
 		return this.getActiveOrThrow(userId)
 	}
 
-	/** «Готово» of the template editor: the active version with this template's exercises replaced. */
+	/** «Готово» of the template editor: the active version with this template's exercises (and name, when given) replaced. */
 	async saveTemplate(userId: string, request: SaveTemplateRequest): Promise<ProgramResponse> {
 		const program = await this.requireActive(userId)
 		// a stale editor is a conflict before anything else: its template id may be gone from the new version
@@ -179,7 +179,9 @@ export class ProgramsService {
 		const draft: ProgramDraft = {
 			...base,
 			templates: base.templates.map((template) =>
-				template.key === edited.key ? { ...template, exercises: request.exercises } : template,
+				template.key === edited.key
+					? { ...template, exercises: request.exercises, name: request.name ?? template.name }
+					: template,
 			),
 		}
 		await this.createVersion(userId, {

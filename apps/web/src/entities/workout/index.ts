@@ -9,6 +9,7 @@ export {
 	formatNumber,
 	formatWorkoutDistance,
 	formatWorkoutKind,
+	hasKnownPlace,
 	formatWorkoutMinutes,
 	formatWorkoutTotal,
 	getExerciseIcon,

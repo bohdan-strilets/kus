@@ -26,7 +26,11 @@ export const toSaveExercises = (draft: readonly DraftExercise[]): TemplateExerci
 		...(isBodyweight === undefined ? {} : { isBodyweight }),
 	}))
 
+/** `newName` is the name «Готово» would send (null — the name stays): a rename alone is a change. */
 export const hasDraftChanges = (
 	original: readonly DraftExercise[],
 	draft: readonly DraftExercise[],
-): boolean => JSON.stringify(toSaveExercises(original)) !== JSON.stringify(toSaveExercises(draft))
+	newName: string | null = null,
+): boolean =>
+	newName !== null ||
+	JSON.stringify(toSaveExercises(original)) !== JSON.stringify(toSaveExercises(draft))

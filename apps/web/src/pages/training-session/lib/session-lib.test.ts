@@ -217,3 +217,20 @@ describe('formatSessionTime: the range of a named duration', () => {
 		).toBe(null)
 	})
 })
+
+describe('formatSessionHeader: a named training', () => {
+	it('titles by the name with the duration and moves the place under it', () => {
+		const header = formatSessionHeader(session({ durationMin: 62, templateName: 'Верх тіла' }), t)
+		expect(header.title).toBe('Верх тіла · 62 хв')
+		expect(header.subtitle).toMatch(/^Зал · Понеділок, 26 жовтня · \d{2}:\d{2}–\d{2}:\d{2}$/)
+	})
+
+	it('has no place in the subtitle when the place is unknown', () => {
+		const header = formatSessionHeader(
+			session({ place: null, durationMin: 62, templateName: 'Верх тіла' }),
+			t,
+		)
+		expect(header.title).toBe('Верх тіла · 62 хв')
+		expect(header.subtitle).toMatch(/^Понеділок, 26 жовтня · /)
+	})
+})

@@ -47,9 +47,20 @@ export const WorkoutMiniStrip = ({ live, onWarm, isOffline = false }: WorkoutMin
 					isOffline ? 'box-border border-2 border-white/70' : 'bg-success',
 				)}
 			/>
-			<Text as="span" variant="cardTitle" tone="onDark" className="flex-1 truncate" isTabular>
-				{`${name} · ${elapsed}`}
-			</Text>
+			<span aria-hidden="true" title={name} className="flex min-w-0 flex-1 items-baseline">
+				<Text as="span" variant="cardTitle" tone="onDark" className="min-w-0 truncate">
+					{name}
+				</Text>
+				<Text
+					as="span"
+					variant="cardTitle"
+					tone="onDark"
+					className="shrink-0 whitespace-pre"
+					isTabular
+				>
+					{` · ${elapsed}`}
+				</Text>
+			</span>
 			<span
 				aria-hidden="true"
 				className="flex min-h-9 items-center rounded-chip bg-white/14 px-3 text-caption font-bold"

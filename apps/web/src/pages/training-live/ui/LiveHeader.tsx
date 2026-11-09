@@ -31,7 +31,7 @@ export const LiveHeader = ({
 				<Icon name="chevron-down" size={ICON_SIZE.nav} />
 			</IconButton>
 			<div className="flex min-w-0 flex-1 flex-col">
-				<Text as="span" variant="small" tone="mutedStrong" className="truncate">
+				<Text as="span" variant="small" tone="mutedStrong" title={name} className="truncate">
 					{name}
 				</Text>
 				<Text

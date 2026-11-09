@@ -107,6 +107,18 @@ export const WITH_SINGLE_PROGRAM: Partial<FoodParseContext> = {
 	program: { ...ROTATE_PROGRAM, mode: 'SINGLE' },
 }
 
+/** The same two templates under names the user gave them (0.10.6): a change must not rename them. */
+const WITH_NAMED_PROGRAM: Partial<FoodParseContext> = {
+	...WITH_PROGRAM,
+	program: {
+		...ROTATE_PROGRAM,
+		templates: [
+			{ ...TEMPLATE_A, name: 'Верх тіла' },
+			{ ...TEMPLATE_B, name: 'Ноги й спина' },
+		],
+	},
+}
+
 const ONBOARDING_ANSWERS =
 	'place GYM; usually STRENGTH_AND_CARDIO; level EXPERIENCED; 3 per week; equipment FULL_GYM, PULL_UP_BAR'
 
@@ -225,6 +237,28 @@ export const PROGRAM_CASES: EvalCase[] = [
 		},
 		reference:
 			'A change in words → the whole program again: both templates under their t-refs, Б with a squat instead of the leg press, А untouched',
+	},
+	{
+		id: 'program-keeps-custom-names',
+		text: 'заміни жим ногами на присідання',
+		context: WITH_NAMED_PROGRAM,
+		expect: {
+			decision: 'program',
+			program: {
+				...KEPT_AS_IS,
+				mode: 'ROTATE',
+				templates: [
+					{ nameIncludes: 'верх тіла', exerciseCount: { min: 4, max: 4 } },
+					{
+						nameIncludes: 'ноги й спина',
+						exerciseCount: { min: 4, max: 4 },
+						exercises: [{ nameIncludes: 'присід' }, { nameIncludes: 'жим ногами', absent: true }],
+					},
+				],
+			},
+		},
+		reference:
+			'A change in words keeps the names the user gave: «Верх тіла» and «Ноги й спина» come back as they are, not as «Тренування А / Б»',
 	},
 	{
 		id: 'program-edit-pending',

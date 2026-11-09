@@ -1058,6 +1058,11 @@
 			"drag": "Перетягнути: {{name}}",
 			"remove": "Прибрати: {{name}}",
 			"position": "{{name}}: позиція {{position}} з {{total}}",
+			"nameLabel": "Назва тренування",
+			"nameHint": "Ця назва буде всюди: у програмі, журналі, живому режимі й чаті.",
+			"nameTooLong": "Назва — до {{max}} символів",
+			"nameCounter": "{{current}} / {{max}}",
+			"nameRestore": "Повернути «{{name}}»",
 			"addExercise": "Вправа",
 			"hint": "Перетягни за ≡, щоб змінити порядок. Тап по вправі — ціль. «Готово» зберігає нову версію програми.",
 			"lastTime": "Минулого разу:",
@@ -1306,6 +1311,7 @@
 		"session": {
 			"title": "{{kind}} · {{duration}}",
 			"subtitle": "{{date}} · {{time}}",
+			"subtitleWithPlace": "{{place}} · {{when}}",
 			"timeRange": "{{from}}–{{to}}",
 			"tiles": {
 				"duration": "Тривалість",

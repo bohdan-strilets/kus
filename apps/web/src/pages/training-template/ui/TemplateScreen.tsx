@@ -9,6 +9,7 @@ import { Button, Icon, ICON_SIZE, ScreenHeader } from '@/shared/ui'
 import { useTemplateEditor } from '../model/use-template-editor'
 import { getEditedEstimateMin } from '../lib/get-edited-estimate'
 import { TemplateEditor } from './TemplateEditor'
+import { TemplateNameField } from './TemplateNameField'
 import { TemplateView } from './TemplateView'
 
 interface TemplateScreenProps {
@@ -56,7 +57,15 @@ export const TemplateScreen = ({ program, template }: TemplateScreenProps) => {
 			/>
 			<div className="flex flex-1 flex-col gap-2.5 px-gutter pt-1 pb-4">
 				{editor.isEditing ? (
-					<TemplateEditor exercises={editor.exercises} dispatch={editor.dispatch} />
+					<>
+						<TemplateNameField
+							control={editor.nameForm.control}
+							error={editor.nameError}
+							defaultName={editor.defaultName}
+							onRestore={editor.restoreDefaultName}
+						/>
+						<TemplateEditor exercises={editor.exercises} dispatch={editor.dispatch} />
+					</>
 				) : (
 					<TemplateView exercises={editor.exercises} />
 				)}

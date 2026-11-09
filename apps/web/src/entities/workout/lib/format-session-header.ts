@@ -2,7 +2,7 @@ import type { WorkoutResponse } from '@kus/shared'
 import type { TFunction } from 'i18next'
 
 import { formatWorkoutDuration } from './format-workout-duration'
-import { formatWorkoutKind } from './format-workout'
+import { formatWorkoutKind, hasKnownPlace } from './format-workout'
 import { formatDayHeading, formatTime, toCalendarDate } from '@/shared/lib'
 
 const MS_IN_MINUTE = 60_000
@@ -34,12 +34,20 @@ export const formatSessionTime = (
 }
 
 export const formatSessionHeader = (workout: WorkoutResponse, t: TFunction): SessionHeader => {
-	const kind = formatWorkoutKind(workout.place, t)
+	// a named training is titled by its name; the place moves under it
+	const kind = workout.templateName ?? formatWorkoutKind(workout.place, t)
 	const duration = formatWorkoutDuration(workout, t)
 	const time = formatSessionTime(workout, t)
 	const date = formatDayHeading(toCalendarDate(workout.localDate))
+	const when = time === null ? date : t('training.session.subtitle', { date, time })
+	const isPlaceMoved = workout.templateName !== null && hasKnownPlace(workout)
 	return {
 		title: duration === null ? kind : t('training.session.title', { kind, duration }),
-		subtitle: time === null ? date : t('training.session.subtitle', { date, time }),
+		subtitle: isPlaceMoved
+			? t('training.session.subtitleWithPlace', {
+					place: formatWorkoutKind(workout.place, t),
+					when,
+				})
+			: when,
 	}
 }

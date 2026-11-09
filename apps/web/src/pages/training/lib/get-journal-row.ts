@@ -1,7 +1,7 @@
 import { TRAINING_GROUP_ORDER, type TrainingGroupKey, type WorkoutResponse } from '@kus/shared'
 import type { TFunction } from 'i18next'
 
-import { formatWorkoutDuration, formatWorkoutKind } from '@/entities/workout'
+import { formatWorkoutDuration, formatWorkoutKind, hasKnownPlace } from '@/entities/workout'
 import { getTrainingSessionPath } from '@/shared/config'
 import {
 	formatDayMonth,
@@ -49,11 +49,7 @@ export const getWorkoutGroups = (
 export const getRecordCount = (workout: Pick<WorkoutResponse, 'exercises'>): number =>
 	workout.exercises.filter((exercise) => exercise.record !== null).length
 
-// Without a place the kind is the generic «Тренування»: the template name stands in for it
-// instead of being shown twice.
-const hasKnownPlace = (workout: WorkoutResponse): boolean =>
-	workout.place !== null && workout.place !== 'OTHER'
-
+// Without a place the template name stands in for the kind instead of being shown twice.
 const getRowTemplateName = (workout: WorkoutResponse): string | null =>
 	hasKnownPlace(workout) ? workout.templateName : null
 

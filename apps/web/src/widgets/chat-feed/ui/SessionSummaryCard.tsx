@@ -30,6 +30,7 @@ export interface SessionSummaryCardProps {
 export const SessionSummaryCard = ({ workout, hasTail }: SessionSummaryCardProps) => {
 	const { t } = useTranslation()
 	const { counts, groups, records } = getSessionSummary(workout, t)
+	const title = workout.templateName ?? formatWorkoutKind(workout.place, t)
 	const duration = formatWorkoutDuration(workout, t)
 	const kcal = formatWorkoutKcal(workout.kcal, t)
 
@@ -40,8 +41,8 @@ export const SessionSummaryCard = ({ workout, hasTail }: SessionSummaryCardProps
 			className={cn('flex flex-col gap-2.5 px-3.5 py-3', hasTail && 'rounded-bl-tail')}
 		>
 			<div className="flex items-center justify-between gap-2">
-				<Text as="span" variant="cardTitle">
-					{formatWorkoutKind(workout.place, t)}
+				<Text as="span" variant="cardTitle" title={title} className="line-clamp-2">
+					{title}
 					{workout.startedAt !== null && (
 						<Text as="span" variant="cardTitle" weight="medium" tone="muted">
 							{' '}

@@ -2,6 +2,7 @@ import {
 	type ExerciseKind,
 	type ProgramChangeLine,
 	type ProgramChanges,
+	TEMPLATE_NAME_PREFIX,
 	programModeSchema,
 	type TemplateExerciseTarget,
 } from '@kus/shared'
@@ -45,8 +46,6 @@ export interface ProgramChangeGroup {
 	label: string
 	rows: ProgramChangeRow[]
 }
-
-const TEMPLATE_NAME_PREFIX = 'Тренування '
 
 /** «Тренування Б» → «Б»; any other name stays as it is. */
 export const getTemplateShortLabel = (name: string): string =>

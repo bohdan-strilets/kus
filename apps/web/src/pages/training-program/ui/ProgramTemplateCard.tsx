@@ -64,6 +64,8 @@ export const ProgramTemplateCard = ({
 				)}
 				<Link
 					to={getTrainingTemplatePath(template.id)}
+					aria-label={template.name}
+					title={template.name}
 					className="flex min-w-0 flex-1 items-center gap-2 text-ink outline-none after:absolute after:inset-0 after:rounded-card focus-visible:after:outline-3 focus-visible:after:outline-offset-2 focus-visible:after:outline-ink"
 				>
 					<Text as="span" variant="body" weight="extrabold" className="min-w-0 flex-1 truncate">

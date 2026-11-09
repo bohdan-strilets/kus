@@ -35,7 +35,9 @@ export const ScreenHeader = ({ title, subtitle, extra, backTo, action }: ScreenH
 				<Icon name="chevron-left" size={BACK_ICON_SIZE} />
 			</IconButton>
 			<div className="flex min-w-0 flex-1 flex-col">
-				<Heading as="h1">{title}</Heading>
+				<Heading as="h1" title={title} className="line-clamp-2">
+					{title}
+				</Heading>
 				{subtitle && (
 					<Text variant="caption" tone="muted">
 						{subtitle}

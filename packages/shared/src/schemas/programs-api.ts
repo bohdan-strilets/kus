@@ -4,6 +4,7 @@ import { exerciseKindSchema, muscleGroupSchema, programModeSchema } from './enum
 import { chatMessageSchema } from './messages.js'
 import {
 	PROGRAM_EXERCISES_PER_TEMPLATE_MAX,
+	PROGRAM_NAME_MAX_LENGTH,
 	PROGRAM_PER_WEEK_MAX,
 	programChangesSchema,
 	templateExerciseSchema,
@@ -102,6 +103,8 @@ export const programTemplateParamsSchema = z.object({ templateId: z.uuid() })
 export const saveTemplateRequestSchema = z.object({
 	baseVersionId: z.uuid(),
 	templateId: z.uuid(),
+	/** Missing = the name stays as it is (an older client). */
+	name: z.string().trim().min(1).max(PROGRAM_NAME_MAX_LENGTH).optional(),
 	exercises: z.array(templateExerciseSchema).max(PROGRAM_EXERCISES_PER_TEMPLATE_MAX),
 })
 export type SaveTemplateRequest = z.infer<typeof saveTemplateRequestSchema>

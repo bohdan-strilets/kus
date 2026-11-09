@@ -22,6 +22,27 @@ export const PROGRAM_EXERCISES_PER_TEMPLATE_MAX = 15
 export const PROGRAM_PER_WEEK_MAX = 7
 export const PROGRAM_TITLE_MAX_LENGTH = 60
 export const PROGRAM_NAME_MAX_LENGTH = 80
+/** The editor's name field stops here (the schema allows more, for old and AI-made names). */
+export const PROGRAM_TEMPLATE_NAME_UI_MAX = 40
+export const PROGRAM_TEMPLATE_NAME_COUNTER_FROM = 30
+/**
+ * Without Ґ and Є: they are easy to confuse with Г and Е. At least PROGRAM_TEMPLATES_MAX letters.
+ * The letters and the prefix are data stored in the DB (WorkoutTemplate.name) and must match what the
+ * model writes by the prompt rule in program-context.ts («Тренування А», «Тренування Б»…), so they
+ * do not go through i18n; localizing them for pl / en is a pre-beta backlog item.
+ */
+export const TEMPLATE_NAME_LETTERS: readonly string[] = ['А', 'Б', 'В', 'Г', 'Д', 'Е', 'Ж', 'З']
+export const TEMPLATE_NAME_PREFIX = 'Тренування '
+
+/**
+ * «Тренування А» for the template at the 0-based `position` in the program order. Past the letters
+ * (or for a bad position) it falls back to the 1-based number, so a name is always unique and never empty.
+ */
+export const getDefaultTemplateName = (position: number): string => {
+	const index = Number.isInteger(position) && position >= 0 ? position : 0
+	return `${TEMPLATE_NAME_PREFIX}${TEMPLATE_NAME_LETTERS[index] ?? index + 1}`
+}
+
 export const WEEKDAY_ISO_MIN = 1
 export const WEEKDAY_ISO_MAX = 7
 

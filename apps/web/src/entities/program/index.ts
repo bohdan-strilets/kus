@@ -40,7 +40,7 @@ export {
 	formatProgramSubtitle,
 	formatProgramVersionWhen,
 	formatProgramViewSubtitle,
-	formatRotateHint,
+	formatRotateHintParts,
 } from './lib/format-program-screen'
 export {
 	getWeekdayLongName,

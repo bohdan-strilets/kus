@@ -7,6 +7,7 @@ import {
 	formatProgramSubtitle,
 	formatProgramVersionWhen,
 	formatRotateHint,
+	formatRotateHintParts,
 } from './format-program-screen'
 
 const t = i18n.t.bind(i18n)
@@ -77,12 +78,59 @@ describe('formatRotateHint', () => {
 				],
 				t,
 			),
-		).toBe('Верх → Низ → Верх… Наступне — те, що йде після останнього зробленого.')
+		).toBe('Верх → Низ → … Наступне — те, що йде після останнього зробленого.')
 	})
 
 	it('has no sequence for one template', () => {
 		expect(formatRotateHint(named('Тренування А'), t)).toBe(
 			'Наступне — те, що йде після останнього зробленого.',
 		)
+	})
+})
+
+describe('formatRotateHint with custom names', () => {
+	const named = (...names: string[]) => names.map((name, position) => ({ name, position }))
+	const NEXT = 'Наступне — те, що йде після останнього зробленого.'
+
+	it('shows each custom name once and ends with «…»', () => {
+		expect(formatRotateHintParts(named('Верх', 'Низ'), t)).toEqual({
+			sequence: 'Верх → Низ → …',
+			isTruncatable: true,
+			next: NEXT,
+		})
+	})
+
+	it('treats a mix of default and custom names as custom', () => {
+		const parts = formatRotateHintParts(named('Тренування А', 'Низ', 'Тренування В'), t)
+		expect(parts.sequence).toBe('А → Низ → В → …')
+		expect(parts.isTruncatable).toBe(true)
+	})
+
+	it('orders by position', () => {
+		const parts = formatRotateHintParts(
+			[
+				{ name: 'Низ', position: 1 },
+				{ name: 'Верх', position: 0 },
+			],
+			t,
+		)
+		expect(parts.sequence).toBe('Верх → Низ → …')
+		expect(formatRotateHint(named('Верх', 'Низ'), t)).toBe(`Верх → Низ → … ${NEXT}`)
+	})
+
+	it('keeps the default names starting over and not truncatable', () => {
+		expect(formatRotateHintParts(named('Тренування А', 'Тренування Б'), t)).toEqual({
+			sequence: 'А → Б → А…',
+			isTruncatable: false,
+			next: NEXT,
+		})
+	})
+
+	it('has no sequence for one custom template', () => {
+		expect(formatRotateHintParts(named('Верх'), t)).toEqual({
+			sequence: null,
+			isTruncatable: false,
+			next: NEXT,
+		})
 	})
 })

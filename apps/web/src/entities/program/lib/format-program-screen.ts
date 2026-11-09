@@ -4,25 +4,52 @@ import type { TFunction } from 'i18next'
 import { DETAIL_SEPARATOR } from '@/entities/workout'
 import { formatDayMonth, formatTime } from '@/shared/lib'
 
-import { getTemplateShortLabel } from './format-program-changes'
+import { getTemplateShortLabel, isCustomTemplateName } from './format-program-changes'
 
 const SEQUENCE_SEPARATOR = ' → '
 
+type RotateTemplate = Pick<ProgramResponse['templates'][number], 'name' | 'position'>
+
+export interface RotateHintParts {
+	/** «А → Б → А…» or, with custom names, «Верх → Низ → …»; null for one template. */
+	sequence: string | null
+	/** True for custom names: they are long, so the screen shows the sequence on its own line, cut with «…». */
+	isTruncatable: boolean
+	/** «Наступне — те, що йде після останнього зробленого.» */
+	next: string
+}
+
 /**
- * The hint under «По черзі»: «А → Б → А… Наступне — …» built from the templates in the order of
- * their position (the short names of the journal); one template has no sequence to show.
+ * The parts of the hint under «По черзі», in the order of the position of the templates. Default
+ * names are short («А → Б → А…», starting over at the end); as soon as one name is custom, each name
+ * stands once and the sequence ends with «…».
  */
-export const formatRotateHint = (
-	templates: readonly Pick<ProgramResponse['templates'][number], 'name' | 'position'>[],
+export const formatRotateHintParts = (
+	templates: readonly RotateTemplate[],
 	t: TFunction,
-): string => {
-	const labels = [...templates]
-		.sort((a, b) => a.position - b.position)
-		.map((template) => getTemplateShortLabel(template.name))
-	const [first] = labels
-	if (labels.length < 2 || first === undefined) return t('program.screen.hint.ROTATE_single')
-	const sequence = `${[...labels, first].join(SEQUENCE_SEPARATOR)}…`
-	return t('program.screen.hint.ROTATE', { sequence })
+): RotateHintParts => {
+	const ordered = [...templates].sort((a, b) => a.position - b.position)
+	const next = t('program.screen.hint.ROTATE_next')
+	const [first] = ordered
+	if (ordered.length < 2 || first === undefined)
+		return { sequence: null, isTruncatable: false, next }
+	if (ordered.some((template) => isCustomTemplateName(template.name))) {
+		const names = ordered.map((template) => getTemplateShortLabel(template.name))
+		return {
+			sequence: `${names.join(SEQUENCE_SEPARATOR)}${SEQUENCE_SEPARATOR}…`,
+			isTruncatable: true,
+			next,
+		}
+	}
+	const labels = ordered.map((template) => getTemplateShortLabel(template.name))
+	const sequence = `${[...labels, getTemplateShortLabel(first.name)].join(SEQUENCE_SEPARATOR)}…`
+	return { sequence, isTruncatable: false, next }
+}
+
+/** The hint as one string: «А → Б → А… Наступне — …»; one template has no sequence to show. */
+export const formatRotateHint = (templates: readonly RotateTemplate[], t: TFunction): string => {
+	const { sequence, next } = formatRotateHintParts(templates, t)
+	return sequence === null ? next : t('program.screen.hint.ROTATE', { sequence, next })
 }
 
 /** «Все тіло · 2 тренування · 3 рази на тиждень»; the parts the program has no value for are skipped. */

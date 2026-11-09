@@ -53,6 +53,9 @@ export const getTemplateShortLabel = (name: string): string =>
 		? name.slice(TEMPLATE_NAME_PREFIX.length)
 		: name
 
+/** «Тренування Х» is the default name; every other one was given by the user. */
+export const isCustomTemplateName = (name: string): boolean => getTemplateShortLabel(name) === name
+
 /**
  * A change as one line (the sheet «Що змінилось»): «Б: Махи — 4 підходи · 12–15 повт.» for a change,
  * «Б: Присідання · 3 підходи · 8–12 повт. · 70 кг» for an added one, just «Б: Жим ногами» for a removed one

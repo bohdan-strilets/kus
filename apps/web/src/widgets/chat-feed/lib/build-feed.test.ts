@@ -271,6 +271,42 @@ describe('buildFeed outbox order and stale failures', () => {
 		})
 	})
 
+	it('resends a stale text under a new id: the old copy is what the retry supersedes', () => {
+		const stale = failedItem({ createdAt: '2026-10-05T21:30:00Z' })
+		const retryOf = (items: Record<string, OutboxItem>) =>
+			buildFeed(params([], items)).find((item) => item.kind === 'failure')
+
+		expect(retryOf({ 'local-1': stale })).toMatchObject({
+			retry: { supersedes: { target: 'outbox', id: 'local-1' } },
+		})
+		expect(retryOf({ 'local-1': failedItem({ createdAt: '2026-10-07T10:00:00Z' }) })).toMatchObject(
+			{
+				retry: { clientMessageId: 'local-1' },
+			},
+		)
+		// a stored photo belongs to its first message on the server, so it keeps the id
+		const withPhoto = { ...stale, photoId: '0190f8e0-0000-7000-8000-000000000001' }
+		expect(retryOf({ 'local-1': withPhoto })).not.toMatchObject({
+			retry: { supersedes: expect.anything() as unknown },
+		})
+	})
+
+	it('supersedes the server copy of a stale failed message and keeps the fresh one as is', () => {
+		const failed = message({
+			id: 'srv-1',
+			clientMessageId: 'c-1',
+			status: 'FAILED',
+			createdAt: '2026-10-05T10:00:00Z',
+			content: 'борщ',
+		})
+		const failure = buildFeed(params([failed])).find((item) => item.kind === 'failure')
+
+		expect(failure).toMatchObject({
+			staleSince: '2026-10-05',
+			retry: { clientMessageId: 'c-1', supersedes: { target: 'server', id: 'srv-1' } },
+		})
+	})
+
 	it('treats exactly one day as fresh and a bit more as stale', () => {
 		const edge = failedItem({
 			createdAt: new Date(NOW.getTime() - 24 * 60 * 60 * 1000).toISOString(),

@@ -1,7 +1,6 @@
 import { useTranslation } from 'react-i18next'
 
 import { DayDivider, TimeDivider, TypingIndicator } from '@/entities/message'
-import type { Addressee } from '@/entities/user'
 import { formatDayHeading, formatTime, toCalendarDate } from '@/shared/lib'
 
 import type { FeedDismiss, FeedItem, RetryParams } from '../model/feed.types'
@@ -14,8 +13,6 @@ import { YesterdayRecap } from './YesterdayRecap'
 interface FeedItemViewProps {
 	item: FeedItem
 	isLatestReply: boolean
-	addressee: Addressee
-	timeZone: string
 	/** `YYYY-MM-DD` in the user's timezone. */
 	today: string
 	onRetry: (params: RetryParams) => void
@@ -25,8 +22,6 @@ interface FeedItemViewProps {
 export const FeedItemView = ({
 	item,
 	isLatestReply,
-	addressee,
-	timeZone,
 	today,
 	onRetry,
 	onDismiss,
@@ -45,7 +40,7 @@ export const FeedItemView = ({
 		case 'time':
 			return <TimeDivider time={formatTime(new Date(item.at))} />
 		case 'greeting':
-			return <NewDayGreeting addressee={addressee} timeZone={timeZone} />
+			return <NewDayGreeting />
 		case 'recap':
 			return <YesterdayRecap localDate={item.localDate} />
 		case 'user':

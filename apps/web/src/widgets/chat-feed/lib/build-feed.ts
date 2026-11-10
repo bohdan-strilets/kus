@@ -221,6 +221,18 @@ const isTodayEmpty = (params: BuildFeedParams): boolean => {
 const isStaleFailure = (createdAt: string, now: Date): boolean =>
 	now.getTime() - Date.parse(createdAt) > STALE_FAILURE_MS
 
+/**
+ * A stale text is resent as a new message: the API logs a resend of the same id on the day it was
+ * written. A photo is bound to its first message on the server, so it keeps the id.
+ */
+const getFailureRetry = (user: UserEntry, isStale: boolean): RetryParams | null => {
+	if (!user.error?.canRetry || !user.retry) return null
+	const { retry, dismiss } = user
+	const isReplaceable =
+		isStale && dismiss && !retry.photo && !retry.photoId && !retry.onboardingAnswer
+	return isReplaceable ? { ...retry, supersedes: dismiss } : retry
+}
+
 const getDayLabel = (localDate: string, { today, yesterday }: BuildFeedParams) => {
 	if (localDate === today) return 'today'
 	if (localDate === yesterday) return 'yesterday'
@@ -302,17 +314,15 @@ export const buildFeed = (params: BuildFeedParams): FeedItem[] => {
 				...(user.uploadProgress === undefined ? {} : { uploadProgress: user.uploadProgress }),
 			})
 			if (user.state === 'failed' && user.error) {
+				const isStale = user.error.canRetry && isStaleFailure(createdAt, params.now)
 				items.push({
 					kind: 'failure',
 					key: `failure-${user.key}`,
 					error: user.error,
-					retry: user.error.canRetry ? user.retry : null,
+					retry: getFailureRetry(user, isStale),
 					dismiss: user.dismiss,
 					// the day it was written, only when a retry would log it on a later day
-					staleSince:
-						user.error.canRetry && user.retry && isStaleFailure(createdAt, params.now)
-							? localDate
-							: null,
+					staleSince: isStale && user.retry ? localDate : null,
 				})
 			}
 		}

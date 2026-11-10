@@ -81,7 +81,6 @@ const ChatScreen = ({ addressee, timeZone }: { addressee: Addressee; timeZone: s
 				onFullHeightChange={setFullHeaderHeight}
 			/>
 			<ChatFeed
-				addressee={addressee}
 				timeZone={timeZone}
 				today={today}
 				onCompactChange={header.onScrolledUpChange}

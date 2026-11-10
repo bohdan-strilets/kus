@@ -1,26 +1,19 @@
 import { useTranslation } from 'react-i18next'
 
 import { KusikRow, MessageBubble } from '@/entities/message'
-import { type Addressee, useGreeting } from '@/entities/user'
 import { Text } from '@/shared/ui'
 
-interface NewDayGreetingProps {
-	addressee: Addressee
-	timeZone: string
-}
-
 /**
- * Kusik opens each day (mockups/chat-new-day.html, smileOpen). The usual breakfasts as chips come
- * with memory (stage 5), so the text stops before «тапни звичний варіант».
+ * Kusik opens each day (mockups/chat-new-day.html, smileOpen) with a hint only: the greeting by
+ * name lives in the header. The usual breakfasts as chips come with memory (stage 5).
  */
-export const NewDayGreeting = ({ addressee, timeZone }: NewDayGreetingProps) => {
+export const NewDayGreeting = () => {
 	const { t } = useTranslation()
-	const greeting = useGreeting({ addressee, timeZone })
 
 	return (
 		<KusikRow kind="newDay">
 			<MessageBubble>
-				<Text>{t('chat.newDay', { greeting })}</Text>
+				<Text>{t('chat.newDay')}</Text>
 			</MessageBubble>
 		</KusikRow>
 	)

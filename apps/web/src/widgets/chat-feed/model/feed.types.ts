@@ -12,6 +12,11 @@ export interface RetryParams {
 	/** Already uploaded: the resend only sends the message. */
 	photoId?: string
 	onboardingAnswer?: OnboardingAnswerRequest
+	/**
+	 * Set for a message that waited over a day: the API would log a resend of the same id on the day
+	 * it was written, so it goes out under a new id and this old copy is dropped from the feed.
+	 */
+	supersedes?: FeedDismiss
 }
 
 /**

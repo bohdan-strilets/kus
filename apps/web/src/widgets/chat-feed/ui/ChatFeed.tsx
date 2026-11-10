@@ -4,13 +4,12 @@ import { type CSSProperties, useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { messagesQueryOptions } from '@/entities/message'
-import type { Addressee } from '@/entities/user'
 import { useOutboxStore, usePhotoSessionStore, useSendMessage } from '@/features/send-message'
-import { bubbleVariants, shiftLocalDate } from '@/shared/lib'
+import { bubbleVariants, createUuid, shiftLocalDate } from '@/shared/lib'
 import { Button, Loader, Text } from '@/shared/ui'
 
 import { buildFeed } from '../lib/build-feed'
-import type { FeedDismiss } from '../model/feed.types'
+import type { FeedDismiss, RetryParams } from '../model/feed.types'
 import { useNow } from '../model/use-now'
 import { useFeedScroll } from '../model/use-feed-scroll'
 import { useNewItemKeys } from '../model/use-new-item-keys'
@@ -19,8 +18,6 @@ import { FeedSkeleton } from './FeedSkeleton'
 import { ScrollToEndButton } from './ScrollToEndButton'
 
 export interface ChatFeedProps {
-	/** Who the new-day greeting calls by name. */
-	addressee: Addressee
 	timeZone: string
 	/** `YYYY-MM-DD` in the user's timezone. */
 	today: string
@@ -45,7 +42,6 @@ const OLDER_LOADER_SIZE = 28
  * from this device, grouped by the user's days.
  */
 export const ChatFeed = ({
-	addressee,
 	timeZone,
 	today,
 	onCompactChange,
@@ -91,6 +87,14 @@ export const ChatFeed = ({
 		}
 		hideMessage(target.id)
 		if (target.clientMessageId) removeDraft(target.clientMessageId)
+	}
+	const resend = ({ supersedes, ...params }: RetryParams): void => {
+		if (!supersedes) {
+			retry(params)
+			return
+		}
+		dismiss(supersedes)
+		retry({ ...params, clientMessageId: createUuid() })
 	}
 	const newKeys = useNewItemKeys(items)
 	const { scrollRef, contentRef, isScrolledUp, scrollToEndOnTap } = useFeedScroll({
@@ -141,10 +145,8 @@ export const ChatFeed = ({
 				<FeedItemView
 					item={item}
 					isLatestReply={item.key === latestReplyKey}
-					addressee={addressee}
-					timeZone={timeZone}
 					today={today}
-					onRetry={retry}
+					onRetry={resend}
 					onDismiss={dismiss}
 				/>
 			</motion.div>

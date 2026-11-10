@@ -51,6 +51,12 @@ const WITH_WORKOUT: Partial<FoodParseContext> = {
 	],
 }
 
+/** Two similar presses in the dictionary: the barbell bench x1 and the machine press x2. */
+const TWO_PRESSES: NonNullable<Partial<FoodParseContext>['exercises']> = [
+	{ ref: 'x1', name: 'Жим лежачи', kind: 'STRENGTH', last: null },
+	{ ref: 'x2', name: 'Жим від грудей', kind: 'STRENGTH', last: null },
+]
+
 /** The dictionary only: the exercise is known, but there is no workout today to confuse a new session with a fix. */
 const WITH_DICTIONARY: Partial<FoodParseContext> = { exercises: WITH_WORKOUT.exercises }
 
@@ -195,6 +201,32 @@ export const WORKOUT_CASES: EvalCase[] = [
 			],
 		},
 		reference: 'An exercise that is not in the dictionary gets no exerciseRef',
+	},
+	{
+		id: 'workout-ambiguous-press',
+		text: 'жим 80 3×8',
+		context: { exercises: TWO_PRESSES },
+		expect: {
+			decision: 'reply',
+			replyIncludesAny: ['лежач', 'грудей', 'яку', 'який', 'яка', 'котр'],
+		},
+		reference:
+			'«жим» fits two listed exercises (barbell bench and machine press) and the message does not say which: ask in the reply, no log_workout, no new exercise',
+	},
+	{
+		id: 'workout-two-presses-exact',
+		text: 'жим лежачи 80 3×8',
+		context: { exercises: TWO_PRESSES },
+		expect: {
+			decision: 'workout',
+			workouts: [
+				{
+					exercises: [{ nameIncludes: 'лежач', sets: 3, weightKg: 80, reps: 8, exerciseRef: 'x1' }],
+				},
+			],
+		},
+		reference:
+			'Two similar exercises in «Exercises», the user names one exactly: its x-ref (x1), not the machine press',
 	},
 	{
 		id: 'workout-replace',

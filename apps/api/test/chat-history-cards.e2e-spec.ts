@@ -60,6 +60,17 @@ const logCopy = (copyRef: string) => ({
 	args: { items: [copiedSoup(copyRef)], date: null, mealType: null, reply: 'Записав!' },
 })
 
+/** The model marks a copy as MEMORY (it looks like a saved food) without a memoryRef. */
+const logCopyAsMemory = (copyRef: string, date: string | null = null) => ({
+	name: 'log_food',
+	args: {
+		items: [{ ...copiedSoup(copyRef), source: 'MEMORY' }],
+		date,
+		mealType: null,
+		reply: 'Записав!',
+	},
+})
+
 describe('closing a day, week stats and copying earlier entries (e2e, real DB, fake model)', () => {
 	let app: NestExpressApplication
 	let prisma: PrismaService
@@ -566,6 +577,22 @@ describe('closing a day, week stats and copying earlier entries (e2e, real DB, f
 			})
 		})
 
+		it('takes the source from the copied entry, not from the model: MEMORY on h1 passes on the first try', async () => {
+			await start()
+			const owner = await registerUser('owner@kus.app')
+			await seedEntry(owner, dayOffset(owner, -10), { name: 'Гречка', kcal: 300 })
+			fake.respond(createCompletion([logCopyAsMemory('h1')]))
+
+			const response = await send(owner, 'гречку як минулого разу').expect(201)
+
+			expect(fake.bodies).toHaveLength(1)
+			const { data } = sendResponseSchema.parse(response.body)
+			const stored = await prisma.foodEntry.findFirstOrThrow({
+				where: { sourceMessageId: data.userMessage.id },
+			})
+			expect(stored).toMatchObject({ source: 'LABEL', confidence: 0.9, myFoodId: null })
+		})
+
 		describe("today's entries as e-refs", () => {
 			const logCopyOn = (copyRef: string, date: string) => ({
 				name: 'log_food',
@@ -594,6 +621,24 @@ describe('closing a day, week stats and copying earlier entries (e2e, real DB, f
 				expect(
 					await prisma.foodEntry.count({ where: { userId: owner.userId, deletedAt: null } }),
 				).toBe(2)
+			})
+
+			it('takes the source from the copied entry: MEMORY on e1 passes on the first try', async () => {
+				await start()
+				const owner = await registerUser('owner@kus.app')
+				const today = dayOffset(owner, 0)
+				const tomorrow = dayOffset(owner, 1)
+				await seedEntry(owner, today, { kcal: 150 })
+				fake.respond(createCompletion([logCopyAsMemory('e1', tomorrow)]))
+
+				const response = await send(owner, 'таку саму порцію супу на завтра').expect(201)
+
+				expect(fake.bodies).toHaveLength(1)
+				const { data } = sendResponseSchema.parse(response.body)
+				const stored = await prisma.foodEntry.findFirstOrThrow({
+					where: { sourceMessageId: data.userMessage.id },
+				})
+				expect(stored).toMatchObject({ kcal: 75, source: 'LABEL', confidence: 0.9, myFoodId: null })
 			})
 
 			it("refuses another user's entry, which the owner's context never lists", async () => {

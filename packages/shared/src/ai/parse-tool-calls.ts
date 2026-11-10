@@ -343,7 +343,9 @@ const checkLogReferences = (
 		if (item.copyRef !== null && item.memoryRef !== null) {
 			errors.push(`log_food: items.${index} has both copyRef and memoryRef — use one`)
 		}
-		if (item.source === 'MEMORY' && item.memoryRef === null) {
+		// a copy takes source, confidence and myFoodId from the entry it points at (backend), so the
+		// model's source is irrelevant for it
+		if (item.source === 'MEMORY' && item.memoryRef === null && item.copyRef === null) {
 			errors.push(`log_food: items.${index} has source MEMORY but no memoryRef`)
 		}
 		// the backend rescales a memoryRef item from the saved food, which would silently drop an

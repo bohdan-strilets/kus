@@ -593,6 +593,22 @@ describe('ChatTurnService.saveDecision copyRef', () => {
 		expect(entry).not.toHaveProperty('copyRef')
 	})
 
+	it('ignores the source the model gives a copy: MEMORY without memoryRef still takes the entry source', async () => {
+		const { save, logEntries, findActiveEntriesByIds } = createService()
+		findActiveEntriesByIds.mockResolvedValue([EARLIER])
+
+		await save(
+			toLogDecision([toItem('Гречка', { copyRef: 'y1', grams: 100, source: 'MEMORY' })]),
+			new Map([['y1', 'entry-y1']]),
+		)
+
+		expect(getLogged(logEntries).entries[0]?.entry).toMatchObject({
+			source: 'LABEL',
+			confidence: 0.9,
+			myFoodId: 'food-1',
+		})
+	})
+
 	it('reads only the refs of this request and only the ids the context mapped', async () => {
 		const { save, findActiveEntriesByIds } = createService()
 

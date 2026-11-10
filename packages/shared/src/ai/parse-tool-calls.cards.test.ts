@@ -5,7 +5,7 @@ import { parseToolCalls, type RawToolCall } from './parse-tool-calls.js'
 
 const refs: ParseRefs = {
 	memoryRefs: new Set(['m1']),
-	copyRefs: new Set(['y1', 'h1']),
+	copyRefs: new Set(['y1', 'h1', 'e1']),
 	entries: new Map(),
 	deletedEntryRefs: new Set(),
 	clarifications: new Map(),
@@ -160,6 +160,17 @@ describe('log_food copyRef', () => {
 
 	it('accepts a listed ref of yesterday and of the history', () => {
 		expect(parseToolCalls([logFood([copied, { ...egg, copyRef: 'h1' }])], refs).ok).toBe(true)
+	})
+
+	it('accepts source MEMORY on a copy without memoryRef: the backend sets the source from the entry', () => {
+		for (const copyRef of ['e1', 'h1']) {
+			const item = { ...egg, source: 'MEMORY', copyRef }
+			expect(parseToolCalls([logFood([item])], refs).ok).toBe(true)
+		}
+	})
+
+	it('still rejects source MEMORY with neither memoryRef nor copyRef', () => {
+		expect(errorsOf([logFood([{ ...egg, source: 'MEMORY' }])])).toContain('no memoryRef')
 	})
 
 	it('rejects a ref that is not in the context', () => {

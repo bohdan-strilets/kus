@@ -6,6 +6,26 @@ All notable changes to Kusik are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.11.2] — 2026-11-10
+
+Kusik sees past workouts, and an unsent message can be dismissed or sent for today. A second read tool, `get_workouts`, answers "коли я почав ходити в зал", "скільки тренувань цього місяця", records and missed program days from numbers the backend counts. The chat outbox gets a way out of every failed message. No migrations; prompt `2026-11-10.6`; the web version is 0.11.2.
+
+### Added
+
+- `get_workouts`, the second read tool: a period of up to 92 days (a calendar month = days from the 1st), sessions, first and last date, count, exercises with best working sets, records and missed program days; the result always starts with the first workout ever and the all-time count. The numbers come from the training-statistics helpers; an open live session is not counted but flagged ([a66536a])
+- Eval cases `read-workouts-*` (first ever, month count, record, month review, today without a call, empty week, missed program, logging without a read) ([4722796])
+- `sendNow` in `POST /messages`: a retried FAILED message is restamped at the current time and logged today, photos included ([0d20ec2])
+
+### Changed
+
+- Prompt `2026-11-10.6`: past workouts are looked up with `get_workouts` instead of "I only see today's"; an empty period is never "there were none at all" ([a66536a], [0985eb1])
+- Outbox: "Прибрати" for every failed message; a failure older than a day is dated and offers "Надіслати" (sends it for today) instead of "Спробувати ще"; local feed items are placed by `createdAt`, not at the end ([8b33331], [0d20ec2])
+- The new-day bubble shows only the hint "Пиши, що їси, звичайними словами — я все порахую." and only when nothing was written today, on any device ([2bab573], [3046c0d])
+
+### Fixed
+
+- A retried FAILED message was logged on the day of its original `createdAt` ([0d20ec2], test [0fa6b7d])
+
 ## [0.11.1] — 2026-11-10
 
 Kusik counts a home-cooked pot correctly. A soup made from a list of ingredients used to get all of their kcal on the single portion (114 kcal/100 g instead of about 22); now the portion is its share of the pot, the water is asked about, and a recipe that was never written down is not invented. Prompt only (`2026-11-10.4` and `.5`); no API changes, no migrations; the web version is 0.11.1.
@@ -787,7 +807,16 @@ Design sync with `design/` v0.5.2. Web only: no API, shared-package or migration
 
 ## 0.2.0 / 0.1.0 — see tags
 
-[Unreleased]: https://github.com/bohdan-strilets/kus/compare/v0.11.1...HEAD
+[Unreleased]: https://github.com/bohdan-strilets/kus/compare/v0.11.2...HEAD
+[0.11.2]: https://github.com/bohdan-strilets/kus/compare/v0.11.1...v0.11.2
+[8b33331]: https://github.com/bohdan-strilets/kus/commit/8b33331fce313dcc632bea024845579a4b098c74
+[2bab573]: https://github.com/bohdan-strilets/kus/commit/2bab573b603a822dfc370e16bea50f701f9e2c30
+[3046c0d]: https://github.com/bohdan-strilets/kus/commit/3046c0d74aeba71515e7b1889e2449cf908a43e0
+[0fa6b7d]: https://github.com/bohdan-strilets/kus/commit/0fa6b7dd8efa62e21167db68ea1de369fbd836a4
+[0d20ec2]: https://github.com/bohdan-strilets/kus/commit/0d20ec2f43f766f90e9743926e578316947f3b8f
+[a66536a]: https://github.com/bohdan-strilets/kus/commit/a66536a9596b4840a655e1db6ffd9c48f79eb0d4
+[4722796]: https://github.com/bohdan-strilets/kus/commit/4722796d17363ea7f364d93a5ec1d6a671221255
+[0985eb1]: https://github.com/bohdan-strilets/kus/commit/0985eb1e902c65fcabae6fd8519b96525b343528
 [0.11.1]: https://github.com/bohdan-strilets/kus/compare/v0.11.0...v0.11.1
 [16d05aa]: https://github.com/bohdan-strilets/kus/commit/16d05aa44022e7afd09a1e2f42d64f4c538d79e5
 [270572d]: https://github.com/bohdan-strilets/kus/commit/270572dfb79898b6d8b63ad84007f11f50b6846b

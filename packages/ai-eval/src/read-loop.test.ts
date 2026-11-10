@@ -186,6 +186,7 @@ describe('get_workouts in the read loop', () => {
 			firstEverDate: '2025-09-03',
 			totalEver: 84,
 			exercise: null,
+			periodCount: 0,
 			count: 0,
 			firstDate: null,
 			lastDate: null,

@@ -76,6 +76,7 @@ const getEmptyWorkoutsRead = (today: string): WorkoutsReadData => ({
 	firstEverDate: null,
 	totalEver: 0,
 	exercise: null,
+	periodCount: 0,
 	count: 0,
 	firstDate: null,
 	lastDate: null,

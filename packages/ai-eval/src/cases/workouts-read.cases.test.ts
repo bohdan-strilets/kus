@@ -18,8 +18,8 @@ const resultOf = (id: string): string => {
 }
 
 describe('get_workouts cases', () => {
-	it('are the eight cases of 0.11.2, valid, with ids unique across the repo set', () => {
-		expect(WORKOUTS_READ_CASES).toHaveLength(8)
+	it('are the twelve cases of 0.11.2 and 0.11.3, valid, with ids unique across the repo set', () => {
+		expect(WORKOUTS_READ_CASES).toHaveLength(12)
 		const ids = REPO_CASES.map(({ id }) => id)
 		expect(new Set(ids).size).toBe(ids.length)
 		for (const evalCase of WORKOUTS_READ_CASES) {
@@ -56,5 +56,26 @@ describe('get_workouts cases', () => {
 		expect(resultOf('read-workouts-missed-program')).toContain('planned 9, done 7')
 		expect(resultOf('read-workouts-empty-week')).toContain('No workouts in this period.')
 		expect(resultOf('read-workouts-empty-week')).toContain('all time: 84 workouts.')
+	})
+
+	it('tell the program check apart from the count, and the unfinished week from a miss', () => {
+		const program = resultOf('read-workouts-month-count-program')
+		expect(program).toContain(
+			'Plan check counts only whole Mon–Sun weeks of the period that are over: 02.11–08.11',
+		)
+		expect(program).toContain("Not in the check: 2 of the period's 3 workouts")
+		expect(resultOf('read-workouts-this-week')).toContain('This week so far: 1 of 3 (not over).')
+		expect(resultOf('read-workouts-this-week')).toContain('No whole week of the period is over yet')
+	})
+
+	it('give the two presses of one spoken name apart, and the history marker of the earlier read', () => {
+		const text = resultOf('read-workouts-prior-marker')
+		expect(text).toContain('Matched exercises: "Жим від грудей"; "Жим лежачи"')
+		expect(text).toContain('Workouts with it: 2 of 30 in the period')
+		const marked = byId('read-workouts-prior-marker').context?.history?.at(-1)
+		expect(marked?.reads?.[0]).toMatch(/^read workouts 01\.11–10\.11: 3 \(01\.11, 05\.11, 09\.11\)/)
+		expect(byId('read-workouts-prior-no-marker').context?.history?.at(-1)).not.toHaveProperty(
+			'reads',
+		)
 	})
 })

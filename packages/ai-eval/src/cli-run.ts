@@ -3,7 +3,7 @@ import { type AiReasoningMode, PROMPT_VERSION } from '@kus/shared'
 import type { EvalCase } from './cases/index.js'
 import { print } from './cli-output.js'
 import { createProgressReporter } from './progress.js'
-import { getCaseReserveFromHistory, loadCostHistory } from './case-reserve.js'
+import { getCaseReserveFromHistory, getOwnCaseReserves, loadCostHistory } from './case-reserve.js'
 import { fetchPrices, getCaseReserveUsd } from './pricing.js'
 import { createResultsWriter, RESULTS_DIR } from './results-store.js'
 import { type ModelRun, type RunBudget, runModel } from './runner.js'
@@ -70,13 +70,18 @@ export const executePaidRun = async (setup: PaidRunSetup): Promise<PaidRun> => {
 		for (const model of setup.models) {
 			const price = prices.get(model)
 			if (!price) throw new Error(`Model "${model}" is not on OpenRouter`)
-			const caseReserveUsd = getCaseReserveFromHistory({
+			const reserveInput = {
 				history,
 				model,
 				caseIds: cases.map((evalCase) => evalCase.id),
 				upperBoundUsd: getCaseReserveUsd(cases, price, reasoning),
-			})
-			print(`▶ ${model}: ${cases.length} кейсів, резерв на кейс $${caseReserveUsd.toFixed(4)}…`)
+			}
+			// cases without own history get the model-wide (warm) p95, not the pool of the run's cases
+			const caseReserveUsd = getCaseReserveFromHistory({ ...reserveInput, caseIds: [] })
+			const caseReserves = getOwnCaseReserves(reserveInput)
+			print(
+				`▶ ${model}: ${cases.length} кейсів, резерв на кейс $${caseReserveUsd.toFixed(4)} (власна історія: ${caseReserves.size})…`,
+			)
 			runs.push(
 				await runModel(cases, {
 					apiKey: setup.apiKey,
@@ -85,6 +90,7 @@ export const executePaidRun = async (setup: PaidRunSetup): Promise<PaidRun> => {
 					concurrency: setup.concurrency,
 					budget,
 					caseReserveUsd,
+					caseReserves,
 					// the spend is real from the moment a case ends: file line and ledger before the next one
 					onCaseDone: async (result) => {
 						await Promise.all([

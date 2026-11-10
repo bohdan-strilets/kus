@@ -26,6 +26,8 @@ export interface RunOptions {
 	budget: RunBudget
 	/** Reserved before each case starts (see getCaseReserveFromHistory), so the run stops before --max-cost. */
 	caseReserveUsd: number
+	/** Reserves of cases with their own history (by case id); the others get caseReserveUsd. */
+	caseReserves?: ReadonlyMap<string, number>
 	/** Awaited: a case counts as done only after its result is written. */
 	onCaseDone?: (result: CaseResult) => void | Promise<void>
 }
@@ -92,8 +94,11 @@ export const runModel = async (cases: EvalCase[], options: RunOptions): Promise<
 
 	// the first `concurrency` cases start with no cache and each pays for the cold prompt prefix;
 	// read it again until they have started
-	const getReserveUsd = (): number =>
-		getStartReserveUsd(caseReserveUsd, started < options.concurrency)
+	const getReserveUsd = (evalCase: EvalCase): number =>
+		getStartReserveUsd(
+			options.caseReserves?.get(evalCase.id) ?? caseReserveUsd,
+			started < options.concurrency,
+		)
 
 	const worker = async (): Promise<void> => {
 		while (next < cases.length) {
@@ -102,17 +107,17 @@ export const runModel = async (cases: EvalCase[], options: RunOptions): Promise<
 			if (!evalCase) return
 			if (stopAtSoftLimit()) return
 			// a case in flight may finish under its reserve and free room for this one
-			while (!canStartCase(budget, getReserveUsd()) && inFlight.size > 0) {
+			while (!canStartCase(budget, getReserveUsd(evalCase)) && inFlight.size > 0) {
 				await Promise.race(inFlight)
 			}
 			if (stopAtSoftLimit()) return
-			if (!canStartCase(budget, getReserveUsd())) {
+			if (!canStartCase(budget, getReserveUsd(evalCase))) {
 				// nothing in flight, so the budget only shrinks from here: skip the rest
 				skipped += cases.length - next + 1
 				next = cases.length
 				return
 			}
-			const reserveUsd = getReserveUsd()
+			const reserveUsd = getReserveUsd(evalCase)
 			started += 1
 			const task = runReserved(evalCase, reserveUsd)
 			// waiters only need to know it settled; this worker still sees the error

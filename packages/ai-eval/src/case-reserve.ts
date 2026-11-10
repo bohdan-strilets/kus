@@ -15,17 +15,26 @@ export const COLD_START_RESERVE_USD = 0.09
 export const RESERVE_ATTEMPTS = 2
 const RESERVE_PERCENTILE = 0.95
 
+/** One earlier case result: its cost and whether it read the prompt cache (a cold one wrote it instead). */
+export interface CostSample {
+	costUsd: number
+	isWarm: boolean
+}
+
 /** Real per-case costs of earlier runs, by model and case id (failed results without a cost are not kept). */
-export type CostHistory = Map<string, Map<string, number[]>>
+export type CostHistory = Map<string, Map<string, CostSample[]>>
 
 export const addToHistory = (history: CostHistory, results: CaseResult[]): void => {
-	for (const { model, caseId, costUsd } of results) {
+	for (const { model, caseId, costUsd, cachedTokens } of results) {
 		if (!(costUsd > 0)) continue
-		const byCase = history.get(model) ?? new Map<string, number[]>()
-		byCase.set(caseId, [...(byCase.get(caseId) ?? []), costUsd])
+		const byCase = history.get(model) ?? new Map<string, CostSample[]>()
+		const sample: CostSample = { costUsd, isWarm: cachedTokens > 0 }
+		byCase.set(caseId, [...(byCase.get(caseId) ?? []), sample])
 		history.set(model, byCase)
 	}
 }
+
+const isWarm = (sample: CostSample): boolean => sample.isWarm
 
 /** Nearest-rank percentile; 0 for an empty list. */
 export const getPercentile = (values: number[], fraction: number): number => {
@@ -37,7 +46,11 @@ export const getPercentile = (values: number[], fraction: number): number => {
 
 /**
  * p95 of the cases' own history, else of all history of the model; null when the model has none,
- * so the caller falls back to the price-based upper bound.
+ * so the caller falls back to the price-based upper bound. Warm samples (cache read) are preferred:
+ * cold ones (≈ $0.06 each, they write the prefix) would inflate the reserve of every later case
+ * ~8× (≈ $0.096 vs a real $0.0065–0.01), while the cold cost is already covered separately by
+ * COLD_START_RESERVE_USD for the first `concurrency` cases. Without any warm sample the cold ones
+ * are used, as before.
  */
 export const getHistoricalP95Usd = (
 	history: CostHistory,
@@ -47,8 +60,27 @@ export const getHistoricalP95Usd = (
 	const byCase = history.get(model)
 	if (!byCase) return null
 	const own = caseIds.flatMap((id) => byCase.get(id) ?? [])
-	const costs = own.length > 0 ? own : [...byCase.values()].flat()
+	const all = [...byCase.values()].flat()
+	const candidates = [own.filter(isWarm), all.filter(isWarm), own, all]
+	const samples = candidates.find((list) => list.length > 0) ?? []
+	const costs = samples.map((sample) => sample.costUsd)
 	return costs.length > 0 ? getPercentile(costs, RESERVE_PERCENTILE) : null
+}
+
+/** p95 of one case's own history (warm samples first); null when it has none. */
+const getHistoricalOwnP95Usd = (
+	history: CostHistory,
+	model: string,
+	caseId: string,
+): number | null => {
+	const own = history.get(model)?.get(caseId) ?? []
+	const samples = own.some(isWarm) ? own.filter(isWarm) : own
+	return samples.length > 0
+		? getPercentile(
+				samples.map((sample) => sample.costUsd),
+				RESERVE_PERCENTILE,
+			)
+		: null
 }
 
 export const getHistoryReserveUsd = (p95Usd: number): number =>
@@ -65,6 +97,20 @@ export interface CaseReserveInput {
 export const getCaseReserveFromHistory = (input: CaseReserveInput): number => {
 	const p95 = getHistoricalP95Usd(input.history, input.model, input.caseIds)
 	return p95 === null ? input.upperBoundUsd : getHistoryReserveUsd(p95)
+}
+
+/**
+ * Own reserve per case that has history. One pooled p95 would let a few expensive cases (long
+ * multi-meal days, ≈ $0.04–0.08) raise the reserve of all the cheap ones (≈ $0.005) in a mixed set
+ * like the smoke, and a reserve of ≈ $0.1 each stops the run at the stage soft stop.
+ */
+export const getOwnCaseReserves = (input: CaseReserveInput): Map<string, number> => {
+	const reserves = new Map<string, number>()
+	for (const id of input.caseIds) {
+		const p95 = getHistoricalOwnP95Usd(input.history, input.model, id)
+		if (p95 !== null) reserves.set(id, getHistoryReserveUsd(p95))
+	}
+	return reserves
 }
 
 /**

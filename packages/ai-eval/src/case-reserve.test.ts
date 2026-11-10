@@ -10,6 +10,7 @@ import {
 	type CostHistory,
 	getCaseReserveFromHistory,
 	getHistoricalP95Usd,
+	getOwnCaseReserves,
 	getPercentile,
 	getStartReserveUsd,
 	loadCostHistory,
@@ -17,8 +18,11 @@ import {
 } from './case-reserve.js'
 import type { CaseResult } from './eval.types.js'
 
-const result = (caseId: string, costUsd: number, model = 'm'): CaseResult =>
-	({ caseId, model, costUsd }) as CaseResult
+const result = (caseId: string, costUsd: number, model = 'm', cachedTokens = 0): CaseResult =>
+	({ caseId, model, costUsd, cachedTokens }) as CaseResult
+
+const warm = (caseId: string, costUsd: number, model = 'm'): CaseResult =>
+	result(caseId, costUsd, model, 21000)
 
 const historyOf = (...results: CaseResult[]): CostHistory => {
 	const history: CostHistory = new Map()
@@ -39,7 +43,7 @@ describe('addToHistory', () => {
 	it('ignores results without a cost', () => {
 		const history = historyOf(result('a', 0), result('b', 0.01))
 		expect(history.get('m')?.has('a')).toBe(false)
-		expect(history.get('m')?.get('b')).toEqual([0.01])
+		expect(history.get('m')?.get('b')).toEqual([{ costUsd: 0.01, isWarm: false }])
 	})
 })
 
@@ -69,6 +73,45 @@ describe('getCaseReserveFromHistory', () => {
 	})
 })
 
+describe('warm history', () => {
+	const reserve = (history: CostHistory, caseIds: string[]) =>
+		getCaseReserveFromHistory({ history, model: 'm', caseIds, upperBoundUsd: 0.158 })
+
+	it('ignores cold runs when the case has warm ones', () => {
+		const history = historyOf(
+			result('a', 0.06),
+			result('a', 0.06),
+			warm('a', 0.008),
+			warm('a', 0.01),
+		)
+		expect(reserve(history, ['a'])).toBeCloseTo(0.02)
+	})
+
+	it('takes warm samples of other cases before the cold ones of its own', () => {
+		const history = historyOf(result('a', 0.06), warm('b', 0.012))
+		expect(reserve(history, ['a'])).toBeCloseTo(0.024)
+	})
+
+	it('keeps the cold history when nothing ever ran warm', () => {
+		expect(reserve(historyOf(result('a', 0.06)), ['a'])).toBeCloseTo(0.12)
+	})
+})
+
+describe('getOwnCaseReserves', () => {
+	it('gives each case its own reserve, so expensive cases do not raise the cheap ones', () => {
+		const history = historyOf(warm('cheap', 0.006), warm('day', 0.045), warm('day', 0.05))
+		const reserves = getOwnCaseReserves({
+			history,
+			model: 'm',
+			caseIds: ['cheap', 'day', 'new'],
+			upperBoundUsd: 0.158,
+		})
+		expect(reserves.get('cheap')).toBe(MIN_CASE_RESERVE_USD)
+		expect(reserves.get('day')).toBeCloseTo(0.1)
+		expect(reserves.has('new')).toBe(false)
+	})
+})
+
 describe('getHistoricalP95Usd', () => {
 	it('is null for an unknown model', () => {
 		expect(getHistoricalP95Usd(historyOf(result('a', 0.01)), 'zzz', ['a'])).toBeNull()
@@ -92,7 +135,10 @@ describe('loadCostHistory', () => {
 		)
 		await writeFile(join(dir, 'b.jsonl'), `${JSON.stringify(result('a', 0.02))}\n`)
 		const history = await loadCostHistory(pathToFileURL(`${dir}/`))
-		expect(history.get('m')?.get('a')).toEqual([0.01, 0.02])
+		expect(history.get('m')?.get('a')).toEqual([
+			{ costUsd: 0.01, isWarm: false },
+			{ costUsd: 0.02, isWarm: false },
+		])
 		expect(history.get('m')?.has('b')).toBe(false)
 	})
 

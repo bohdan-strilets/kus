@@ -105,6 +105,43 @@ describe('runModel with a hard budget', () => {
 		expect(result.pairs.length).toBeGreaterThan(2)
 	})
 
+	it('fits a 46-case smoke under 0.55 with a warm reserve, and never passes the limit', async () => {
+		let calls = 0
+		runCaseMock.mockImplementation(async () => {
+			const index = (calls += 1)
+			await new Promise((resolve) => setTimeout(resolve, 1))
+			// the first 4 start together with no cache; the rest read it
+			return costing(index <= 4 ? 0.06 : 0.0065)
+		})
+		const budget = { spentUsd: 0, maxUsd: 0.55, reservedUsd: 0 }
+
+		const result = await run(makeCases(46), budget, 0.02, 4)
+
+		expect(result.skipped).toBe(0)
+		expect(result.pairs).toHaveLength(46)
+		expect(budget.spentUsd).toBeCloseTo(4 * 0.06 + 42 * 0.0065)
+		expect(budget.spentUsd).toBeLessThanOrEqual(budget.maxUsd)
+	})
+
+	it('reserves per case: an expensive one does not block the cheap ones', async () => {
+		runCaseMock.mockResolvedValue(costing(0.005))
+		const budget = { spentUsd: 0, maxUsd: 0.1, reservedUsd: 0 }
+		const cases = makeCases(3)
+
+		const result = await runModel(cases, {
+			apiKey: 'key',
+			model: 'm',
+			reasoning: 'low',
+			concurrency: 1,
+			budget,
+			caseReserveUsd: 0.02,
+			caseReserves: new Map([['case-2', 0.5]]),
+		})
+
+		expect(result.pairs.map((pair) => pair.evalCase.id)).toEqual(['case-0', 'case-1'])
+		expect(result.skipped).toBe(1)
+	})
+
 	it('reports cases that cost more than their reserve', async () => {
 		runCaseMock.mockResolvedValueOnce(costing(0.05)).mockResolvedValueOnce(costing(0.15))
 		const budget = { spentUsd: 0, maxUsd: 1, reservedUsd: 0 }

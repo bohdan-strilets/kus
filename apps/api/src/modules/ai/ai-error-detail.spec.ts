@@ -21,6 +21,15 @@ describe('toValidationErrorDetail', () => {
 		)
 	})
 
+	it('masks a number glued to its unit, but not refs and path indexes', () => {
+		expect(toValidationErrorDetail(['log_measurement: WEIGHT 72kg is above 5000ккал'])).toBe(
+			'log_measurement: WEIGHT #kg is above #ккал',
+		)
+		expect(toValidationErrorDetail(['clarify: items.0 ref e7 and m3 are closed'])).toBe(
+			'clarify: items.0 ref e7 and m3 are closed',
+		)
+	})
+
 	it('cuts the result to 500 characters', () => {
 		expect(toValidationErrorDetail(['x'.repeat(2000)])).toHaveLength(500)
 	})

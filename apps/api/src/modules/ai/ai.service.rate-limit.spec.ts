@@ -4,7 +4,11 @@ import { APIError } from 'openai'
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { Env } from '../../config'
-import { AI_PARSE_DEADLINE_MS, AI_RATE_LIMIT_MAX_WAIT_MS } from './ai.constants'
+import {
+	AI_PARSE_DEADLINE_MS,
+	AI_RATE_LIMIT_MAX_WAIT_MS,
+	AI_RATE_LIMIT_MIN_WAIT_MS,
+} from './ai.constants'
 import { AiRateLimitedException, AiUnavailableException } from './ai.exceptions'
 import type { AiRepository } from './ai.repository'
 import { AiService, type ParseFoodParams } from './ai.service'
@@ -117,6 +121,18 @@ describe('AiService.parseFood: provider 429', () => {
 		await vi.advanceTimersByTimeAsync(AI_RATE_LIMIT_MAX_WAIT_MS)
 
 		await expect(parsing).resolves.toMatchObject({ kind: 'log' })
+	})
+
+	it('waits at least the minimum for Retry-After: 0', async () => {
+		fake.respond(rateLimit('0'), createCompletion([logFoodCall()]))
+
+		const parsing = service.parseFood(params)
+		await vi.advanceTimersByTimeAsync(AI_RATE_LIMIT_MIN_WAIT_MS - 1)
+		expect(fake.client.post).toHaveBeenCalledTimes(1)
+		await vi.advanceTimersByTimeAsync(1)
+
+		await expect(parsing).resolves.toMatchObject({ kind: 'log' })
+		expect(fake.client.post).toHaveBeenCalledTimes(2)
 	})
 
 	it('does not retry when the wait would leave too little of the deadline', async () => {

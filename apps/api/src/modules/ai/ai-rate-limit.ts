@@ -4,6 +4,7 @@ import {
 	AI_RATE_LIMIT_BACKOFF_MS,
 	AI_RATE_LIMIT_MAX_WAIT_MS,
 	AI_RATE_LIMIT_MIN_REMAINING_MS,
+	AI_RATE_LIMIT_MIN_WAIT_MS,
 	AI_RATE_LIMIT_RETRIES,
 } from './ai.constants'
 
@@ -69,7 +70,10 @@ export const getRateLimitWaitMs = ({
 }): number | null => {
 	if (retryNumber > AI_RATE_LIMIT_RETRIES) return null
 	const backoff = AI_RATE_LIMIT_BACKOFF_MS[retryNumber - 1] ?? AI_RATE_LIMIT_MAX_WAIT_MS
-	const waitMs = Math.min(retryAfterMs ?? backoff, AI_RATE_LIMIT_MAX_WAIT_MS)
+	const waitMs = Math.min(
+		Math.max(retryAfterMs ?? backoff, AI_RATE_LIMIT_MIN_WAIT_MS),
+		AI_RATE_LIMIT_MAX_WAIT_MS,
+	)
 	return remainingMs - waitMs >= AI_RATE_LIMIT_MIN_REMAINING_MS ? waitMs : null
 }
 

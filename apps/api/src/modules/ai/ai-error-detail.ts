@@ -1,8 +1,8 @@
 import { AI_ERROR_DETAIL_MAX_LENGTH } from './ai.constants'
 
 const QUOTED = /"[^"]*"/g
-/** A number that is not a path index (`items.0`) and not part of a ref (`e7`). */
-const NUMBER = /(?<![.\w])\d+(?:\.\d+)?(?![\w])/g
+/** A number that is not a path index (`items.0`) and not part of a ref (`e7`); `72kg` counts too. */
+const NUMBER = /(?<![.\w])\d+(?:\.\d+)?(?!\d)/g
 const HINT_SEPARATOR = ' — '
 
 /**

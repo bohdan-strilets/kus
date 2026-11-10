@@ -14,6 +14,8 @@ export const AI_NETWORK_RETRIES = 1
 export const AI_RATE_LIMIT_RETRIES = 2
 export const AI_RATE_LIMIT_BACKOFF_MS: readonly number[] = [seconds(2), seconds(4)]
 export const AI_RATE_LIMIT_MAX_WAIT_MS = seconds(15)
+/** `Retry-After: 0` (or an empty header) is not a reason to hit a limited provider again at once. */
+export const AI_RATE_LIMIT_MIN_WAIT_MS = seconds(1)
 export const AI_RATE_LIMIT_MIN_REMAINING_MS = seconds(10)
 /** AiRun.errorDetail is a short technical line, never a log of the exchange. */
 export const AI_ERROR_DETAIL_MAX_LENGTH = 500

@@ -623,6 +623,8 @@ model AiRun {
   durationMs        Int?         @map("duration_ms")
   status            AiRunStatus
   errorCode         String?      @map("error_code")
+  // a short technical line for a FAILED run: validation errors (masked) or the 429 provider and Retry-After; never message text
+  errorDetail       String?      @map("error_detail")
   createdAt         DateTime     @default(now()) @map("created_at") @db.Timestamptz
 
   user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)

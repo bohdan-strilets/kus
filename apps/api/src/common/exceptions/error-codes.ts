@@ -44,6 +44,8 @@ export const ErrorCodes = {
 	// chat & AI
 	/** The model failed or kept returning invalid data; the message is FAILED and can be resent. */
 	AI_UNAVAILABLE: 'AI_UNAVAILABLE',
+	/** The model provider kept answering 429 after the retries; the message is FAILED and can be resent in a minute. */
+	AI_RATE_LIMITED: 'AI_RATE_LIMITED',
 	DAILY_LIMIT_REACHED: 'DAILY_LIMIT_REACHED',
 	/** Photos have their own, lower daily limit; texts still go through. */
 	DAILY_PHOTO_LIMIT_REACHED: 'DAILY_PHOTO_LIMIT_REACHED',

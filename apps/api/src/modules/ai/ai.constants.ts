@@ -4,8 +4,19 @@ export const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1'
 /** DI token of the OpenAI-compatible client; e2e tests replace it with a fake. */
 export const AI_CLIENT = Symbol('AI_CLIENT')
 
-/** The SDK retries a network error / 5xx / 429 once on its own. */
+/** The SDK retries a network error / 5xx once on its own (a 429 is retried by AiService, see below). */
 export const AI_NETWORK_RETRIES = 1
+/**
+ * Retries of a 429 from the provider, made by AiService inside the turn's deadline. Each waits for
+ * Retry-After (or the backoff below), at most AI_RATE_LIMIT_MAX_WAIT_MS, and only while at least
+ * AI_RATE_LIMIT_MIN_REMAINING_MS of the deadline is left after the wait.
+ */
+export const AI_RATE_LIMIT_RETRIES = 2
+export const AI_RATE_LIMIT_BACKOFF_MS: readonly number[] = [seconds(2), seconds(4)]
+export const AI_RATE_LIMIT_MAX_WAIT_MS = seconds(15)
+export const AI_RATE_LIMIT_MIN_REMAINING_MS = seconds(10)
+/** AiRun.errorDetail is a short technical line, never a log of the exchange. */
+export const AI_ERROR_DETAIL_MAX_LENGTH = 500
 /**
  * Vercel cuts a proxied request to an external origin after 120 s (vercel.com/docs/limits), and
  * every chat request goes through that rewrite. Past it the phone sees an error while the turn may

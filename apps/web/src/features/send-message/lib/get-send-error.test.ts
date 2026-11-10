@@ -20,6 +20,13 @@ describe('getSendError', () => {
 		})
 	})
 
+	it('says the model is overloaded, with a retry, when the provider rate limit outlived the retries', () => {
+		expect(getSendError(http(503, 'AI_RATE_LIMITED'))).toEqual({
+			messageKey: 'errors.api.AI_RATE_LIMITED',
+			canRetry: true,
+		})
+	})
+
 	it('offers no retry for a message that is too long or after the daily limit', () => {
 		expect(getSendError(http(422, 'MESSAGE_TOO_LONG')).canRetry).toBe(false)
 		expect(getSendError(http(429, 'DAILY_LIMIT_REACHED'))).toEqual({

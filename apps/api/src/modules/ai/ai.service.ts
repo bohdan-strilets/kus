@@ -45,13 +45,26 @@ import {
 	ToolCallStatus,
 } from '../../generated/prisma/client'
 import type { AiClient } from './ai-client'
+import { toValidationErrorDetail } from './ai-error-detail'
+import {
+	formatRateLimitDetail,
+	getRateLimitInfo,
+	getRateLimitWaitMs,
+	isRateLimitError,
+	type RateLimitInfo,
+	waitUnlessAborted,
+} from './ai-rate-limit'
 import {
 	AI_CLIENT,
 	AI_PARSE_DEADLINE_MS,
 	AI_READ_MIN_REMAINING_MS,
 	AI_STATS_ADVICE_DEADLINE_MS,
 } from './ai.constants'
-import { AiUnavailableException, MessageTooLongException } from './ai.exceptions'
+import {
+	AiRateLimitedException,
+	AiUnavailableException,
+	MessageTooLongException,
+} from './ai.exceptions'
 import { AiRepository } from './ai.repository'
 import type { ReadToolExecutor, ReadToolResult } from './read-tool-executor'
 
@@ -121,12 +134,26 @@ interface CompletionResult {
 }
 
 class CompletionFailure extends Error {
-	constructor(
-		readonly errorCode: string,
-		readonly durationMs: number,
-		options?: ErrorOptions,
-	) {
-		super(errorCode, options)
+	readonly errorCode: string
+	readonly durationMs: number
+	/** A short technical line for AiRun.errorDetail. */
+	readonly detail: string | null
+
+	constructor({
+		errorCode,
+		durationMs,
+		detail = null,
+		cause,
+	}: {
+		errorCode: string
+		durationMs: number
+		detail?: string | null
+		cause?: unknown
+	}) {
+		super(errorCode, { cause })
+		this.errorCode = errorCode
+		this.durationMs = durationMs
+		this.detail = detail
 	}
 }
 
@@ -205,6 +232,7 @@ export class AiService {
 	 */
 	async parseFood(params: ParseFoodParams): Promise<FoodParseDecision> {
 		const startedAt = Date.now()
+		const deadlineAt = startedAt + AI_PARSE_DEADLINE_MS
 		const signal = AbortSignal.timeout(AI_PARSE_DEADLINE_MS)
 		const reader = READ_TOOL_NAMES.size > 0 ? params.readTools : undefined
 		const firstMessages = buildFoodParseMessages(params.context, params.text, params.image)
@@ -217,12 +245,13 @@ export class AiService {
 
 		// every pass is one model call: reads, the answer and its retry bound the count
 		for (let call = 0; call < MAX_READ_STEPS + 1 + AI_VALIDATION_RETRY_COUNT; call += 1) {
-			const { completion, durationMs } = await this.requestCompletion(
+			const { completion, durationMs } = await this.requestCompletion({
 				params,
 				messages,
 				signal,
-				PARSE_CALL,
-			)
+				deadlineAt,
+				kind: PARSE_CALL,
+			})
 			const isTruncated = isOutputTruncated(completion)
 			const toolCalls = completion.choices[0]?.message.tool_calls ?? []
 			const wantsRead = !isTruncated && toolCalls.some((item) => isReadToolName(item.function.name))
@@ -253,6 +282,7 @@ export class AiService {
 				durationMs,
 				calls: parsed.calls,
 				errorCode: getRunErrorCode({ isTruncated, isValid: parsed.ok }),
+				errorDetail: !isTruncated && !parsed.ok ? toValidationErrorDetail(parsed.errors) : null,
 			})
 			// the same request would be cut at the same place — retrying only burns money
 			if (isTruncated) throw new MessageTooLongException()
@@ -367,6 +397,7 @@ export class AiService {
 	}: RequestStatsAdviceParams): Promise<string | null> {
 		// the photo of the message is not needed for advice on numbers: less data to the model
 		const adviceParams: ParseFoodParams = { ...params, image: undefined }
+		const deadlineAt = Date.now() + deadlineMs
 		const signal = AbortSignal.timeout(deadlineMs)
 		const messages: AiRequestMessage[] = [
 			...buildFoodParseMessages(params.context, params.text),
@@ -396,12 +427,13 @@ export class AiService {
 			},
 		]
 		try {
-			const { completion, durationMs } = await this.requestCompletion(
-				adviceParams,
+			const { completion, durationMs } = await this.requestCompletion({
+				params: adviceParams,
 				messages,
 				signal,
-				STATS_ADVICE_CALL,
-			)
+				deadlineAt,
+				kind: STATS_ADVICE_CALL,
+			})
 			const result = parseToolCalls(getRawToolCalls(completion), getParseRefs(params.context), {
 				hasImage: false,
 			})
@@ -417,6 +449,7 @@ export class AiService {
 				durationMs,
 				calls: result.calls,
 				errorCode: isTruncated ? OUTPUT_TRUNCATED : text === null ? INVALID_TOOL_CALLS : null,
+				errorDetail: !isTruncated && !result.ok ? toValidationErrorDetail(result.errors) : null,
 				kind: STATS_ADVICE_CALL,
 			}).catch((error: unknown) => {
 				this.logger.warn(
@@ -426,7 +459,9 @@ export class AiService {
 			})
 			return isTruncated ? null : text
 		} catch (error) {
-			if (!(error instanceof AiUnavailableException)) throw error
+			if (!(error instanceof AiUnavailableException || error instanceof AiRateLimitedException)) {
+				throw error
+			}
 			// the failed request is already recorded and logged by requestCompletion
 			return null
 		}
@@ -455,31 +490,109 @@ export class AiService {
 		return image ? this.visionModel : this.parseModel
 	}
 
-	private async requestCompletion(
-		params: ParseFoodParams,
-		messages: AiRequestMessage[],
-		signal: AbortSignal,
-		kind: CallKind,
-	): Promise<CompletionResult> {
+	/**
+	 * One model request. A provider 429 is retried here (not by the SDK, see withoutRateLimitRetry):
+	 * up to AI_RATE_LIMIT_RETRIES times, waiting as getRateLimitWaitMs says, never past `deadlineAt`.
+	 * A 429 that outlasts that is AI_RATE_LIMITED, any other failure AI_UNAVAILABLE; both are
+	 * recorded as a FAILED run first.
+	 */
+	private async requestCompletion({
+		params,
+		messages,
+		signal,
+		deadlineAt,
+		kind,
+	}: {
+		params: ParseFoodParams
+		messages: AiRequestMessage[]
+		signal: AbortSignal
+		/** `Date.now()` value the shared signal fires at: the waits between retries must fit before it. */
+		deadlineAt: number
+		kind: CallKind
+	}): Promise<CompletionResult> {
 		const startedAt = Date.now()
-		try {
-			const response = await this.client.post(CHAT_COMPLETIONS_PATH, {
-				body: createFoodParseRequest(this.getModel(params), messages),
-				signal,
-			})
-			const parsed = aiCompletionSchema.safeParse(response)
-			if (!parsed.success) throw new CompletionFailure(BAD_RESPONSE, Date.now() - startedAt)
-			return { completion: parsed.data, durationMs: Date.now() - startedAt }
-		} catch (error) {
-			const failure =
-				error instanceof CompletionFailure
-					? error
-					: new CompletionFailure(getRequestErrorCode(error), Date.now() - startedAt, {
-							cause: error,
-						})
-			await this.recordFailedRequest(params, failure, kind)
-			throw new AiUnavailableException()
+		let rateLimitRetries = 0
+		for (;;) {
+			const attemptStartedAt = Date.now()
+			try {
+				const response = await this.client.post(CHAT_COMPLETIONS_PATH, {
+					body: createFoodParseRequest(this.getModel(params), messages),
+					signal,
+				})
+				const parsed = aiCompletionSchema.safeParse(response)
+				if (!parsed.success) {
+					throw new CompletionFailure({
+						errorCode: BAD_RESPONSE,
+						durationMs: Date.now() - attemptStartedAt,
+					})
+				}
+				return { completion: parsed.data, durationMs: Date.now() - attemptStartedAt }
+			} catch (error) {
+				const rateLimit = isRateLimitError(error) ? getRateLimitInfo(error) : null
+				if (rateLimit) {
+					const attempt = rateLimitRetries + 1
+					const waitMs = signal.aborted
+						? null
+						: getRateLimitWaitMs({
+								retryNumber: attempt,
+								retryAfterMs: rateLimit.retryAfterMs,
+								remainingMs: deadlineAt - Date.now(),
+							})
+					this.logRateLimit({ params, kind, rateLimit, attempt, waitMs })
+					if (waitMs !== null && (await waitUnlessAborted(waitMs, signal))) {
+						rateLimitRetries += 1
+						continue
+					}
+				}
+				const failure = this.toCompletionFailure(error, {
+					durationMs: Date.now() - startedAt,
+					rateLimit,
+					attempt: rateLimitRetries + 1,
+				})
+				await this.recordFailedRequest(params, failure, kind)
+				throw rateLimit && !signal.aborted
+					? new AiRateLimitedException()
+					: new AiUnavailableException()
+			}
 		}
+	}
+
+	private toCompletionFailure(
+		error: unknown,
+		{
+			durationMs,
+			rateLimit,
+			attempt,
+		}: { durationMs: number; rateLimit: RateLimitInfo | null; attempt: number },
+	): CompletionFailure {
+		if (error instanceof CompletionFailure) return error
+		return new CompletionFailure({
+			errorCode: getRequestErrorCode(error),
+			durationMs,
+			detail: rateLimit ? formatRateLimitDetail(rateLimit, attempt) : null,
+			cause: error,
+		})
+	}
+
+	/** Metadata only: no body, no messages (CLAUDE.md §10.1). `waitMs` null = no more retries. */
+	private logRateLimit({
+		params,
+		kind,
+		rateLimit,
+		attempt,
+		waitMs,
+	}: {
+		params: ParseFoodParams
+		kind: CallKind
+		rateLimit: RateLimitInfo
+		attempt: number
+		waitMs: number | null
+	}): void {
+		this.logger.warn(
+			`AI provider rate limited purpose=${kind.purpose} user=${params.userId} message=${params.messageId} ` +
+				`provider=${rateLimit.provider} retryAfterMs=${rateLimit.retryAfterMs ?? 'none'} attempt=${attempt} ` +
+				(waitMs === null ? 'retry=no' : `retry=in ${waitMs}ms`),
+		)
 	}
 
 	/** How many facts the model forgot in each user message (successful forget_fact calls). */
@@ -512,10 +625,12 @@ export class AiService {
 			durationMs,
 			calls,
 			errorCode,
+			errorDetail = null,
 			kind = PARSE_CALL,
 		}: CompletionResult & {
 			calls: LoggedCall[]
 			errorCode: string | null
+			errorDetail?: string | null
 			kind?: CallKind
 		},
 	): Promise<void> {
@@ -537,6 +652,7 @@ export class AiService {
 			durationMs,
 			status,
 			errorCode,
+			errorDetail,
 			toolCalls: calls.map((call) => ({
 				name: call.name,
 				input: toToolCallLog(call.input),
@@ -578,6 +694,7 @@ export class AiService {
 			durationMs: failure.durationMs,
 			status: AiRunStatus.FAILED,
 			errorCode: failure.errorCode,
+			errorDetail: failure.detail,
 			toolCalls: [],
 		})
 		this.logger.warn(

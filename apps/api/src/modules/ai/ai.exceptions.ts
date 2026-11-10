@@ -8,6 +8,16 @@ export class AiUnavailableException extends AppException {
 	}
 }
 
+/**
+ * The provider's 429 outlived the retries. 503, not 429: the 429s of this API are the user's own
+ * limits (throttler, daily limits); this one is the upstream's, and the client treats it as «try again».
+ */
+export class AiRateLimitedException extends AppException {
+	constructor() {
+		super({ status: HttpStatus.SERVICE_UNAVAILABLE, errorCode: ErrorCodes.AI_RATE_LIMITED })
+	}
+}
+
 /** Not 503: a resend of the same text would be cut again, so the client asks to split it instead. */
 export class MessageTooLongException extends AppException {
 	constructor() {

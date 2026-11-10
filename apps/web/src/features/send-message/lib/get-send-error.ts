@@ -3,6 +3,7 @@ import { type ApiError, HTTP_STATUS } from '@/shared/api'
 export type SendErrorKey =
 	| 'chat.networkError'
 	| 'errors.api.AI_UNAVAILABLE'
+	| 'errors.api.AI_RATE_LIMITED'
 	| 'errors.api.MESSAGE_TOO_LONG'
 	| 'errors.api.DAILY_LIMIT_REACHED'
 	| 'errors.api.DAILY_PHOTO_LIMIT_REACHED'
@@ -62,6 +63,8 @@ const getPhotoFieldError = (details: Record<string, unknown>): SendErrorKey | un
 
 const RETRIABLE_ERRORS: Partial<Record<string, SendErrorKey>> = {
 	AI_UNAVAILABLE: 'errors.api.AI_UNAVAILABLE',
+	// the provider's rate limit outlived the server's retries; a minute later it passes
+	AI_RATE_LIMITED: 'errors.api.AI_RATE_LIMITED',
 	// the per-minute throttler: a minute later the same message is fine
 	TOO_MANY_REQUESTS: 'errors.api.TOO_MANY_REQUESTS',
 	MESSAGE_IN_PROGRESS: 'errors.api.MESSAGE_IN_PROGRESS',

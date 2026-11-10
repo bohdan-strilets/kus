@@ -17,6 +17,8 @@ export interface CreateAiRunData {
 	durationMs: number
 	status: AiRunStatus
 	errorCode: string | null
+	/** A short technical line for a FAILED run (docs/database.md); never message text. */
+	errorDetail?: string | null
 	toolCalls: {
 		name: string
 		input: Prisma.InputJsonValue

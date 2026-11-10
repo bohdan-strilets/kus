@@ -5,6 +5,10 @@ import { envSchema } from '../../config/env.schema'
 import {
 	AI_NETWORK_RETRIES,
 	AI_PARSE_DEADLINE_MS,
+	AI_RATE_LIMIT_BACKOFF_MS,
+	AI_RATE_LIMIT_MAX_WAIT_MS,
+	AI_RATE_LIMIT_MIN_REMAINING_MS,
+	AI_RATE_LIMIT_RETRIES,
 	AI_READ_MIN_REMAINING_MS,
 	CHAT_TURN_DB_BUDGET_MS,
 	VERCEL_PROXY_TIMEOUT_MS,
@@ -45,6 +49,16 @@ describe('AI time limits behind the Vercel proxy', () => {
 		const { AI_TIMEOUT_MS } = envSchema.parse(env)
 		expect(AI_READ_MIN_REMAINING_MS).toBeGreaterThan(0)
 		expect(AI_READ_MIN_REMAINING_MS).toBeLessThan(AI_PARSE_DEADLINE_MS - AI_TIMEOUT_MS)
+	})
+
+	it('keeps the longest waits for 429 retries within what leaves one full attempt in the deadline', () => {
+		const { AI_TIMEOUT_MS } = envSchema.parse(env)
+		expect(AI_RATE_LIMIT_BACKOFF_MS).toHaveLength(AI_RATE_LIMIT_RETRIES)
+		// a 429 answers at once, so the retries cost their waits; the SDK no longer retries a 429 itself
+		const longestWaits = AI_RATE_LIMIT_RETRIES * AI_RATE_LIMIT_MAX_WAIT_MS
+		expect(longestWaits + AI_TIMEOUT_MS).toBeLessThanOrEqual(AI_PARSE_DEADLINE_MS)
+		expect(Math.max(...AI_RATE_LIMIT_BACKOFF_MS)).toBeLessThanOrEqual(AI_RATE_LIMIT_MAX_WAIT_MS)
+		expect(AI_RATE_LIMIT_MIN_REMAINING_MS).toBeGreaterThan(0)
 	})
 
 	it('accepts no per-attempt timeout longer than the whole deadline', () => {

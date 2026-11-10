@@ -350,6 +350,28 @@ describe('Kusik action markers', () => {
 		const [user] = selectHistory([{ role: 'user', content: 'ок', kusikActions }])
 		expect(user?.content).toBe('ок')
 	})
+
+	it('adds what Kusik read, next to or without actions, at most two reads', () => {
+		const reads = [
+			'read workouts 01.11–10.11: 3 (01.11, 05.11, 09.11)',
+			'looked up food "батончик": 2 found',
+			'read workouts 12.10–10.11: 12',
+		]
+		expect(formatKusikMarkers({ reads: reads.slice(0, 1) })).toEqual([
+			'[Kusik: read workouts 01.11–10.11: 3 (01.11, 05.11, 09.11)]',
+		])
+		expect(
+			formatKusikMarkers({ kusikActions: { ...none, deleted: [{ ref: 'e1' }] }, reads }),
+		).toEqual([
+			'[Kusik: deleted e1; looked up food "батончик": 2 found; read workouts 12.10–10.11: 12]',
+		])
+		expect(formatKusikMarkers({ reads: [] })).toEqual([])
+	})
+
+	it('cuts a read that is longer than a digest can be, and skips an empty one', () => {
+		const [marker] = formatKusikMarkers({ reads: ['  ', `read ${'x'.repeat(500)}`] })
+		expect(marker).toBe(`[Kusik: read ${'x'.repeat(195)}]`)
+	})
 })
 
 describe('changes made in the app', () => {

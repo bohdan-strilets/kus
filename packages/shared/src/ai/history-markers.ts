@@ -1,6 +1,7 @@
 // What the user's earlier turns did, as short markers in front of their text in the model's history,
 // and what Kusik did in a turn (in front of its reply) and the user did in the app between turns.
 import { toContextText } from './memory-context.js'
+import { READ_DIGEST_MAX_CHARS, READ_DIGESTS_MAX_PER_TURN } from './read-digest.js'
 
 /** Who deleted an entry: a Kusik tool call in the chat, or the user's delete button in the app. */
 export type HistoryDeletedBy = 'kusik' | 'app'
@@ -78,6 +79,8 @@ export interface HistoryMarkerFields {
 	appChanges?: HistoryAppChange[]
 	/** Kusik turn: what it did to entries in this turn. */
 	kusikActions?: HistoryKusikActions
+	/** Kusik turn: digests of what it read (get_workouts, find_food), oldest first; see `formatWorkoutsDigest`. */
+	reads?: string[]
 	workout?: HistoryLogMarker
 	/** WEIGHT before WAIST. */
 	measurements?: HistoryMeasurementMarker[]
@@ -158,14 +161,24 @@ const formatActionGroup = (word: string, entries: HistoryActionEntry[]): string[
 	return [more > 0 ? `${word} ${shown} +${more}` : `${word} ${shown}`]
 }
 
-/** `[Kusik: deleted e13; restored e16; corrected e7 → 45 g]` in front of a reply of Kusik; none without actions. */
-export const formatKusikMarkers = ({ kusikActions }: HistoryMarkerFields): string[] => {
-	if (!kusikActions) return []
-	const { deleted, restored, corrected } = kusikActions
+/** A read digest as one short line of the marker; it is data, so it never gets longer than the backend built it. */
+const toReadPart = (digest: string): string =>
+	digest.replaceAll(/\s+/g, ' ').trim().slice(0, READ_DIGEST_MAX_CHARS)
+
+/**
+ * `[Kusik: deleted e13; restored e16; corrected e7 → 45 g; read workouts 01.11–10.11: 3 (…)]` in front of a
+ * reply of Kusik; none without actions or reads.
+ */
+export const formatKusikMarkers = ({ kusikActions, reads = [] }: HistoryMarkerFields): string[] => {
+	const { deleted = [], restored = [], corrected = [] } = kusikActions ?? {}
 	const parts = [
 		...formatActionGroup('deleted', deleted),
 		...formatActionGroup('restored', restored),
 		...formatActionGroup('corrected', corrected),
+		...reads
+			.slice(-READ_DIGESTS_MAX_PER_TURN)
+			.map(toReadPart)
+			.filter((part) => part !== ''),
 	]
 	return parts.length === 0 ? [] : [formatMarker([`${KUSIK_WORD}: ${parts.join('; ')}`])]
 }

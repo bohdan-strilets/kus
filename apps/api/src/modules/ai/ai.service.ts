@@ -30,6 +30,7 @@ import {
 	type ParseRefsPatch,
 	parseToolCalls,
 	READ_CLOSED_ERROR,
+	READ_DIGESTS_MAX_PER_TURN,
 	READ_TOOL_NAMES,
 	splitToolCalls,
 	type StatsCard,
@@ -196,6 +197,17 @@ const parseArguments = (raw: string): Prisma.InputJsonValue => {
 	}
 }
 
+/** What a read leaves in the AiToolCall: the text, and the digest the later history shows. */
+const toReadResultLog = ({ text, digest }: ReadToolResult): Prisma.InputJsonValue =>
+	digest === undefined ? { text } : { text, digest }
+
+/** The digest a read call stored next to its text; null when there is none (or the row is not ours). */
+const getStoredDigest = (result: Prisma.JsonValue): string | null => {
+	if (typeof result !== 'object' || result === null || Array.isArray(result)) return null
+	const { digest } = result
+	return typeof digest === 'string' && digest !== '' ? digest : null
+}
+
 /** A read call that ran, one that failed, or one that was left for the next step. */
 const getReadCallStatus = ({
 	result,
@@ -360,7 +372,7 @@ export class AiService {
 					name: item.function.name,
 					input: parseArguments(item.function.arguments),
 					status: getReadCallStatus({ result, isFailed: failedIds.has(item.id) }),
-					...(result ? { result: { text: result.text } } : {}),
+					...(result ? { result: toReadResultLog(result) } : {}),
 				}
 			}),
 			errorCode: failure ? READ_TOOL_FAILED : null,
@@ -616,6 +628,29 @@ export class AiService {
 			counts.set(messageId, (counts.get(messageId) ?? 0) + 1)
 		}
 		return counts
+	}
+
+	/**
+	 * The digests of what Kusik read in each user message's turn (get_workouts, find_food), oldest
+	 * first and at most READ_DIGESTS_MAX_PER_TURN: the history shows them in front of the reply. A
+	 * call without a digest (stored before digests existed) is skipped; a retried turn repeats the
+	 * same line once.
+	 */
+	async findReadDigests(
+		userId: string,
+		messageIds: string[],
+	): Promise<ReadonlyMap<string, string[]>> {
+		const digests = new Map<string, string[]>()
+		if (messageIds.length === 0) return digests
+		const rows = await this.aiRepository.findReadCalls({ userId, messageIds })
+		for (const { messageId, result } of rows) {
+			const digest = getStoredDigest(result)
+			if (digest === null) continue
+			const known = digests.get(messageId) ?? []
+			if (known.includes(digest)) continue
+			digests.set(messageId, [...known, digest].slice(-READ_DIGESTS_MAX_PER_TURN))
+		}
+		return digests
 	}
 
 	private async recordRun(

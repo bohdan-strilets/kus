@@ -17,12 +17,13 @@ const createService = () => {
 	const findByMessageIds = vi.fn().mockResolvedValue([])
 	const findForHistory = vi.fn().mockResolvedValue([])
 	const countForgottenFacts = vi.fn().mockResolvedValue(new Map())
+	const findReadDigests = vi.fn().mockResolvedValue(new Map())
 	const findSavedByMessages = vi.fn().mockResolvedValue([])
 	const service = new ChatHistoryMarkersService(
 		{ findStartedByMessages } as never,
 		{ findByMessageIds } as never,
 		{ findForHistory } as never,
-		{ countForgottenFacts } as never,
+		{ countForgottenFacts, findReadDigests } as never,
 		{ findSavedByMessages } as never,
 	)
 	return {
@@ -31,6 +32,7 @@ const createService = () => {
 		findByMessageIds,
 		findForHistory,
 		countForgottenFacts,
+		findReadDigests,
 		findSavedByMessages,
 	}
 }
@@ -121,5 +123,16 @@ describe('ChatHistoryMarkersService.getMarkers', () => {
 			facts: [{ kind: 'forgotten' }, { kind: 'saved', ref: 'f4', isDeleted: false }],
 			savedFoods: [{ ref: 'm1', isDeleted: false }],
 		})
+	})
+})
+
+describe('ChatHistoryMarkersService.getReadDigests', () => {
+	it('asks the AI service for the digests of the messages, for the user of the token', async () => {
+		const mocks = createService()
+		const digests = new Map([['m1', ['read workouts 01.11–10.11: 3']]])
+		mocks.findReadDigests.mockResolvedValue(digests)
+
+		expect(await mocks.service.getReadDigests(USER_ID, ['m1', 'm2'])).toBe(digests)
+		expect(mocks.findReadDigests).toHaveBeenCalledWith(USER_ID, ['m1', 'm2'])
 	})
 })

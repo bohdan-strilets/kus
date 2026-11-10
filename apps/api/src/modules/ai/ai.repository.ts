@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common'
-import { AI_TOOL_NAMES } from '@kus/shared'
+import { AI_TOOL_NAMES, READ_TOOL_NAMES } from '@kus/shared'
 
 import { AiRunPurpose, AiRunStatus, Prisma, ToolCallStatus } from '../../generated/prisma/client'
 import { PrismaService } from '../../prisma'
@@ -32,6 +32,13 @@ export interface ForgetCallRow {
 	messageId: string
 	aiRunId: string
 	runCreatedAt: Date
+}
+
+export interface ReadCallRow {
+	messageId: string
+	/** What the read tool stored: `{ text, digest }` for the calls since digests exist. */
+	result: Prisma.JsonValue
+	createdAt: Date
 }
 
 interface DailyUsageKey {
@@ -138,6 +145,38 @@ export class AiRepository {
 			aiRun.messageId === null
 				? []
 				: [{ messageId: aiRun.messageId, aiRunId, runCreatedAt: aiRun.createdAt }],
+		)
+	}
+
+	/**
+	 * The successful read calls (find_food, get_workouts) of the messages' successful parse runs,
+	 * oldest first. Only the stored result leaves, and only for the user's own messages.
+	 */
+	async findReadCalls({
+		userId,
+		messageIds,
+	}: {
+		userId: string
+		messageIds: string[]
+	}): Promise<ReadCallRow[]> {
+		const calls = await this.prisma.aiToolCall.findMany({
+			where: {
+				name: { in: [...READ_TOOL_NAMES] },
+				status: ToolCallStatus.SUCCEEDED,
+				aiRun: {
+					userId,
+					messageId: { in: messageIds },
+					purpose: AiRunPurpose.PARSE_FOOD,
+					status: AiRunStatus.SUCCEEDED,
+				},
+			},
+			select: { result: true, createdAt: true, aiRun: { select: { messageId: true } } },
+			orderBy: { createdAt: 'asc' },
+		})
+		return calls.flatMap(({ result, createdAt, aiRun }) =>
+			aiRun.messageId === null || result === null
+				? []
+				: [{ messageId: aiRun.messageId, result, createdAt }],
 		)
 	}
 

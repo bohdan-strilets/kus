@@ -6,7 +6,9 @@ import {
 	FIND_FOOD_TOOL_NAME,
 	type FindFoodHistoryEntry,
 	type FindFoodSavedFood,
+	formatFindFoodDigest,
 	formatGetWorkoutsResult,
+	formatWorkoutsDigest,
 	GET_WORKOUTS_INVALID_ARGUMENTS_RESULT,
 	GET_WORKOUTS_TOOL_NAME,
 	HISTORY_FOOD_REF_PREFIX,
@@ -140,7 +142,7 @@ export class ChatReadToolsService {
 		this.logger.log(
 			`get_workouts user=${userId} days=${input.days} hasExercise=${input.exercise !== null} count=${data.count}`,
 		)
-		return { text: formatGetWorkoutsResult(data) }
+		return { text: formatGetWorkoutsResult(data), digest: formatWorkoutsDigest(data) }
 	}
 
 	private async findFood(
@@ -184,6 +186,10 @@ export class ChatReadToolsService {
 		for (const [ref, key] of refs.history.getIssued()) turn.copyRefIds.set(ref, key)
 		// metadata only: never the query or the names (CLAUDE.md §10.1)
 		this.logger.log(`find_food user=${userId} scope=${input.scope} found=${result.foundCount}`)
-		return { text: result.text, refsPatch: result.refsPatch }
+		return {
+			text: result.text,
+			refsPatch: result.refsPatch,
+			digest: formatFindFoodDigest(input.query, result.foundCount),
+		}
 	}
 }

@@ -18,6 +18,8 @@ export interface ReadToolContext {
 export interface ReadToolResult {
 	/** What the model reads: a tool result, not shown to the user. */
 	text: string
+	/** A short line of what was read, kept next to the text: later turns' history says what the reply came from. */
+	digest?: string
 	/** Refs the text hands out; the loop adds them to the turn's refs before the next call. */
 	refsPatch?: ParseRefsPatch
 }

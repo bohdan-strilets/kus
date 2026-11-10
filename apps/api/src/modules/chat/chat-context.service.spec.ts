@@ -52,6 +52,8 @@ interface Mocks {
 	openCard?: unknown
 	/** What the history markers service returns: message id → markers. */
 	markers?: Map<string, unknown>
+	/** User message id → digests of what Kusik read in its turn. */
+	readDigests?: Map<string, string[]>
 	/** The user's confirmed facts, oldest first. */
 	facts?: { id: string; text: string }[]
 	/** What the entries service returns as the corrections of the history, oldest first. */
@@ -67,6 +69,7 @@ const createService = ({
 	program = { program: null, pendingProgram: null, refIds: NO_TEMPLATE_REFS },
 	openCard = null,
 	markers = new Map(),
+	readDigests = new Map(),
 	facts = [],
 	corrections = [],
 }: Mocks = {}) => {
@@ -74,6 +77,7 @@ const createService = ({
 	const getProgramContext = vi.fn().mockResolvedValue(program)
 	const findContextFacts = vi.fn().mockResolvedValue({ confirmed: facts, proposal: null })
 	const getMarkers = vi.fn().mockResolvedValue(markers)
+	const getReadDigests = vi.fn().mockResolvedValue(readDigests)
 	const getEditableEntries = vi.fn().mockResolvedValue(editable)
 	const getDaysKcal = vi.fn().mockResolvedValue(daysKcal)
 	const findInRange = vi
@@ -83,7 +87,7 @@ const createService = ({
 		{ findHistory: vi.fn().mockResolvedValue(history) } as never,
 		{ findOpenClarifications: vi.fn().mockResolvedValue([]) } as never,
 		{ getContext: vi.fn().mockResolvedValue({ earlier: [], copyRefIds: new Map() }) } as never,
-		{ getMarkers } as never,
+		{ getMarkers, getReadDigests } as never,
 		{
 			getDaySummary: vi.fn().mockResolvedValue({ totals: {}, meals: [] }),
 			getEditableEntries,
@@ -121,6 +125,7 @@ const createService = ({
 		findContextFacts,
 		getProgramContext,
 		getMarkers,
+		getReadDigests,
 		findHistoryCorrections,
 	}
 }
@@ -216,6 +221,23 @@ describe('ChatContextService.buildContext history marker sources', () => {
 		expect(context.history).toEqual([
 			{ role: 'user', content: 'жим 80×8', workout },
 			{ role: 'assistant', content: 'Записано' },
+		])
+	})
+
+	it('puts what Kusik read in front of its reply, asking for the user messages of the history', async () => {
+		const read = 'read workouts 01.11–10.11: 3 (01.11, 05.11, 09.11)'
+		const { service, getReadDigests } = createService({
+			// newest first, like the repository returns it
+			history: [toAssistantMessage('a2', 'Три', 'm2'), toUserMessage('m2', 'Скільки тренувань?')],
+			readDigests: new Map([['m2', [read]]]),
+		})
+
+		const { context } = await build(service)
+
+		expect(getReadDigests).toHaveBeenCalledWith('u1', ['m2'])
+		expect(context.history).toEqual([
+			{ role: 'user', content: 'Скільки тренувань?' },
+			{ role: 'assistant', content: 'Три', reads: [read] },
 		])
 	})
 

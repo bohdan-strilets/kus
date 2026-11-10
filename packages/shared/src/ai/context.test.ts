@@ -159,6 +159,41 @@ describe('app changes in front of the message', () => {
 	})
 })
 
+describe('history turns with what Kusik read', () => {
+	const digest = (text: string): string => `read workouts 01.11–10.11: ${text}`.padEnd(200, 'x')
+
+	it('keeps both read digests whole in front of a long reply and inside the budget', () => {
+		const reads = [digest('3'), digest('4')]
+		const turns = selectHistory([
+			{ role: 'user', content: 'Як мої тренування цього місяця?' },
+			{ role: 'assistant', content: 'a'.repeat(HISTORY_MESSAGE_MAX_CHARS * 2), reads },
+		])
+
+		expect(turns).toHaveLength(2)
+		const reply = turns[1]?.content ?? ''
+		expect(reply.startsWith(`[Kusik: ${reads.join('; ')}] `)).toBe(true)
+		expect(reply).toHaveLength(HISTORY_MESSAGE_MAX_CHARS)
+	})
+
+	it('does not push the earlier turns out of the history budget when the digests are short', () => {
+		const turns = selectHistory(
+			Array.from({ length: 3 }, (_, index) => [
+				{ role: 'user' as const, content: `питання ${index}` },
+				{
+					role: 'assistant' as const,
+					content: 'відповідь '.repeat(20),
+					reads: ['read workouts 01.11–10.11: 3 (01.11, 05.11, 09.11); records: 09.11 "Жим" 85 kg'],
+				},
+			]).flat(),
+		)
+
+		expect(turns).toHaveLength(6)
+		expect(turns.filter(({ content }) => content.startsWith('[Kusik: read workouts'))).toHaveLength(
+			3,
+		)
+	})
+})
+
 describe('history turns with logged entries', () => {
 	const userTurn = (overrides: Partial<HistoryTurn>): HistoryTurn => ({
 		role: 'user',

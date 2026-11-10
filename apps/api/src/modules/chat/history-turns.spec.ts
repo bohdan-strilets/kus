@@ -260,4 +260,48 @@ describe('toHistoryTurns', () => {
 			expect(unrelated).toEqual([{ role: 'assistant', content: 'Привіт' }])
 		})
 	})
+
+	describe('what Kusik read', () => {
+		const READ = 'read workouts 01.11–10.11: 3 (01.11, 05.11, 09.11)'
+		const readDigests = new Map([['u1', [READ]]])
+		const reply = (overrides: Partial<Record<keyof Message, unknown>> = {}): Message =>
+			toMessage({
+				id: 'a1',
+				role: MessageRole.ASSISTANT,
+				content: 'Три',
+				replyToId: 'u1',
+				...overrides,
+			})
+
+		it('gives the reply the digests of the user message it answers', () => {
+			expect(toHistoryTurns(reply(), REFS, new Map(), { readDigests })).toEqual([
+				{ role: 'assistant', content: 'Три', reads: [READ] },
+			])
+		})
+
+		it('gives nothing to the user turn, to a reply of another message or one without a reply link', () => {
+			expect(
+				toHistoryTurns(toMessage({ id: 'u1' }), REFS, new Map(), { readDigests })[0],
+			).not.toHaveProperty('reads')
+			expect(
+				toHistoryTurns(reply({ replyToId: 'u2' }), REFS, new Map(), { readDigests })[0],
+			).not.toHaveProperty('reads')
+			expect(
+				toHistoryTurns(reply({ replyToId: null }), REFS, new Map(), { readDigests })[0],
+			).not.toHaveProperty('reads')
+		})
+
+		it('keeps the actions of the turn next to the reads', () => {
+			const kusikActions = { deleted: [{ ref: 'e1' }], restored: [], corrected: [] }
+			const corrections: HistoryCorrectionContext = {
+				deletedBy: new Map(),
+				kusikActionsByMessageId: new Map([['u1', kusikActions]]),
+				appChangesByMessageId: new Map(),
+			}
+
+			expect(toHistoryTurns(reply(), REFS, new Map(), { readDigests, corrections })).toEqual([
+				{ role: 'assistant', content: 'Три', kusikActions, reads: [READ] },
+			])
+		})
+	})
 })

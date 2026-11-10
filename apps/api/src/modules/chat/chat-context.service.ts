@@ -276,7 +276,7 @@ export class ChatContextService {
 		const userMessageIds = history
 			.filter(({ role }) => role === MessageRole.USER)
 			.map(({ id }) => id)
-		const [programContext, markers] = await Promise.all([
+		const [programContext, markers, readDigests] = await Promise.all([
 			// after the workouts: an exercise of the program shows its x-ref when «Exercises» lists it
 			this.programProposals.getContext(userId, {
 				exerciseRefs: new Map([...workouts.refIds.exercises].map(([ref, id]) => [id, ref])),
@@ -290,6 +290,8 @@ export class ChatContextService {
 				factRefById: new Map(factRefs.map(({ id, ref }) => [id, ref])),
 				foodRefById,
 			}),
+			// what Kusik read in each turn: the numbers of its replies come from there
+			this.historyMarkers.getReadDigests(userId, userMessageIds),
 		])
 		const clarifications = await this.clarificationsRepository.findOpenClarifications({
 			userId,
@@ -325,6 +327,7 @@ export class ChatContextService {
 				deletedEntryIds,
 				markers: markers.get(turn.id),
 				corrections,
+				readDigests,
 			}),
 		)
 		const appChanges = corrections.appChangesByMessageId.get(message.id)

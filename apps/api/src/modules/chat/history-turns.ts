@@ -12,6 +12,8 @@ export interface HistoryTurnOptions {
 	markers?: HistoryMarkerFields
 	/** Who deleted the entries and what each turn changed; see `buildCorrectionContext`. */
 	corrections?: HistoryCorrectionContext
+	/** User message id → digests of what Kusik read in its turn; shown in front of Kusik's reply. */
+	readDigests?: ReadonlyMap<string, string[]>
 }
 
 type LoggedFields = Pick<
@@ -100,11 +102,20 @@ const toCorrectionFields = (
 	return kusikActions ? { kusikActions } : {}
 }
 
+/** Kusik's reply carries what its user message made it read. */
+const toReadFields = (
+	message: MessageWithAttachments,
+	readDigests: ReadonlyMap<string, string[]> | undefined,
+): Pick<HistoryMarkerFields, 'reads'> => {
+	const reads = message.replyToId === null ? undefined : readDigests?.get(message.replyToId)
+	return reads && reads.length > 0 ? { reads } : {}
+}
+
 export const toHistoryTurns = (
 	message: MessageWithAttachments,
 	refByEntryId: ReadonlyMap<string, string>,
 	entryIdsBySourceMessageId: ReadonlyMap<string, string[]>,
-	{ deletedEntryIds = new Set(), markers = {}, corrections }: HistoryTurnOptions = {},
+	{ deletedEntryIds = new Set(), markers = {}, corrections, readDigests }: HistoryTurnOptions = {},
 ): HistoryTurn[] => {
 	const isUser = message.role === MessageRole.USER
 	const role = isUser ? 'user' : 'assistant'
@@ -122,7 +133,7 @@ export const toHistoryTurns = (
 				...fromCorrections,
 				...markers,
 			}
-		: fromCorrections
+		: { ...fromCorrections, ...toReadFields(message, readDigests) }
 	// the photo itself is never sent again: the model sees a marker next to the words
 	if (message.attachments.length > 0) {
 		return [{ role, content: message.content ?? '', hasPhoto: true, ...marked }]

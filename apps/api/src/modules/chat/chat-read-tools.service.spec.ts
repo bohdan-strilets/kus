@@ -96,6 +96,8 @@ describe('ChatReadToolsService find_food', () => {
 		expect(result.refsPatch).toEqual({ memoryRefs: ['m2'], copyRefs: ['h3'] })
 		expect(turn.memory.byRef.get('m2')?.id).toBe('f-own')
 		expect(turn.copyRefIds.get('h3')).toBe('e-own')
+		// the digest of the history never carries a ref: it is valid in this request only
+		expect(result.digest).toBe('looked up food "спортіфіл": 2 found')
 	})
 
 	it('keeps a ref when the same food is asked twice, and reads each source once per turn', async () => {
@@ -184,6 +186,7 @@ const READ_DATA: WorkoutsReadData = {
 	firstEverDate: '2025-09-03',
 	totalEver: 84,
 	exercise: null,
+	periodCount: 0,
 	count: 0,
 	firstDate: null,
 	lastDate: null,
@@ -235,6 +238,7 @@ describe('ChatReadToolsService get_workouts', () => {
 		})
 		expect(result.text).toContain('First workout ever: 2025-09-03; all time: 84 workouts.')
 		expect(result.text).toContain('No workouts in this period.')
+		expect(result.digest).toBe('read workouts 12.10–10.11: 0')
 	})
 
 	it('cuts an end date after today to today and keeps an earlier one', async () => {

@@ -6,6 +6,7 @@ import { z } from 'zod'
 import type { ParseRefsPatch } from './entry-edits.js'
 import { FOOD_SEARCH_LIMIT, type FoodSearchCandidate, searchFoods } from './food-search.js'
 import { toContextText } from './memory-context.js'
+import { joinReadDigest } from './read-digest.js'
 
 export const FIND_FOOD_TOOL_NAME = 'find_food'
 export const FIND_FOOD_QUERY_MAX_LENGTH = 60
@@ -176,6 +177,13 @@ export const formatFoundHistoryEntry = (entry: FindFoodHistoryEntry, ref: string
 }
 
 export const formatNoFoodMatch = (query: string): string => `No match for "${toContextText(query)}"`
+
+/**
+ * What a find_food call found, for the history of the next turns: the words searched and how many
+ * candidates, never the refs (m…/h… are only valid in the request that issued them).
+ */
+export const formatFindFoodDigest = (query: string, foundCount: number): string =>
+	joinReadDigest(`looked up food "${toContextText(query)}": ${foundCount} found`, [])
 
 const searchByKey = <T extends { key: string }>(
 	query: string,

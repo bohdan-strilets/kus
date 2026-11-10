@@ -102,6 +102,24 @@ describe('AiService.parseFood read-tool loop', () => {
 		expect(costs).toEqual([0.004, 0.001])
 	})
 
+	it('keeps the digest of a read next to its text in the stored call, and the digest never reaches the model', async () => {
+		execute.mockResolvedValue({
+			text: 'm11 "Батончик"',
+			refsPatch: { memoryRefs: ['m11'] },
+			digest: 'looked up food "sportyfeel": 1 found',
+		})
+		fake.respond(createCompletion([readCall()]), createCompletion([memoryLogCall()]))
+
+		await service.parseFood(params)
+
+		const [firstRun] = repository.createRun.mock.calls.map(([run]) => run)
+		expect(firstRun?.toolCalls[0]?.result).toEqual({
+			text: 'm11 "Батончик"',
+			digest: 'looked up food "sportyfeel": 1 found',
+		})
+		expect(JSON.stringify(fake.bodies[1])).not.toContain('looked up food')
+	})
+
 	it('rejects a ref the reads did not hand out', async () => {
 		execute.mockResolvedValue({ text: 'No match' })
 		fake.respond(

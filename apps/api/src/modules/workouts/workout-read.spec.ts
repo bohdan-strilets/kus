@@ -224,6 +224,20 @@ describe('buildWorkoutsReadData', () => {
 	})
 })
 
+describe('matchExercises family', () => {
+	it('takes every exercise that shares the first word of a longer spoken name', () => {
+		const chestPress = { id: 'ex-chest', name: 'Жим від грудей', aliases: [] }
+
+		const names = matchExercises('жим від грудей', [BENCH, chestPress, SQUAT, OHP]).map(
+			({ name }) => name,
+		)
+
+		expect(names).toHaveLength(3)
+		expect(names[0]).toBe('Жим від грудей')
+		expect(names).toEqual(expect.arrayContaining(['Жим лежачи', 'Жим стоячи']))
+	})
+})
+
 describe('buildWorkoutsReadData program', () => {
 	const rotation = {
 		title: 'Все тіло',
@@ -260,12 +274,15 @@ describe('buildWorkoutsReadData program', () => {
 			mode: 'ROTATE',
 			perWeek: 3,
 			since: '2026-10-05',
+			judged: { from: '2026-10-12', to: '2026-11-08' },
 			planned: 12,
 			done: 7,
 			missed: [
 				{ from: '2026-10-26', to: '2026-11-01', done: 1, planned: 3 },
 				{ from: '2026-11-02', to: '2026-11-08', done: 0, planned: 3 },
 			],
+			notJudged: 0,
+			thisWeek: { from: '2026-11-09', to: '2026-11-15', done: 0, planned: 3 },
 		})
 	})
 
@@ -303,6 +320,98 @@ describe('buildWorkoutsReadData program', () => {
 		expect(started).toMatchObject({ planned: 3, done: 0 })
 	})
 
+	it('judges only whole weeks over, tells the rest of the period apart and counts the workouts outside the check', () => {
+		const data = buildWorkoutsReadData(
+			base({
+				from: '2026-11-01',
+				to: '2026-11-10',
+				today: '2026-11-10',
+				program: { ...rotation, since: '2026-10-20' },
+				workouts: perWeekWorkouts(['2026-11-01', '2026-11-05', '2026-11-09']),
+			}),
+		)
+
+		expect(data.periodCount).toBe(3)
+		expect(data.program).toEqual({
+			title: 'Все тіло',
+			mode: 'ROTATE',
+			perWeek: 3,
+			since: '2026-10-20',
+			judged: { from: '2026-11-02', to: '2026-11-08' },
+			planned: 3,
+			done: 1,
+			missed: [{ from: '2026-11-02', to: '2026-11-08', done: 1, planned: 3 }],
+			notJudged: 2,
+			thisWeek: { from: '2026-11-09', to: '2026-11-15', done: 1, planned: 3 },
+		})
+	})
+
+	it('has nothing to judge while no whole week is over, and the week so far is no miss', () => {
+		const data = buildWorkoutsReadData(
+			base({
+				from: '2026-11-09',
+				to: '2026-11-10',
+				today: '2026-11-10',
+				program: rotation,
+				workouts: perWeekWorkouts(['2026-11-09']),
+			}),
+		)
+
+		expect(data.program).toMatchObject({
+			judged: null,
+			planned: 0,
+			done: 0,
+			missed: [],
+			notJudged: 1,
+			thisWeek: { from: '2026-11-09', to: '2026-11-15', done: 1, planned: 3 },
+		})
+	})
+
+	it('shows no week so far when the period ended before the current week', () => {
+		const data = buildWorkoutsReadData(
+			base({ from: '2026-10-12', to: '2026-10-25', program: rotation, workouts: [] }),
+		)
+
+		expect(data.program?.thisWeek).toBeNull()
+	})
+
+	it('keeps every exercise of a spoken name apart: sessions, bests and records per exercise', () => {
+		const chestPress = { id: 'ex-chest', name: 'Жим від грудей', aliases: [] }
+		const machine = makeEntry({
+			id: 'e-m',
+			workoutId: 'w2',
+			workoutLocalDate: '2026-10-26',
+			exerciseId: chestPress.id,
+			name: chestPress.name,
+			sets: [makeSet({ reps: 13, weightKg: 52 })],
+		})
+		const data = buildWorkoutsReadData(
+			base({
+				from: '2026-08-11',
+				exercise: { query: 'жим від грудей', matched: [chestPress, BENCH] },
+				workouts: [
+					makeWorkout({ id: 'w1', localDate: '2026-09-14' }),
+					makeWorkout({ id: 'w2', localDate: '2026-10-26' }),
+					makeWorkout({ id: 'w3', localDate: '2026-11-02' }),
+				],
+				entries: [bench('w1', '2026-09-14', 85), machine],
+				allTimeStrengthEntries: [bench('w1', '2026-09-14', 85), machine],
+			}),
+		)
+
+		expect(data.exercise?.matched).toEqual(['Жим від грудей', 'Жим лежачи'])
+		expect(data.periodCount).toBe(3)
+		expect(data.count).toBe(2)
+		expect(
+			data.exercises.map(({ name, bestEver }) => [name, bestEver?.weightKg, bestEver?.reps]),
+		).toEqual(
+			expect.arrayContaining([
+				['Жим від грудей', 52, 13],
+				['Жим лежачи', 85, 5],
+			]),
+		)
+	})
+
 	it('judges fixed weekdays day by day, from the start to yesterday', () => {
 		const data = buildWorkoutsReadData(
 			base({
@@ -322,7 +431,14 @@ describe('buildWorkoutsReadData program', () => {
 		)
 
 		// planned: 02, 04, 06, 09; today (Tue 10) is not over
-		expect(data.program).toMatchObject({ planned: 4, done: 3 })
+		expect(data.program).toMatchObject({
+			planned: 4,
+			done: 3,
+			judged: { from: '2026-11-02', to: '2026-11-09' },
+			notJudged: 0,
+			// Monday 09.11 is planned and done; today (Tuesday) is not a planned day
+			thisWeek: { from: '2026-11-09', to: '2026-11-10', done: 1, planned: 1 },
+		})
 		expect(data.program?.missed).toEqual([
 			{ from: '2026-11-02', to: '2026-11-08', done: 2, planned: 3 },
 		])

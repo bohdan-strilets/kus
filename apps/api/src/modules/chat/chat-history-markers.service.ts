@@ -38,6 +38,14 @@ export class ChatHistoryMarkersService {
 		private readonly memoryService: MemoryService,
 	) {}
 
+	/**
+	 * User message id → digests of what Kusik read answering it (the `reads` of the reply's marker).
+	 * Through the AI module's service, scoped to the user.
+	 */
+	getReadDigests(userId: string, messageIds: string[]): Promise<ReadonlyMap<string, string[]>> {
+		return this.aiService.findReadDigests(userId, messageIds)
+	}
+
 	/** Message id → its markers; a message with nothing to mark is absent. */
 	async getMarkers({
 		userId,

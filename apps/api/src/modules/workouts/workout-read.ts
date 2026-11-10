@@ -26,6 +26,11 @@ import { getEstimatedDurationMin } from './workouts.mapper'
 
 /** Most exercises of the dictionary one spoken name can stand for. */
 export const READ_EXERCISE_MATCH_LIMIT = 5
+/**
+ * Below the food search's 0.34: one word of a three-word name is 1/3, and "жим від грудей" must still
+ * reach "Жим лежачи" — the user's own words name a family of exercises, the model sees all of them.
+ */
+const READ_EXERCISE_MIN_SCORE = 0.33
 const RECORDS_MAX = 20
 const KM_FACTOR = 10
 const METERS_IN_KM = 1000
@@ -45,7 +50,10 @@ export const matchExercises = (
 	return searchFoods(
 		query,
 		exercises.map(({ id, name, aliases }) => ({ ref: id, source: 'saved', name, aliases })),
-		{ limit: Math.min(FOOD_SEARCH_LIMIT, READ_EXERCISE_MATCH_LIMIT) },
+		{
+			limit: Math.min(FOOD_SEARCH_LIMIT, READ_EXERCISE_MATCH_LIMIT),
+			minScore: READ_EXERCISE_MIN_SCORE,
+		},
 	).flatMap(({ candidate }) => byId.get(candidate.ref) ?? [])
 }
 
@@ -228,6 +236,7 @@ export const buildWorkoutsReadData = (input: BuildWorkoutsReadInput): WorkoutsRe
 		...(exercise !== null && exercise.matched.length === 0
 			? { knownExercises: input.knownExerciseNames.slice(0, GET_WORKOUTS_KNOWN_EXERCISES_MAX) }
 			: {}),
+		periodCount: input.workouts.length,
 		count: workouts.length,
 		firstDate: dates.length === 0 ? null : dates.reduce((a, b) => (a < b ? a : b)),
 		lastDate: dates.length === 0 ? null : dates.reduce((a, b) => (a > b ? a : b)),

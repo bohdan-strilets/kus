@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
 	formatGetWorkoutsResult,
+	formatWorkoutsDigest,
 	GET_WORKOUTS_DESCRIPTION,
 	GET_WORKOUTS_INVALID_ARGUMENTS_RESULT,
 	getWorkoutsInputSchema,
@@ -9,6 +10,8 @@ import {
 	type WorkoutsReadData,
 	workoutsReadDataSchema,
 } from './get-workouts.js'
+import { formatFindFoodDigest } from './find-food.js'
+import { READ_DIGEST_MAX_CHARS } from './read-digest.js'
 import { getAiFunctionTools } from './tools.js'
 
 const data: WorkoutsReadData = {
@@ -18,6 +21,7 @@ const data: WorkoutsReadData = {
 	firstEverDate: '2025-09-03',
 	totalEver: 84,
 	exercise: null,
+	periodCount: 2,
 	count: 2,
 	firstDate: '2026-10-13',
 	lastDate: '2026-11-03',
@@ -61,9 +65,12 @@ const data: WorkoutsReadData = {
 		mode: 'ROTATE',
 		perWeek: 3,
 		since: '2026-10-05',
+		judged: { from: '2026-10-12', to: '2026-11-01' },
 		planned: 9,
 		done: 7,
 		missed: [{ from: '2026-10-26', to: '2026-11-01', done: 1, planned: 3 }],
+		notJudged: 0,
+		thisWeek: null,
 	},
 	hasOpenSession: false,
 }
@@ -102,7 +109,7 @@ describe('formatGetWorkoutsResult', () => {
 		expect(formatGetWorkoutsResult(data).split('\n')).toEqual([
 			'Period 2026-10-12…2026-11-10 (30 days). First workout ever: 2025-09-03; all time: 84 workouts.',
 			'Workouts: 2 (first 2026-10-13, last 2026-11-03); avg 52 min (some estimated); working sets 18.',
-			'Program "Все тіло" (3/week, rotation) since 2026-10-05: planned 9, done 7; short weeks: 26.10–01.11 1 of 3.',
+			'Program "Все тіло" (3/week, rotation) since 2026-10-05. Plan check counts only whole Mon–Sun weeks of the period that are over: 12.10–01.11 — planned 9, done 7; short weeks: 26.10–01.11 1 of 3.',
 			'Sessions, newest first:',
 			'- 2026-11-03 "Все тіло" ≈55 min: "Жим \'лежачи\'" 3×5 at 85 kg (record); "Біг" 30 min, 5.0 km',
 			'- 2026-10-13',
@@ -162,8 +169,11 @@ describe('formatGetWorkoutsResult', () => {
 			knownExercises: ['Жим лежачи', 'Станова тяга'],
 		})
 
-		expect(matched).toContain('Exercise "жим" matches: "Жим лежачи", "Жим стоячи".')
-		expect(matched).toContain('Workouts with it: 2')
+		expect(matched).toContain(
+			'Matched exercises: "Жим лежачи"; "Жим стоячи" (the user said "жим"). Figures below are per exercise.',
+		)
+		expect(matched).toContain('Workouts with it: 2 of 2 in the period (first 2026-10-13')
+		expect(matched).toContain('Records in period (this exercise only):')
 		expect(none).toContain(
 			'Exercise "присід": no match among the user\'s exercises. Known exercises: "Жим лежачи", "Станова тяга".',
 		)
@@ -178,9 +188,12 @@ describe('formatGetWorkoutsResult', () => {
 				mode: 'ROTATE',
 				perWeek: null,
 				since: '2026-10-05',
+				judged: null,
 				planned: 0,
 				done: 0,
 				missed: [],
+				notJudged: 0,
+				thisWeek: null,
 			},
 		})
 
@@ -207,6 +220,137 @@ describe('formatGetWorkoutsResult', () => {
 		})
 
 		expect(text).toContain('best ever 12 reps on 2026-11-03; change -2 reps')
+	})
+})
+
+const getProgram = (): NonNullable<WorkoutsReadData['program']> => {
+	if (data.program === null) throw new Error('the fixture has a program')
+	return data.program
+}
+
+describe('formatGetWorkoutsResult program line', () => {
+	const program = getProgram()
+	const withProgram = (overrides: Partial<typeof program>, periodCount = 3): string[] =>
+		formatGetWorkoutsResult({
+			...data,
+			periodCount,
+			program: { ...program, ...overrides },
+		}).split('\n')
+
+	it('names the judged weeks and what stayed out of the check', () => {
+		const lines = withProgram({
+			since: '2026-10-20',
+			judged: { from: '2026-11-02', to: '2026-11-08' },
+			planned: 3,
+			done: 1,
+			missed: [{ from: '2026-11-02', to: '2026-11-08', done: 1, planned: 3 }],
+			notJudged: 2,
+			thisWeek: { from: '2026-11-09', to: '2026-11-15', done: 1, planned: 3 },
+		})
+
+		expect(lines).toContain(
+			'Program "Все тіло" (3/week, rotation) since 2026-10-20. Plan check counts only whole Mon–Sun weeks of the period that are over: 02.11–08.11 — planned 3, done 1; short weeks: 02.11–08.11 1 of 3. Not in the check: 2 of the period\'s 3 workouts (outside these weeks or above 3/week).',
+		)
+		expect(lines).toContain('This week so far: 1 of 3 (not over).')
+	})
+
+	it('says nothing is judged while no whole week is over, and the week so far is no miss', () => {
+		const lines = withProgram({
+			judged: null,
+			planned: 0,
+			done: 0,
+			missed: [],
+			notJudged: 1,
+			thisWeek: { from: '2026-11-09', to: '2026-11-15', done: 1, planned: 3 },
+		})
+
+		expect(lines).toContain(
+			'Program "Все тіло" (3/week, rotation) since 2026-10-05. No whole week of the period is over yet: nothing to judge.',
+		)
+		expect(lines).toContain('This week so far: 1 of 3 (not over).')
+	})
+
+	it('counts fixed weekdays from the start to the end of the judged days', () => {
+		const lines = withProgram({
+			mode: 'WEEKDAYS',
+			perWeek: null,
+			judged: { from: '2026-11-02', to: '2026-11-09' },
+			planned: 4,
+			done: 3,
+			missed: [{ from: '2026-11-02', to: '2026-11-08', done: 2, planned: 3 }],
+			notJudged: 0,
+			thisWeek: { from: '2026-11-09', to: '2026-11-10', done: 1, planned: 1 },
+		})
+
+		expect(lines).toContain(
+			'Program "Все тіло" (fixed weekdays) since 2026-10-05. Plan check counts planned weekdays from 02.11 to 09.11: planned 4, done 3; short weeks: 02.11–08.11 2 of 3.',
+		)
+		expect(lines).toContain('This week so far: 1 of 1 planned days up to today (not over).')
+	})
+})
+
+describe('formatWorkoutsDigest', () => {
+	it('gives the period, the count with its dates, the program verdict and the newest records', () => {
+		const digest = formatWorkoutsDigest({
+			...data,
+			from: '2026-11-01',
+			count: 3,
+			periodCount: 3,
+			sessions: ['2026-11-09', '2026-11-05', '2026-11-01'].map((date) => ({
+				date,
+				templateName: null,
+				durationMin: null,
+				isDurationEstimate: false,
+				exercises: [],
+			})),
+			program: {
+				...getProgram(),
+				judged: { from: '2026-11-02', to: '2026-11-08' },
+				planned: 3,
+				done: 1,
+				missed: [{ from: '2026-11-02', to: '2026-11-08', done: 1, planned: 3 }],
+			},
+			records: [{ date: '2026-11-09', exercise: 'Станова тяга', type: 'WEIGHT', value: 68 }],
+		})
+
+		expect(digest).toBe(
+			'read workouts 01.11–10.11: 3 (01.11, 05.11, 09.11); program 3/week: 02.11–08.11 1 of 3; records: 09.11 "Станова тяга" 68 kg',
+		)
+	})
+
+	it('names the exercise asked for and the share of the period', () => {
+		const digest = formatWorkoutsDigest({
+			...data,
+			exercise: { query: 'жим', matched: ['Жим лежачи'] },
+			periodCount: 3,
+			count: 1,
+			program: null,
+			records: [],
+			sessions: data.sessions.slice(0, 1),
+		})
+
+		expect(digest).toBe('read workouts 12.10–10.11, "жим": 1 of 3 (03.11)')
+	})
+
+	it('is never longer than 200 characters and keeps the head when the rest is dropped', () => {
+		const long = formatWorkoutsDigest({
+			...data,
+			records: Array.from({ length: 5 }, (_, index) => ({
+				date: '2026-11-03',
+				exercise: `Дуже довга назва вправи номер ${index}`,
+				type: 'WEIGHT' as const,
+				value: 100,
+			})),
+		})
+
+		expect(long.length).toBeLessThanOrEqual(READ_DIGEST_MAX_CHARS)
+		expect(long.startsWith('read workouts 12.10–10.11: 2 (')).toBe(true)
+	})
+})
+
+describe('formatFindFoodDigest', () => {
+	it('is a short line without refs', () => {
+		expect(formatFindFoodDigest('батончик', 2)).toBe('looked up food "батончик": 2 found')
 	})
 })
 

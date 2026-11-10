@@ -17,6 +17,7 @@ import {
 	TEMPLATE_REF_PATTERN,
 	WORKOUT_REF_PATTERN,
 	workoutPlaceSchema,
+	type WorkoutsReadData,
 } from '@kus/shared'
 import { z } from 'zod'
 
@@ -359,6 +360,18 @@ export const evalCaseSchema = z
 			memory: expectedMemorySchema.optional(),
 			/** find_food must be called (true) or must not be (false). */
 			findFoodCalled: z.boolean().optional(),
+			/** get_workouts must be called or not; the arguments of its calls, when it is. */
+			getWorkouts: z
+				.object({
+					called: z.boolean(),
+					/** Every call's `days` is within these bounds. */
+					days: z.object({ min: z.int(), max: z.int() }).optional(),
+					/** Every call has endDate null (the period ends today). */
+					endDateNull: z.boolean().optional(),
+					/** Lower-case stem that every call's `exercise` contains. */
+					exerciseStem: z.string().min(1).optional(),
+				})
+				.optional(),
 			/** Exactly these saved-food refs (m1, m11) are used by the logged items; [] = none. */
 			memoryRefs: z.array(z.string().regex(MEMORY_REF_PATTERN)).optional(),
 			/** Items logged from a saved food: its m-ref, source MEMORY and exactly these grams. */
@@ -406,4 +419,9 @@ export type EvalCase = z.infer<typeof evalCaseSchema> & {
 	savedFoods?: SavedFood[]
 	/** The loaded photo of a private case with `image`. */
 	photo?: EvalPhoto
+	/**
+	 * What get_workouts answers in this case, as the backend would have counted it (the model's own
+	 * days and dates only decide whether the call was right, not what comes back).
+	 */
+	workoutsRead?: WorkoutsReadData
 }

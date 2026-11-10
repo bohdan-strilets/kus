@@ -23,6 +23,7 @@ import { SAFETY_CASES } from './safety.cases.js'
 import { SOUP_CASES } from './soup.cases.js'
 import { WORKOUT_2_CASES } from './workout-2.cases.js'
 import { WORKOUT_CASES } from './workout.cases.js'
+import { WORKOUTS_READ_CASES } from './workouts-read.cases.js'
 
 export type {
 	EvalCase,
@@ -58,6 +59,7 @@ export const REPO_CASES: EvalCase[] = [
 	...LIVE_CHAT_CASES,
 	...READ_TOOL_CASES,
 	...SOUP_CASES,
+	...WORKOUTS_READ_CASES,
 ]
 
 /** Written, but need a context the contract doesn't have yet; not run until it does. None now. */

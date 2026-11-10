@@ -15,8 +15,8 @@ const passiveNames = (id: string): string[] =>
 	buildCaseContext(byId(id)).memory.map(({ name }) => name)
 
 describe('read-tool cases', () => {
-	it('are the fifteen cases of stage 0.11.0, valid, with ids unique across the repo set', () => {
-		expect(READ_TOOL_CASES).toHaveLength(15)
+	it('are the fourteen cases of stage 0.11.0, valid, with ids unique across the repo set', () => {
+		expect(READ_TOOL_CASES).toHaveLength(14)
 		const ids = REPO_CASES.map(({ id }) => id)
 		expect(new Set(ids).size).toBe(ids.length)
 		for (const evalCase of READ_TOOL_CASES) {
@@ -79,9 +79,7 @@ describe('read-tool cases', () => {
 		expect(soup.context?.earlier?.[0]?.ref).toBe('h1')
 	})
 
-	it('make the model admit it only sees workouts of today, and keep the app marker out of an unrelated answer', () => {
-		expect(byId('read-workouts-history-honest').expect.replyIncludesAny).toEqual(['сьогодн'])
-		expect(byId('read-workouts-history-honest').expect.replyExcludes).toContain('не було')
+	it('keep the app marker out of an unrelated answer', () => {
 		const marker = byId('read-marker-not-in-unrelated-answer')
 		expect(marker.context?.appChanges).toHaveLength(1)
 		expect(marker.expect.replyExcludes).toEqual(['видален', 'в застосунку', 'прибран'])

@@ -14,6 +14,8 @@ import {
 /** Claude Sonnet 5.5 on OpenRouter: $2 in, $10 out per million. */
 const PRICE: ModelPrice = { prompt: 2e-6, completion: 10e-6 }
 
+const PREFIX_ANCHOR = 23_000
+
 /** Billed cost of the 2026-11-10 read-tools run (results/2026-11-10T11-57-11-981Z.jsonl). */
 const ACTUAL_USD: Record<string, number> = {
 	'read-prot-bar-abbrev': 0.0632,
@@ -49,11 +51,13 @@ describe('case reserve upper bound', () => {
 		expect(MAX_MODEL_CALLS_PER_CASE).toBe(4)
 	})
 
-	it('estimates the cached prefix of about 22k tokens, within 20 % of the real one (22 006 cached by the eval of prompt .5)', () => {
+	// 22 006 cached by the eval of prompt .5; get_workouts (+~300 tokens of schema and prompt) is not
+	// measured yet, so the anchor is the estimate — set it to the eval's number after the first run
+	it('estimates the cached prefix of about 23k tokens, within 20 % of the real one', () => {
 		for (const evalCase of READ_TOOL_CASES) {
 			const { prefix } = estimateInputParts(evalCase)
-			expect(prefix, evalCase.id).toBeGreaterThan(22_000 * 0.8)
-			expect(prefix, evalCase.id).toBeLessThan(22_000 * 1.2)
+			expect(prefix, evalCase.id).toBeGreaterThan(PREFIX_ANCHOR * 0.8)
+			expect(prefix, evalCase.id).toBeLessThan(PREFIX_ANCHOR * 1.2)
 		}
 	})
 

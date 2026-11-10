@@ -172,3 +172,78 @@ describe('getReadCalls', () => {
 		expect(getReadCalls(calls)).toHaveLength(4)
 	})
 })
+
+describe('get_workouts in the read loop', () => {
+	const workoutsCall = (args: unknown) => ({
+		name: 'get_workouts',
+		arguments: JSON.stringify(args),
+	})
+	const withFixture = makeCase({
+		workoutsRead: {
+			from: '2026-11-01',
+			to: '2026-11-10',
+			days: 10,
+			firstEverDate: '2025-09-03',
+			totalEver: 84,
+			exercise: null,
+			count: 0,
+			firstDate: null,
+			lastDate: null,
+			avgDurationMin: null,
+			hasEstimatedDuration: false,
+			workingSets: 0,
+			sessions: [],
+			olderNotListed: 0,
+			exercises: [],
+			records: [],
+			program: null,
+			hasOpenSession: false,
+		},
+	})
+
+	it("answers with the shared formatter over the case's fixture", () => {
+		const execute = createReadExecutor(withFixture, buildCaseContext(withFixture))
+
+		const outcome = execute(workoutsCall({ days: 10 }))
+
+		expect(outcome.text).toContain('First workout ever: 2025-09-03; all time: 84 workouts.')
+		expect(outcome.text).toContain('No workouts in this period.')
+		expect(outcome.refsPatch).toEqual({})
+	})
+
+	it('answers a case without a fixture with an empty log, and invalid arguments with an error text', () => {
+		const plain = makeCase({})
+		const execute = createReadExecutor(plain, buildCaseContext(plain))
+
+		expect(execute(workoutsCall({ days: 7 })).text).toContain('all time: 0 workouts.')
+		expect(execute(workoutsCall({ days: 93 })).text).toContain('invalid arguments')
+	})
+
+	it('counts the valid calls with their arguments, not the invalid ones', () => {
+		const execute = createReadExecutor(withFixture, buildCaseContext(withFixture))
+		const turn = createReadTurn()
+
+		runReadStep(turn, execute, [
+			workoutsCall({ days: 10 }),
+			workoutsCall({ days: 0 }),
+			workoutsCall({ days: 7, endDate: '2026-11-08', exercise: 'жим' }),
+		])
+
+		expect(turn.stats.getWorkouts).toEqual([
+			{ days: 10, endDate: null, exercise: null },
+			{ days: 7, endDate: '2026-11-08', exercise: 'жим' },
+		])
+		expect(turn.stats.findFoodCalls).toBe(0)
+	})
+
+	it('leaves the stats of a find_food-only round without the field', () => {
+		const evalCase = makeCase({ savedFoods: [bar] })
+		const turn = createReadTurn()
+
+		runReadStep(turn, createReadExecutor(evalCase, buildCaseContext(evalCase)), [
+			call('sportyfeel'),
+		])
+
+		expect(turn.stats).toEqual({ steps: 1, findFoodCalls: 1 })
+	})
+})

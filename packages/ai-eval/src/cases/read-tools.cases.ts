@@ -303,18 +303,6 @@ export const READ_TOOL_CASES: EvalCase[] = [
 			"«Ще раз» a soup that is in today's entries (e1) while an old, similarly named one (h1) sits in the earlier list: the model copies today's e1 or asks which broth; never h1 of another day; no lookup",
 	},
 	{
-		id: 'read-workouts-history-honest',
-		text: 'Коли я почав ходити в зал?',
-		expect: {
-			decision: 'reply',
-			replyIncludesAny: ['сьогодн'],
-			replyExcludes: ['немає записів', 'нема записів', 'не було'],
-			memory: NO_MEMORY_CALLS,
-		},
-		reference:
-			"No training in the context and no read tool for workouts: the reply says it only sees today's workouts and does not conclude «there are no records»",
-	},
-	{
 		id: 'read-marker-not-in-unrelated-answer',
 		text: "Які батончики є в пам'яті?",
 		savedFoods: [SPORTYFEEL, OLIMP, BUCKWHEAT, MILK],

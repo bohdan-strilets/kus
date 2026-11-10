@@ -154,7 +154,7 @@ const describeMiss = (evalCase: EvalCase, result: CaseResult): Miss[] => {
 		const findFoodCalls = result.reads?.findFoodCalls ?? 0
 		misses.push({
 			caseId: evalCase.id,
-			issue: `рішення: пам'ять ${got}, позицій ${result.items.length}, find_food ${findFoodCalls}`,
+			issue: `рішення: пам'ять ${got}, позицій ${result.items.length}, find_food ${findFoodCalls}, get_workouts ${result.reads?.getWorkouts?.length ?? 0}`,
 			errorPct: null,
 		})
 	}

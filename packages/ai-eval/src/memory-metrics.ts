@@ -79,6 +79,26 @@ export const areMemoryItemsCorrect = (
 export const isFindFoodRight = (expected: boolean, result: CaseResult): boolean =>
 	(result.reads?.findFoodCalls ?? 0) > 0 === expected
 
+/**
+ * get_workouts was called or not, and every call asked what the user meant: a period of the right
+ * length, ending today, about the named exercise.
+ */
+export const isGetWorkoutsRight = (
+	expected: NonNullable<EvalCase['expect']['getWorkouts']>,
+	result: CaseResult,
+): boolean => {
+	const calls = result.reads?.getWorkouts ?? []
+	if (calls.length > 0 !== expected.called) return false
+	const { days, endDateNull, exerciseStem } = expected
+	return calls.every(
+		(call) =>
+			(days === undefined || (call.days >= days.min && call.days <= days.max)) &&
+			(endDateNull === undefined || (call.endDate === null) === endDateNull) &&
+			(exerciseStem === undefined ||
+				(call.exercise?.toLowerCase().includes(exerciseStem) ?? false)),
+	)
+}
+
 /** Exactly these saved-food refs are used by the logged items (each ref counted once). */
 export const areMemoryRefsRight = (expected: string[], items: LoggedItem[]): boolean =>
 	isSameSet(
@@ -90,14 +110,16 @@ export const hasMemoryExpectations = ({ expect }: EvalCase): boolean =>
 	expect.memory !== undefined ||
 	expect.memoryItems !== undefined ||
 	expect.findFoodCalled !== undefined ||
+	expect.getWorkouts !== undefined ||
 	expect.memoryRefs !== undefined
 
 export const isCaseMemoryCorrect = (evalCase: EvalCase, result: CaseResult): boolean => {
-	const { memory, memoryItems, findFoodCalled, memoryRefs } = evalCase.expect
+	const { memory, memoryItems, findFoodCalled, getWorkouts, memoryRefs } = evalCase.expect
 	return (
 		(memory === undefined || isMemoryCorrect(memory, result.calls)) &&
 		(memoryItems === undefined || areMemoryItemsCorrect(memoryItems, result.items)) &&
 		(findFoodCalled === undefined || isFindFoodRight(findFoodCalled, result)) &&
+		(getWorkouts === undefined || isGetWorkoutsRight(getWorkouts, result)) &&
 		(memoryRefs === undefined || areMemoryRefsRight(memoryRefs, result.items))
 	)
 }

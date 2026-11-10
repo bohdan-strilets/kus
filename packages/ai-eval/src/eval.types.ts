@@ -2,6 +2,7 @@ import type {
 	ClarifyKind,
 	ExerciseKind,
 	ForgetFactInput,
+	GetWorkoutsInput,
 	MeasurementKind,
 	MuscleGroup,
 	ProgramMode,
@@ -41,7 +42,7 @@ export interface RawAttempt {
 	text: string | null
 	/** Cut at max_tokens: such an answer is never retried or parsed. */
 	isTruncated: boolean
-	/** The answer asked for a read (find_food): it was answered from the case's data, not parsed. */
+	/** The answer asked for a read (find_food, get_workouts): it was answered from the case's data, not parsed. */
 	isReadStep?: true
 }
 
@@ -51,6 +52,8 @@ export interface ReadStats {
 	steps: number
 	/** find_food calls that were answered. */
 	findFoodCalls: number
+	/** Arguments of every valid get_workouts call that was answered; absent = none. */
+	getWorkouts?: GetWorkoutsInput[]
 }
 
 /** What the raw tool calls say about days; the newer tools are matched by name, not by shared types. */

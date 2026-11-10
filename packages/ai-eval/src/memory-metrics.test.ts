@@ -11,6 +11,7 @@ import {
 	hasMemoryExpectations,
 	isCaseMemoryCorrect,
 	isFindFoodRight,
+	isGetWorkoutsRight,
 	isMemoryCorrect,
 } from './memory-metrics.js'
 
@@ -194,5 +195,50 @@ describe('find_food and memory-ref expectations', () => {
 		expect(
 			isCaseMemoryCorrect(evalCase, { ...result, reads: { steps: 0, findFoodCalls: 0 } }),
 		).toBe(false)
+	})
+})
+
+describe('get_workouts expectations', () => {
+	const withCalls = (
+		...calls: { days: number; endDate: string | null; exercise: string | null }[]
+	) => ({ reads: { steps: 1, findFoodCalls: 0, getWorkouts: calls } }) as CaseResult
+	const call = (days: number, endDate: string | null = null, exercise: string | null = null) => ({
+		days,
+		endDate,
+		exercise,
+	})
+
+	it('tells a call that happened from one that did not, also in results without reads', () => {
+		expect(isGetWorkoutsRight({ called: true }, withCalls(call(30)))).toBe(true)
+		expect(isGetWorkoutsRight({ called: true }, withCalls())).toBe(false)
+		expect(isGetWorkoutsRight({ called: false }, {} as CaseResult)).toBe(true)
+		expect(isGetWorkoutsRight({ called: false }, withCalls(call(7)))).toBe(false)
+	})
+
+	it('judges the period, its end and the exercise of every call', () => {
+		const expected = {
+			called: true,
+			days: { min: 10, max: 10 },
+			endDateNull: true,
+			exerciseStem: 'жим',
+		}
+
+		expect(isGetWorkoutsRight(expected, withCalls(call(10, null, 'Жим лежачи')))).toBe(true)
+		expect(isGetWorkoutsRight(expected, withCalls(call(30, null, 'жим')))).toBe(false)
+		expect(isGetWorkoutsRight(expected, withCalls(call(10, '2026-11-08', 'жим')))).toBe(false)
+		expect(isGetWorkoutsRight(expected, withCalls(call(10, null, null)))).toBe(false)
+	})
+
+	it('is a memory expectation of its own', () => {
+		const evalCase = { expect: { decision: 'reply', getWorkouts: { called: true } } } as EvalCase
+
+		expect(hasMemoryExpectations(evalCase)).toBe(true)
+		expect(
+			isCaseMemoryCorrect(evalCase, {
+				...withCalls(call(30)),
+				calls: EMPTY_CALL_FACTS,
+				items: [],
+			}),
+		).toBe(true)
 	})
 })

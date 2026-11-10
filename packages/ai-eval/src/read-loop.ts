@@ -1,5 +1,5 @@
 // The backend's read round (AiService.parseFood) over the case's own data: the model's find_food
-// calls are answered by the same shared functions, from the fixtures of the case.
+// and get_workouts calls are answered by the same shared functions, from the fixtures of the case.
 import {
 	type AiCompletion,
 	type AiRequestMessage,
@@ -9,18 +9,23 @@ import {
 	FIND_FOOD_INVALID_ARGUMENTS_RESULT,
 	FIND_FOOD_TOOL_NAME,
 	type FoodParseContext,
+	formatGetWorkoutsResult,
+	GET_WORKOUTS_INVALID_ARGUMENTS_RESULT,
+	GET_WORKOUTS_TOOL_NAME,
 	HISTORY_FOOD_REF_PREFIX,
 	isReadToolName,
 	MAX_PARALLEL_READS,
 	type MemoryFoodContext,
 	mealTypeSchema,
 	parseFindFoodArguments,
+	parseGetWorkoutsArguments,
 	type ParseRefsPatch,
 	type RawToolCall,
 	READ_CLOSED_ERROR,
 	runFindFood,
 	SAVED_FOOD_REF_PREFIX,
 	splitToolCalls,
+	type WorkoutsReadData,
 } from '@kus/shared'
 
 import { getCaseToday } from './cases/case-builders.js'
@@ -63,6 +68,28 @@ export const getReadCalls = (rawCalls: RawToolCall[]): RawToolCall[] =>
 
 const CONTEXT_KEY_PREFIX = 'context:'
 
+/** A case without a get_workouts fixture: an empty log, so a call nobody expected finds nothing. */
+const getEmptyWorkoutsRead = (today: string): WorkoutsReadData => ({
+	from: today,
+	to: today,
+	days: 1,
+	firstEverDate: null,
+	totalEver: 0,
+	exercise: null,
+	count: 0,
+	firstDate: null,
+	lastDate: null,
+	avgDurationMin: null,
+	hasEstimatedDuration: false,
+	workingSets: 0,
+	sessions: [],
+	olderNotListed: 0,
+	exercises: [],
+	records: [],
+	program: null,
+	hasOpenSession: false,
+})
+
 export const createReadExecutor = (evalCase: EvalCase, context: FoodParseContext): ReadExecutor => {
 	const fixtures = getReadFixtures(evalCase)
 	const keyByName = new Map(fixtures.data.saved.map((food) => [food.name, food.key]))
@@ -86,6 +113,16 @@ export const createReadExecutor = (evalCase: EvalCase, context: FoodParseContext
 	const now = new Date(`${getCaseToday(evalCase.context)}T12:00:00Z`)
 
 	return (call) => {
+		if (call.name === GET_WORKOUTS_TOOL_NAME) {
+			const workoutsInput = parseGetWorkoutsArguments(call.arguments)
+			const text =
+				workoutsInput === null
+					? GET_WORKOUTS_INVALID_ARGUMENTS_RESULT
+					: formatGetWorkoutsResult(
+							evalCase.workoutsRead ?? getEmptyWorkoutsRead(getCaseToday(evalCase.context)),
+						)
+			return { text, refsPatch: {}, memory: [], earlier: [] }
+		}
 		if (call.name !== FIND_FOOD_TOOL_NAME) throw new Error(`unknown read tool: ${call.name}`)
 		const input = parseFindFoodArguments(call.arguments)
 		if (input === null) {
@@ -128,6 +165,14 @@ export const runReadStep = (
 	const outcomes = calls.map(execute)
 	turn.stats.steps += 1
 	turn.stats.findFoodCalls += calls.filter((call) => call.name === FIND_FOOD_TOOL_NAME).length
+	const workoutCalls = calls.flatMap((call) => {
+		const input =
+			call.name === GET_WORKOUTS_TOOL_NAME ? parseGetWorkoutsArguments(call.arguments) : null
+		return input === null ? [] : [input]
+	})
+	if (workoutCalls.length > 0) {
+		turn.stats.getWorkouts = [...(turn.stats.getWorkouts ?? []), ...workoutCalls]
+	}
 	for (const outcome of outcomes) {
 		turn.refsPatch.memoryRefs.push(...(outcome.refsPatch.memoryRefs ?? []))
 		turn.refsPatch.copyRefs.push(...(outcome.refsPatch.copyRefs ?? []))

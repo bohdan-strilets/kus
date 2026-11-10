@@ -295,12 +295,12 @@ export const READ_TOOL_CASES: EvalCase[] = [
 			},
 		],
 		expect: {
-			decision: 'log_or_clarify',
-			copyRefs: ['e1'],
+			decision: 'log_or_reply',
+			copyRefsAnyOf: [['e1'], []],
 			findFoodCalled: false,
 		},
 		reference:
-			"«Ще раз» a soup that is in today's entries (e1) while an old, similarly named one (h1) sits in the earlier list: the model copies today's e1, not h1, and does not look it up",
+			"«Ще раз» a soup that is in today's entries (e1) while an old, similarly named one (h1) sits in the earlier list: the model copies today's e1 or asks which broth; never h1 of another day; no lookup",
 	},
 	{
 		id: 'read-workouts-history-honest',

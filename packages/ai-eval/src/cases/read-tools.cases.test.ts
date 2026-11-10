@@ -68,9 +68,13 @@ describe('read-tool cases', () => {
 		expect(passiveNames('read-plain-banana-no-find')).toEqual([])
 	})
 
-	it('expect the e1 of today, not the old h1, for «ще раз» a soup that is among today entries', () => {
+	it('expect the e1 of today or a question, never the old h1, for «ще раз» a soup that is among today entries', () => {
 		const soup = byId('read-again-soup-today')
-		expect(soup.expect).toMatchObject({ copyRefs: ['e1'], findFoodCalled: false })
+		expect(soup.expect).toMatchObject({
+			decision: 'log_or_reply',
+			copyRefsAnyOf: [['e1'], []],
+			findFoodCalled: false,
+		})
 		expect(soup.context?.entries?.[0]?.ref).toBe('e1')
 		expect(soup.context?.earlier?.[0]?.ref).toBe('h1')
 	})

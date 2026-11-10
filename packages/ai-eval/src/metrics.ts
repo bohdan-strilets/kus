@@ -40,6 +40,7 @@ export const isDecisionCorrect = (
 ): boolean => {
 	const expected = evalCase.expect.decision
 	if (expected === 'log_or_clarify') return actual === 'log' || actual === 'clarify'
+	if (expected === 'log_or_reply') return actual === 'log' || actual === 'reply'
 	if (expected === 'workout_or_reply') return actual === 'workout' || actual === 'reply'
 	if (expected !== actual) return false
 	const text = (replyText ?? '').toLowerCase()
@@ -152,6 +153,7 @@ const hasCallDetails = ({ expect }: EvalCase): boolean =>
 	expect.replyAttach !== undefined ||
 	expect.statsAdvice !== undefined ||
 	expect.copyRefs !== undefined ||
+	expect.copyRefsAnyOf !== undefined ||
 	expect.deletedMeasurements !== undefined
 
 /** The days the calls named (log, items, day card, deleted measurements) and the item count, as expected. */
@@ -165,6 +167,7 @@ export const isCallDetailsCorrect = (evalCase: EvalCase, result: CaseResult): bo
 		closeDay,
 		stats,
 		copyRefs,
+		copyRefsAnyOf,
 		replyAttach,
 		statsAdvice,
 		statsNumbers,
@@ -205,12 +208,10 @@ export const isCallDetailsCorrect = (evalCase: EvalCase, result: CaseResult): bo
 			calls.statsCards.every((got) => (got.advice ?? false) === statsAdvice) &&
 			// an asked-for advice must come back as a reply in the second call
 			(!statsAdvice || statsNumbers === undefined || Boolean(result.statsFollowUp?.text)))
+	const copied = result.items.flatMap((item) => (item.copyRef === null ? [] : [item.copyRef]))
 	const areCopiesRight =
-		copyRefs === undefined ||
-		isSameSet(
-			copyRefs,
-			result.items.flatMap((item) => (item.copyRef === null ? [] : [item.copyRef])),
-		)
+		(copyRefs === undefined || isSameSet(copyRefs, copied)) &&
+		(copyRefsAnyOf === undefined || copyRefsAnyOf.some((set) => isSameSet(set, copied)))
 	return (
 		isLogDayRight &&
 		areItemDaysRight &&

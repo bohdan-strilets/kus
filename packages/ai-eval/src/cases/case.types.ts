@@ -29,6 +29,8 @@ import type { EvalPhoto } from './photo.js'
  * fine; `edit` = only changed what was logged before (edit tools + reply), nothing new logged;
  * `day_card` = showed a day's card (show_day) instead of answering in words;
  * `close_day` / `stats` = closed the day or showed the stats card, nothing logged next to it;
+ * `log_or_reply` = logged without a question or only replied with a question in words, both fine
+ * (the case judges the rest, e.g. `copyRefsAnyOf`);
  * `workout` = logged a training (log_workout), no food; `workout_or_reply` = a training or only a
  * reply, either is fine (the case judges the rest, e.g. `noAppend`); `program` = propose_program.
  */
@@ -36,6 +38,7 @@ export const expectedDecisionSchema = z.enum([
 	'log',
 	'clarify',
 	'log_or_clarify',
+	'log_or_reply',
 	'edit',
 	'not_food',
 	'photo_unusable',
@@ -340,6 +343,14 @@ export const evalCaseSchema = z
 			statsNumbers: z.string().min(1).optional(),
 			/** Exactly these earlier-entry refs (y1, h1) are copied by the logged items; [] = none copied. */
 			copyRefs: z.array(z.string().regex(COPY_REF_PATTERN)).optional(),
+			/**
+			 * The copied refs must equal one of these sets; [] = nothing copied (e.g. a reply that only
+			 * asks a question).
+			 */
+			copyRefsAnyOf: z
+				.array(z.array(z.string().regex(COPY_REF_PATTERN)))
+				.min(1)
+				.optional(),
 			/** Exactly these delete_measurement calls; `[]` = none. */
 			deletedMeasurements: z.array(expectedDeletedMeasurementSchema).optional(),
 			/** Every logged item must carry one of these sources (a label photo → LABEL, a plate → ESTIMATE). */

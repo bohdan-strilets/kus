@@ -191,6 +191,7 @@ describe('repo cases', () => {
 			'edit',
 			'log',
 			'log_or_clarify',
+			'log_or_reply',
 			'not_food',
 			'program',
 			'reply',
@@ -301,6 +302,17 @@ describe('isCallDetailsCorrect: close_day, stats, copies', () => {
 		expect(isCallDetailsCorrect(want(['y2']), result({ items }))).toBe(false)
 		expect(isCallDetailsCorrect(want([]), result({ items: [copy(null)] }))).toBe(true)
 		expect(isCallDetailsCorrect(want([]), result({ items }))).toBe(false)
+	})
+
+	it('accepts any of the copyRefsAnyOf sets, [] meaning nothing copied', () => {
+		const want = evalCase({ decision: 'log_or_reply', copyRefsAnyOf: [['e1'], []] })
+		expect(isDecisionCorrect(want, 'log', null)).toBe(true)
+		expect(isDecisionCorrect(want, 'reply', 'Який саме бульйон?')).toBe(true)
+		expect(isDecisionCorrect(want, 'clarify', null)).toBe(false)
+		expect(isCallDetailsCorrect(want, result({ items: [] }))).toBe(true)
+		expect(isCallDetailsCorrect(want, result({ items: [copy('e1')] }))).toBe(true)
+		expect(isCallDetailsCorrect(want, result({ items: [copy('h1')] }))).toBe(false)
+		expect(isCallDetailsCorrect(want, result({ items: [copy('e1'), copy('h1')] }))).toBe(false)
 	})
 })
 

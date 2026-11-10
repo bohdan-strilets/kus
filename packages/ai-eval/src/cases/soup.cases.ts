@@ -41,9 +41,9 @@ export const SOUP_CASES: EvalCase[] = [
 	{
 		id: 'soup-pot-weighed',
 		text: "Зварив суп: 500 г філе, 200 г картоплі, 100 г моркви, вода 3 л. Каструля вийшла 3,2 кг, з'їв 400 г",
-		expect: { decision: 'log', kcal: range(90, 200) },
+		expect: { decision: 'log', kcal: range(75, 200) },
 		reference:
-			'The finished pot weighs 3.2 kg and holds about 1000 kcal (fillet ≈ 550, potato ≈ 150, carrot ≈ 40, minus little): ≈ 31 kcal/100 g × 400 g ≈ 125 kcal. The weight of the pot is given, no question',
+			'The finished pot weighs 3.2 kg and holds about 740 kcal (fillet ≈ 550, potato ≈ 150, carrot ≈ 40): ≈ 23 kcal/100 g × 400 g ≈ 93 kcal. The weight of the pot is given, no question',
 	},
 	{
 		id: 'soup-pot-plates',

@@ -38,6 +38,7 @@ import { ClarificationsRepository } from './clarifications.repository'
 import { buildDaysContext } from './days-context'
 import { buildEditContext, type EditRefIds } from './edit-context'
 import type { CopyRefIds } from './history-context'
+import { buildCorrectionContext, type HistoryCorrectionContext } from './history-corrections'
 import { toHistoryTurns } from './history-turns'
 
 export interface DayOverview {
@@ -181,6 +182,38 @@ export class ChatContextService {
 		}
 	}
 
+	/** Who deleted the entries, what Kusik did in each turn and what the user changed in the app. */
+	private async getCorrectionContext({
+		userId,
+		history,
+		message,
+		deletedEntryIds,
+		refByEntryId,
+	}: {
+		userId: string
+		/** Oldest first. */
+		history: MessageWithAttachments[]
+		message: MessageWithAttachments
+		deletedEntryIds: ReadonlySet<string>
+		refByEntryId: ReadonlyMap<string, string>
+	}): Promise<HistoryCorrectionContext> {
+		const [oldest] = history
+		const corrections = oldest
+			? await this.entriesService.findHistoryCorrections({
+					userId,
+					entryIds: [...deletedEntryIds],
+					messageIds: history.filter(({ role }) => role === MessageRole.USER).map(({ id }) => id),
+					since: oldest.createdAt,
+				})
+			: []
+		return buildCorrectionContext({
+			corrections,
+			history,
+			current: message,
+			refByEntryId,
+		})
+	}
+
 	/** The model input and the ref → id maps its edit and copy tools are checked against. */
 	async buildContext({
 		userId,
@@ -279,12 +312,22 @@ export class ChatContextService {
 		// must still read as logged
 		const entryIdsBySourceMessageId = groupEntryIdsBySourceMessage(editable.sourceMessages)
 		const deletedEntryIds = getDeletedEntryIds(editable.sourceMessages)
-		const historyTurns = history.reverse().flatMap((turn) =>
+		const oldestFirst = [...history].reverse()
+		const corrections = await this.getCorrectionContext({
+			userId,
+			history: oldestFirst,
+			message,
+			deletedEntryIds,
+			refByEntryId,
+		})
+		const historyTurns = oldestFirst.flatMap((turn) =>
 			toHistoryTurns(turn, refByEntryId, entryIdsBySourceMessageId, {
 				deletedEntryIds,
 				markers: markers.get(turn.id),
+				corrections,
 			}),
 		)
+		const appChanges = corrections.appChangesByMessageId.get(message.id)
 		const hasProgramRules = shouldShowProgramRules({
 			text,
 			history: historyTurns,
@@ -329,6 +372,7 @@ export class ChatContextService {
 				...(programContext.pendingProgram ? { pendingProgram: programContext.pendingProgram } : {}),
 				...(hasProgramRules ? { hasProgramRules: true } : {}),
 				...(programOnboarding ? { programOnboarding } : {}),
+				...(appChanges ? { appChanges } : {}),
 				history: historyTurns,
 			},
 			refIds,

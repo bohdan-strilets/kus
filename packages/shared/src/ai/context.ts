@@ -8,7 +8,13 @@ import {
 	type TodayEntryContext,
 } from './edit-context.js'
 import { type EarlierEntryContext, formatEarlierEntries } from './history-context.js'
-import { formatHistoryMarkers, type HistoryMarkerFields } from './history-markers.js'
+import {
+	formatAppChangeMarkers,
+	formatHistoryMarkers,
+	formatKusikMarkers,
+	type HistoryAppChange,
+	type HistoryMarkerFields,
+} from './history-markers.js'
 import type { MeasurementPoint } from './measurements.js'
 import { type FactContext, formatFacts, toContextText } from './memory-context.js'
 import {
@@ -79,8 +85,8 @@ export const PHOTO_HISTORY_MARKER = '[фото]'
 
 const toHistoryText = (turn: HistoryTurn): string => {
 	const { role, content, hasPhoto = false } = turn
-	// first, so that cutting a long message never drops them; the model's own turns have none
-	const markers = role === 'user' ? formatHistoryMarkers(turn) : []
+	// first, so that cutting a long message never drops them
+	const markers = role === 'user' ? formatHistoryMarkers(turn) : formatKusikMarkers(turn)
 	const prefix = markers.length > 0 ? `${markers.join(' ')} ` : ''
 	if (!hasPhoto) return `${prefix}${content}`
 	const withPhoto = content.length > 0 ? `${PHOTO_HISTORY_MARKER} ${content}` : PHOTO_HISTORY_MARKER
@@ -154,6 +160,8 @@ export interface FoodParseContext {
 	hasProgramRules?: boolean
 	/** The last step of the training onboarding: its answers, formatted; asks for a program. */
 	programOnboarding?: string | null
+	/** What the user changed in the app since the last message: a marker in front of this message. */
+	appChanges?: HistoryAppChange[]
 	/** Oldest first. */
 	history: HistoryTurn[]
 }
@@ -313,6 +321,12 @@ export const selectHistory = (turns: HistoryTurn[]): HistoryTurn[] => {
 	return selected
 }
 
+const withAppChanges = (text: string, changes: HistoryAppChange[] | undefined): string => {
+	const [marker] = formatAppChangeMarkers(changes)
+	if (marker === undefined) return text
+	return text.length > 0 ? `${marker} ${text}` : marker
+}
+
 export const buildFoodParseMessages = (
 	context: FoodParseContext,
 	text: string,
@@ -324,5 +338,5 @@ export const buildFoodParseMessages = (
 	},
 	{ role: 'system', content: [{ type: 'text', text: formatContext(context) }] },
 	...selectHistory(context.history),
-	{ role: 'user', content: toUserContent(text, image) },
+	{ role: 'user', content: toUserContent(withAppChanges(text, context.appChanges), image) },
 ]

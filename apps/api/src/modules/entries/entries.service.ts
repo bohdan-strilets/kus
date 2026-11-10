@@ -25,6 +25,7 @@ import {
 import { getMealRank } from './entries.constants'
 import { EntryNotFoundException } from './entries.exceptions'
 import { toValuesBefore } from './entry-values-before'
+import { type HistoryCorrection, toHistoryCorrection } from './history-correction'
 import type { LogEntriesParams, MealEntryInput, NewFoodEntry } from './entries.types'
 
 const roundEntry = (entry: NewFoodEntry): NewFoodEntry => ({
@@ -219,6 +220,20 @@ export class EntriesService {
 	): Promise<ReadonlyMap<string, EntryWasContext>> {
 		if (entryIds.length === 0) return new Map()
 		return toValuesBefore(await this.entriesRepository.findCorrections({ userId, entryIds }))
+	}
+
+	/**
+	 * What the chat history needs to know about changes, oldest first: all changes of `entryIds`
+	 * (who deleted them), of the turns of `messageIds`, and those made in the app since `since`.
+	 */
+	async findHistoryCorrections(params: {
+		userId: string
+		entryIds: string[]
+		messageIds: string[]
+		since: Date
+	}): Promise<HistoryCorrection[]> {
+		const rows = await this.entriesRepository.findHistoryCorrections(params)
+		return rows.map(toHistoryCorrection)
 	}
 
 	/** The user's own active entries by id; anything else (another user's, deleted) is simply missing. */

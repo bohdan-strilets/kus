@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { PHOTO_HISTORY_MARKER } from '@kus/shared'
 
 import { MessageRole } from '../../generated/prisma/client'
+import type { HistoryCorrectionContext } from './history-corrections'
 import { toHistoryTurns } from './history-turns'
 
 // Contract: toHistoryTurns(message, refByEntryId, entryIdsBySourceMessageId) -> HistoryTurn[]
@@ -172,6 +173,91 @@ describe('toHistoryTurns', () => {
 				{ deletedEntryIds: DELETED, markers: { facts: [{ kind: 'forgotten' }] } },
 			)
 			expect(turns).toEqual([{ role: 'assistant', content: 'Записано' }])
+		})
+	})
+
+	describe('corrections', () => {
+		const corrections = (
+			overrides: Partial<HistoryCorrectionContext>,
+		): HistoryCorrectionContext => ({
+			deletedBy: new Map(),
+			kusikActionsByMessageId: new Map(),
+			appChangesByMessageId: new Map(),
+			...overrides,
+		})
+
+		it('splits the deleted refs by who deleted them', () => {
+			const turns = toHistoryTurns(
+				toMessage({}),
+				REFS,
+				new Map([['m1', ['entry-a', 'entry-b', 'entry-c']]]),
+				{
+					deletedEntryIds: new Set(['entry-a', 'entry-b', 'entry-c']),
+					corrections: corrections({
+						deletedBy: new Map([
+							['entry-a', 'kusik'],
+							['entry-b', 'app'],
+						]),
+					}),
+				},
+			)
+			expect(turns[0]).toMatchObject({
+				deletedLoggedRefs: ['e1', 'e2', 'e3'],
+				deletedByKusikLoggedRefs: ['e1'],
+				deletedInAppLoggedRefs: ['e2'],
+			})
+		})
+
+		it('names the author of the deletion of a turn without refs only when it is one', () => {
+			const deletedEntryIds = new Set(['old-1', 'old-2'])
+			const entries = new Map([['m1', ['old-1', 'old-2']]])
+			const same = toHistoryTurns(toMessage({}), REFS, entries, {
+				deletedEntryIds,
+				corrections: corrections({
+					deletedBy: new Map([
+						['old-1', 'app'],
+						['old-2', 'app'],
+					]),
+				}),
+			})
+			expect(same[0]).toMatchObject({ areLoggedEntriesDeleted: true, loggedDeletedBy: 'app' })
+			const mixed = toHistoryTurns(toMessage({}), REFS, entries, {
+				deletedEntryIds,
+				corrections: corrections({
+					deletedBy: new Map([
+						['old-1', 'app'],
+						['old-2', 'kusik'],
+					]),
+				}),
+			})
+			expect(mixed[0]?.loggedDeletedBy).toBeUndefined()
+		})
+
+		it('gives the app changes to the user turn and the actions to the reply to it', () => {
+			const appChanges = [
+				{ kind: 'deleted' as const, ref: 'e1', name: 'Борщ', localDate: '2026-11-04' },
+			]
+			const kusikActions = { deleted: [{ ref: 'e1' }], restored: [], corrected: [] }
+			const context = corrections({
+				appChangesByMessageId: new Map([['m1', appChanges]]),
+				kusikActionsByMessageId: new Map([['m1', kusikActions]]),
+			})
+			const user = toHistoryTurns(toMessage({}), REFS, new Map(), { corrections: context })
+			expect(user).toEqual([{ role: 'user', content: 'вівсянка і чай', appChanges }])
+			const reply = toHistoryTurns(
+				toMessage({ id: 'a2', role: MessageRole.ASSISTANT, content: 'Видалив', replyToId: 'm1' }),
+				REFS,
+				new Map(),
+				{ corrections: context },
+			)
+			expect(reply).toEqual([{ role: 'assistant', content: 'Видалив', kusikActions }])
+			const unrelated = toHistoryTurns(
+				toMessage({ id: 'a3', role: MessageRole.ASSISTANT, content: 'Привіт', replyToId: null }),
+				REFS,
+				new Map(),
+				{ corrections: context },
+			)
+			expect(unrelated).toEqual([{ role: 'assistant', content: 'Привіт' }])
 		})
 	})
 })

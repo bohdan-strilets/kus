@@ -1,4 +1,32 @@
-// What the user's earlier turns did, as short markers in front of their text in the model's history.
+// What the user's earlier turns did, as short markers in front of their text in the model's history,
+// and what Kusik did in a turn (in front of its reply) and the user did in the app between turns.
+import { toContextText } from './memory-context.js'
+
+/** Who deleted an entry: a Kusik tool call in the chat, or the user's delete button in the app. */
+export type HistoryDeletedBy = 'kusik' | 'app'
+
+/** An entry a Kusik turn changed; `ref` is the `e…` of this request, null when it has none. */
+export interface HistoryActionEntry {
+	ref: string | null
+	/** Corrected entries: the weight the turn left it with. */
+	grams?: number
+}
+
+/** What a Kusik turn did to entries that already existed; a kind with nothing is an empty list. */
+export interface HistoryKusikActions {
+	deleted: HistoryActionEntry[]
+	restored: HistoryActionEntry[]
+	corrected: HistoryActionEntry[]
+}
+
+/** The user changed an entry in the app after the previous message. */
+export interface HistoryAppChange {
+	kind: 'deleted' | 'edited'
+	ref: string | null
+	name: string
+	/** The entry's day, `YYYY-MM-DD`. */
+	localDate: string
+}
 
 /** A group of rows a turn wrote: shown refs, which of them were deleted since, or all deleted when no ref is shown. */
 export interface HistoryLogMarker {
@@ -40,6 +68,16 @@ export interface HistoryMarkerFields {
 	deletedLoggedRefs?: string[]
 	/** Without refs: every entry the turn logged is deleted now. */
 	areLoggedEntriesDeleted?: boolean
+	/** Refs of `deletedLoggedRefs` that Kusik deleted. */
+	deletedByKusikLoggedRefs?: string[]
+	/** Refs of `deletedLoggedRefs` that the user deleted in the app; the rest are of unknown origin. */
+	deletedInAppLoggedRefs?: string[]
+	/** Without refs: who deleted all of them; absent when they differ or nobody is known. */
+	loggedDeletedBy?: HistoryDeletedBy
+	/** User turn: what the user changed in the app since the previous message, oldest first. */
+	appChanges?: HistoryAppChange[]
+	/** Kusik turn: what it did to entries in this turn. */
+	kusikActions?: HistoryKusikActions
 	workout?: HistoryLogMarker
 	/** WEIGHT before WAIST. */
 	measurements?: HistoryMeasurementMarker[]
@@ -59,19 +97,102 @@ const MEASUREMENT_WORDS: Record<HistoryMeasurementKind, string> = {
 	waist: 'waist logged',
 }
 const DELETED_LATER = 'deleted later'
+const DELETED_LATER_BY: Record<HistoryDeletedBy, string> = {
+	kusik: 'deleted later by Kusik',
+	app: 'deleted later in the app',
+}
 const DECLINED = 'declined'
+const KUSIK_WORD = 'Kusik'
+const APP_CHANGES_WORD = 'in the app before this message'
+const APP_CHANGES_MAX = 5
+const APP_CHANGE_NAME_MAX_CHARS = 30
+const KUSIK_ACTION_REFS_MAX = 6
 
 const formatMarker = (parts: string[]): string => `[${parts.join('; ')}]`
 
-/** `[word: r1, r2; deleted later: r2]`, without refs `[word]` or `[word; deleted later]`. */
+/** Deleted refs grouped by who deleted them, each group a part of the marker; no author, no group. */
+interface DeletedGroups {
+	byKusik?: string[]
+	inApp?: string[]
+}
+
+const formatDeletedParts = (
+	deletedRefs: string[],
+	{ byKusik = [], inApp = [] }: DeletedGroups,
+): string[] => {
+	const known = new Set([...byKusik, ...inApp])
+	const unknown = deletedRefs.filter((ref) => !known.has(ref))
+	const groups: [string, string[]][] = [
+		[DELETED_LATER_BY.kusik, byKusik],
+		[DELETED_LATER_BY.app, inApp],
+		[DELETED_LATER, unknown],
+	]
+	return groups.flatMap(([word, refs]) => (refs.length > 0 ? [`${word}: ${refs.join(', ')}`] : []))
+}
+
+/**
+ * `[word: r1, r2; deleted later: r2]`, without refs `[word]` or `[word; deleted later]`; with the
+ * author of the deletion `deleted later by Kusik` / `deleted later in the app`.
+ */
 const formatLogMarker = (
 	word: string,
 	{ refs, deletedRefs, isDeleted }: HistoryLogMarker,
+	{ groups = {}, deletedBy }: { groups?: DeletedGroups; deletedBy?: HistoryDeletedBy } = {},
 ): string => {
-	if (refs.length === 0) return formatMarker(isDeleted ? [word, DELETED_LATER] : [word])
-	const deleted = deletedRefs.length > 0 ? [`${DELETED_LATER}: ${deletedRefs.join(', ')}`] : []
-	return formatMarker([`${word}: ${refs.join(', ')}`, ...deleted])
+	if (refs.length === 0) {
+		const deleted = deletedBy ? DELETED_LATER_BY[deletedBy] : DELETED_LATER
+		return formatMarker(isDeleted ? [word, deleted] : [word])
+	}
+	return formatMarker([`${word}: ${refs.join(', ')}`, ...formatDeletedParts(deletedRefs, groups)])
 }
+
+const formatActionGroup = (word: string, entries: HistoryActionEntry[]): string[] => {
+	if (entries.length === 0) return []
+	const labels = entries.flatMap(({ ref, grams }) => {
+		if (ref === null) return []
+		return [grams === undefined ? ref : `${ref} → ${Math.round(grams)} g`]
+	})
+	if (labels.length === 0) return [word]
+	const more = labels.length - KUSIK_ACTION_REFS_MAX
+	const shown = labels.slice(0, KUSIK_ACTION_REFS_MAX).join(', ')
+	return [more > 0 ? `${word} ${shown} +${more}` : `${word} ${shown}`]
+}
+
+/** `[Kusik: deleted e13; restored e16; corrected e7 → 45 g]` in front of a reply of Kusik; none without actions. */
+export const formatKusikMarkers = ({ kusikActions }: HistoryMarkerFields): string[] => {
+	if (!kusikActions) return []
+	const { deleted, restored, corrected } = kusikActions
+	const parts = [
+		...formatActionGroup('deleted', deleted),
+		...formatActionGroup('restored', restored),
+		...formatActionGroup('corrected', corrected),
+	]
+	return parts.length === 0 ? [] : [formatMarker([`${KUSIK_WORD}: ${parts.join('; ')}`])]
+}
+
+const toShortName = (name: string): string => {
+	const text = toContextText(name)
+	return text.length > APP_CHANGE_NAME_MAX_CHARS
+		? `${text.slice(0, APP_CHANGE_NAME_MAX_CHARS - 1).trimEnd()}…`
+		: text
+}
+
+/** `YYYY-MM-DD` → `DD.MM`. */
+const toShortDate = (localDate: string): string =>
+	`${localDate.slice(8, 10)}.${localDate.slice(5, 7)}`
+
+const formatAppChange = ({ kind, ref, name, localDate }: HistoryAppChange): string =>
+	`${kind}${ref === null ? '' : ` ${ref}`} "${toShortName(name)}" (${toShortDate(localDate)})`
+
+/** `[in the app before this message: deleted e9 "Назва" (04.11); edited e7 "Назва" (04.11)]`. */
+export const formatAppChangeMarkers = (changes: readonly HistoryAppChange[] = []): string[] =>
+	changes.length === 0
+		? []
+		: [
+				formatMarker([
+					`${APP_CHANGES_WORD}: ${changes.slice(-APP_CHANGES_MAX).map(formatAppChange).join(', ')}`,
+				]),
+			]
 
 const formatRefMarker = (word: string, ref: string | null, isDeleted: boolean): string => {
 	if (isDeleted) return formatMarker([word, DELETED_LATER])
@@ -107,21 +228,24 @@ const mergeUpdatedFacts = (facts: HistoryFactMarker[]): HistoryFactMarker[] => {
 }
 
 /**
- * The markers of a user turn, kinds in a fixed order: food, workout, measurements, facts, saved
+ * The markers of a user turn, kinds in a fixed order: app changes, food, workout, measurements, facts, saved
  * foods. They go first in the turn, so that cutting a long message never drops them.
  */
 export const formatHistoryMarkers = (turn: HistoryMarkerFields): string[] => {
 	const { loggedRefs = [], hasLoggedEntries = false, workout, measurements = [] } = turn
 	const { deletedLoggedRefs = [], areLoggedEntriesDeleted = false } = turn
-	const { facts = [], savedFoods = [] } = turn
-	const markers: string[] = []
+	const { facts = [], savedFoods = [], appChanges, loggedDeletedBy } = turn
+	const markers: string[] = [...formatAppChangeMarkers(appChanges)]
 	if (loggedRefs.length > 0 || hasLoggedEntries) {
 		markers.push(
-			formatLogMarker(FOOD_LOGGED_WORD, {
-				refs: loggedRefs,
-				deletedRefs: deletedLoggedRefs,
-				isDeleted: areLoggedEntriesDeleted,
-			}),
+			formatLogMarker(
+				FOOD_LOGGED_WORD,
+				{ refs: loggedRefs, deletedRefs: deletedLoggedRefs, isDeleted: areLoggedEntriesDeleted },
+				{
+					groups: { byKusik: turn.deletedByKusikLoggedRefs, inApp: turn.deletedInAppLoggedRefs },
+					deletedBy: loggedDeletedBy,
+				},
+			),
 		)
 	}
 	if (workout) markers.push(formatLogMarker(WORKOUT_LOGGED_WORD, workout))

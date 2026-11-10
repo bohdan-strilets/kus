@@ -137,6 +137,28 @@ describe('formatContext entries', () => {
 	})
 })
 
+describe('app changes in front of the message', () => {
+	const appChanges = [
+		{ kind: 'deleted' as const, ref: 'e1', name: 'Борщ', localDate: '2026-11-04' },
+	]
+	const marker = '[in the app before this message: deleted e1 "Борщ" (04.11)]'
+
+	it('puts the marker in front of the words of the message', () => {
+		const messages = buildFoodParseMessages({ ...baseContext, appChanges }, 'чому видалив?')
+		expect(messages.at(-1)).toEqual({ role: 'user', content: `${marker} чому видалив?` })
+	})
+
+	it('stands alone for a message without words', () => {
+		const messages = buildFoodParseMessages({ ...baseContext, appChanges }, '')
+		expect(messages.at(-1)).toEqual({ role: 'user', content: marker })
+	})
+
+	it('leaves the message as it is without changes', () => {
+		const messages = buildFoodParseMessages(baseContext, 'ще чай')
+		expect(messages.at(-1)).toEqual({ role: 'user', content: 'ще чай' })
+	})
+})
+
 describe('history turns with logged entries', () => {
 	const userTurn = (overrides: Partial<HistoryTurn>): HistoryTurn => ({
 		role: 'user',

@@ -202,6 +202,38 @@ describe('chat edits of logged food (e2e, real DB, fake model)', () => {
 		])
 	})
 
+	it('shows the model who deleted what: its own deletion, and the one made in the app', async () => {
+		await start()
+		const owner = await registerUser('owner@kus.app')
+		fake.respond(
+			createCompletion([logFoodCall()]),
+			createCompletion([{ name: 'delete_entry', args: { refs: ['e2'] } }, reply('Прибрав гречку')]),
+			createCompletion([reply('Так, видалив я')]),
+			createCompletion([reply('Бачу')]),
+		)
+		const logged = await send(owner, '3 яйця і 100 г гречки')
+		await send(owner, 'видали гречку')
+
+		await send(owner, 'що ти зробив?')
+
+		const afterKusik = JSON.stringify(fake.bodies[2])
+		expect(afterKusik).toContain('deleted later by Kusik: e2')
+		expect(afterKusik).toContain('[Kusik: deleted e2]')
+		expect(afterKusik).not.toContain('in the app before this message')
+
+		// the user removes the eggs with the delete button, then writes again
+		const eggs = logged.assistantMessage.meals[0]?.entries.find(
+			({ name }) => name === 'Яйце варене',
+		)
+		await owner.agent.delete(`/api/v1/food-entries/${eggs?.id}`).expect(204)
+		await send(owner, 'а тепер?')
+
+		const afterApp = JSON.stringify(fake.bodies[3])
+		expect(afterApp).toContain('in the app before this message: deleted e')
+		expect(afterApp).toContain('\\"Яйце варене\\" (')
+		expect(afterApp).toContain('deleted later in the app: e')
+	})
+
 	it('refreshes every card of the meal, not only the one whose entry changed', async () => {
 		await start()
 		const owner = await registerUser('owner@kus.app')

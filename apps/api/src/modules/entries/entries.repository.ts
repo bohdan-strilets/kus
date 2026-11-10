@@ -15,6 +15,18 @@ export type EntryWithMealType = FoodEntry & { meal: Pick<Meal, 'type' | 'localDa
 
 export type EntryWithMeal = FoodEntry & { meal: Meal }
 
+/** A Correction as the chat history reads it. */
+export interface HistoryCorrectionRow {
+	foodEntryId: string
+	messageId: string | null
+	createdAt: Date
+	after: Prisma.JsonValue
+	foodEntry: { name: string; meal: { localDate: Date } }
+}
+
+/** A day of chat history is a few dozen changes; the cap only guards a runaway query. */
+const HISTORY_CORRECTIONS_MAX = 300
+
 interface FindOrCreateMealData {
 	userId: string
 	type: LoggableMealType
@@ -287,6 +299,42 @@ export class EntriesRepository {
 			where: { userId, foodEntryId: { in: entryIds } },
 			select: { foodEntryId: true, before: true },
 			orderBy: { createdAt: 'asc' },
+		})
+	}
+
+	/**
+	 * Corrections the chat history needs, oldest first: every change of `entryIds` (who deleted
+	 * them), every change made by one of `messageIds`, and the changes made in the app since `since`.
+	 */
+	findHistoryCorrections({
+		userId,
+		entryIds,
+		messageIds,
+		since,
+	}: {
+		userId: string
+		entryIds: string[]
+		messageIds: string[]
+		since: Date
+	}): Promise<HistoryCorrectionRow[]> {
+		return this.prisma.correction.findMany({
+			where: {
+				userId,
+				OR: [
+					{ foodEntryId: { in: entryIds } },
+					{ messageId: { in: messageIds } },
+					{ messageId: null, createdAt: { gte: since } },
+				],
+			},
+			select: {
+				foodEntryId: true,
+				messageId: true,
+				createdAt: true,
+				after: true,
+				foodEntry: { select: { name: true, meal: { select: { localDate: true } } } },
+			},
+			orderBy: { createdAt: 'asc' },
+			take: HISTORY_CORRECTIONS_MAX,
 		})
 	}
 

@@ -22,11 +22,16 @@ const toEntry = (id: string, sourceMessageId: string | null, localDate = TODAY) 
 	meal: { type: 'LUNCH', localDate },
 })
 
+// the ids of the specs grow with time, like the uuid v7 of real messages
+const toCreatedAt = (id: string): Date => new Date(Date.UTC(2026, 9, 18, 8, Number(id.slice(1))))
+
 const toUserMessage = (id: string, content: string) => ({
 	id,
 	role: MessageRole.USER,
 	content,
 	attachments: [],
+	replyToId: null,
+	createdAt: toCreatedAt(id),
 })
 
 const toMeasurement = (kind: string, localDate: string, value: number) => ({
@@ -49,6 +54,8 @@ interface Mocks {
 	markers?: Map<string, unknown>
 	/** The user's confirmed facts, oldest first. */
 	facts?: { id: string; text: string }[]
+	/** What the entries service returns as the corrections of the history, oldest first. */
+	corrections?: unknown[]
 }
 
 const createService = ({
@@ -61,7 +68,9 @@ const createService = ({
 	openCard = null,
 	markers = new Map(),
 	facts = [],
+	corrections = [],
 }: Mocks = {}) => {
+	const findHistoryCorrections = vi.fn().mockResolvedValue(corrections)
 	const getProgramContext = vi.fn().mockResolvedValue(program)
 	const findContextFacts = vi.fn().mockResolvedValue({ confirmed: facts, proposal: null })
 	const getMarkers = vi.fn().mockResolvedValue(markers)
@@ -80,6 +89,7 @@ const createService = ({
 			getEditableEntries,
 			getValuesBefore: vi.fn().mockResolvedValue(new Map()),
 			getDaysKcal,
+			findHistoryCorrections,
 		} as never,
 		{
 			getGoalForDate: vi.fn().mockResolvedValue(null),
@@ -111,14 +121,15 @@ const createService = ({
 		findContextFacts,
 		getProgramContext,
 		getMarkers,
+		findHistoryCorrections,
 	}
 }
 
-const build = (service: ChatContextService, text = '') =>
+const build = (service: ChatContextService, text = '', messageId = 'm3') =>
 	service.buildContext({
 		userId: 'u1',
 		timezone: 'Europe/Warsaw',
-		message: toUserMessage('m3', text) as never,
+		message: toUserMessage(messageId, text) as never,
 		text,
 		now: new Date('2026-10-18T10:00:00Z'),
 		localDate: TODAY,
@@ -195,10 +206,7 @@ describe('ChatContextService.buildContext history marker sources', () => {
 	it('adds the markers of the other kinds to their turn, asking for the user turns only', async () => {
 		const workout = { refs: ['w1'], deletedRefs: [], isDeleted: false }
 		const { service, getMarkers } = createService({
-			history: [
-				{ id: 'a1', role: MessageRole.ASSISTANT, content: 'Записано', attachments: [] },
-				toUserMessage('m2', 'жим 80×8'),
-			],
+			history: [toAssistantMessage('a1', 'Записано'), toUserMessage('m2', 'жим 80×8')],
 			markers: new Map([['m2', { workout }]]),
 		})
 
@@ -230,6 +238,114 @@ describe('ChatContextService.buildContext history marker sources', () => {
 				]),
 			}),
 		)
+	})
+})
+
+const toCorrection = (overrides: Record<string, unknown>) => ({
+	entryId: 'borsch',
+	messageId: null,
+	createdAt: toCreatedAt('x0'),
+	kind: 'deleted',
+	grams: null,
+	name: 'Борщ',
+	localDate: '2026-10-18',
+	...overrides,
+})
+
+describe('ChatContextService.buildContext correction markers', () => {
+	const loggedBorsch = {
+		active: [],
+		deleted: [toEntry('borsch', 'm1')],
+		sourceMessages: [{ id: 'borsch', sourceMessageId: 'm1', isDeleted: true }],
+	}
+
+	it('says the user deleted it in the app, in the turn and in front of the next message', async () => {
+		const { service, findHistoryCorrections } = createService({
+			history: [toAssistantMessage('a2', 'Записав борщ', 'm1'), toUserMessage('m1', 'борщ')],
+			editable: loggedBorsch,
+			// after Kusik's reply (2), before the message being answered (9)
+			corrections: [toCorrection({ createdAt: toCreatedAt('x5') })],
+		})
+
+		const { context } = await build(service, 'чому ти видалив борщ?', 'm9')
+
+		expect(findHistoryCorrections).toHaveBeenCalledWith({
+			userId: 'u1',
+			entryIds: ['borsch'],
+			messageIds: ['m1'],
+			since: toCreatedAt('m1'),
+		})
+		expect(context.history[0]).toMatchObject({
+			role: 'user',
+			loggedRefs: ['e1'],
+			deletedLoggedRefs: ['e1'],
+			deletedInAppLoggedRefs: ['e1'],
+		})
+		expect(context.history[0]?.deletedByKusikLoggedRefs).toBeUndefined()
+		expect(context.appChanges).toEqual([
+			{ kind: 'deleted', ref: 'e1', name: 'Борщ', localDate: '2026-10-18' },
+		])
+	})
+
+	it('says Kusik deleted it when a chat turn did, and puts the action on Kusik reply', async () => {
+		const { service } = createService({
+			history: [
+				toAssistantMessage('a4', 'Видалив', 'm3'),
+				toUserMessage('m3', 'видали борщ'),
+				toAssistantMessage('a2', 'Записав борщ', 'm1'),
+				toUserMessage('m1', 'борщ'),
+			],
+			editable: loggedBorsch,
+			corrections: [toCorrection({ messageId: 'm3', createdAt: toCreatedAt('x3') })],
+		})
+
+		const { context } = await build(service, 'ок', 'm9')
+
+		expect(context.history[0]).toMatchObject({ deletedByKusikLoggedRefs: ['e1'] })
+		expect(context.history[3]).toEqual({
+			role: 'assistant',
+			content: 'Видалив',
+			kusikActions: { deleted: [{ ref: 'e1' }], restored: [], corrected: [] },
+		})
+		expect(context.appChanges).toBeUndefined()
+	})
+
+	it('marks the reply of the turn that restored an entry', async () => {
+		const { service } = createService({
+			history: [
+				toAssistantMessage('a6', 'Повернув', 'm5'),
+				toUserMessage('m5', 'поверни борщ'),
+				toAssistantMessage('a4', 'Видалив', 'm3'),
+				toUserMessage('m3', 'видали борщ'),
+			],
+			editable: {
+				active: [toEntry('borsch', 'm1')],
+				deleted: [],
+				sourceMessages: [{ id: 'borsch', sourceMessageId: 'm1', isDeleted: false }],
+			},
+			corrections: [
+				toCorrection({ messageId: 'm3', createdAt: toCreatedAt('x3') }),
+				toCorrection({ messageId: 'm5', kind: 'restored', createdAt: toCreatedAt('x5') }),
+			],
+		})
+
+		const { context } = await build(service, 'дякую', 'm9')
+
+		expect(context.history.map(({ kusikActions }) => kusikActions)).toEqual([
+			undefined,
+			{ deleted: [{ ref: 'e1' }], restored: [], corrected: [] },
+			undefined,
+			{ deleted: [], restored: [{ ref: 'e1' }], corrected: [] },
+		])
+	})
+
+	it('asks for no corrections without a history', async () => {
+		const { service, findHistoryCorrections } = createService()
+
+		const { context } = await build(service, 'привіт', 'm9')
+
+		expect(findHistoryCorrections).not.toHaveBeenCalled()
+		expect(context.appChanges).toBeUndefined()
 	})
 })
 
@@ -305,11 +421,13 @@ describe('ChatContextService.buildContext other days', () => {
 	})
 })
 
-const toAssistantMessage = (id: string, content: string) => ({
+const toAssistantMessage = (id: string, content: string, replyToId: string | null = null) => ({
 	id,
 	role: MessageRole.ASSISTANT,
 	content,
 	attachments: [],
+	replyToId,
+	createdAt: toCreatedAt(id),
 })
 
 const PENDING_PROGRAM = { mode: 'ROTATE', perWeek: 2, title: null, templates: [] }

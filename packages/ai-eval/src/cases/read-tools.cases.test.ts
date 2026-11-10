@@ -32,6 +32,28 @@ describe('read-tool cases', () => {
 		}
 	})
 
+	it('keep tea out of the bar cases: the history hints at nothing but the bar', () => {
+		for (const evalCase of READ_TOOL_CASES) {
+			const texts = [
+				evalCase.text,
+				...(evalCase.context?.history ?? []).map(({ content }) => content),
+			]
+			expect(texts.join(' ').toLowerCase(), evalCase.id).not.toContain('чай')
+		}
+	})
+
+	it('expect an honest estimate for a food that is nowhere, after a lookup', () => {
+		const { expect: expected } = byId('read-no-match-honest')
+		expect(expected).toMatchObject({
+			decision: 'log_or_clarify',
+			findFoodCalled: true,
+			memoryRefs: [],
+			copyRefs: [],
+			sources: ['ESTIMATE', 'REFERENCE'],
+		})
+		expect(expected.replyExcludes).toContain('не можу додати')
+	})
+
 	it('start from a passive block that matches the point of the case', () => {
 		// found by the block itself: no lookup is needed
 		expect(passiveNames('read-sportyfeel-exact')).toEqual(['Батончик SportyFeel'])

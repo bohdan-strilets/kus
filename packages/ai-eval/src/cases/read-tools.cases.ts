@@ -85,11 +85,10 @@ const NO_DENIAL = [
 ]
 
 const BAR_ASKED_HISTORY = [
-	{ role: 'user' as const, content: 'Додай чай без цукру і прот батончик' },
+	{ role: 'user' as const, content: 'Додай прот батончик' },
 	{
 		role: 'assistant' as const,
-		content:
-			'Чай додав. Протеїнового батончика в памʼяті не бачу: напиши назву чи цифри з упаковки.',
+		content: 'Протеїнового батончика в памʼяті не бачу: напиши назву чи цифри з упаковки.',
 	},
 ]
 
@@ -134,7 +133,7 @@ export const READ_TOOL_CASES: EvalCase[] = [
 	},
 	{
 		id: 'read-last-protein-bar',
-		text: 'Додай чай без цукру і останній протеїновий батончик',
+		text: 'Додай останній протеїновий батончик',
 		savedFoods: [BUCKWHEAT, MILK],
 		historyEntries: PROTEIN_BAR_HISTORY,
 		expect: {
@@ -144,7 +143,7 @@ export const READ_TOOL_CASES: EvalCase[] = [
 			kcal: range(165, 180),
 		},
 		reference:
-			'«Останній батончик» is in the history, not the saved foods: find_food (history) → copyRef h1, 170 kcal of the earlier entry + tea',
+			'«Останній батончик» is in the history, not the saved foods: find_food (history) → copyRef h1, 170 kcal of the earlier entry',
 	},
 	{
 		id: 'read-last-time-170',
@@ -183,12 +182,15 @@ export const READ_TOOL_CASES: EvalCase[] = [
 		expect: {
 			decision: 'log_or_clarify',
 			memory: NO_MEMORY_CALLS,
+			findFoodCalled: true,
 			memoryRefs: [],
 			copyRefs: [],
 			sources: ['ESTIMATE', 'REFERENCE'],
+			replyIncludesAny: ['памʼят', "пам'ят", 'не знайш', 'не бачу', 'немає'],
+			replyExcludes: ['не можу додати', 'не буду додавати', 'не додаю'],
 		},
 		reference:
-			'Nothing in the memory or the history matches: an honest estimate, no memory or copy ref, no source MEMORY',
+			'Nothing in the memory or the history matches (find_food finds no candidate): log_food with an honest estimate, no memory or copy ref, no source MEMORY; the reply says there is no such food in the memory and does not refuse to log',
 	},
 	{
 		id: 'read-plain-banana-no-find',

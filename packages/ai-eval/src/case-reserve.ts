@@ -6,8 +6,11 @@ import { loadResultsFile } from './results-store.js'
 
 /** The reserve never drops below this, however cheap the history looks. */
 export const MIN_CASE_RESERVE_USD = 0.02
-/** The first case of a run writes the cold prompt prefix (measured $0.064); later ones read the cache. */
-export const COLD_START_RESERVE_USD = 0.07
+/**
+ * A case that meets the prompt prefix cold writes it (21k tokens at $2.5/M ≈ $0.054) and may still
+ * make read rounds on top (measured $0.056–0.064 with up to one); later ones read the cache.
+ */
+export const COLD_START_RESERVE_USD = 0.09
 /** A case may be retried once, so its reserve covers both attempts. */
 export const RESERVE_ATTEMPTS = 2
 const RESERVE_PERCENTILE = 0.95
@@ -64,9 +67,12 @@ export const getCaseReserveFromHistory = (input: CaseReserveInput): number => {
 	return p95 === null ? input.upperBoundUsd : getHistoryReserveUsd(p95)
 }
 
-/** The first case of a model's run reserves the cold prefix write, the rest the usual reserve. */
-export const getStartReserveUsd = (caseReserveUsd: number, isFirstCase: boolean): number =>
-	isFirstCase ? Math.max(caseReserveUsd, COLD_START_RESERVE_USD) : caseReserveUsd
+/**
+ * The cases that start before the cache is written (the first `concurrency` of a model's run all
+ * start together) reserve the cold prefix write, the rest the usual reserve.
+ */
+export const getStartReserveUsd = (caseReserveUsd: number, isColdStart: boolean): number =>
+	isColdStart ? Math.max(caseReserveUsd, COLD_START_RESERVE_USD) : caseReserveUsd
 
 export const RESULTS_HISTORY_DIR = new URL('../results/', import.meta.url)
 

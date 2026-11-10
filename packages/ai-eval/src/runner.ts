@@ -90,8 +90,10 @@ export const runModel = async (cases: EvalCase[], options: RunOptions): Promise<
 		return true
 	}
 
-	// the first case of the run pays for the cold prompt prefix; read it again until that case starts
-	const getReserveUsd = (): number => getStartReserveUsd(caseReserveUsd, started === 0)
+	// the first `concurrency` cases start with no cache and each pays for the cold prompt prefix;
+	// read it again until they have started
+	const getReserveUsd = (): number =>
+		getStartReserveUsd(caseReserveUsd, started < options.concurrency)
 
 	const worker = async (): Promise<void> => {
 		while (next < cases.length) {

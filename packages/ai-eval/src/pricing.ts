@@ -3,6 +3,7 @@ import {
 	type AiReasoningMode,
 	buildFoodParseMessages,
 	createFoodParseRequest,
+	MAX_READ_STEPS,
 } from '@kus/shared'
 import { z } from 'zod'
 
@@ -21,8 +22,18 @@ const OUTPUT_TOKENS_PER_TEXT_CHAR = 6
 const REASONING_TOKENS: Record<AiReasoningMode, number> = { minimal: 800, low: 1600 }
 /** Share of cases expected to need the validation retry (~2× input on those). */
 const RETRY_OVERHEAD = 0.15
-/** The hard budget reserves a case as if every allowed validation retry happens. */
-const MAX_ATTEMPTS_PER_CASE = 1 + AI_VALIDATION_RETRY_COUNT
+/**
+ * The hard budget reserves a case as if every call happens: the read rounds (find_food) and the
+ * validation retry on top of the answer — the same count as run-case.ts.
+ */
+export const MAX_MODEL_CALLS_PER_CASE = 1 + MAX_READ_STEPS + AI_VALIDATION_RETRY_COUNT
+/**
+ * Prompt caching, as billed in the 2026-11-10 run (prompt $2/M): a cache write $2.5/M, a read $0.10/M.
+ * The prefix (system prompt + tools, ~21k tokens) is written by the first call that meets it cold and
+ * read by every later one; cases that start together all pay the write.
+ */
+export const CACHE_WRITE_RATIO = 1.25
+export const CACHE_READ_RATIO = 0.05
 
 const modelsSchema = z.object({
 	data: z.array(
@@ -56,18 +67,34 @@ export const fetchPrices = async (): Promise<Map<string, ModelPrice>> => {
 	return new Map(data.map((model) => [model.id, model.pricing]))
 }
 
+interface InputTokens {
+	/** The cached part: the system prompt and the tools. */
+	prefix: number
+	/** What follows the cache breakpoint: context, history, the message, a photo. */
+	rest: number
+}
+
 /** The words and the tools by their characters; a photo by its patches, not by its base64. */
-const estimateInputTokens = (evalCase: EvalCase): number => {
+export const estimateInputParts = (evalCase: EvalCase): InputTokens => {
 	const messages = buildFoodParseMessages(
 		{ ...BASE_CONTEXT, ...toFoodContext(evalCase.context) },
 		evalCase.text,
 	)
 	const request = createFoodParseRequest('estimate', messages)
-	const textTokens = Math.ceil(
-		JSON.stringify({ messages: request.messages, tools: request.tools }).length / CHARS_PER_TOKEN,
-	)
+	const toTokens = (value: unknown): number =>
+		Math.ceil(JSON.stringify(value).length / CHARS_PER_TOKEN)
+	const prefix = toTokens({ system: request.messages[0], tools: request.tools })
+	const total = toTokens({ messages: request.messages, tools: request.tools })
 	const { photo } = evalCase
-	return textTokens + (photo ? getImageTokens(photo.width, photo.height) : 0)
+	return {
+		prefix,
+		rest: Math.max(total - prefix, 0) + (photo ? getImageTokens(photo.width, photo.height) : 0),
+	}
+}
+
+const estimateInputTokens = (evalCase: EvalCase): number => {
+	const { prefix, rest } = estimateInputParts(evalCase)
+	return prefix + rest
 }
 
 const estimateOutputTokens = (evalCase: EvalCase, reasoning: AiReasoningMode): number =>
@@ -75,9 +102,23 @@ const estimateOutputTokens = (evalCase: EvalCase, reasoning: AiReasoningMode): n
 	evalCase.text.length * OUTPUT_TOKENS_PER_TEXT_CHAR +
 	REASONING_TOKENS[reasoning]
 
+/** One case with every call it may make: the first writes the cold prefix, the rest read it. */
+export const getCaseUpperBoundUsd = (
+	evalCase: EvalCase,
+	price: ModelPrice,
+	reasoning: AiReasoningMode,
+): number => {
+	const { prefix, rest } = estimateInputParts(evalCase)
+	const output = estimateOutputTokens(evalCase, reasoning) * price.completion
+	const restCost = rest * price.prompt
+	const coldCall = prefix * price.prompt * CACHE_WRITE_RATIO + restCost + output
+	const warmCall = prefix * price.prompt * CACHE_READ_RATIO + restCost + output
+	return coldCall + (MAX_MODEL_CALLS_PER_CASE - 1) * warmCall
+}
+
 /**
  * What the hard --max-cost reserves before each case: the most expensive case of the set,
- * every attempt included. An expected upper bound, not max_tokens: that one would stop a run
+ * every call included. An expected upper bound, not max_tokens: that one would stop a run
  * after a handful of cases.
  */
 export const getCaseReserveUsd = (
@@ -85,12 +126,7 @@ export const getCaseReserveUsd = (
 	price: ModelPrice,
 	reasoning: AiReasoningMode,
 ): number => {
-	const costs = cases.map(
-		(evalCase) =>
-			estimateInputTokens(evalCase) * price.prompt +
-			estimateOutputTokens(evalCase, reasoning) * price.completion,
-	)
-	return Math.max(0, ...costs) * MAX_ATTEMPTS_PER_CASE
+	return Math.max(0, ...cases.map((evalCase) => getCaseUpperBoundUsd(evalCase, price, reasoning)))
 }
 
 export const estimateCost = async (

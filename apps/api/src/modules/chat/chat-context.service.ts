@@ -377,7 +377,8 @@ export class ChatContextService {
 			},
 			refIds,
 			workoutRefIds: workouts.refIds,
-			copyRefIds: earlier.copyRefIds,
+			// today's active entries (`e…`) are copyable too; loadCopySources re-reads them by userId
+			copyRefIds: new Map([...earlier.copyRefIds, ...refIds.entries]),
 			factRefIds: new Map(factRefs.map(({ id, ref }) => [ref, id])),
 			templateRefIds: programContext.refIds,
 		}

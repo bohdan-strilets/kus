@@ -565,5 +565,70 @@ describe('closing a day, week stats and copying earlier entries (e2e, real DB, f
 				copiedFromDate: dayOffset(owner, -10),
 			})
 		})
+
+		describe("today's entries as e-refs", () => {
+			const logCopyOn = (copyRef: string, date: string) => ({
+				name: 'log_food',
+				args: { items: [copiedSoup(copyRef)], date, mealType: null, reply: 'Записав!' },
+			})
+
+			it("copies today's entry onto tomorrow: values from the copy, day from the call", async () => {
+				await start()
+				const owner = await registerUser('owner@kus.app')
+				const today = dayOffset(owner, 0)
+				const tomorrow = dayOffset(owner, 1)
+				await seedEntry(owner, today, { kcal: 150 })
+				fake.respond(createCompletion([logCopyOn('e1', tomorrow)]))
+
+				const response = await send(owner, 'таку саму порцію супу на завтра').expect(201)
+
+				expect(firstRequestText()).toMatch(/e1 /)
+				const { data } = sendResponseSchema.parse(response.body)
+				const stored = await prisma.foodEntry.findFirstOrThrow({
+					where: { sourceMessageId: data.userMessage.id },
+					include: { meal: true },
+				})
+				expect(stored).toMatchObject({ kcal: 75, grams: 150, category: 'soup', source: 'LABEL' })
+				expect(stored.meal.localDate).toEqual(toDbDate(tomorrow))
+				expect(stored.copiedFromDate).toEqual(toDbDate(today))
+				expect(
+					await prisma.foodEntry.count({ where: { userId: owner.userId, deletedAt: null } }),
+				).toBe(2)
+			})
+
+			it("refuses another user's entry, which the owner's context never lists", async () => {
+				await start()
+				const owner = await registerUser('owner@kus.app')
+				const stranger = await registerUser('stranger@kus.app')
+				await seedEntry(stranger, dayOffset(stranger, 0), { name: 'Секретна страва' })
+				const tomorrow = dayOffset(owner, 1)
+				fake.respond(
+					createCompletion([logCopyOn('e1', tomorrow)]),
+					createCompletion([logCopyOn('e1', tomorrow)]),
+				)
+
+				await send(owner, 'таку саму порцію на завтра').expect(503)
+
+				expect(JSON.stringify(fake.bodies)).not.toContain('Секретна страва')
+				expect(await prisma.foodEntry.count({ where: { userId: owner.userId } })).toBe(0)
+			})
+
+			it('refuses a ref that is not there, and the ref of an entry deleted today', async () => {
+				await start()
+				const owner = await registerUser('owner@kus.app')
+				const tomorrow = dayOffset(owner, 1)
+				await seedEntry(owner, dayOffset(owner, 0), { deletedAt: new Date() })
+				fake.respond(
+					createCompletion([logCopyOn('e1', tomorrow)]),
+					createCompletion([logCopyOn('e1', tomorrow)]),
+				)
+
+				await send(owner, 'таку саму порцію на завтра').expect(503)
+
+				expect(
+					await prisma.foodEntry.count({ where: { userId: owner.userId, deletedAt: null } }),
+				).toBe(0)
+			})
+		})
 	})
 })

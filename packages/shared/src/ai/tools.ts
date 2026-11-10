@@ -121,7 +121,7 @@ export const aiFoodItemSchema = foodEntryBaseSchema
 			.nullable()
 			.default(null)
 			.describe(
-				'Ref of an entry from "Earlier entries" ("y1" yesterday, "h1" older) when the user says the food is the same as then; the backend copies its values and scales them to grams. Never together with memoryRef',
+				'Ref of an entry from "Earlier entries" ("y1" yesterday, "h1" older) or "Today\'s entries" ("e1") when the user says the food is the same as then; the backend copies its values and scales them to grams. Never together with memoryRef',
 			),
 		mealType: loggableMealTypeSchema
 			.nullable()

@@ -44,9 +44,9 @@ describe('hasHistoryReference', () => {
 })
 
 describe('COPY_REF_PATTERN', () => {
-	it('takes y and h refs only', () => {
-		expect(['y1', 'h5', 'y15'].every((ref) => COPY_REF_PATTERN.test(ref))).toBe(true)
-		expect(['m1', 'e1', 'y', 'h', 'y1000', 'y1a'].some((ref) => COPY_REF_PATTERN.test(ref))).toBe(
+	it('takes y, h and e refs only', () => {
+		expect(['y1', 'h5', 'y15', 'e1', 'e12'].every((ref) => COPY_REF_PATTERN.test(ref))).toBe(true)
+		expect(['m1', 'x1', 'y', 'e', 'y1000', 'e1a'].some((ref) => COPY_REF_PATTERN.test(ref))).toBe(
 			false,
 		)
 	})

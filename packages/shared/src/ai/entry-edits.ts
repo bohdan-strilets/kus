@@ -12,7 +12,7 @@ import { distributeOptionValues, type EntryValues, roundNutrition } from './opti
 /** Refs given to the model in this request; anything else is invented or out of reach. */
 export interface ParseRefs extends MeasurementRefs {
 	memoryRefs: ReadonlySet<string>
-	/** `y1…` / `h1…` of the «Earlier entries» section; none when omitted. */
+	/** `y1…` / `h1…` of «Earlier entries» and the `e…` of «Today's entries»; none when omitted. */
 	copyRefs?: ReadonlySet<string>
 	entries: ReadonlyMap<string, TodayEntryContext>
 	deletedEntryRefs: ReadonlySet<string>
@@ -49,7 +49,8 @@ export const mergeParseRefs = (refs: ParseRefs, patch: ParseRefsPatch): ParseRef
 
 export const getParseRefs = (context: FoodParseContext): ParseRefs => ({
 	memoryRefs: new Set(context.memory.map((food) => food.ref)),
-	copyRefs: new Set((context.earlier ?? []).map((entry) => entry.ref)),
+	// today's active entries too ("the same portion tomorrow"); the deleted ones are not copyable
+	copyRefs: new Set([...(context.earlier ?? []), ...context.entries].map((entry) => entry.ref)),
 	entries: new Map(context.entries.map((entry) => [entry.ref, entry])),
 	deletedEntryRefs: new Set(context.deletedEntries.map((entry) => entry.ref)),
 	clarifications: new Map(context.openClarifications.map((item) => [item.ref, item])),

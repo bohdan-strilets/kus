@@ -9,8 +9,8 @@ export const EARLIER_NAMED_MAX_ENTRIES = 5
 /** How far back a named entry is looked up, days before today. */
 export const EARLIER_NAMED_LOOKBACK_DAYS = 30
 
-/** `y1…` (yesterday) or `h1…` (history) — never a database id. */
-export const COPY_REF_PATTERN = /^[yh]\d{1,3}$/
+/** `y1…` (yesterday), `h1…` (history) or `e1…` (today's entry) — never a database id. */
+export const COPY_REF_PATTERN = /^[yhe]\d{1,3}$/
 
 export interface EarlierEntryContext {
 	ref: string

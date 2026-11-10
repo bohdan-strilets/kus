@@ -336,7 +336,9 @@ const checkLogReferences = (
 			errors.push(`log_food: items.${index}.memoryRef "${item.memoryRef}" is not in the context`)
 		}
 		if (item.copyRef !== null && !copyRefs.has(item.copyRef)) {
-			errors.push(`log_food: items.${index}.copyRef "${item.copyRef}" is not in "Earlier entries"`)
+			errors.push(
+				`log_food: items.${index}.copyRef "${item.copyRef}" is not in "Earlier entries" or "Today's entries"`,
+			)
 		}
 		if (item.copyRef !== null && item.memoryRef !== null) {
 			errors.push(`log_food: items.${index} has both copyRef and memoryRef — use one`)

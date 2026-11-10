@@ -192,3 +192,36 @@ describe('parseToolCalls with edits', () => {
 		expect(parseErrors([notFood, call('delete_entry', { refs: ['e1'] })])).not.toEqual([])
 	})
 })
+
+describe("log_food copyRef of today's entries", () => {
+	const copyOf = (ref: string): RawToolCall =>
+		call('log_food', {
+			items: [
+				{
+					name: 'Борщ червоний',
+					grams: 350,
+					kcal: 175,
+					protein: 7,
+					fat: 8,
+					carbs: 19,
+					category: 'borscht',
+					source: 'ESTIMATE',
+					confidence: 0.6,
+					assumption: null,
+					copyRef: ref,
+					date: '2026-10-08',
+				},
+			],
+			mealType: null,
+			reply: 'Готово',
+		})
+
+	it('accepts the e-ref of an active entry, on another day', () => {
+		expect(parseErrors([copyOf('e1')])).toEqual([])
+	})
+
+	it('rejects the e-ref of a deleted entry and of a missing one', () => {
+		expect(parseErrors([copyOf('e3')]).join()).toContain('copyRef "e3" is not in')
+		expect(parseErrors([copyOf('e9')]).join()).toContain('copyRef "e9" is not in')
+	})
+})

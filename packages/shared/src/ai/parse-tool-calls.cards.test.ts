@@ -176,7 +176,7 @@ describe('log_food copyRef', () => {
 
 	it('rejects a ref of the wrong shape', () => {
 		expect(errorsOf([logFood([{ ...egg, copyRef: 'm1' }])])).toContain('copyRef')
-		expect(errorsOf([logFood([{ ...egg, copyRef: 'e1' }])])).toContain('copyRef')
+		expect(errorsOf([logFood([{ ...egg, copyRef: 'x1' }])])).toContain('copyRef')
 	})
 
 	it('rejects copyRef together with memoryRef', () => {

@@ -66,6 +66,7 @@ export const FeedItemView = ({
 					error={item.error}
 					retry={item.retry}
 					dismiss={item.dismiss}
+					staleSince={item.staleSince}
 					onRetry={onRetry}
 					onDismiss={onDismiss}
 				/>

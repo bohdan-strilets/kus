@@ -85,8 +85,12 @@ export const ChatFeed = ({
 		[pages, outbox, previews, uploadProgress, hiddenIds, timeZone, today, now],
 	)
 	const dismiss = (target: FeedDismiss): void => {
-		if (target.target === 'outbox') removeDraft(target.id)
-		else hideMessage(target.id)
+		if (target.target === 'outbox') {
+			removeDraft(target.id)
+			return
+		}
+		hideMessage(target.id)
+		if (target.clientMessageId) removeDraft(target.clientMessageId)
 	}
 	const newKeys = useNewItemKeys(items)
 	const { scrollRef, contentRef, isScrolledUp, scrollToEndOnTap } = useFeedScroll({

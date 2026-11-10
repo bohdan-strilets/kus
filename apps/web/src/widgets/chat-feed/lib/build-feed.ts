@@ -21,11 +21,8 @@ import type {
 /** A gap this long between messages shows the time again. */
 const TIME_GAP_MS = 60 * 60 * 1000
 
-/** Final photo failures: no retry can help, so «Прибрати» is the only way out of the bubble. */
-const DEAD_END_PHOTO_ERROR_KEYS: ReadonlySet<string> = new Set([
-	'errors.api.PHOTO_NOT_FOUND',
-	'errors.api.PHOTO_IN_USE',
-])
+/** Unsent this long: offered as «send now, it will be logged today», not as a plain retry. */
+const STALE_FAILURE_MS = 24 * 60 * 60 * 1000
 
 export interface BuildFeedParams {
 	/** Every loaded page, newest first — as the API sends them. */
@@ -102,11 +99,8 @@ const fromOutbox = (item: OutboxItem, params: BuildFeedParams): UserEntry => ({
 				photoId: item.photoId,
 				...(item.onboardingAnswer ? { onboardingAnswer: item.onboardingAnswer } : {}),
 			},
-	// a final photo failure is a dead end otherwise: «Прибрати» is the only way out
-	dismiss:
-		item.photoLost || DEAD_END_PHOTO_ERROR_KEYS.has(item.error?.messageKey ?? '')
-			? { target: 'outbox', id: item.clientMessageId }
-			: null,
+	// «Прибрати» is always there: an unsent message is never lost silently, and never stuck
+	dismiss: { target: 'outbox', id: item.clientMessageId },
 	photo: getOutboxPhoto(item),
 	uploadProgress:
 		item.status === 'sending' ? params.uploadProgress?.[item.clientMessageId] : undefined,
@@ -151,6 +145,8 @@ const toEntry = (message: ChatMessage, params: BuildFeedParams): Entry => {
 				...fromOutbox(outboxItem, params),
 				key: message.id,
 				createdAt: message.createdAt,
+				// the server copy stays behind the resend: «Прибрати» drops both
+				dismiss: { target: 'server', id: message.id, clientMessageId: outboxItem.clientMessageId },
 				photo: outboxItem.photo
 					? getOutboxPhoto(outboxItem)
 					: (serverPhoto ?? getOutboxPhoto(outboxItem)),
@@ -167,11 +163,7 @@ const toEntry = (message: ChatMessage, params: BuildFeedParams): Entry => {
 			state,
 			error,
 			retry,
-			// a photo without a file stays a dead end otherwise: «Прибрати» hides it
-			dismiss:
-				message.photo && !photoId && state === 'failed'
-					? { target: 'server', id: message.id }
-					: null,
+			dismiss: state === 'failed' ? { target: 'server', id: message.id } : null,
 			photo: serverPhoto,
 			uploadProgress: undefined,
 		},
@@ -190,7 +182,14 @@ const getPhotoStatuses = ({ pages }: BuildFeedParams): Map<string, FeedPhotoStat
 	return statuses
 }
 
-/** Server messages oldest first (minus the hidden ones), then what is still only on this device. */
+const getCreatedAt = (entry: Entry): string =>
+	entry.kind === 'user' ? entry.user.createdAt : entry.message.createdAt
+
+/**
+ * Server messages (minus the hidden ones) and what is still only on this device, oldest first by
+ * createdAt: a message that waited in the outbox for hours stays where it was written. The sort is
+ * stable, so the server's own order holds for equal times.
+ */
 const getEntries = (params: BuildFeedParams): Entry[] => {
 	const messages = params.pages
 		.flat()
@@ -199,13 +198,14 @@ const getEntries = (params: BuildFeedParams): Entry[] => {
 	const knownIds = new Set(messages.flatMap((message) => message.clientMessageId ?? []))
 	const local = Object.values(params.outbox)
 		.filter((item) => !knownIds.has(item.clientMessageId))
-		.toSorted((a, b) => a.createdAt.localeCompare(b.createdAt))
 		.map((item): Entry => ({ kind: 'user', user: fromOutbox(item, params) }))
-	return [...messages.map((message) => toEntry(message, params)), ...local]
+	return [...messages.map((message) => toEntry(message, params)), ...local].toSorted(
+		(a, b) => Date.parse(getCreatedAt(a)) - Date.parse(getCreatedAt(b)),
+	)
 }
 
-const getCreatedAt = (entry: Entry): string =>
-	entry.kind === 'user' ? entry.user.createdAt : entry.message.createdAt
+const isStaleFailure = (createdAt: string, now: Date): boolean =>
+	now.getTime() - Date.parse(createdAt) > STALE_FAILURE_MS
 
 const getDayLabel = (localDate: string, { today, yesterday }: BuildFeedParams) => {
 	if (localDate === today) return 'today'
@@ -291,6 +291,11 @@ export const buildFeed = (params: BuildFeedParams): FeedItem[] => {
 					error: user.error,
 					retry: user.error.canRetry ? user.retry : null,
 					dismiss: user.dismiss,
+					// the day it was written, only when a retry would log it on a later day
+					staleSince:
+						user.error.canRetry && user.retry && isStaleFailure(createdAt, params.now)
+							? localDate
+							: null,
 				})
 			}
 		}

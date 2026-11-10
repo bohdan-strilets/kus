@@ -28,10 +28,11 @@ export type FeedPhoto =
 export type FeedPhotoStatus = 'PROCESSED' | 'FAILED'
 
 /**
- * What «Прибрати» drops: a draft of this device (by clientMessageId) or a server message whose
- * photo can't be resent (hidden by id).
+ * What «Прибрати» drops: a draft of this device (by clientMessageId) or a server message (hidden
+ * by id; its resend draft, if any, goes with it).
  */
-export type FeedDismiss = { target: 'outbox' | 'server'; id: string }
+export type FeedDismiss =
+	{ target: 'outbox'; id: string } | { target: 'server'; id: string; clientMessageId?: string }
 
 export type TypingPhase = 'uploading' | 'thinking'
 
@@ -64,5 +65,7 @@ export type FeedItem =
 			error: SendError
 			retry: RetryParams | null
 			dismiss: FeedDismiss | null
+			/** `YYYY-MM-DD` the message was written, when it waited over a day: a resend logs it today. */
+			staleSince: string | null
 	  }
 	| { kind: 'typing'; key: string; phase: TypingPhase }

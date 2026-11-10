@@ -137,7 +137,8 @@ describe('buildFeed', () => {
 			kind: 'failure',
 			key: 'failure-local-1',
 			error: { messageKey: 'chat.networkError', canRetry: true },
-			dismiss: null,
+			dismiss: { target: 'outbox', id: 'local-1' },
+			staleSince: null,
 			retry: { clientMessageId: 'local-1', text: 'борщ' },
 		})
 	})
@@ -183,6 +184,107 @@ describe('buildFeed', () => {
 		expect(kinds(buildFeed(params([running]))).at(-1)).toBe('typing')
 		const lost = message({ createdAt: '2026-10-07T16:00:00Z', status: 'PENDING' })
 		expect(kinds(buildFeed(params([lost]))).at(-1)).toBe('failure')
+	})
+})
+
+describe('buildFeed outbox order and stale failures', () => {
+	const failedItem = (overrides: Partial<OutboxItem>): OutboxItem => ({
+		clientMessageId: 'local-1',
+		text: 'борщ',
+		createdAt: '2026-10-07T16:00:00Z',
+		status: 'failed',
+		error: { messageKey: 'chat.networkError', canRetry: true },
+		...overrides,
+	})
+	const userTexts = (feed: ReturnType<typeof buildFeed>): string[] =>
+		feed.flatMap((item) => (item.kind === 'user' ? [item.text] : []))
+
+	it('places a local message by its createdAt among the server ones, not at the end', () => {
+		const old = failedItem({ text: 'зранку', createdAt: '2026-10-07T07:00:00Z' })
+		const feed = buildFeed(
+			params(
+				[
+					message({ createdAt: '2026-10-07T06:40:00Z', content: 'перше' }),
+					message({ createdAt: '2026-10-07T12:00:00Z', content: 'останнє' }),
+				],
+				{ 'local-1': old },
+			),
+		)
+		expect(userTexts(feed)).toEqual(['перше', 'зранку', 'останнє'])
+	})
+
+	it('keeps the server order for equal times and local items in createdAt order', () => {
+		const a = failedItem({ clientMessageId: 'a', text: 'a', createdAt: '2026-10-07T10:00:00Z' })
+		const b = failedItem({ clientMessageId: 'b', text: 'b', createdAt: '2026-10-07T09:00:00Z' })
+		const feed = buildFeed(
+			params(
+				[
+					message({ createdAt: '2026-10-07T08:00:00Z', content: 'm1' }),
+					reply('2026-10-07T08:00:00Z'),
+				],
+				{ a, b },
+			),
+		)
+		expect(userTexts(feed)).toEqual(['m1', 'b', 'a'])
+		expect(feed.filter((item) => item.kind === 'kusik')).toHaveLength(1)
+		expect(kinds(feed).indexOf('kusik')).toBe(kinds(feed).indexOf('user') + 1)
+	})
+
+	it('offers a plain retry for a fresh failure and «send now» info for one older than a day', () => {
+		const fresh = failedItem({ createdAt: '2026-10-07T10:00:00Z' })
+		const stale = failedItem({ createdAt: '2026-10-05T21:30:00Z' })
+		const freshFeed = buildFeed(params([], { 'local-1': fresh }))
+		const staleFeed = buildFeed(params([], { 'local-1': stale }))
+
+		expect(freshFeed.find((item) => item.kind === 'failure')).toMatchObject({ staleSince: null })
+		// 21:30 UTC on Oct 5 is 23:30 in Warsaw: written on the 5th
+		expect(staleFeed.find((item) => item.kind === 'failure')).toMatchObject({
+			staleSince: '2026-10-05',
+			retry: { clientMessageId: 'local-1' },
+			dismiss: { target: 'outbox', id: 'local-1' },
+		})
+	})
+
+	it('treats exactly one day as fresh and a bit more as stale', () => {
+		const edge = failedItem({
+			createdAt: new Date(NOW.getTime() - 24 * 60 * 60 * 1000).toISOString(),
+		})
+		const over = failedItem({
+			createdAt: new Date(NOW.getTime() - 24 * 60 * 60 * 1000 - 1000).toISOString(),
+		})
+		const staleSince = (item: OutboxItem) =>
+			buildFeed(params([], { 'local-1': item })).find((entry) => entry.kind === 'failure')
+		expect(staleSince(edge)).toMatchObject({ staleSince: null })
+		expect(staleSince(over)).not.toMatchObject({ staleSince: null })
+	})
+
+	it('has no stale text when a retry cannot help, but still offers «Прибрати»', () => {
+		const dead = failedItem({
+			createdAt: '2026-10-01T10:00:00Z',
+			error: { messageKey: 'errors.api.MESSAGE_TOO_LONG', canRetry: false },
+		})
+		expect(
+			buildFeed(params([], { 'local-1': dead })).find((i) => i.kind === 'failure'),
+		).toMatchObject({ retry: null, staleSince: null, dismiss: { target: 'outbox', id: 'local-1' } })
+	})
+
+	it('lets a FAILED server message be dismissed even when it can be resent', () => {
+		const failed = message({ createdAt: '2026-10-07T12:00:00Z', status: 'FAILED' })
+		expect(buildFeed(params([failed])).find((item) => item.kind === 'failure')).toMatchObject({
+			dismiss: { target: 'server', id: failed.id },
+		})
+	})
+
+	it('drops the resend draft together with the failed server copy', () => {
+		const failed = message({
+			createdAt: '2026-10-07T12:00:00Z',
+			status: 'FAILED',
+			clientMessageId: 'client-x',
+		})
+		const again = failedItem({ clientMessageId: 'client-x' })
+		expect(
+			buildFeed(params([failed], { 'client-x': again })).find((item) => item.kind === 'failure'),
+		).toMatchObject({ dismiss: { target: 'server', id: failed.id, clientMessageId: 'client-x' } })
 	})
 })
 
@@ -265,7 +367,7 @@ describe('buildFeed with photos', () => {
 
 		expect(failures[0]).toMatchObject({
 			retry: { clientMessageId: 'local-1', photo: outboxPhoto },
-			dismiss: null,
+			dismiss: { target: 'outbox', id: 'local-1' },
 		})
 		expect(failures[1]).toMatchObject({ retry: null, dismiss: { target: 'outbox', id: 'local-2' } })
 		expect(feed.filter((item) => item.kind === 'user')[1]).toMatchObject({
@@ -285,7 +387,7 @@ describe('buildFeed with photos', () => {
 		expect(userItem(feed)).toMatchObject({ photo: { kind: 'placeholder' } })
 		expect(feed.find((item) => item.kind === 'failure')).toMatchObject({
 			retry: { clientMessageId: 'local-1', text: '', photo: undefined, photoId: PHOTO_ID },
-			dismiss: null,
+			dismiss: { target: 'outbox', id: 'local-1' },
 		})
 	})
 
@@ -506,7 +608,7 @@ describe('buildFeed with photos', () => {
 		expect(feed.find((item) => item.kind === 'failure')).toMatchObject({
 			error: { messageKey: 'errors.api.AI_UNAVAILABLE', canRetry: true },
 			retry: { clientMessageId: 'client-photo', text: 'обід', photoId: FILE_ID },
-			dismiss: null,
+			dismiss: { target: 'server', id: failed.id },
 		})
 	})
 

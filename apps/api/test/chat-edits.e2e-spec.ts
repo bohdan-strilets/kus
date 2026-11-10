@@ -113,6 +113,7 @@ describe('chat edits of logged food (e2e, real DB, fake model)', () => {
 		const correction = await prisma.correction.findFirstOrThrow()
 		expect(correction.before).toMatchObject({ grams: 350, kcal: 175 })
 		expect(correction.after).toMatchObject({ grams: 600, kcal: 300 })
+		expect(correction.messageId).toBe(second.userMessage.id)
 	})
 
 	it('marks new values given in the chat as MANUAL, not the label they replaced', async () => {
@@ -195,6 +196,10 @@ describe('chat edits of logged food (e2e, real DB, fake model)', () => {
 		expect(restored.dayTotals.totals.kcal).toBe(343)
 		const corrections = await prisma.correction.findMany({ orderBy: { createdAt: 'asc' } })
 		expect(corrections.map((item) => item.after)).toEqual([{ deleted: true }, { deleted: false }])
+		expect(corrections.map((item) => item.messageId)).toEqual([
+			deleted.userMessage.id,
+			restored.userMessage.id,
+		])
 	})
 
 	it('refreshes every card of the meal, not only the one whose entry changed', async () => {
@@ -252,6 +257,8 @@ describe('chat edits of logged food (e2e, real DB, fake model)', () => {
 		})
 		const clarification = await prisma.clarification.findFirstOrThrow()
 		expect(clarification.answerMessageId).toBe(second.userMessage.id)
+		const correction = await prisma.correction.findFirstOrThrow()
+		expect(correction.messageId).toBe(second.userMessage.id)
 	})
 
 	it('dismisses an open question about an entry changed in words, so a later tap changes nothing', async () => {

@@ -74,6 +74,12 @@ export type EntryValuesChange = Omit<EntryChange, 'ref'>
 const getValuesSource = (change: EntryValuesChange): 'MANUAL' | 'ESTIMATE' =>
 	change.name === null ? 'MANUAL' : 'ESTIMATE'
 
+/** Who made the change: the user message of a chat turn, or nothing for the app (edit sheet, delete button). */
+interface ChatTurnEdit {
+	userId: string
+	messageId?: string
+}
+
 export interface EntryCorrection {
 	id: string
 	change: EntryValuesChange
@@ -106,7 +112,7 @@ export class EntryEditsService {
 	constructor(private readonly entriesRepository: EntriesRepository) {}
 
 	async correctEntries(
-		{ userId, corrections }: { userId: string; corrections: EntryCorrection[] },
+		{ userId, corrections, messageId }: ChatTurnEdit & { corrections: EntryCorrection[] },
 		tx: Prisma.TransactionClient,
 	): Promise<string[]> {
 		if (corrections.length === 0) return []
@@ -147,7 +153,7 @@ export class EntryEditsService {
 			)
 			// deleted by a parallel request after the read: no Correction for a change that didn't happen
 			if (!isUpdated) throw new EntryChangedException()
-			changes.push({ userId, foodEntryId: id, ...changed })
+			changes.push({ userId, foodEntryId: id, messageId, ...changed })
 		}
 		await this.entriesRepository.createCorrections(changes, tx)
 		return getSourceMessageIds(entries)
@@ -195,17 +201,17 @@ export class EntryEditsService {
 	}
 
 	deleteEntries(
-		{ userId, ids }: { userId: string; ids: string[] },
+		{ userId, ids, messageId }: ChatTurnEdit & { ids: string[] },
 		tx: Prisma.TransactionClient,
 	): Promise<string[]> {
-		return this.setDeleted({ userId, ids, isDeleted: true }, tx)
+		return this.setDeleted({ userId, ids, messageId, isDeleted: true }, tx)
 	}
 
 	restoreEntries(
-		{ userId, ids }: { userId: string; ids: string[] },
+		{ userId, ids, messageId }: ChatTurnEdit & { ids: string[] },
 		tx: Prisma.TransactionClient,
 	): Promise<string[]> {
-		return this.setDeleted({ userId, ids, isDeleted: false }, tx)
+		return this.setDeleted({ userId, ids, messageId, isDeleted: false }, tx)
 	}
 
 	/**
@@ -218,7 +224,8 @@ export class EntryEditsService {
 			entryIds,
 			values,
 			name,
-		}: { userId: string; entryIds: string[]; values: OptionValues; name: string | null },
+			messageId,
+		}: ChatTurnEdit & { entryIds: string[]; values: OptionValues; name: string | null },
 		tx: Prisma.TransactionClient,
 	): Promise<boolean> {
 		const entries = await this.entriesRepository.findActiveEntries({ userId, ids: entryIds }, tx)
@@ -249,7 +256,7 @@ export class EntryEditsService {
 				tx,
 			)
 			if (!isUpdated) return false
-			changes.push({ userId, foodEntryId: entry.id, ...changed })
+			changes.push({ userId, foodEntryId: entry.id, messageId, ...changed })
 		}
 		await this.entriesRepository.createCorrections(changes, tx)
 		return true
@@ -296,7 +303,7 @@ export class EntryEditsService {
 	}
 
 	private async setDeleted(
-		{ userId, ids, isDeleted }: { userId: string; ids: string[]; isDeleted: boolean },
+		{ userId, ids, messageId, isDeleted }: ChatTurnEdit & { ids: string[]; isDeleted: boolean },
 		tx: Prisma.TransactionClient,
 	): Promise<string[]> {
 		if (ids.length === 0) return []
@@ -314,6 +321,7 @@ export class EntryEditsService {
 			ids.map((foodEntryId) => ({
 				userId,
 				foodEntryId,
+				messageId,
 				before: { deleted: !isDeleted },
 				after: { deleted: isDeleted },
 			})),

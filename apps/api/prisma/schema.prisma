@@ -549,6 +549,7 @@ model Message {
   confirmedFacts     UserFact[]          @relation("FactConfirmation")
   myFoods            MyFood[]
   exerciseEntries    ExerciseEntry[]
+  corrections        Correction[]
   workouts           Workout[]
   finishedWorkouts   Workout[]           @relation("WorkoutFinish")
   measurements       Measurement[]
@@ -869,17 +870,22 @@ model Correction {
   myFoodId      String?  @map("my_food_id") @db.Uuid
   recipeId      String?  @map("recipe_id") @db.Uuid
   savedToMemory Boolean  @default(false) @map("saved_to_memory")
+  // the user message of the chat turn that made the change; null for the app (edit sheet, delete button)
+  // and for rows from before the field existed
+  messageId     String?  @map("message_id") @db.Uuid
   createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
 
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   foodEntry FoodEntry @relation(fields: [foodEntryId], references: [id], onDelete: Cascade)
   myFood    MyFood?   @relation(fields: [myFoodId], references: [id], onDelete: SetNull)
   recipe    Recipe?   @relation(fields: [recipeId], references: [id], onDelete: SetNull)
+  message   Message?  @relation(fields: [messageId], references: [id], onDelete: SetNull)
 
   @@index([foodEntryId])
   @@index([userId, createdAt])
   @@index([myFoodId])
   @@index([recipeId])
+  @@index([messageId])
   @@map("corrections")
 }
 

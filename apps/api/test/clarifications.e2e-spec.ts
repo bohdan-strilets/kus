@@ -106,6 +106,8 @@ describe('clarification answers (e2e, real DB, fake model)', () => {
 				{ kcal: 330, protein: 18, fat: 18, carbs: 24 },
 			],
 		])
+		// a tap is the app, not a chat message
+		expect(corrections.map(({ messageId }) => messageId)).toEqual([null])
 		expect(fake.bodies).toHaveLength(1)
 
 		const again = await owner.agent

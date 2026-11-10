@@ -75,6 +75,7 @@ erDiagram
     FoodEntry ||--o{ Correction : "corrected by"
     MyFood |o--o{ Correction : "applied to"
     Recipe |o--o{ Correction : "applied to"
+    Message |o--o{ Correction : "made in"
     Message |o--o{ UserFact : "source"
     Message |o--o{ UserFact : "confirmed by"
     Message |o--o{ MyFood : "source"
@@ -122,7 +123,7 @@ erDiagram
   **Правило:** якщо етикетка дає значення на 1 шт, бекенд перераховує їх у значення на 100 г через `pieceGrams` (`per100g = perPiece / pieceGrams * 100`) і зберігає `pieceGrams`. Значення на штуку рахуються назад (`per100g * pieceGrams / 100`) — одне джерело правди.
   `nameNormalized` і `aliases` зберігаються нормалізованими (lowercase, trim, одинарні пробіли). Назва унікальна в межах користувача серед **не видалених** продуктів (partial unique `WHERE deleted_at IS NULL`, preview `partialIndexes`) — видалений продукт не заважає створити новий з тією ж назвою.
 - **Recipe** + **RecipeIngredient** — рецепти. Підсумки не зберігаються: бекенд сумує інгредієнти, а `cookedGrams` (вага готової страви) дає значення на 100 г готового. Унікальність назви — як у MyFood. `category` (default `plate`) — іконка страви цілком (сирники → `pancakes`), не інгредієнтів.
-- **Correction** — виправлення запису користувачем (тапом по уточненню чи текстом у чаті). `before` / `after` — Json лише зі змінених полів (`{ "grams": 120 }` → `{ "grams": 150 }`; назва, категорія, кількість теж), для видалення / відновлення — `{ "deleted": false }` → `{ "deleted": true }`. `myFoodId` / `recipeId` — куди виправлення застосовано, `savedToMemory` — чи оновили пам'ять.
+- **Correction** — виправлення запису користувачем (тапом по уточненню чи текстом у чаті). `before` / `after` — Json лише зі змінених полів (`{ "grams": 120 }` → `{ "grams": 150 }`; назва, категорія, кількість теж), для видалення / відновлення — `{ "deleted": false }` → `{ "deleted": true }`. `myFoodId` / `recipeId` — куди виправлення застосовано, `savedToMemory` — чи оновили пам'ять. `messageId` — повідомлення користувача з ходу чату, що спричинив зміну (`SetNull`); `null` — зміна зі застосунку (лист редагування, кнопка видалення, тап по варіанту уточнення) і рядки до появи поля.
 - **UserFact** — факти про користувача; `category` — групи екрана «Пам'ять · Про тебе»: `FOOD` (їжа, «не їсть X»), `SCHEDULE` (графік), `TRAINING`, `OTHER`. AI пропонує (`PROPOSED`), користувач підтверджує або відхиляє; у контекст моделі йдуть лише `CONFIRMED`. `textNormalized` (як `MyFood.nameNormalized`: lowercase, trim, одинарні пробіли) — один активний факт на текст. 0.10.6, для маркерів історії чату в контексті моделі: `answeredAt?` — коли пропозиція отримала відповідь («Так / Ні» кнопкою); `REJECTED` без нього — пропозицію замінила новіша. `confirmedMessageId?` (`SetNull`, relation `FactConfirmation`; `sourceMessageId` — `FactSource`) — повідомлення, чиї слова («запам'ятай») підтвердили пропозицію; кнопка його не ставить.
 
 ### Ліміти й пізніші модулі

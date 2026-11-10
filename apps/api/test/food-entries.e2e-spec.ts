@@ -122,6 +122,8 @@ describe('food entries edit sheet (e2e, real DB, fake model)', () => {
 		const correction = await prisma.correction.findFirstOrThrow()
 		expect(correction.before).toMatchObject({ grams: 100, kcal: 110 })
 		expect(correction.after).toMatchObject({ grams: 150, kcal: 165 })
+		// a change from the app has no chat message behind it
+		expect(correction.messageId).toBeNull()
 		// the chat card tells the change too
 		const feed = feedResponseSchema.parse((await owner.agent.get(MESSAGES_URL).expect(200)).body)
 		const reply = feed.data.find((message) => message.id === replyId)
@@ -192,6 +194,7 @@ describe('food entries edit sheet (e2e, real DB, fake model)', () => {
 		expect(stored.deletedAt).not.toBeNull()
 		const correction = await prisma.correction.findFirstOrThrow()
 		expect(correction.after).toEqual({ deleted: true })
+		expect(correction.messageId).toBeNull()
 		const feed = feedResponseSchema.parse((await owner.agent.get(MESSAGES_URL).expect(200)).body)
 		const reply = feed.data.find((message) => message.id === replyId)
 		expect(reply?.meals[0]?.entries).toHaveLength(1)

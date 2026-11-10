@@ -296,6 +296,8 @@ export class EntriesRepository {
 			foodEntryId: string
 			before: Prisma.InputJsonObject
 			after: Prisma.InputJsonObject
+			/** The user message of the chat turn; omitted for changes made in the app. */
+			messageId?: string
 		}[],
 		tx: Prisma.TransactionClient,
 	): Promise<void> {

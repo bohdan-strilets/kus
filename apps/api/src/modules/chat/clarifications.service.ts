@@ -91,6 +91,7 @@ export class ClarificationsService {
 					entryIds: clarification.entries.map((entry) => entry.foodEntryId),
 					values: applied,
 					name: option?.name ?? null,
+					messageId: answerMessageId ?? undefined,
 				},
 				tx,
 			)

@@ -78,15 +78,20 @@ export class ChatEditsService {
 		const [workoutDeletions, entryDeletions] = partitionWorkoutRefs(edits.deletions)
 		const [workoutRestorations, entryRestorations] = partitionWorkoutRefs(edits.restorations)
 		const deletedIds = entryDeletions.map((ref) => toId(refIds.entries, ref))
-		const corrected = await this.entryEdits.correctEntries({ userId, corrections }, tx)
-		const deleted = await this.entryEdits.deleteEntries({ userId, ids: deletedIds }, tx)
+		const messageId = userMessageId
+		const corrected = await this.entryEdits.correctEntries({ userId, corrections, messageId }, tx)
+		const deleted = await this.entryEdits.deleteEntries({ userId, ids: deletedIds, messageId }, tx)
 		// the entry changed in words: its old options no longer fit (answered ones are not OPEN)
 		const dismissedReplyIds = await this.clarificationsRepository.dismissOpenClarifications(
 			{ userId, entryIds: [...corrections.map(({ id }) => id), ...deletedIds] },
 			tx,
 		)
 		const restored = await this.entryEdits.restoreEntries(
-			{ userId, ids: entryRestorations.map((ref) => toId(refIds.deletedEntries, ref)) },
+			{
+				userId,
+				ids: entryRestorations.map((ref) => toId(refIds.deletedEntries, ref)),
+				messageId,
+			},
 			tx,
 		)
 		const workoutMessages = [

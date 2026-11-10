@@ -20,6 +20,7 @@ import { PROGRAM_CASES } from './program.cases.js'
 import { READ_TOOL_CASES } from './read-tools.cases.js'
 import { RANGE_CASES } from './range.cases.js'
 import { SAFETY_CASES } from './safety.cases.js'
+import { SOUP_CASES } from './soup.cases.js'
 import { WORKOUT_2_CASES } from './workout-2.cases.js'
 import { WORKOUT_CASES } from './workout.cases.js'
 
@@ -56,6 +57,7 @@ export const REPO_CASES: EvalCase[] = [
 	...HISTORY_MARKER_CASES,
 	...LIVE_CHAT_CASES,
 	...READ_TOOL_CASES,
+	...SOUP_CASES,
 ]
 
 /** Written, but need a context the contract doesn't have yet; not run until it does. None now. */

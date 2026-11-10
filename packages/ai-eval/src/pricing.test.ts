@@ -49,11 +49,11 @@ describe('case reserve upper bound', () => {
 		expect(MAX_MODEL_CALLS_PER_CASE).toBe(4)
 	})
 
-	it('estimates the cached prefix of about 21k tokens, within 20 % of the real one', () => {
+	it('estimates the cached prefix of about 22k tokens, within 20 % of the real one (21 121 cached by the eval of prompt .3, about +700 for .4)', () => {
 		for (const evalCase of READ_TOOL_CASES) {
 			const { prefix } = estimateInputParts(evalCase)
-			expect(prefix, evalCase.id).toBeGreaterThan(21_000 * 0.8)
-			expect(prefix, evalCase.id).toBeLessThan(21_000 * 1.2)
+			expect(prefix, evalCase.id).toBeGreaterThan(22_000 * 0.8)
+			expect(prefix, evalCase.id).toBeLessThan(22_000 * 1.2)
 		}
 	})
 

@@ -134,7 +134,9 @@ describe('chat messages with a photo (e2e, real DB, fake model)', () => {
 		expect(content.map((part) => part.type)).toEqual(['image_url'])
 		// the text message goes to the plain model and carries no photo
 		expect(fake.bodies[1]).toMatchObject({ model: 'test/model' })
-		expect(typeof getUserContent(fake.bodies[1])).toBe('string')
+		// the last user message carries the cache breakpoint of the read-tool loop, so its text is a part
+		const textContent = getUserContent(fake.bodies[1]) as { type: string; text: string }[]
+		expect(textContent.map((part) => [part.type, part.text])).toEqual([['text', 'банан']])
 		const fromPhoto = await prisma.foodEntry.groupBy({ by: ['fromPhoto'], _count: true })
 		expect(fromPhoto.map((group) => [group.fromPhoto, group._count]).sort()).toEqual([
 			[false, 2],

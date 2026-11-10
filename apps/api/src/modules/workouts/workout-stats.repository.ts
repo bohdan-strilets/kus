@@ -23,6 +23,8 @@ const STATS_WORKOUT_SELECT = {
 	kcalSource: true,
 	finishedAt: true,
 	finishedMessageId: true,
+	records: true,
+	template: { select: { name: true } },
 	exercises: {
 		where: { deletedAt: null },
 		select: { performedAt: true, sourceMessageId: true },
@@ -36,6 +38,19 @@ export interface StatsExerciseRecord {
 	name: string
 	kind: ExerciseKind
 	muscleGroup: MuscleGroup | null
+}
+
+/** An exercise of the user's dictionary, as the model's search needs it. */
+export interface StatsExerciseName {
+	id: string
+	name: string
+	aliases: string[]
+}
+
+/** The very first counted workout and how many there are, over all time. */
+export interface StatsAllTimeSummary {
+	firstDate: Date | null
+	total: number
 }
 
 /**
@@ -67,6 +82,43 @@ export class WorkoutStatsRepository {
 			_min: { localDate: true },
 		})
 		return result._min.localDate
+	}
+
+	/** The first day and the number of the user's counted workouts over all time. */
+	async findAllTimeSummary(
+		{ userId }: { userId: string },
+		tx?: Prisma.TransactionClient,
+	): Promise<StatsAllTimeSummary> {
+		const result = await (tx ?? this.prisma).workout.aggregate({
+			where: { userId, deletedAt: null, ...HIDE_OPEN_LIVE },
+			_min: { localDate: true },
+			_count: { _all: true },
+		})
+		return { firstDate: result._min.localDate, total: result._count._all }
+	}
+
+	/** Whether a live session of the user is still going on (it is not counted in the statistics). */
+	async hasOpenLiveSession(
+		{ userId }: { userId: string },
+		tx?: Prisma.TransactionClient,
+	): Promise<boolean> {
+		const open = await (tx ?? this.prisma).workout.findFirst({
+			where: { userId, deletedAt: null, source: 'LIVE', finishedAt: null },
+			select: { id: true },
+		})
+		return open !== null
+	}
+
+	/** The user's live exercises, the most recently changed first. */
+	findExercisesOfUser(
+		{ userId }: { userId: string },
+		tx?: Prisma.TransactionClient,
+	): Promise<StatsExerciseName[]> {
+		return (tx ?? this.prisma).exercise.findMany({
+			where: { userId, deletedAt: null },
+			select: { id: true, name: true, aliases: true },
+			orderBy: { updatedAt: 'desc' },
+		})
 	}
 
 	findEntriesInRange(

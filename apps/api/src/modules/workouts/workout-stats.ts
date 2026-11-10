@@ -31,20 +31,20 @@ const MUSCLE_GROUP_ORDER = TRAINING_GROUP_ORDER.filter(
 
 const sum = (values: readonly number[]): number => values.reduce((total, value) => total + value, 0)
 
-const countWorkingSets = (entries: readonly StatsEntryRow[]): number =>
+export const countWorkingSets = (entries: readonly StatsEntryRow[]): number =>
 	getWorkingSets(entries.filter((entry) => entry.kind === 'STRENGTH')).length
 
 const getStrengthKey = (entry: StatsEntryRow): string =>
 	entry.exerciseId ?? `name:${normalizeExerciseName(entry.name)}`
 
-const countStrengthExercises = (entries: readonly StatsEntryRow[]): number =>
+export const countStrengthExercises = (entries: readonly StatsEntryRow[]): number =>
 	new Set(
 		entries
 			.filter((entry) => entry.kind === 'STRENGTH' && getWorkingSets([entry]).length > 0)
 			.map(getStrengthKey),
 	).size
 
-const getGroups = (entries: readonly StatsEntryRow[]): WorkoutStatsGroup[] => {
+export const getGroups = (entries: readonly StatsEntryRow[]): WorkoutStatsGroup[] => {
 	const counts = new Map<MuscleGroup | null, number>()
 	for (const entry of entries) {
 		if (entry.kind !== 'STRENGTH') continue
@@ -82,7 +82,7 @@ const getAvgPerWeek = ({
 	return Math.round((count / weeks) * AVG_DECIMALS_FACTOR) / AVG_DECIMALS_FACTOR
 }
 
-const getDurations = (
+export const getDurations = (
 	workouts: readonly StatsWorkoutRow[],
 ): { named: number[]; hasEstimate: boolean } => {
 	const durations = workouts.map((workout) => ({

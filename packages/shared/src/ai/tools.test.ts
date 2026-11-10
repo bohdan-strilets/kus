@@ -34,6 +34,7 @@ describe('getAiFunctionTools', () => {
 			'forget_fact',
 			'reply',
 			'find_food',
+			'get_workouts',
 		])
 	})
 

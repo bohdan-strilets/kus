@@ -37,6 +37,8 @@ import { WorkoutsTurnService } from './workouts-turn.service'
 		LiveSessionsService,
 		WorkoutKcalService,
 		WorkoutRecordsService,
+		// the chat's read tool get_workouts
+		WorkoutStatsService,
 	],
 })
 export class WorkoutsModule {}

@@ -1,10 +1,17 @@
 import { Injectable } from '@nestjs/common'
-import type { ExerciseStatsResponse, WorkoutStatsPeriod, WorkoutStatsResponse } from '@kus/shared'
+import type {
+	ExerciseStatsResponse,
+	WorkoutsReadData,
+	WorkoutStatsPeriod,
+	WorkoutStatsResponse,
+} from '@kus/shared'
 
 import { formatDbDate, getLocalDateString, toDbDate } from '../../common/time'
 import { UsersService } from '../users/users.service'
 import { buildExerciseStats } from './exercise-stats'
 import { WorkoutKcalService } from './workout-kcal.service'
+import { buildWorkoutsReadData, matchExercises } from './workout-read'
+import type { ReadProgramInput } from './workout-read-program'
 import { buildWorkoutStats } from './workout-stats'
 import { toStatsEntryRow, toStatsWorkoutRow } from './workout-stats.mapper'
 import { WorkoutStatsRepository } from './workout-stats.repository'
@@ -53,6 +60,70 @@ export class WorkoutStatsService {
 			workouts: workouts.map(toStatsWorkoutRow),
 			entries: entries.map(toStatsEntryRow),
 			allTimeStrengthEntries: allTime.map(toStatsEntryRow),
+		})
+	}
+
+	/**
+	 * What get_workouts tells the model about [from, to]. The statistics' rules: a deleted workout
+	 * or entry and an open live session are not counted (the latter is only flagged). `exerciseQuery`
+	 * is matched against the user's own exercises; the program comes from the caller (programs
+	 * depend on this module, not the other way round).
+	 */
+	async getReadData(
+		userId: string,
+		{
+			from,
+			to,
+			today,
+			exerciseQuery,
+			program,
+		}: {
+			from: string
+			to: string
+			today: string
+			exerciseQuery: string | null
+			program: ReadProgramInput | null
+		},
+	): Promise<WorkoutsReadData> {
+		const window = { userId, from: toDbDate(from), to: toDbDate(to) }
+		const [workouts, entries, allTimeSummary, dictionary, hasOpenSession] = await Promise.all([
+			this.statsRepository.findWorkoutsInRange(window),
+			this.statsRepository.findEntriesInRange(window),
+			this.statsRepository.findAllTimeSummary({ userId }),
+			this.statsRepository.findExercisesOfUser({ userId }),
+			this.statsRepository.hasOpenLiveSession({ userId }),
+		])
+		const exercise =
+			exerciseQuery === null
+				? null
+				: { query: exerciseQuery, matched: matchExercises(exerciseQuery, dictionary) }
+		const exerciseIds = exercise
+			? exercise.matched.map(({ id }) => id)
+			: [
+					...new Set(
+						entries.flatMap((entry) =>
+							entry.kind === 'STRENGTH' && entry.exerciseId !== null ? [entry.exerciseId] : [],
+						),
+					),
+				]
+		const allTime = await this.statsRepository.findStrengthEntriesOfExercises({
+			userId,
+			exerciseIds,
+		})
+		return buildWorkoutsReadData({
+			from,
+			to,
+			today,
+			firstEverDate:
+				allTimeSummary.firstDate === null ? null : formatDbDate(allTimeSummary.firstDate),
+			totalEver: allTimeSummary.total,
+			exercise,
+			knownExerciseNames: dictionary.map(({ name }) => name),
+			workouts: workouts.map(toStatsWorkoutRow),
+			entries: entries.map(toStatsEntryRow),
+			allTimeStrengthEntries: allTime.map(toStatsEntryRow),
+			program,
+			hasOpenSession,
 		})
 	}
 

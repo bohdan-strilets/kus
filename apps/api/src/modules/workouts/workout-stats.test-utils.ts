@@ -42,6 +42,8 @@ export const makeWorkout = (overrides: Partial<StatsWorkoutRow> = {}): StatsWork
 	kcalSource: null,
 	finishedAt: null,
 	finishedMessageId: null,
+	templateName: null,
+	records: [],
 	entries: [],
 	...overrides,
 })

@@ -81,8 +81,8 @@ describe('findFoodInputSchema', () => {
 })
 
 describe('find_food as the model sees it', () => {
-	it('is the last tool, with a short English description', () => {
-		const tool = getAiFunctionTools().at(-1)
+	it('is the first read tool, with a short English description', () => {
+		const tool = getAiFunctionTools().find((item) => item.function.name === 'find_food')
 		expect(tool?.function.name).toBe('find_food')
 		expect(tool?.function.description).toBe(FIND_FOOD_DESCRIPTION)
 		expect(FIND_FOOD_DESCRIPTION.length).toBeLessThan(1200)

@@ -1,6 +1,7 @@
 // The registry of read tools: calls the backend answers itself and feeds back to the model before
 // it writes anything (find_food, ...). Shared, so the eval can tell a read from a write the same way.
 import { FIND_FOOD_TOOL_NAME } from './find-food.js'
+import { GET_WORKOUTS_TOOL_NAME } from './get-workouts.js'
 
 /** Most rounds of reading in one turn; a read after them is a validation error. */
 export const MAX_READ_STEPS = 2
@@ -8,7 +9,10 @@ export const MAX_READ_STEPS = 2
 export const MAX_PARALLEL_READS = 4
 
 /** Names of the read tools; their definitions are appended to the write tools by getAiFunctionTools. */
-export const READ_TOOL_NAMES: ReadonlySet<string> = new Set<string>([FIND_FOOD_TOOL_NAME])
+export const READ_TOOL_NAMES: ReadonlySet<string> = new Set<string>([
+	FIND_FOOD_TOOL_NAME,
+	GET_WORKOUTS_TOOL_NAME,
+])
 
 export const isReadToolName = (name: string): boolean => READ_TOOL_NAMES.has(name)
 

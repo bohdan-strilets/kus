@@ -29,9 +29,10 @@ describe('read tool registry', () => {
 		expect(MAX_PARALLEL_READS).toBe(4)
 	})
 
-	it('names find_food, which getAiFunctionTools offers', () => {
-		expect([...READ_TOOL_NAMES]).toEqual(['find_food'])
+	it('names find_food and get_workouts, which getAiFunctionTools offers', () => {
+		expect([...READ_TOOL_NAMES]).toEqual(['find_food', 'get_workouts'])
 		expect(isReadToolName('find_food')).toBe(true)
+		expect(isReadToolName('get_workouts')).toBe(true)
 	})
 
 	it('never names a write tool', () => {

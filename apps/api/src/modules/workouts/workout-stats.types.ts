@@ -1,4 +1,4 @@
-import type { ExerciseKind, ExerciseSource, MuscleGroup } from '@kus/shared'
+import type { ExerciseKind, ExerciseSource, MuscleGroup, WorkoutRecordType } from '@kus/shared'
 
 /** What the repository returns for the stats: dates are `YYYY-MM-DD`, Decimal is already a number. */
 export type StatsSetRow = {
@@ -40,6 +40,10 @@ export type StatsWorkoutRow = {
 	kcalSource: ExerciseSource | null
 	finishedAt: Date | null
 	finishedMessageId: string | null
+	/** The name of the template version the workout followed; null for a free workout. */
+	templateName: string | null
+	/** Records the workout set when it was logged; a value that no longer parses is none. */
+	records: readonly { exerciseEntryId: string; type: WorkoutRecordType }[]
 	/** Every live entry of the workout, only their times feed the duration estimate. */
 	entries: readonly { performedAt: Date; sourceMessageId: string | null }[]
 }

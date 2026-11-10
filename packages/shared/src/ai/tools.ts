@@ -29,6 +29,11 @@ import {
 	restoreEntryInputSchema,
 } from './edit-tools.js'
 import { FIND_FOOD_DESCRIPTION, FIND_FOOD_TOOL_NAME, findFoodInputSchema } from './find-food.js'
+import {
+	GET_WORKOUTS_DESCRIPTION,
+	GET_WORKOUTS_TOOL_NAME,
+	getWorkoutsInputSchema,
+} from './get-workouts.js'
 import { COPY_REF_PATTERN } from './history-context.js'
 import { forgetFactInputSchema, saveFactInputSchema, saveFoodInputSchema } from './memory-tools.js'
 import { toModelParameters } from './model-schema.js'
@@ -494,6 +499,14 @@ const getReadFunctionTools = (): AiFunctionTool[] => [
 			name: FIND_FOOD_TOOL_NAME,
 			description: FIND_FOOD_DESCRIPTION,
 			parameters: toModelParameters(findFoodInputSchema),
+		},
+	},
+	{
+		type: 'function',
+		function: {
+			name: GET_WORKOUTS_TOOL_NAME,
+			description: GET_WORKOUTS_DESCRIPTION,
+			parameters: toModelParameters(getWorkoutsInputSchema),
 		},
 	},
 ]

@@ -14,6 +14,7 @@ import {
 import { getLocalDateString } from '../../common/time'
 import type { Prisma } from '../../generated/prisma/client'
 import { UsersService } from '../users/users.service'
+import type { ReadProgramInput } from '../workouts/workout-read-program'
 import { WorkoutsService } from '../workouts/workouts.service'
 import {
 	ProgramNotFoundException,
@@ -69,6 +70,23 @@ export class ProgramsService {
 			versionCreatedAt: program.activeVersion.createdAt.toISOString(),
 			program: draft,
 			nextTemplateKey: next?.key ?? null,
+		}
+	}
+
+	/**
+	 * The active program as get_workouts judges missed days: settings, the user's local day it was
+	 * made and the weekdays of its templates; null without a program.
+	 */
+	async getActiveForRead(userId: string): Promise<ReadProgramInput | null> {
+		const program = await this.programsRepository.findActive(userId)
+		if (!hasActiveVersion(program)) return null
+		const { timezone } = await this.usersService.getMe(userId)
+		return {
+			title: program.title,
+			mode: program.mode,
+			perWeek: program.perWeek,
+			since: getLocalDateString(program.createdAt, timezone),
+			weekdays: [...new Set(program.activeVersion.templates.flatMap(({ weekdays }) => weekdays))],
 		}
 	}
 

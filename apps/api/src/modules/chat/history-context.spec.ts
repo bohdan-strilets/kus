@@ -62,9 +62,11 @@ describe('buildEarlierContext', () => {
 
 		expect(earlier.map(({ ref, name }) => [ref, name])).toEqual([
 			['y1', 'Суп'],
-			['h1', 'Гречка'],
+			['h1', 'Гречка варена'],
+			['h2', 'Гречка'],
 		])
-		expect(copyRefIds.get('h1')).toBe('r3')
+		expect(copyRefIds.get('h1')).toBe('r1')
+		expect(copyRefIds.get('h2')).toBe('r3')
 	})
 
 	it('matches Ukrainian endings and skips entries already listed for yesterday', () => {

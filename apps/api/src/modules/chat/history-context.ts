@@ -2,7 +2,7 @@ import {
 	type EarlierEntryContext,
 	EARLIER_NAMED_MAX_ENTRIES,
 	EARLIER_YESTERDAY_MAX_ENTRIES,
-	isFoodMentioned,
+	findMentionedFoods,
 	normalizeName,
 } from '@kus/shared'
 
@@ -55,14 +55,10 @@ export const buildEarlierContext = ({
 	const shown = new Set(yesterdayEntries.map((entry) => entry.id))
 	const seen = new Set<string>()
 	const named: EntryWithMealType[] = []
+	const mentioned = new Set(findMentionedFoods(text, recent, { limit: recent.length }))
 	for (const entry of recent) {
 		if (named.length >= EARLIER_NAMED_MAX_ENTRIES) break
-		if (
-			shown.has(entry.id) ||
-			!isFoodMentioned({ nameNormalized: normalizeName(entry.name), aliases: [] }, text)
-		) {
-			continue
-		}
+		if (shown.has(entry.id) || !mentioned.has(entry)) continue
 		const key = getEntryKey(entry)
 		if (seen.has(key)) continue
 		seen.add(key)

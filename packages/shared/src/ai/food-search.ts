@@ -133,7 +133,9 @@ const getJaccard = (a: string, b: string): number => {
 }
 
 const getWordSimilarity = (queryWord: string, nameWord: string): number => {
-	const isPrefix = queryWord.startsWith(nameWord) || nameWord.startsWith(queryWord)
+	// A one-letter word of a name ("Чай з молоком") must not match every word starting with it.
+	const canBePrefix = Math.min(queryWord.length, nameWord.length) >= FOOD_SEARCH_MIN_WORD_LENGTH
+	const isPrefix = canBePrefix && (queryWord.startsWith(nameWord) || nameWord.startsWith(queryWord))
 	if (isPrefix) return 1
 	const jaccard = getJaccard(queryWord, nameWord)
 	return jaccard >= MIN_TRIGRAM_SIMILARITY ? jaccard : 0

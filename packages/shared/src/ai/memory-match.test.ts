@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
-import { isFoodMentioned, normalizeName } from './memory-match.js'
+import { MEMORY_PASSIVE_MAX_FOODS } from './context.js'
+import { findMentionedFoods, isFoodMentioned, normalizeName } from './memory-match.js'
 
 // Latin look-alikes are built from code points: literal glyphs could be swapped by an editor.
 const cp = (codes: string): string =>
@@ -81,5 +82,59 @@ describe('normalizeName', () => {
 		expect(result).toBe(dirtyName)
 		expect(result).not.toBe(cleanName)
 		expect(result.codePointAt(2)).toBe(0x70)
+	})
+})
+
+describe('findMentionedFoods', () => {
+	const NOW = new Date('2026-11-10T12:00:00Z')
+	const pool = [
+		{ name: 'Молоко 2%', aliases: [] as string[] },
+		{ name: 'Батончик SportyFeel', aliases: [] as string[] },
+		{ name: 'Протеїновий батончик', aliases: [] as string[] },
+		{ name: 'Гречка', aliases: [] as string[] },
+		{ name: 'Йогурт', aliases: [] as string[] },
+	]
+	const find = (text: string): string[] =>
+		findMentionedFoods(text, pool, { now: NOW }).map((food) => food.name)
+
+	it('ignores verbs and amounts around the food', () => {
+		expect(find('Додай молоко 400г')).toEqual(['Молоко 2%'])
+	})
+
+	it('finds a food by the word that is in the name, with an inflected ending', () => {
+		expect(find('Додай гречку')).toEqual(['Гречка'])
+	})
+
+	it('finds the food by an abbreviated prefix, covering the whole query', () => {
+		expect(find('прот батончик')).toEqual(['Протеїновий батончик'])
+	})
+
+	it('finds a Latin name written in Latin and in Cyrillic', () => {
+		expect(find('Sportyfeel')).toEqual(['Батончик SportyFeel'])
+		expect(find('спортифил')).toEqual(['Батончик SportyFeel'])
+	})
+
+	it('finds each food of a message with several foods', () => {
+		expect(find('молоко і гречка, йогурт')).toEqual(['Молоко 2%', 'Гречка', 'Йогурт'])
+	})
+
+	it('finds nothing for a message that names no saved food', () => {
+		expect(find('Додай банан 100г')).toEqual([])
+		expect(find('привіт')).toEqual([])
+	})
+
+	it('does not match a one-letter word of a name against any word starting with it', () => {
+		const tea = [{ name: 'Чай з молоком', aliases: [] as string[] }]
+		expect(findMentionedFoods('Додай зефір 100г', tea, { now: NOW })).toEqual([])
+	})
+
+	it('keeps the order of the given foods and caps the count', () => {
+		const many = Array.from({ length: 8 }, (_, index) => ({
+			name: `Йогурт ${index}`,
+			aliases: [] as string[],
+		}))
+		const found = findMentionedFoods('йогурт', many, { now: NOW })
+		expect(found).toHaveLength(MEMORY_PASSIVE_MAX_FOODS)
+		expect(found.map(({ name }) => name)).toEqual([...found.map(({ name }) => name)].sort())
 	})
 })

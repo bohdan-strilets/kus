@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common'
-import { isFoodMentioned, MEMORY_MAX_FOODS, type MemoryFoodContext } from '@kus/shared'
+import { findMentionedFoods, type MemoryFoodContext } from '@kus/shared'
 
 import type { FoodCategory, MyFood, Prisma } from '../../generated/prisma/client'
 import { MemoryRepository } from './memory.repository'
@@ -42,10 +42,10 @@ const toContext = (food: MyFood, ref: string): MemoryFoodContext => ({
 export class MemoryService {
 	constructor(private readonly memoryRepository: MemoryRepository) {}
 
-	/** Saved foods mentioned in the message, most used first. */
+	/** Saved foods the message names, in popularity order (refs m1…). */
 	async findRelevantFoods(userId: string, text: string): Promise<RelevantFoods> {
 		const foods = await this.memoryRepository.findActiveFoods(userId)
-		const matched = foods.filter((food) => isFoodMentioned(food, text)).slice(0, MEMORY_MAX_FOODS)
+		const matched = findMentionedFoods(text, foods)
 		const byRef = new Map(matched.map((food, index) => [`${MEMORY_REF_PREFIX}${index + 1}`, food]))
 		return {
 			context: [...byRef].map(([ref, food]) => toContext(food, ref)),

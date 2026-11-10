@@ -48,6 +48,8 @@ export interface SendMessageParams {
 	photoIds?: string[]
 	/** A button of the training onboarding; `text` holds its label(s). */
 	onboardingAnswer?: OnboardingAnswerRequest
+	/** A resend of a FAILED message is logged now, not on the day of its old createdAt. */
+	sendNow?: boolean
 }
 
 /** One chat turn: user message → AI → entries / questions / answer, idempotent by clientMessageId. */
@@ -97,10 +99,11 @@ export class ChatService {
 		const stored = photoIds ? await this.chatPhotos.load(userId, photoIds) : undefined
 		const photo = stored?.payload ?? params.photo
 		const message = existing
-			? await this.claimForRetry(userId, existing, photo)
+			? await this.claimForRetry({ userId, existing, photo, isSendNow: params.sendNow === true })
 			: await this.createMessage({ userId, params, stored })
 		// the turn's clock is the message's own: a resend after midnight still means "today" as the
-		// user saw it when sending. A new message is as old as now (the app clock, not the DB's)
+		// user saw it when sending. A new message is as old as now (the app clock, not the DB's); so
+		// is a resend with `sendNow`, which restamps the message
 		const now = existing ? message.createdAt : new Date()
 		const localDate = getLocalDate(now, timezone)
 		const edited = await this.runTurn(
@@ -165,15 +168,23 @@ export class ChatService {
 	}
 
 	/** A resend takes a FAILED or lost message for another try, and refuses while the first runs. */
-	private async claimForRetry(
-		userId: string,
-		existing: MessageWithAttachments,
-		photo: PhotoPayload | undefined,
-	): Promise<MessageWithAttachments> {
+	private async claimForRetry({
+		userId,
+		existing,
+		photo,
+		isSendNow,
+	}: {
+		userId: string
+		existing: MessageWithAttachments
+		photo: PhotoPayload | undefined
+		isSendNow: boolean
+	}): Promise<MessageWithAttachments> {
+		const restampAt = isSendNow ? new Date() : undefined
 		const isClaimed = await this.chatRepository.claimForRetry({
 			id: existing.id,
 			userId,
 			staleBefore: new Date(Date.now() - STALE_PENDING_MS),
+			restampAt,
 		})
 		if (!isClaimed) throw new MessageInProgressException()
 		if (photo) {
@@ -184,7 +195,11 @@ export class ChatService {
 				photo: existing.attachments.some(({ fileId }) => fileId !== null) ? undefined : photo,
 			})
 		}
-		return { ...existing, status: MessageStatus.PENDING }
+		return {
+			...existing,
+			status: MessageStatus.PENDING,
+			...(restampAt ? { createdAt: restampAt } : {}),
+		}
 	}
 
 	/**

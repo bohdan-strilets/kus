@@ -137,6 +137,29 @@ describe('deliverMessage', () => {
 		expect(invalidate).toHaveBeenCalledWith({ queryKey: MY_FOODS_QUERY_KEY })
 	})
 
+	it('asks for today with sendNow, and keeps asking on a later retry from the outbox', async () => {
+		const client = createClient()
+		vi.mocked(postMessage).mockRejectedValueOnce(networkError).mockResolvedValueOnce(turn)
+
+		await deliverMessage(client, {
+			clientMessageId: CLIENT_ID,
+			text: 'тарілка супу',
+			isRetry: true,
+			sendNow: true,
+		})
+		expect(useOutboxStore.getState().items[CLIENT_ID]).toMatchObject({ sendNow: true })
+		await deliverMessage(client, {
+			clientMessageId: CLIENT_ID,
+			text: 'тарілка супу',
+			isRetry: true,
+		})
+
+		expect(vi.mocked(postMessage).mock.calls.map(([body]) => body)).toEqual([
+			{ clientMessageId: CLIENT_ID, text: 'тарілка супу', sendNow: true },
+			{ clientMessageId: CLIENT_ID, text: 'тарілка супу', sendNow: true },
+		])
+	})
+
 	it('replaces the FAILED server copy of a resent message instead of showing it twice', async () => {
 		const client = createClient()
 		const failedCopy = message({ status: 'FAILED' })

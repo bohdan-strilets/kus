@@ -23,6 +23,8 @@ export interface SendMessageActions {
 		/** Already uploaded: the resend only sends the message. */
 		photoId?: string
 		onboardingAnswer?: OnboardingAnswerRequest
+		/** Unsent over a day: the server logs it now, not on the day it was written. */
+		sendNow?: boolean
 	}) => void
 }
 

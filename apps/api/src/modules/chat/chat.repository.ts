@@ -148,10 +148,13 @@ export class ChatRepository {
 		id,
 		userId,
 		staleBefore,
+		restampAt,
 	}: {
 		id: string
 		userId: string
 		staleBefore: Date
+		/** «Send now»: the message becomes as new as this moment (its day, its place in the feed). */
+		restampAt?: Date
 	}): Promise<boolean> {
 		const { count } = await this.prisma.message.updateMany({
 			where: {
@@ -162,7 +165,7 @@ export class ChatRepository {
 					{ status: MessageStatus.PENDING, updatedAt: { lt: staleBefore } },
 				],
 			},
-			data: { status: MessageStatus.PENDING },
+			data: { status: MessageStatus.PENDING, ...(restampAt ? { createdAt: restampAt } : {}) },
 		})
 		return count === 1
 	}

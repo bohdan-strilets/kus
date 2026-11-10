@@ -71,6 +71,11 @@ export const sendMessageRequestSchema = z
 		photoIds: z.array(z.uuid()).min(1).max(PHOTOS_PER_MESSAGE_LIMIT).optional(),
 		/** A button of the training onboarding; `text` carries the label(s) the chat shows. */
 		onboardingAnswer: onboardingAnswerRequestSchema.optional(),
+		/**
+		 * «Надіслати» for a message unsent over a day: a resend of a FAILED message is logged today
+		 * instead of the day it was written. Ignored for a new message and a finished turn.
+		 */
+		sendNow: z.boolean().optional(),
 	})
 	.refine(
 		(request) =>

@@ -12,6 +12,7 @@ interface SendMessageBody {
 	photo: PhotoPayload | undefined
 	photoIds: string[] | undefined
 	onboardingAnswer?: OnboardingAnswerRequest
+	sendNow?: boolean
 }
 
 /**

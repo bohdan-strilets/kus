@@ -40,6 +40,8 @@ export interface OutboxItem {
 	photoLost?: boolean
 	/** A button of the training onboarding: `text` is its label, the values go along for the server. */
 	onboardingAnswer?: OnboardingAnswerRequest
+	/** Resent with «Надіслати»: kept, so a later retry of the same message still asks for today. */
+	sendNow?: boolean
 	/** ISO; places the bubble in the feed until the server copy arrives. */
 	createdAt: string
 	status: OutboxStatus
@@ -60,7 +62,13 @@ interface OutboxState {
 	markSending: (
 		item: Pick<
 			OutboxItem,
-			'clientMessageId' | 'text' | 'createdAt' | 'photo' | 'photoId' | 'onboardingAnswer'
+			| 'clientMessageId'
+			| 'text'
+			| 'createdAt'
+			| 'photo'
+			| 'photoId'
+			| 'onboardingAnswer'
+			| 'sendNow'
 		>,
 	) => void
 	markFailed: (clientMessageId: string, error: SendError) => void
@@ -89,6 +97,7 @@ const storedItemSchema = z
 		photoLost: z.literal(true).optional(),
 		photoId: z.uuid().optional(),
 		onboardingAnswer: onboardingAnswerRequestSchema.optional(),
+		sendNow: z.literal(true).optional(),
 	})
 	// an empty text is only the leftover of a photo message
 	.refine((item) => item.text.length > 0 || item.photoLost === true || item.photoId !== undefined)
@@ -116,14 +125,26 @@ const toStoredState = ({ ownerId, items, hiddenIds }: OutboxState): StoredState 
 	ownerId,
 	items: Object.values(items)
 		.filter((item) => item.status === 'failed')
-		.map(({ clientMessageId, text, createdAt, photo, photoId, photoLost, onboardingAnswer }) => ({
-			clientMessageId,
-			text,
-			createdAt,
-			...(onboardingAnswer ? { onboardingAnswer } : {}),
-			...(photoId ? { photoId } : {}),
-			...((photo || photoLost) && !photoId ? { photoLost: true as const } : {}),
-		})),
+		.map(
+			({
+				clientMessageId,
+				text,
+				createdAt,
+				photo,
+				photoId,
+				photoLost,
+				onboardingAnswer,
+				sendNow,
+			}) => ({
+				clientMessageId,
+				text,
+				createdAt,
+				...(onboardingAnswer ? { onboardingAnswer } : {}),
+				...(sendNow ? { sendNow: true as const } : {}),
+				...(photoId ? { photoId } : {}),
+				...((photo || photoLost) && !photoId ? { photoLost: true as const } : {}),
+			}),
+		),
 	hiddenIds,
 })
 

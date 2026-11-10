@@ -5,11 +5,11 @@ import { useTranslation } from 'react-i18next'
 
 import { messagesQueryOptions } from '@/entities/message'
 import { useOutboxStore, usePhotoSessionStore, useSendMessage } from '@/features/send-message'
-import { bubbleVariants, createUuid, shiftLocalDate } from '@/shared/lib'
+import { bubbleVariants, shiftLocalDate } from '@/shared/lib'
 import { Button, Loader, Text } from '@/shared/ui'
 
 import { buildFeed } from '../lib/build-feed'
-import type { FeedDismiss, RetryParams } from '../model/feed.types'
+import type { FeedDismiss } from '../model/feed.types'
 import { useNow } from '../model/use-now'
 import { useFeedScroll } from '../model/use-feed-scroll'
 import { useNewItemKeys } from '../model/use-new-item-keys'
@@ -88,14 +88,6 @@ export const ChatFeed = ({
 		hideMessage(target.id)
 		if (target.clientMessageId) removeDraft(target.clientMessageId)
 	}
-	const resend = ({ supersedes, ...params }: RetryParams): void => {
-		if (!supersedes) {
-			retry(params)
-			return
-		}
-		dismiss(supersedes)
-		retry({ ...params, clientMessageId: createUuid() })
-	}
 	const newKeys = useNewItemKeys(items)
 	const { scrollRef, contentRef, isScrolledUp, scrollToEndOnTap } = useFeedScroll({
 		items,
@@ -146,7 +138,7 @@ export const ChatFeed = ({
 					item={item}
 					isLatestReply={item.key === latestReplyKey}
 					today={today}
-					onRetry={resend}
+					onRetry={retry}
 					onDismiss={dismiss}
 				/>
 			</motion.div>

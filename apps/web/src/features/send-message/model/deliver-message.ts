@@ -41,6 +41,8 @@ interface DeliverParams {
 	 * request is always made, whatever navigator.onLine says.
 	 */
 	isRetry?: boolean
+	/** Unsent over a day: the server logs it now, not on the day it was written. */
+	sendNow?: boolean
 }
 
 /** The server has the message: the draft leaves, its picture stays for the bubble of the copy. */
@@ -62,9 +64,15 @@ const postWithPhoto = async (
 	text: string,
 	photo: OutboxPhoto | undefined,
 	photoId: string,
+	sendNow: boolean,
 ): Promise<SendMessageResponse | null> => {
 	const post = (id: string): Promise<SendMessageResponse> =>
-		postMessage({ clientMessageId, text: text || undefined, photoIds: [id] })
+		postMessage({
+			clientMessageId,
+			text: text || undefined,
+			photoIds: [id],
+			...(sendNow ? { sendNow } : {}),
+		})
 	try {
 		return await post(photoId)
 	} catch (error) {
@@ -92,18 +100,21 @@ export const deliverMessage = async (
 		photoId: knownPhotoId,
 		onboardingAnswer: knownAnswer,
 		isRetry = false,
+		sendNow: knownSendNow,
 	}: DeliverParams,
 ): Promise<void> => {
 	const outbox = useOutboxStore.getState()
 	const session = usePhotoSessionStore.getState()
 	const photoId = knownPhotoId ?? outbox.items[clientMessageId]?.photoId
 	const onboardingAnswer = knownAnswer ?? outbox.items[clientMessageId]?.onboardingAnswer
+	const sendNow = knownSendNow ?? outbox.items[clientMessageId]?.sendNow ?? false
 	outbox.markSending({
 		clientMessageId,
 		text,
 		photo,
 		photoId,
 		onboardingAnswer,
+		sendNow: sendNow || undefined,
 		createdAt: new Date().toISOString(),
 	})
 	// a photo is too heavy to wait in a queue: say so at once instead of a spinner that ends in a failure.
@@ -117,8 +128,13 @@ export const deliverMessage = async (
 	try {
 		const id = photoId ?? (photo ? await uploadOutboxPhoto(clientMessageId, photo) : undefined)
 		const turn = id
-			? await postWithPhoto(clientMessageId, text, photo, id)
-			: await postMessage({ clientMessageId, text: text || undefined, onboardingAnswer })
+			? await postWithPhoto(clientMessageId, text, photo, id, sendNow)
+			: await postMessage({
+					clientMessageId,
+					text: text || undefined,
+					onboardingAnswer,
+					...(sendNow ? { sendNow } : {}),
+				})
 		if (!turn) {
 			playSound('oops')
 			return

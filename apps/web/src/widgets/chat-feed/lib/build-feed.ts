@@ -98,6 +98,7 @@ const fromOutbox = (item: OutboxItem, params: BuildFeedParams): UserEntry => ({
 				photo: item.photo,
 				photoId: item.photoId,
 				...(item.onboardingAnswer ? { onboardingAnswer: item.onboardingAnswer } : {}),
+				...(item.sendNow ? { sendNow: true } : {}),
 			},
 	// «Прибрати» is always there: an unsent message is never lost silently, and never stuck
 	dismiss: { target: 'outbox', id: item.clientMessageId },
@@ -222,15 +223,12 @@ const isStaleFailure = (createdAt: string, now: Date): boolean =>
 	now.getTime() - Date.parse(createdAt) > STALE_FAILURE_MS
 
 /**
- * A stale text is resent as a new message: the API logs a resend of the same id on the day it was
- * written. A photo is bound to its first message on the server, so it keeps the id.
+ * A stale message is resent with `sendNow`: the API logs a resend of the same id on the day it was
+ * written, unless asked otherwise. The id stays (a photo is bound to its first message).
  */
 const getFailureRetry = (user: UserEntry, isStale: boolean): RetryParams | null => {
 	if (!user.error?.canRetry || !user.retry) return null
-	const { retry, dismiss } = user
-	const isReplaceable =
-		isStale && dismiss && !retry.photo && !retry.photoId && !retry.onboardingAnswer
-	return isReplaceable ? { ...retry, supersedes: dismiss } : retry
+	return isStale ? { ...user.retry, sendNow: true } : user.retry
 }
 
 const getDayLabel = (localDate: string, { today, yesterday }: BuildFeedParams) => {

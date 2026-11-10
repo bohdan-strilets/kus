@@ -7,6 +7,8 @@ import { PrismaService } from '../../prisma'
 import { placeAfter } from './workout-session'
 import { HIDE_OPEN_LIVE } from './workout-visibility'
 
+const MAX_EXERCISE_ALIASES = 10
+
 /** A workout and the message it started; `deletedAt` tells it was deleted since. */
 export interface WorkoutStart {
 	id: string
@@ -467,6 +469,22 @@ export class WorkoutsRepository {
 		return tx.exercise.findFirstOrThrow({
 			where: { userId: data.userId, nameNormalized: data.nameNormalized, deletedAt: null },
 		})
+	}
+
+	/**
+	 * Adds a normalized alias to the owner's live row, unless it is already there or the row holds
+	 * MAX_EXERCISE_ALIASES. True when the alias was added.
+	 */
+	async addExerciseAlias(
+		{ userId, id, alias }: { userId: string; id: string; alias: string },
+		tx?: Prisma.TransactionClient,
+	): Promise<boolean> {
+		const changed = await (tx ?? this.prisma).$executeRaw`
+			UPDATE exercises SET aliases = array_append(aliases, ${alias}::text)
+			WHERE id = ${id}::uuid AND user_id = ${userId}::uuid AND deleted_at IS NULL
+				AND NOT (${alias}::text = ANY(aliases))
+				AND cardinality(aliases) < ${MAX_EXERCISE_ALIASES}`
+		return changed > 0
 	}
 
 	/** The user's fix of a group: overwrites the owner's dictionary row (never a cardio one). */

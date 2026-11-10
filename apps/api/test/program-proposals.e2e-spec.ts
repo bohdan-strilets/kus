@@ -213,6 +213,47 @@ describe('program proposals in the chat (e2e, real DB, fake model)', () => {
 		expect(back.map(({ name }) => name).sort()).toEqual(['Підтягування', 'Тяга верхнього блока'])
 	})
 
+	it('does not duplicate or glue exercises on accept: «Жим від грудей» stays its own row', async () => {
+		await start()
+		const owner = await registerUser('owner@kus.app')
+		await prisma.exercise.createMany({
+			data: [
+				{
+					userId: owner.userId,
+					name: 'Жим лежачи',
+					nameNormalized: 'жим лежачи',
+					kind: 'STRENGTH',
+					muscleGroup: 'CHEST',
+					aliases: [],
+				},
+				{
+					userId: owner.userId,
+					name: 'Жим від грудей',
+					nameNormalized: 'жим від грудей',
+					kind: 'STRENGTH',
+					muscleGroup: 'CHEST',
+					aliases: [],
+				},
+			],
+		})
+		const machine = await prisma.exercise.findFirstOrThrow({
+			where: { userId: owner.userId, nameNormalized: 'жим від грудей' },
+		})
+		const { assistantMessage } = await send(
+			owner,
+			'склади програму',
+			proposeCall([
+				{ ref: null, name: 'Тренування А', exercises: [{ ...bench, name: 'Жим від грудей' }] },
+			]),
+		)
+
+		await accept(owner, assistantMessage.id)
+
+		expect(await prisma.exercise.count({ where: { userId: owner.userId } })).toBe(2)
+		const rows = await prisma.templateExercise.findMany()
+		expect(rows.map(({ exerciseId }) => exerciseId)).toEqual([machine.id])
+	})
+
 	it('shows the program in the context and turns a change into − / + lines and a new version', async () => {
 		await start()
 		const owner = await registerUser('owner@kus.app')

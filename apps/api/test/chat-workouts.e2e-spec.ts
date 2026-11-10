@@ -221,6 +221,88 @@ describe('chat workouts (e2e, real DB, fake model)', () => {
 		])
 	})
 
+	it('keeps the ref for a longer wording of the single matching exercise and learns it as an alias', async () => {
+		await start()
+		const owner = await registerUser('owner@kus.app')
+		fake.respond(
+			createCompletion([workoutCall({})]),
+			createCompletion([
+				workoutCall({
+					exercises: [{ ...bench(85), name: 'Жим лежачи на лаві', exerciseRef: 'x1' }],
+				}),
+			]),
+		)
+		await send(owner, 'жим 80 3×8')
+
+		await send(owner, 'жим на лаві 85')
+
+		const exercises = await prisma.exercise.findMany({ where: { userId: owner.userId } })
+		const entries = await prisma.exerciseEntry.findMany({ where: { userId: owner.userId } })
+		expect(exercises).toHaveLength(1)
+		expect(exercises[0]?.aliases).toEqual(['жим лежачи на лаві'])
+		expect(new Set(entries.map(({ exerciseId }) => exerciseId))).toEqual(
+			new Set([exercises[0]?.id]),
+		)
+	})
+
+	it('never glues «Жим від грудей» to «Жим лежачи», and a shorter name with two fitting rows learns no alias', async () => {
+		await start()
+		const owner = await registerUser('owner@kus.app')
+		fake.respond(
+			createCompletion([workoutCall({})]),
+			createCompletion([
+				workoutCall({ exercises: [{ ...bench(50), name: 'Жим від грудей', exerciseRef: 'x1' }] }),
+			]),
+			createCompletion([
+				workoutCall({ exercises: [{ ...bench(55), name: 'Жим', exerciseRef: 'x1' }] }),
+			]),
+		)
+		await send(owner, 'жим 80 3×8')
+
+		await send(owner, 'жим від грудей 50')
+		await send(owner, 'жим 55')
+
+		const exercises = await prisma.exercise.findMany({
+			where: { userId: owner.userId },
+			orderBy: { createdAt: 'asc' },
+		})
+		expect(exercises.map(({ name, aliases }) => [name, aliases])).toEqual([
+			['Жим лежачи', []],
+			['Жим від грудей', []],
+		])
+	})
+
+	it('adds an alias only to the own live row of the user', async () => {
+		await start()
+		const owner = await registerUser('owner@kus.app')
+		const stranger = await registerUser('stranger@kus.app')
+		fake.respond(createCompletion([workoutCall({})]))
+		await send(owner, 'жим 80 3×8')
+		const exercise = await prisma.exercise.findFirstOrThrow({ where: { userId: owner.userId } })
+		const repository = new WorkoutsRepository(prisma)
+
+		const byStranger = await repository.addExerciseAlias({
+			userId: stranger.userId,
+			id: exercise.id,
+			alias: 'bench',
+		})
+		const byOwner = await repository.addExerciseAlias({
+			userId: owner.userId,
+			id: exercise.id,
+			alias: 'bench',
+		})
+		const repeated = await repository.addExerciseAlias({
+			userId: owner.userId,
+			id: exercise.id,
+			alias: 'bench',
+		})
+
+		expect([byStranger, byOwner, repeated]).toEqual([false, true, false])
+		expect(
+			(await prisma.exercise.findUniqueOrThrow({ where: { id: exercise.id } })).aliases,
+		).toEqual(['bench'])
+	})
+
 	it('deletes a workout by its w-ref and brings it back', async () => {
 		await start()
 		const owner = await registerUser('owner@kus.app')

@@ -92,3 +92,101 @@ describe('WorkoutsService.findOrCreateExercise', () => {
 		expect(set.repository.fillExerciseMuscleGroup).not.toHaveBeenCalled()
 	})
 })
+
+describe('WorkoutsService.resolveExercise', () => {
+	const barbell: ExerciseRow = {
+		id: 'b',
+		name: 'Жим лежачи',
+		kind: 'STRENGTH',
+		muscleGroup: 'CHEST',
+		aliases: [],
+	}
+	const machine: ExerciseRow = { ...barbell, id: 'm', name: 'Жим від грудей' }
+
+	const setup = (dictionary: ExerciseRow[], taken: ExerciseRow | null = null) => {
+		const { repository, service } = build(taken)
+		const extended = {
+			...repository,
+			findDictionary: vi.fn().mockResolvedValue(dictionary),
+			addExerciseAlias: vi.fn().mockResolvedValue(true),
+		}
+		const withRepo = new WorkoutsService(
+			extended as unknown as WorkoutsRepository,
+			{} as unknown as WorkoutKcalService,
+			{} as unknown as PrismaService,
+			{} as unknown as WorkoutRecordsService,
+		)
+		return { repository: extended, service: withRepo, unused: service }
+	}
+
+	it('keeps the ref of the single row the longer name means and learns the name as an alias', async () => {
+		const { repository, service } = setup([barbell, machine])
+
+		const row = await service.resolveExercise(
+			'u1',
+			{ item: { name: 'Жим лежачи штангою', kind: 'STRENGTH' }, ref: barbell },
+			tx,
+		)
+
+		expect(row.id).toBe('b')
+		expect(repository.addExerciseAlias).toHaveBeenCalledWith(
+			{ userId: 'u1', id: 'b', alias: 'жим лежачи штангою' },
+			tx,
+		)
+	})
+
+	it('does not glue «Жим від грудей» to «Жим лежачи»: the name decides, no alias', async () => {
+		const { repository, service } = setup([barbell])
+
+		const row = await service.resolveExercise(
+			'u1',
+			{ item: { name: 'Жим від грудей', kind: 'STRENGTH' }, ref: barbell },
+			tx,
+		)
+
+		expect(row.id).toBe('new')
+		expect(repository.createExercise).toHaveBeenCalledWith(
+			expect.objectContaining({ nameNormalized: 'жим від грудей' }),
+			tx,
+		)
+		expect(repository.addExerciseAlias).not.toHaveBeenCalled()
+	})
+
+	it('learns nothing when two rows fit the name', async () => {
+		const { repository, service } = setup([barbell, { ...machine, name: 'Жим на лаві' }])
+
+		const row = await service.resolveExercise(
+			'u1',
+			{ item: { name: 'Жим лежачи на лаві', kind: 'STRENGTH' }, ref: barbell },
+			tx,
+		)
+
+		expect(row.id).toBe('b')
+		expect(repository.addExerciseAlias).not.toHaveBeenCalled()
+	})
+
+	it('does not take a name that already belongs to another row as an alias', async () => {
+		const { repository, service } = setup([barbell], machine)
+
+		await service.resolveExercise(
+			'u1',
+			{ item: { name: 'Жим лежачи штангою', kind: 'STRENGTH' }, ref: barbell },
+			tx,
+		)
+
+		expect(repository.addExerciseAlias).not.toHaveBeenCalled()
+	})
+
+	it('goes by the name when there is no live ref row', async () => {
+		const { repository, service } = setup([])
+
+		await service.resolveExercise(
+			'u1',
+			{ item: { name: 'Жим лежачи', kind: 'STRENGTH' }, ref: null },
+			tx,
+		)
+
+		expect(repository.createExercise).toHaveBeenCalled()
+		expect(repository.findDictionary).not.toHaveBeenCalled()
+	})
+})

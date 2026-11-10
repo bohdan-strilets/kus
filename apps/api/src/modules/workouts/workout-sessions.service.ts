@@ -10,7 +10,6 @@ import {
 import { formatDbDate } from '../../common/time'
 import type { Prisma } from '../../generated/prisma/client'
 import type { MuscleGroup } from '../../generated/prisma/enums'
-import { isSameExercise } from './exercise-names'
 import { toId, type WorkoutRefIds } from './workout-refs'
 import {
 	findSessionToClose,
@@ -526,21 +525,33 @@ export class WorkoutSessionsService {
 		},
 		tx: Prisma.TransactionClient,
 	): Promise<ExerciseRow> {
-		if (exercise.exerciseRef !== null) {
-			const id = toId(refIds.exercises, exercise.exerciseRef)
-			const [row] = await this.workoutsRepository.findExercisesByIds({ userId, ids: [id] }, tx)
-			// deleted from the dictionary after the context was built: the entry still points at it
-			if (!row) return { id, name: exercise.name, kind: exercise.kind, muscleGroup: null }
-			if (isSameExercise(exercise.name, row)) return row
-			// the x-ref is of another exercise than the name says: the name wins
-			this.logger.warn(`Exercise ref does not match its name user=${userId} exercise=${id}`)
-		}
+		const ref = await this.findRefRow({ userId, exercise, refIds }, tx)
 		// no group here: resolveExercise sets it (names dictionary first, then the model's)
-		return this.workoutsService.findOrCreateExercise(
+		return this.workoutsService.resolveExercise(
 			userId,
-			{ name: exercise.name, kind: exercise.kind },
+			{ item: { name: exercise.name, kind: exercise.kind }, ref },
 			tx,
 		)
+	}
+
+	/** The live row of the user's the x-ref points at; null for no ref and for a row deleted since the context. */
+	private async findRefRow(
+		{
+			userId,
+			exercise,
+			refIds,
+		}: {
+			userId: string
+			exercise: LogWorkoutInput['exercises'][number]
+			refIds: WorkoutRefIds
+		},
+		tx: Prisma.TransactionClient,
+	): Promise<ExerciseRow | null> {
+		if (exercise.exerciseRef === null) return null
+		const id = toId(refIds.exercises, exercise.exerciseRef)
+		const [row] = await this.workoutsRepository.findExercisesByIds({ userId, ids: [id] }, tx)
+		if (!row) this.logger.warn(`Exercise ref is gone user=${userId} exercise=${id}`)
+		return row ?? null
 	}
 }
 

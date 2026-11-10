@@ -15,6 +15,7 @@ import { formatDbDate, toDbDate } from '../../common/time'
 import type { Prisma } from '../../generated/prisma/client'
 import type { ExerciseKind, MuscleGroup } from '../../generated/prisma/enums'
 import { PrismaService } from '../../prisma'
+import { hasExerciseName, judgeExerciseRef } from './exercise-names'
 import { getRecordExerciseIds } from './workout-records'
 import { WorkoutRecordsService } from './workout-records.service'
 import { WorkoutNotFoundException } from './workouts.exceptions'
@@ -63,6 +64,9 @@ const toLastCardio = (
 	if (!last || (last.durationMin === null && last.distanceM === null)) return null
 	return { durationMin: last.durationMin, distanceM: last.distanceM }
 }
+
+/** How many dictionary rows are compared with a name the model gave next to an x-ref. */
+const REF_CHECK_DICTIONARY_LIMIT = 300
 
 @Injectable()
 export class WorkoutsService {
@@ -148,6 +152,63 @@ export class WorkoutsService {
 	}
 
 	/**
+	 * The dictionary row for an exercise the caller may have pointed at by id (an x-ref of the model,
+	 * a program draft). A row that is not live is no pointer. The ref is kept when the name can mean
+	 * that row (the name or an alias is the same, one holds the other, or the words are the same
+	 * words); a name of another exercise decides itself («Жим від грудей» is not «Жим лежачи»).
+	 * Only when the ref is the single row the name can mean and the name is new to it, the name
+	 * becomes its alias; with several fitting rows the ref is the model's pick and nothing is learned.
+	 */
+	async resolveExercise(
+		userId: string,
+		{ item, ref }: { item: ExerciseToResolve; ref: ExerciseRow | null },
+		tx: Prisma.TransactionClient,
+	): Promise<ExerciseRow> {
+		if (ref === null) return this.findOrCreateExercise(userId, item, tx)
+		const given = { name: item.name, kind: item.kind, muscleGroup: item.muscleGroup ?? null }
+		const verdict = await this.judgeRef(userId, { given, ref }, tx)
+		if (verdict === 'reject') {
+			// the ref is of another exercise than the name says: the name wins
+			this.logger.warn(`Exercise ref does not match its name user=${userId} exercise=${ref.id}`)
+			return this.findOrCreateExercise(userId, item, tx)
+		}
+		if (verdict === 'alias') await this.learnAlias(userId, { name: item.name, ref }, tx)
+		return this.fillMuscleGroup(userId, ref, item, tx)
+	}
+
+	private async judgeRef(
+		userId: string,
+		{ given, ref }: { given: Parameters<typeof judgeExerciseRef>[0]; ref: ExerciseRow },
+		tx: Prisma.TransactionClient,
+	): Promise<ReturnType<typeof judgeExerciseRef>> {
+		if (hasExerciseName(given.name, ref)) return 'exact'
+		const dictionary = await this.workoutsRepository.findDictionary(
+			{ userId, take: REF_CHECK_DICTIONARY_LIMIT },
+			tx,
+		)
+		return judgeExerciseRef(given, ref, dictionary)
+	}
+
+	/** The name, normalized, when no live row of the user has it as a name or an alias yet. */
+	private async learnAlias(
+		userId: string,
+		{ name, ref }: { name: string; ref: ExerciseRow },
+		tx: Prisma.TransactionClient,
+	): Promise<void> {
+		const alias = normalizeExerciseName(name)
+		const taken = await this.workoutsRepository.findExerciseByName(
+			{ userId, nameNormalized: alias },
+			tx,
+		)
+		if (taken) return
+		const isAdded = await this.workoutsRepository.addExerciseAlias(
+			{ userId, id: ref.id, alias },
+			tx,
+		)
+		if (isAdded) this.logger.log(`Exercise alias learned user=${userId} exercise=${ref.id}`)
+	}
+
+	/**
 	 * The dictionary row with this name or alias, else a new one (a parallel create returns the row it
 	 * lost to). Runs inside the caller's transaction.
 	 */
@@ -213,7 +274,7 @@ export class WorkoutsService {
 
 	/**
 	 * Dictionary rows for a list of exercises, in the same order: the user's own row by id when it is
-	 * still there, else by name (found or created). One at a time, so equal names meet one row.
+	 * still there and fits the name, else by name (found or created). One at a time, so equal names meet one row.
 	 */
 	async findOrCreateExercises(
 		userId: string,
@@ -229,11 +290,7 @@ export class WorkoutsService {
 		const rows: ExerciseRow[] = []
 		for (const item of items) {
 			const byId = item.exerciseId ? owned.get(item.exerciseId) : undefined
-			rows.push(
-				byId
-					? await this.fillMuscleGroup(userId, byId, item, tx)
-					: await this.findOrCreateExercise(userId, item, tx),
-			)
+			rows.push(await this.resolveExercise(userId, { item, ref: byId ?? null }, tx))
 		}
 		return rows
 	}

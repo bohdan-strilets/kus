@@ -13,7 +13,7 @@ import {
 	type TemplateExerciseDraft,
 } from '@kus/shared'
 
-import { isSameExercise } from '../workouts/exercise-names'
+import { canBeSameExercise } from '../workouts/exercise-names'
 import { toDistanceM } from '../workouts/workout-turn'
 import type { ExerciseRow } from '../workouts/workouts.service'
 import { normalizeDraft } from './programs.mapper'
@@ -64,7 +64,7 @@ const findBaseExercise = (
 			normalizeExerciseName(exercise.name) === normalizeExerciseName(name),
 	)
 
-/** The id behind the x-ref, unless the ref's exercise is not the one the name says (the name decides). */
+/** The id behind the x-ref, unless the ref's exercise is not the one the name says (the name decides; the same check as on accept). */
 const getRefExerciseId = (
 	input: ProgramExerciseInput,
 	{ refs, refRows }: { refs: ProposalRefs; refRows: RefRows },
@@ -72,7 +72,7 @@ const getRefExerciseId = (
 	const id = input.exerciseRef === null ? undefined : refs.exerciseIds.get(input.exerciseRef)
 	if (id === undefined) return undefined
 	const refRow = refRows.get(id)
-	return refRow && !isSameExercise(input.name, refRow) ? undefined : id
+	return refRow && !canBeSameExercise(input, refRow) ? undefined : id
 }
 
 /**

@@ -309,17 +309,93 @@ describe('buildFeed outbox order and stale failures', () => {
 		})
 	})
 
-	it('treats exactly one day as fresh and a bit more as stale', () => {
-		const edge = failedItem({
-			createdAt: new Date(NOW.getTime() - 24 * 60 * 60 * 1000).toISOString(),
-		})
-		const over = failedItem({
-			createdAt: new Date(NOW.getTime() - 24 * 60 * 60 * 1000 - 1000).toISOString(),
-		})
-		const staleSince = (item: OutboxItem) =>
+	it('calls a failure stale by the local date: the last second before midnight is, midnight is not', () => {
+		// Warsaw midnight of Oct 7 is 22:00 UTC on Oct 6
+		const before = failedItem({ createdAt: '2026-10-06T21:59:59Z' })
+		const after = failedItem({ createdAt: '2026-10-06T22:00:00Z' })
+		const failureOf = (item: OutboxItem) =>
 			buildFeed(params([], { 'local-1': item })).find((entry) => entry.kind === 'failure')
-		expect(staleSince(edge)).toMatchObject({ staleSince: null })
-		expect(staleSince(over)).not.toMatchObject({ staleSince: null })
+		expect(failureOf(before)).toMatchObject({ staleSince: '2026-10-06' })
+		expect(failureOf(after)).toMatchObject({ staleSince: null })
+	})
+
+	it('decides the day in the time zone of the user', () => {
+		// 03:00 UTC on Oct 7: already today in Warsaw, still Oct 6 in New York
+		const item = failedItem({ createdAt: '2026-10-07T03:00:00Z' })
+		const failureIn = (timeZone: string) =>
+			buildFeed({ ...params([], { 'local-1': item }), timeZone }).find(
+				(entry) => entry.kind === 'failure',
+			)
+		expect(failureIn('Europe/Warsaw')).toMatchObject({ staleSince: null })
+		expect(failureIn('America/New_York')).toMatchObject({ staleSince: '2026-10-06' })
+	})
+
+	it('puts a stale failure at the end of the feed, with no pill or time of its own', () => {
+		const stale = failedItem({ text: 'давнє', createdAt: '2026-10-05T10:00:00Z' })
+		const feed = buildFeed(
+			params(
+				[
+					message({ createdAt: '2026-10-06T06:40:00Z', content: 'вчора' }),
+					reply('2026-10-06T06:40:06Z'),
+					message({ createdAt: '2026-10-07T06:40:00Z', content: 'сьогодні' }),
+					reply('2026-10-07T06:40:06Z'),
+				],
+				{ 'local-1': stale },
+			),
+		)
+		expect(kinds(feed)).toEqual([
+			'day:yesterday',
+			'time',
+			'user',
+			'kusik',
+			'recap',
+			'day:today',
+			'time',
+			'user',
+			'kusik',
+			'user',
+			'failure',
+		])
+		expect(userTexts(feed)).toEqual(['вчора', 'сьогодні', 'давнє'])
+	})
+
+	it('keeps a stale failure after the messages of today and before the typing dots', () => {
+		const stale = failedItem({ text: 'давнє', createdAt: '2026-10-05T10:00:00Z' })
+		const sending = failedItem({
+			clientMessageId: 'local-2',
+			text: 'нове',
+			status: 'sending',
+			error: null,
+			createdAt: '2026-10-07T16:19:00Z',
+		})
+		const feed = buildFeed(params([], { 'local-1': stale, 'local-2': sending }))
+		expect(userTexts(feed)).toEqual(['нове', 'давнє'])
+		expect(kinds(feed).at(-1)).toBe('typing')
+	})
+
+	it('puts a resent stale message back in its place once it is fresh again', () => {
+		const resent = failedItem({
+			createdAt: NOW.toISOString(),
+			status: 'sending',
+			error: null,
+			sendNow: true,
+		})
+		const feed = buildFeed(
+			params([message({ createdAt: '2026-10-07T06:40:00Z', content: 'зранку' })], {
+				'local-1': resent,
+			}),
+		)
+		expect(userTexts(feed)).toEqual(['зранку', 'борщ'])
+		expect(kinds(feed).filter((kind) => kind === 'day:today')).toHaveLength(1)
+	})
+
+	it('leaves an old failure that cannot be resent in its own day', () => {
+		const dead = failedItem({
+			createdAt: '2026-10-01T10:00:00Z',
+			error: { messageKey: 'chat.photoLost', canRetry: false },
+		})
+		const feed = buildFeed(params([], { 'local-1': dead }))
+		expect(kinds(feed).slice(0, 3)).toEqual(['day:date', 'time', 'user'])
 	})
 
 	it('has no stale text when a retry cannot help, but still offers «Прибрати»', () => {

@@ -27,7 +27,9 @@ export default defineConfig({
 		react(),
 		tailwindcss(),
 		VitePWA({
-			registerType: 'autoUpdate',
+			// a waiting version is applied by src/app/providers/register-service-worker.ts at a quiet moment
+			registerType: 'prompt',
+			injectRegister: false,
 			includeAssets: ['favicon.svg', 'favicon-32.png', 'apple-touch-icon.png'],
 			manifest: {
 				name: 'Kusik',

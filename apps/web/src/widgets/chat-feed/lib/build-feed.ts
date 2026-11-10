@@ -21,9 +21,6 @@ import type {
 /** A gap this long between messages shows the time again. */
 const TIME_GAP_MS = 60 * 60 * 1000
 
-/** Unsent this long: offered as «send now, it will be logged today», not as a plain retry. */
-const STALE_FAILURE_MS = 24 * 60 * 60 * 1000
-
 export interface BuildFeedParams {
 	/** Every loaded page, newest first — as the API sends them. */
 	pages: readonly (readonly ChatMessage[])[]
@@ -219,8 +216,17 @@ const isTodayEmpty = (params: BuildFeedParams): boolean => {
 	)
 }
 
-const isStaleFailure = (createdAt: string, now: Date): boolean =>
-	now.getTime() - Date.parse(createdAt) > STALE_FAILURE_MS
+/**
+ * Unsent since another local day: a resend would log it today, so it is offered as «send now» and
+ * sits at the end of the feed instead of among the history of its own day.
+ */
+const isStaleFailureEntry = (entry: Entry, params: BuildFeedParams): boolean => {
+	if (entry.kind !== 'user' || entry.user.state !== 'failed' || !entry.user.error?.canRetry) {
+		return false
+	}
+	const localDate = getLocalDateString(new Date(Date.parse(entry.user.createdAt)), params.timeZone)
+	return localDate !== params.today
+}
 
 /**
  * A stale message is resent with `sendNow`: the API logs a resend of the same id on the day it was
@@ -277,7 +283,33 @@ export const buildFeed = (params: BuildFeedParams): FeedItem[] => {
 		}
 	}
 
-	for (const entry of getEntries(params)) {
+	const pushUser = (user: UserEntry, isStale: boolean): void => {
+		items.push({
+			kind: 'user',
+			key: user.key,
+			text: user.text,
+			state: user.state,
+			...(user.photo ? { photo: user.photo } : {}),
+			...(user.uploadProgress === undefined ? {} : { uploadProgress: user.uploadProgress }),
+		})
+		if (user.state !== 'failed' || !user.error) return
+		items.push({
+			kind: 'failure',
+			key: `failure-${user.key}`,
+			error: user.error,
+			retry: getFailureRetry(user, isStale),
+			dismiss: user.dismiss,
+			// the day it was written, only when a retry would log it on a later day
+			staleSince:
+				isStale && user.retry
+					? getLocalDateString(new Date(Date.parse(user.createdAt)), params.timeZone)
+					: null,
+		})
+	}
+
+	const entries = getEntries(params)
+	const staleEntries = entries.filter((entry) => isStaleFailureEntry(entry, params))
+	for (const entry of entries.filter((item) => !staleEntries.includes(item))) {
 		const createdAt = getCreatedAt(entry)
 		const at = Date.parse(createdAt)
 		const localDate = getLocalDateString(new Date(at), params.timeZone)
@@ -302,32 +334,16 @@ export const buildFeed = (params: BuildFeedParams): FeedItem[] => {
 				items.push({ kind: 'time', key: `time-${entry.user.key}`, at: createdAt })
 			}
 			cursor.hasUserMessage = true
-			const { user } = entry
-			items.push({
-				kind: 'user',
-				key: user.key,
-				text: user.text,
-				state: user.state,
-				...(user.photo ? { photo: user.photo } : {}),
-				...(user.uploadProgress === undefined ? {} : { uploadProgress: user.uploadProgress }),
-			})
-			if (user.state === 'failed' && user.error) {
-				const isStale = user.error.canRetry && isStaleFailure(createdAt, params.now)
-				items.push({
-					kind: 'failure',
-					key: `failure-${user.key}`,
-					error: user.error,
-					retry: getFailureRetry(user, isStale),
-					dismiss: user.dismiss,
-					// the day it was written, only when a retry would log it on a later day
-					staleSince: isStale && user.retry ? localDate : null,
-				})
-			}
+			pushUser(entry.user, false)
 		}
 		cursor.previousAt = at
 	}
 
 	if (cursor.day !== params.today) openDay(params.today)
+	// after today's pill, outside the day grouping: no pill or time of their own, the text names the date
+	for (const entry of staleEntries) {
+		if (entry.kind === 'user') pushUser(entry.user, true)
+	}
 	const sending = items.filter((item) => item.kind === 'user' && item.state === 'sending')
 	if (sending.length > 0) {
 		// the photo is still on its way: Kusik has nothing to think about yet

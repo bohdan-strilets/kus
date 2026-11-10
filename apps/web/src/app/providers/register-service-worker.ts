@@ -1,7 +1,11 @@
+import type { LiveWorkoutResponse } from '@kus/shared'
 import { registerSW } from 'virtual:pwa-register'
 
+import { LIVE_WORKOUT_QUERY_KEY } from '@/entities/workout'
+import { useLiveWorkoutStore } from '@/features/live-workout'
 import { useComposerDraftStore, useOutboxStore, usePhotoDraftStore } from '@/features/send-message'
 
+import { queryClient } from './query-client'
 import { shouldApplyUpdate, type UpdateTrigger } from './service-worker-update'
 
 const UPDATE_CHECK_INTERVAL_MS = 60 * 60 * 1000
@@ -37,6 +41,11 @@ const hasDraft = (): boolean => {
 	)
 }
 
+/** An open session (the shared query) or sets still waiting for the server (persisted snapshots). */
+const hasLiveWorkout = (): boolean =>
+	Boolean(queryClient.getQueryData<LiveWorkoutResponse | null>(LIVE_WORKOUT_QUERY_KEY)) ||
+	Object.keys(useLiveWorkoutStore.getState().snapshots).length > 0
+
 /**
  * Registers the service worker and applies a waiting version silently, at a quiet moment (see
  * service-worker-update.ts). The version is checked hourly and whenever the tab comes back.
@@ -55,6 +64,7 @@ export const setupServiceWorker = (): void => {
 			visibilityState: document.visibilityState,
 			isSending: isSending(),
 			hasDraft: hasDraft(),
+			hasLiveWorkout: hasLiveWorkout(),
 			lastApplyAt: readLastApplyAt(),
 			now,
 		})

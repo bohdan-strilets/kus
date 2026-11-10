@@ -14,6 +14,8 @@ export interface UpdateMoment {
 	isSending: boolean
 	/** The composer holds words or a picture that has not been sent. */
 	hasDraft: boolean
+	/** A live workout is open (or has sets the server has not confirmed): a reload would break it. */
+	hasLiveWorkout: boolean
 	/** `Date.now()` of the last apply in this session, null when there was none. */
 	lastApplyAt: number | null
 	now: number
@@ -33,10 +35,11 @@ export const shouldApplyUpdate = ({
 	visibilityState,
 	isSending,
 	hasDraft,
+	hasLiveWorkout,
 	lastApplyAt,
 	now,
 }: UpdateMoment): boolean => {
 	if (!isQuietTrigger(trigger, visibilityState)) return false
-	if (isSending || hasDraft) return false
+	if (isSending || hasDraft || hasLiveWorkout) return false
 	return lastApplyAt === null || now - lastApplyAt > APPLY_COOLDOWN_MS
 }

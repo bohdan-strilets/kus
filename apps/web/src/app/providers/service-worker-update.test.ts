@@ -9,6 +9,7 @@ const moment = (overrides: Partial<UpdateMoment> = {}): UpdateMoment => ({
 	visibilityState: 'visible',
 	isSending: false,
 	hasDraft: false,
+	hasLiveWorkout: false,
 	lastApplyAt: null,
 	now: NOW,
 	...overrides,
@@ -49,6 +50,20 @@ describe('shouldApplyUpdate', () => {
 
 	it('never reloads over an unsent draft', () => {
 		expect(shouldApplyUpdate(moment({ hasDraft: true }))).toBe(false)
+	})
+
+	it('never reloads while a live workout is open, even in the background', () => {
+		expect(shouldApplyUpdate(moment({ hasLiveWorkout: true }))).toBe(false)
+		expect(
+			shouldApplyUpdate(
+				moment({ trigger: 'need-refresh', visibilityState: 'hidden', hasLiveWorkout: true }),
+			),
+		).toBe(false)
+	})
+
+	it('applies once the live workout is over', () => {
+		expect(shouldApplyUpdate(moment({ hasLiveWorkout: true }))).toBe(false)
+		expect(shouldApplyUpdate(moment({ hasLiveWorkout: false }))).toBe(true)
 	})
 
 	it('does not apply twice in a row when the update does not take', () => {

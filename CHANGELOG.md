@@ -6,6 +6,24 @@ All notable changes to Kusik are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.11.1] — 2026-11-10
+
+Kusik counts a home-cooked pot correctly. A soup made from a list of ingredients used to get all of their kcal on the single portion (114 kcal/100 g instead of about 22); now the portion is its share of the pot, the water is asked about, and a recipe that was never written down is not invented. Prompt only (`2026-11-10.4` and `.5`); no API changes, no migrations; the web version is 0.11.1.
+
+### Changed
+
+- Prompt: a pot cooked at home from ingredients gets its share by the weight of the cooked pot (ingredients plus water, less about a tenth of the water boiled off); a pot size in litres is not the water. The water, the pot weight or the number of plates is not said → the portion is logged with the likeliest water and the question "how much water" comes with the chips "1–2 л / 3 л / 4–5 л / Не знаю" ([16d05aa], [7b7252c])
+- Prompt: typical kcal per 100 g for liquid dishes (clear broth 10–30, soup with vegetables or pasta 25–50, borscht 35–65, cream soup 30–55 or 70–110 with cream or cheese, pea soup, żurek, solianka, goulash soup 60–120) and a plate of about 300–350 g ([16d05aa])
+- Prompt: after a pot is logged Kusik offers «Запам'ятати цей суп?» unless the soup is already saved, and calls `save_food` only after the user agrees; "Не знаю" about the water keeps the typical density and says the number is typical ([7b7252c])
+
+### Fixed
+
+- "Покажи рецепт …" about a dish with no written recipe: Kusik says the recipe is not saved and offers to write it down instead of inventing the ingredients and calling them "як у твоєму записі" ([16d05aa])
+
+### Added
+
+- Eval cases for home soups: the incident message, a pot with water, a weighed pot, plates, a plate by the typical density, "ще тарілку" from memory, the recipe asked for without and with a written recipe ([270572d], [2129b86])
+
 ## [0.11.0] — 2026-11-10
 
 Kusik finds what you saved and sees what you did in the app. The model can now look things up (`find_food`) instead of guessing from the few messages it is shown, repeats of today's food copy today's entry, and a rate-limited AI provider is retried instead of failing the message. Two additive migrations (`corrections.message_id`, `ai_runs.error_detail`); prompt `2026-11-10.3`; the web version is 0.11.0.
@@ -769,7 +787,12 @@ Design sync with `design/` v0.5.2. Web only: no API, shared-package or migration
 
 ## 0.2.0 / 0.1.0 — see tags
 
-[Unreleased]: https://github.com/bohdan-strilets/kus/compare/v0.11.0...HEAD
+[Unreleased]: https://github.com/bohdan-strilets/kus/compare/v0.11.1...HEAD
+[0.11.1]: https://github.com/bohdan-strilets/kus/compare/v0.11.0...v0.11.1
+[16d05aa]: https://github.com/bohdan-strilets/kus/commit/16d05aa44022e7afd09a1e2f42d64f4c538d79e5
+[270572d]: https://github.com/bohdan-strilets/kus/commit/270572dfb79898b6d8b63ad84007f11f50b6846b
+[7b7252c]: https://github.com/bohdan-strilets/kus/commit/7b7252cae4c775d96e6da1263ab19d45a73b3f3e
+[2129b86]: https://github.com/bohdan-strilets/kus/commit/2129b86e6e813c87f6a828cb525b87c5843a3f66
 [0.11.0]: https://github.com/bohdan-strilets/kus/compare/v0.10.5.5...v0.11.0
 [f0caade]: https://github.com/bohdan-strilets/kus/commit/f0caade56f0eb56a320708458757bbcda5a1b7af
 [1122132]: https://github.com/bohdan-strilets/kus/commit/1122132352d1586301ba0a0c50bdd68513d7a9b4

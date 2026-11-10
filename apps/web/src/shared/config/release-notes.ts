@@ -10,6 +10,13 @@ export type ReleaseNote = {
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
 	{
+		version: '0.11.1',
+		date: '2026-11-10',
+		items: [
+			'Kusik правильно рахує домашні супи: питає, скільки було води, і не вигадує рецепт, якого не бачив.',
+		],
+	},
+	{
 		version: '0.11.0',
 		date: '2026-11-10',
 		items: [

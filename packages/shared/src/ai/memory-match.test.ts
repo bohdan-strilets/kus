@@ -98,12 +98,21 @@ describe('findMentionedFoods', () => {
 	})
 
 	it('keeps the order of the given foods and caps the count', () => {
-		const many = Array.from({ length: 8 }, (_, index) => ({
+		const many = Array.from({ length: MEMORY_PASSIVE_MAX_FOODS + 2 }, (_, index) => ({
 			name: `Йогурт ${index}`,
 			aliases: [] as string[],
 		}))
 		const found = findMentionedFoods('йогурт', many, { now: NOW })
 		expect(found).toHaveLength(MEMORY_PASSIVE_MAX_FOODS)
 		expect(found.map(({ name }) => name)).toEqual([...found.map(({ name }) => name)].sort())
+	})
+
+	it('finds every saved food of a whole day written at once, up to the cap', () => {
+		const names = ['Молоко', 'Гречка', 'Йогурт', 'Сир', 'Банан', 'Яблуко', 'Кефір']
+		const foods = names.map((name) => ({ name, aliases: [] as string[] }))
+		const found = findMentionedFoods('молоко, гречка, йогурт, сир, банан, яблуко і кефір', foods, {
+			now: NOW,
+		})
+		expect(found.map(({ name }) => name)).toEqual(names)
 	})
 })

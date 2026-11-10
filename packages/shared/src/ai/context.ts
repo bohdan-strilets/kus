@@ -36,9 +36,11 @@ export const HISTORY_MAX_MESSAGES = 6
 export const HISTORY_MESSAGE_MAX_CHARS = 1000
 /**
  * The passive "Saved foods" block goes into every request, so it is tighter than find_food (the
- * model can ask for more there): a few best matches, not everything that shares a word.
+ * model can ask for more there): the best matches, not everything that shares a word. 10 in total
+ * per message, not per clause: a whole day written at once names 6-8 saved foods and a lower cap
+ * dropped matches that scored 0.9+ (private smoke cases, 2026-11-10).
  */
-export const MEMORY_PASSIVE_MAX_FOODS = 5
+export const MEMORY_PASSIVE_MAX_FOODS = 10
 
 export interface MacroTotals {
 	kcal: number

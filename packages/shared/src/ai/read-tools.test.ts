@@ -29,6 +29,11 @@ describe('read tool registry', () => {
 		expect(MAX_PARALLEL_READS).toBe(4)
 	})
 
+	it('names find_food, which getAiFunctionTools offers', () => {
+		expect([...READ_TOOL_NAMES]).toEqual(['find_food'])
+		expect(isReadToolName('find_food')).toBe(true)
+	})
+
 	it('never names a write tool', () => {
 		for (const name of READ_TOOL_NAMES) {
 			expect(Object.values(AI_TOOL_NAMES)).not.toContain(name)

@@ -20,13 +20,6 @@ import type { ReadToolExecutor } from './read-tool-executor'
 
 const READ_TOOL = 'find_food'
 
-// the registry is empty until find_food is added (next step), so the loop is tested with a stand-in
-vi.mock('@kus/shared', async (importOriginal) => ({
-	...(await importOriginal<typeof import('@kus/shared')>()),
-	READ_TOOL_NAMES: new Set(['find_food']),
-	isReadToolName: (name: string) => name === 'find_food',
-}))
-
 const config = { get: () => 'test/model' } as unknown as ConfigService<Env, true>
 
 const readCall = (query = 'sportyfeel'): FakeToolCall => ({ name: READ_TOOL, args: { query } })

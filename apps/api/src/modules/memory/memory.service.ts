@@ -54,6 +54,14 @@ export class MemoryService {
 	}
 
 	/**
+	 * The user's active saved foods (at most the scan limit of findActiveFoods) for find_food, which
+	 * searches them in memory: the match runs in shared, so the eval searches the same way.
+	 */
+	searchFoods(userId: string): Promise<MyFood[]> {
+		return this.memoryRepository.findActiveFoods(userId)
+	}
+
+	/**
 	 * Values of a saved food for a portion: scaled by the backend from per-100 g data, not taken
 	 * from the model; the category is a snapshot of the food's (docs/database.md).
 	 */

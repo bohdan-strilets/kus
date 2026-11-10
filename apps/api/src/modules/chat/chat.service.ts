@@ -14,6 +14,7 @@ import { MemoryService } from '../memory/memory.service'
 import { UsersService } from '../users/users.service'
 import { ChatContextService } from './chat-context.service'
 import { NO_EDITED_MESSAGES } from './chat-edits.service'
+import { ChatReadToolsService } from './chat-read-tools.service'
 import { ChatResponseService } from './chat-response.service'
 import {
 	ChatTrainingOnboardingService,
@@ -68,6 +69,7 @@ export class ChatService {
 		private readonly trainingOnboarding: ChatTrainingOnboardingService,
 		private readonly onboardingAnswers: ChatTrainingOnboardingAnswersService,
 		private readonly workoutSummary: ChatWorkoutSummaryService,
+		private readonly readTools: ChatReadToolsService,
 	) {}
 
 	async sendMessage(userId: string, params: SendMessageParams): Promise<SendMessageResponse> {
@@ -253,6 +255,8 @@ export class ChatService {
 					foodRefById: new Map([...memory.byRef].map(([ref, food]) => [food.id, ref])),
 					...(programOnboarding ? { programOnboarding } : {}),
 				})
+			// the model's reads extend these two maps, and the decision is saved with the same ones
+			const turnCopyRefIds = new Map(copyRefIds)
 			const parseParams: ParseFoodParams = {
 				userId,
 				messageId: message.id,
@@ -269,6 +273,7 @@ export class ChatService {
 						: null
 				},
 				text: params.text ?? '',
+				readTools: this.readTools.createExecutor({ memory, copyRefIds: turnCopyRefIds }),
 				// the only place the bytes become base64: it goes straight into the request body
 				image: photo
 					? { mimeType: photo.mimeType, base64: photo.bytes.toString('base64') }
@@ -279,7 +284,7 @@ export class ChatService {
 				memory,
 				refIds,
 				workoutRefIds,
-				copyRefIds,
+				copyRefIds: turnCopyRefIds,
 				factRefIds,
 				templateRefIds,
 				turnStartedAt,

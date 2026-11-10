@@ -33,6 +33,7 @@ describe('getAiFunctionTools', () => {
 			'save_fact',
 			'forget_fact',
 			'reply',
+			'find_food',
 		])
 	})
 

@@ -28,6 +28,7 @@ import {
 	resolveClarificationInputSchema,
 	restoreEntryInputSchema,
 } from './edit-tools.js'
+import { FIND_FOOD_DESCRIPTION, FIND_FOOD_TOOL_NAME, findFoodInputSchema } from './find-food.js'
 import { COPY_REF_PATTERN } from './history-context.js'
 import { forgetFactInputSchema, saveFactInputSchema, saveFoodInputSchema } from './memory-tools.js'
 import { toModelParameters } from './model-schema.js'
@@ -485,12 +486,26 @@ const BARE_TOOLS: ReadonlySet<AiToolName> = new Set([
 	AI_TOOL_NAMES.forgetFact,
 ])
 
-export const getAiFunctionTools = (): AiFunctionTool[] =>
-	Object.values(AI_TOOL_NAMES).map((name) => ({
+/** Read tools: answered by the backend before the model writes anything (see read-tools.ts). */
+const getReadFunctionTools = (): AiFunctionTool[] => [
+	{
+		type: 'function',
+		function: {
+			name: FIND_FOOD_TOOL_NAME,
+			description: FIND_FOOD_DESCRIPTION,
+			parameters: toModelParameters(findFoodInputSchema),
+		},
+	},
+]
+
+export const getAiFunctionTools = (): AiFunctionTool[] => [
+	...Object.values(AI_TOOL_NAMES).map((name): AiFunctionTool => ({
 		type: 'function',
 		function: {
 			name,
 			description: AI_TOOL_DESCRIPTIONS[name],
 			parameters: toModelParameters(AI_TOOL_SCHEMAS[name], { isBare: BARE_TOOLS.has(name) }),
 		},
-	}))
+	})),
+	...getReadFunctionTools(),
+]

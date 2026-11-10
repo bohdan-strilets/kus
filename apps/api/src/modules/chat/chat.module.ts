@@ -25,6 +25,7 @@ import { ChatMeasurementCardsService } from './chat-measurement-cards.service'
 import { ChatPhotosService } from './chat-photos.service'
 import { ChatProgramCardsService } from './chat-program-cards.service'
 import { ChatProgramProposalsService } from './chat-program-proposals.service'
+import { ChatReadToolsService } from './chat-read-tools.service'
 import { ChatResponseService } from './chat-response.service'
 import { ChatTrainingOnboardingAnswersService } from './chat-training-onboarding-answers.service'
 import { ChatTrainingOnboardingService } from './chat-training-onboarding.service'
@@ -80,6 +81,7 @@ import { TrainingOnboardingMessagesRepository } from './training-onboarding-mess
 		ChatPhotosService,
 		ChatProgramCardsService,
 		ChatProgramProposalsService,
+		ChatReadToolsService,
 		ChatRepository,
 		ChatResponseService,
 		ChatTurnMeasurementsService,

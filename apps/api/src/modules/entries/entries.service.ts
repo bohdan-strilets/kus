@@ -3,8 +3,10 @@ import {
 	type DayMealContext,
 	type EntryWasContext,
 	type LoggedMeal,
+	FIND_FOOD_HISTORY_NAMES_MAX,
 	MAX_CONTEXT_DELETED_ENTRIES,
 	MAX_CONTEXT_ENTRIES,
+	normalizeName,
 	type NutritionTotals,
 } from '@kus/shared'
 
@@ -27,6 +29,16 @@ import { EntryNotFoundException } from './entries.exceptions'
 import { toValuesBefore } from './entry-values-before'
 import { type HistoryCorrection, toHistoryCorrection } from './history-correction'
 import type { LogEntriesParams, MealEntryInput, NewFoodEntry } from './entries.types'
+
+/** Entries one find_food name lookup scans; a user logs a few thousand in 90 days. */
+const RECENT_NAMES_SCAN_MAX_ENTRIES = 3000
+const RECENT_NAMES_MAX = FIND_FOOD_HISTORY_NAMES_MAX
+
+/** The newest active entry with a name and how many times the name was logged in the range. */
+export interface RecentEntryName {
+	entry: EntryWithMealType
+	count: number
+}
 
 const roundEntry = (entry: NewFoodEntry): NewFoodEntry => ({
 	...entry,
@@ -286,6 +298,31 @@ export class EntriesService {
 		take: number,
 	): Promise<EntryWithMealType[]> {
 		return this.entriesRepository.findActiveRangeEntriesWithMeal({ userId, ...range, take })
+	}
+
+	/**
+	 * Different names among the active entries of a range: the newest entry of each and how many times
+	 * the name was logged, newest name first. For find_food, which searches the names in memory; the
+	 * count is exact up to the scan limit and then only of the newest entries.
+	 */
+	async findRecentEntryNames(
+		userId: string,
+		range: { from: Date; to: Date },
+	): Promise<RecentEntryName[]> {
+		const entries = await this.entriesRepository.findActiveRangeEntriesWithMeal({
+			userId,
+			...range,
+			take: RECENT_NAMES_SCAN_MAX_ENTRIES,
+		})
+		const byName = new Map<string, RecentEntryName>()
+		for (const entry of entries) {
+			const key = normalizeName(entry.name)
+			if (key === '') continue
+			const known = byName.get(key)
+			if (known) known.count += 1
+			else if (byName.size < RECENT_NAMES_MAX) byName.set(key, { entry, count: 1 })
+		}
+		return [...byName.values()]
 	}
 
 	/** Non-empty meals by the day's course: a whole day logged at once shares one eatenAt. */

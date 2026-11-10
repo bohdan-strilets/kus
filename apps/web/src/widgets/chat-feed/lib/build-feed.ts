@@ -204,6 +204,20 @@ const getEntries = (params: BuildFeedParams): Entry[] => {
 	)
 }
 
+/**
+ * Kusik's greeting opens a day nobody has written in yet. The server's messages decide it (so a
+ * message from another device counts, even one the user hid), plus this device's unsent ones: the
+ * greeting must not vanish from under a message only because its server copy has just arrived.
+ */
+const isTodayEmpty = (params: BuildFeedParams): boolean => {
+	const isToday = (createdAt: string): boolean =>
+		getLocalDateString(new Date(Date.parse(createdAt)), params.timeZone) === params.today
+	return (
+		!params.pages.some((page) => page.some((message) => isToday(message.createdAt))) &&
+		!Object.values(params.outbox).some((item) => isToday(item.createdAt))
+	)
+}
+
 const isStaleFailure = (createdAt: string, now: Date): boolean =>
 	now.getTime() - Date.parse(createdAt) > STALE_FAILURE_MS
 
@@ -215,12 +229,13 @@ const getDayLabel = (localDate: string, { today, yesterday }: BuildFeedParams) =
 
 /**
  * The chat as the user reads it, oldest first: day pills, times, bubbles, «Не надіслано» with
- * Kusik's «ой», the typing dots. Today always has its pill and the greeting; the day before
+ * Kusik's «ой», the typing dots. Today always has its pill, and the greeting while it is empty; the day before
  * today ends with its recap.
  */
 export const buildFeed = (params: BuildFeedParams): FeedItem[] => {
 	const items: FeedItem[] = []
 	const photoStatusByUserId = getPhotoStatuses(params)
+	const isGreetingShown = isTodayEmpty(params)
 	// mutated by openDay, so an object: TS would narrow a plain `let` to its initial value
 	const cursor: {
 		day: string | null
@@ -247,7 +262,9 @@ export const buildFeed = (params: BuildFeedParams): FeedItem[] => {
 			localDate,
 			label: getDayLabel(localDate, params),
 		})
-		if (localDate === params.today) items.push({ kind: 'greeting', key: 'greeting' })
+		if (localDate === params.today && isGreetingShown) {
+			items.push({ kind: 'greeting', key: 'greeting' })
+		}
 	}
 
 	for (const entry of getEntries(params)) {

@@ -61,7 +61,34 @@ describe('buildFeed', () => {
 		expect(kinds(buildFeed(params([])))).toEqual(['day:today', 'greeting'])
 	})
 
-	it('groups by the user day, ends yesterday with its recap and greets today', () => {
+	it('greets only a today nobody has written in, whatever device wrote', () => {
+		const withMessage = buildFeed(
+			params([message({ createdAt: '2026-10-07T06:40:00Z' }), reply('2026-10-07T06:40:06Z')]),
+		)
+		expect(kinds(withMessage)).not.toContain('greeting')
+
+		// yesterday's talk and nothing today: Kusik opens the new day
+		const onlyYesterday = buildFeed(params([message({ createdAt: '2026-10-06T06:40:00Z' })]))
+		expect(kinds(onlyYesterday).slice(-2)).toEqual(['day:today', 'greeting'])
+
+		// a message of today that the user hid is still a message of today
+		const hidden = message({ createdAt: '2026-10-07T06:40:00Z' })
+		const feed = buildFeed({ ...params([hidden]), hiddenIds: new Set([hidden.id]) })
+		expect(kinds(feed)).not.toContain('greeting')
+	})
+
+	it('keeps no greeting above an unsent message of today', () => {
+		const unsent: OutboxItem = {
+			clientMessageId: 'local-1',
+			text: 'банан',
+			createdAt: '2026-10-07T16:19:59Z',
+			status: 'sending',
+			error: null,
+		}
+		expect(kinds(buildFeed(params([], { 'local-1': unsent })))).not.toContain('greeting')
+	})
+
+	it('groups by the user day, ends yesterday with its recap', () => {
 		const feed = buildFeed(
 			params([
 				// 22:30 UTC on Oct 4 is already 00:30 on Oct 5 in Warsaw
@@ -84,7 +111,6 @@ describe('buildFeed', () => {
 			'kusik',
 			'recap',
 			'day:today',
-			'greeting',
 			'time',
 			'user',
 			'kusik',

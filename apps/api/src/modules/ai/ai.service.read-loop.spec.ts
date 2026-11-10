@@ -106,7 +106,7 @@ describe('AiService.parseFood read-tool loop', () => {
 		execute.mockResolvedValue({
 			text: 'm11 "Батончик"',
 			refsPatch: { memoryRefs: ['m11'] },
-			digest: 'looked up food "sportyfeel": 1 found',
+			digest: 'read food "sportyfeel": 1 found',
 		})
 		fake.respond(createCompletion([readCall()]), createCompletion([memoryLogCall()]))
 
@@ -115,9 +115,9 @@ describe('AiService.parseFood read-tool loop', () => {
 		const [firstRun] = repository.createRun.mock.calls.map(([run]) => run)
 		expect(firstRun?.toolCalls[0]?.result).toEqual({
 			text: 'm11 "Батончик"',
-			digest: 'looked up food "sportyfeel": 1 found',
+			digest: 'read food "sportyfeel": 1 found',
 		})
-		expect(JSON.stringify(fake.bodies[1])).not.toContain('looked up food')
+		expect(JSON.stringify(fake.bodies[1])).not.toContain('read food')
 	})
 
 	it('rejects a ref the reads did not hand out', async () => {

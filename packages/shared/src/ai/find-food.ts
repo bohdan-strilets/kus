@@ -183,7 +183,7 @@ export const formatNoFoodMatch = (query: string): string => `No match for "${toC
  * candidates, never the refs (m…/h… are only valid in the request that issued them).
  */
 export const formatFindFoodDigest = (query: string, foundCount: number): string =>
-	joinReadDigest(`looked up food "${toContextText(query)}": ${foundCount} found`, [])
+	joinReadDigest(`read food "${toContextText(query)}": ${foundCount} found`, [])
 
 const searchByKey = <T extends { key: string }>(
 	query: string,

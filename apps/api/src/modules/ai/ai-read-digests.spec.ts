@@ -65,16 +65,16 @@ describe('AiService.findReadDigests', () => {
 	it('groups the digests per message in the order of the calls', async () => {
 		const { service, findReadCalls } = create([
 			row('m1', { text: 'x', digest: 'read workouts 01.11–10.11: 3' }),
-			row('m2', { text: 'y', digest: 'looked up food "батончик": 2 found' }),
-			row('m1', { text: 'z', digest: 'looked up food "чай": 0 found' }),
+			row('m2', { text: 'y', digest: 'read food "батончик": 2 found' }),
+			row('m1', { text: 'z', digest: 'read food "чай": 0 found' }),
 		])
 
 		const digests = await service.findReadDigests(USER_ID, ['m1', 'm2'])
 
 		expect(digests).toEqual(
 			new Map([
-				['m1', ['read workouts 01.11–10.11: 3', 'looked up food "чай": 0 found']],
-				['m2', ['looked up food "батончик": 2 found']],
+				['m1', ['read workouts 01.11–10.11: 3', 'read food "чай": 0 found']],
+				['m2', ['read food "батончик": 2 found']],
 			]),
 		)
 		expect(findReadCalls).toHaveBeenCalledWith({ userId: USER_ID, messageIds: ['m1', 'm2'] })

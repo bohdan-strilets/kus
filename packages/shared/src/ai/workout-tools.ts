@@ -57,7 +57,9 @@ export const workoutExerciseSchema = z.object({
 		.regex(EXERCISE_REF_PATTERN)
 		.nullable()
 		.default(null)
-		.describe('x-ref from "Exercises", only if the same exercise'),
+		.describe(
+			'x-ref from "Exercises"; only when the user means exactly that exercise. A machine press ("жим від грудей") and a barbell bench ("жим лежачи") are different: use null. Two listed exercises fit the words and the message does not say which → ask which one in the reply and log nothing yet.',
+		),
 	kind: exerciseKindSchema.describe(
 		'STRENGTH: sets. CARDIO: minutes or distance. OTHER: anything else',
 	),

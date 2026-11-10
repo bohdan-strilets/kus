@@ -350,7 +350,7 @@ describe('formatWorkoutsDigest', () => {
 
 describe('formatFindFoodDigest', () => {
 	it('is a short line without refs', () => {
-		expect(formatFindFoodDigest('батончик', 2)).toBe('looked up food "батончик": 2 found')
+		expect(formatFindFoodDigest('батончик', 2)).toBe('read food "батончик": 2 found')
 	})
 })
 

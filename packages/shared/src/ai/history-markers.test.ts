@@ -354,7 +354,7 @@ describe('Kusik action markers', () => {
 	it('adds what Kusik read, next to or without actions, at most two reads', () => {
 		const reads = [
 			'read workouts 01.11–10.11: 3 (01.11, 05.11, 09.11)',
-			'looked up food "батончик": 2 found',
+			'read food "батончик": 2 found',
 			'read workouts 12.10–10.11: 12',
 		]
 		expect(formatKusikMarkers({ reads: reads.slice(0, 1) })).toEqual([
@@ -362,9 +362,7 @@ describe('Kusik action markers', () => {
 		])
 		expect(
 			formatKusikMarkers({ kusikActions: { ...none, deleted: [{ ref: 'e1' }] }, reads }),
-		).toEqual([
-			'[Kusik: deleted e1; looked up food "батончик": 2 found; read workouts 12.10–10.11: 12]',
-		])
+		).toEqual(['[Kusik: deleted e1; read food "батончик": 2 found; read workouts 12.10–10.11: 12]'])
 		expect(formatKusikMarkers({ reads: [] })).toEqual([])
 	})
 

@@ -97,7 +97,7 @@ describe('ChatReadToolsService find_food', () => {
 		expect(turn.memory.byRef.get('m2')?.id).toBe('f-own')
 		expect(turn.copyRefIds.get('h3')).toBe('e-own')
 		// the digest of the history never carries a ref: it is valid in this request only
-		expect(result.digest).toBe('looked up food "спортіфіл": 2 found')
+		expect(result.digest).toBe('read food "спортіфіл": 2 found')
 	})
 
 	it('keeps a ref when the same food is asked twice, and reads each source once per turn', async () => {

@@ -6,6 +6,30 @@ All notable changes to Kusik are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.11.0] — 2026-11-10
+
+Kusik finds what you saved and sees what you did in the app. The model can now look things up (`find_food`) instead of guessing from the few messages it is shown, repeats of today's food copy today's entry, and a rate-limited AI provider is retried instead of failing the message. Two additive migrations (`corrections.message_id`, `ai_runs.error_detail`); prompt `2026-11-10.3`; the web version is 0.11.0.
+
+### Added
+
+- `find_food`, the first read tool: fuzzy search in the saved foods and in 90 days of earlier entries (any spelling, a part of a word, Latin or Cyrillic), up to two read steps before the answer ([8ede470], [621a70a], [dcb7258])
+- Kusik's own actions and who deleted what are marked in the history (`[Kusik: deleted e2]`, `deleted later by Kusik` / `in the app`, `[in the app before this message: …]`); corrections made in chat carry the id of the message that caused them ([405af34], [ab53cd6])
+- `copyRef` also takes today's `e…` entries, so "таку саму порцію на завтра" copies today's entry ([fa49986])
+- A rate-limited AI provider (HTTP 429) is retried up to twice, waiting for `Retry-After` inside the turn deadline; what is left is `AI_RATE_LIMITED` with its own message. `AiRun.error_detail` keeps a masked validation error or the provider and `Retry-After` ([dbc2bc4])
+- Custom names of training templates ([2a86b8d])
+- Finishing a live workout together with its snapshot and the tap time ([f0caade])
+
+### Changed
+
+- The saved-foods block of a request is picked by how much of the query a food covers (threshold 0.6, up to 10 per message), not by "every word of the name is in the text" ([2222396], [0009e71])
+- A copied item takes `source`, `confidence` and the food link from the entry it copies; the model's `source: MEMORY` next to a `copyRef` no longer costs a retry ([74e11fd])
+- Prompt: "Looking things up", markers as background, repeats of today's food first, workout history honestly out of reach, an estimate when nothing is in memory (`2026-11-10.1` – `.3`, [4bae235], [146d619], [35d8a40])
+- Shared exercise reorder ([1122132])
+
+### Fixed
+
+- The rotation summary of a program with custom template names ([1d62cbb])
+
 ## [0.10.5.5] — 2026-11-07
 
 The gym without network, first part (web only): a cold start goes straight into the open workout, the connection state is a pill, offline tabs keep the app shell. No API changes, no migrations, no prompt changes; the web version is 0.10.5+5 (semver build metadata).
@@ -745,7 +769,26 @@ Design sync with `design/` v0.5.2. Web only: no API, shared-package or migration
 
 ## 0.2.0 / 0.1.0 — see tags
 
-[Unreleased]: https://github.com/bohdan-strilets/kus/compare/v0.10.5.5...HEAD
+[Unreleased]: https://github.com/bohdan-strilets/kus/compare/v0.11.0...HEAD
+[0.11.0]: https://github.com/bohdan-strilets/kus/compare/v0.10.5.5...v0.11.0
+[f0caade]: https://github.com/bohdan-strilets/kus/commit/f0caade56f0eb56a320708458757bbcda5a1b7af
+[1122132]: https://github.com/bohdan-strilets/kus/commit/1122132352d1586301ba0a0c50bdd68513d7a9b4
+[2a86b8d]: https://github.com/bohdan-strilets/kus/commit/2a86b8d95076508f53197fc7484f74135e2eafca
+[1d62cbb]: https://github.com/bohdan-strilets/kus/commit/1d62cbb892d5da2fd5888d8b71bca9a26e375449
+[8ede470]: https://github.com/bohdan-strilets/kus/commit/8ede470cd351b77051164eb892b3a0f38d435cdc
+[2222396]: https://github.com/bohdan-strilets/kus/commit/22223961273c65883274c28de706ce0c236cff8a
+[ab53cd6]: https://github.com/bohdan-strilets/kus/commit/ab53cd6bc1ee8bb879da5384ee30d3a0e33e5b39
+[405af34]: https://github.com/bohdan-strilets/kus/commit/405af34508cf70a37ae89c73feabdefdad7caae5
+[621a70a]: https://github.com/bohdan-strilets/kus/commit/621a70a0fdb7eaace2e4cf10471b86b844c91e12
+[dcb7258]: https://github.com/bohdan-strilets/kus/commit/dcb7258ab85a877d475346c27edd897ccb320f89
+[fa49986]: https://github.com/bohdan-strilets/kus/commit/fa49986056cf4ae33ddbff515a027d01a865b926
+[0ccf6a7]: https://github.com/bohdan-strilets/kus/commit/0ccf6a754163e23a665ea0a3a31025a96209c6f1
+[4bae235]: https://github.com/bohdan-strilets/kus/commit/4bae2358671883a145142fee782344aedd1fb682
+[74e11fd]: https://github.com/bohdan-strilets/kus/commit/74e11fde8c906eb042b5eda3bf90d63937c581ed
+[146d619]: https://github.com/bohdan-strilets/kus/commit/146d619157c09caf5bd17d307ae166525b8f4006
+[35d8a40]: https://github.com/bohdan-strilets/kus/commit/35d8a404100f8682ccc0bc6261ceb4a796151727
+[0009e71]: https://github.com/bohdan-strilets/kus/commit/0009e712cce4d1cf4bf184eca02668851c47c2e6
+[dbc2bc4]: https://github.com/bohdan-strilets/kus/commit/dbc2bc49fee1c16456a5789e04579bbb36efe0f3
 [0.10.5.5]: https://github.com/bohdan-strilets/kus/compare/v0.10.5.4...v0.10.5.5
 [ae1adaa]: https://github.com/bohdan-strilets/kus/commit/ae1adaa7d4f579018aabc9b70f5d6f75f24416be
 [d66eae1]: https://github.com/bohdan-strilets/kus/commit/d66eae17e142cc8a25884aace84d9843d3597a5b

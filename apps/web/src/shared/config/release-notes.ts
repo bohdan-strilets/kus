@@ -11,7 +11,6 @@ export type ReleaseNote = {
 export const RELEASE_NOTES: ReleaseNote[] = [
 	{
 		version: '0.11.0',
-		// Draft: the date is set at the release, after the iPhone check.
 		date: '2026-11-10',
 		items: [
 			'Kusik знаходить продукти з пам’яті за будь-якою назвою: частиною слова, з помилкою чи латиницею.',

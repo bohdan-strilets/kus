@@ -268,4 +268,73 @@ export const READ_TOOL_CASES: EvalCase[] = [
 		reference:
 			"«Така сама порція як сьогодні» points at today's entry e1: copyRef e1 for tomorrow (2026-10-08), no lookup",
 	},
+	{
+		id: 'read-again-soup-today',
+		text: 'Додай ще раз бульйон 600г',
+		context: {
+			entries: [entry('e1', 'Суп курячий з макаронами', 'LUNCH', 850, 425, 'soup')],
+			earlier: [
+				{
+					ref: 'h1',
+					date: '2026-09-20',
+					mealType: 'DINNER',
+					name: 'Суп-бульйон з індичкою',
+					grams: 600,
+					kcal: 210,
+				},
+			],
+		},
+		historyEntries: [
+			{
+				date: '2026-09-20',
+				mealType: 'DINNER',
+				name: 'Суп-бульйон з індичкою',
+				grams: 600,
+				kcal: 210,
+				source: 'ESTIMATE',
+			},
+		],
+		expect: {
+			decision: 'log_or_clarify',
+			copyRefs: ['e1'],
+			findFoodCalled: false,
+		},
+		reference:
+			"«Ще раз» a soup that is in today's entries (e1) while an old, similarly named one (h1) sits in the earlier list: the model copies today's e1, not h1, and does not look it up",
+	},
+	{
+		id: 'read-workouts-history-honest',
+		text: 'Коли я почав ходити в зал?',
+		expect: {
+			decision: 'reply',
+			replyIncludesAny: ['сьогодн'],
+			replyExcludes: ['немає записів', 'нема записів', 'не було'],
+			memory: NO_MEMORY_CALLS,
+		},
+		reference:
+			"No training in the context and no read tool for workouts: the reply says it only sees today's workouts and does not conclude «there are no records»",
+	},
+	{
+		id: 'read-marker-not-in-unrelated-answer',
+		text: "Які батончики є в пам'яті?",
+		savedFoods: [SPORTYFEEL, OLIMP, BUCKWHEAT, MILK],
+		context: {
+			appChanges: [
+				{
+					kind: 'deleted',
+					ref: 'e7',
+					name: 'Протеїновий батончик',
+					localDate: '2026-10-07',
+				},
+			],
+		},
+		expect: {
+			decision: 'reply',
+			replyMatches: ['^(?=[\\s\\S]*[Ss]porty[Ff]eel)(?=[\\s\\S]*[Oo]limp)'],
+			replyExcludes: ['видален', 'в застосунку', 'прибран'],
+			memory: NO_MEMORY_CALLS,
+		},
+		reference:
+			'The message carries [in the app before this message: deleted e7 "Протеїновий батончик"], but the question is about the saved foods: both bars are listed and the app change is not mentioned',
+	},
 ]

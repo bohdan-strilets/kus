@@ -15,8 +15,8 @@ const passiveNames = (id: string): string[] =>
 	buildCaseContext(byId(id)).memory.map(({ name }) => name)
 
 describe('read-tool cases', () => {
-	it('are the twelve cases of stage 0.11.0, valid, with ids unique across the repo set', () => {
-		expect(READ_TOOL_CASES).toHaveLength(12)
+	it('are the fifteen cases of stage 0.11.0, valid, with ids unique across the repo set', () => {
+		expect(READ_TOOL_CASES).toHaveLength(15)
 		const ids = REPO_CASES.map(({ id }) => id)
 		expect(new Set(ids).size).toBe(ids.length)
 		for (const evalCase of READ_TOOL_CASES) {
@@ -66,5 +66,20 @@ describe('read-tool cases', () => {
 		expect(passiveNames('read-last-time-170')).toEqual([])
 		expect(passiveNames('read-no-match-honest')).toEqual([])
 		expect(passiveNames('read-plain-banana-no-find')).toEqual([])
+	})
+
+	it('expect the e1 of today, not the old h1, for «ще раз» a soup that is among today entries', () => {
+		const soup = byId('read-again-soup-today')
+		expect(soup.expect).toMatchObject({ copyRefs: ['e1'], findFoodCalled: false })
+		expect(soup.context?.entries?.[0]?.ref).toBe('e1')
+		expect(soup.context?.earlier?.[0]?.ref).toBe('h1')
+	})
+
+	it('make the model admit it only sees workouts of today, and keep the app marker out of an unrelated answer', () => {
+		expect(byId('read-workouts-history-honest').expect.replyIncludesAny).toEqual(['сьогодн'])
+		expect(byId('read-workouts-history-honest').expect.replyExcludes).toContain('не було')
+		const marker = byId('read-marker-not-in-unrelated-answer')
+		expect(marker.context?.appChanges).toHaveLength(1)
+		expect(marker.expect.replyExcludes).toEqual(['видален', 'в застосунку', 'прибран'])
 	})
 })

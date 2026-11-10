@@ -58,13 +58,16 @@ describe('case reserve upper bound', () => {
 	})
 
 	it('covers the real cost of every case of the last run, the most expensive ones included', () => {
-		for (const evalCase of READ_TOOL_CASES) {
+		// the cases added after that run have no billed cost yet
+		const measured = READ_TOOL_CASES.filter(({ id }) => id in ACTUAL_USD)
+		expect(measured).toHaveLength(Object.keys(ACTUAL_USD).length)
+		for (const evalCase of measured) {
 			const actual = ACTUAL_USD[evalCase.id]
 			expect(actual, evalCase.id).toBeDefined()
 			expect(getCaseUpperBoundUsd(evalCase, PRICE, 'low'), evalCase.id).toBeGreaterThanOrEqual(
 				actual ?? Infinity,
 			)
 		}
-		expect(getCaseReserveUsd(READ_TOOL_CASES, PRICE, 'low')).toBeGreaterThanOrEqual(0.0632)
+		expect(getCaseReserveUsd(measured, PRICE, 'low')).toBeGreaterThanOrEqual(0.0632)
 	})
 })

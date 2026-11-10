@@ -17,7 +17,13 @@ export interface CreateAiRunData {
 	durationMs: number
 	status: AiRunStatus
 	errorCode: string | null
-	toolCalls: { name: string; input: Prisma.InputJsonValue; status: ToolCallStatus }[]
+	toolCalls: {
+		name: string
+		input: Prisma.InputJsonValue
+		/** What a read tool answered (kept 30 days with the call, like its input). */
+		result?: Prisma.InputJsonValue
+		status: ToolCallStatus
+	}[]
 }
 
 export interface ForgetCallRow {

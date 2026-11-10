@@ -20,25 +20,44 @@ import {
 	getRawToolCalls,
 	hasMemoryActions,
 	isOutputTruncated,
+	isReadToolName,
 	type LogMeasurementInput,
+	MAX_READ_STEPS,
 	type MeasurementPoint,
-	type ParsedToolCall,
+	mergeParseRefs,
+	type ParseRefs,
+	type ParseRefsPatch,
 	parseToolCalls,
+	READ_CLOSED_ERROR,
+	READ_TOOL_NAMES,
 	type StatsCard,
 } from '@kus/shared'
 import { APIConnectionError, APIConnectionTimeoutError, APIError, APIUserAbortError } from 'openai'
 
 import type { Env } from '../../config'
-import { AiRunPurpose, AiRunStatus, type Prisma } from '../../generated/prisma/client'
+import {
+	AiRunPurpose,
+	AiRunStatus,
+	type Prisma,
+	ToolCallStatus,
+} from '../../generated/prisma/client'
 import type { AiClient } from './ai-client'
-import { AI_CLIENT, AI_PARSE_DEADLINE_MS, AI_STATS_ADVICE_DEADLINE_MS } from './ai.constants'
+import { buildReadStepMessages, splitToolCalls, withUserCacheBreakpoint } from './ai-read-step'
+import {
+	AI_CLIENT,
+	AI_PARSE_DEADLINE_MS,
+	AI_READ_MIN_REMAINING_MS,
+	AI_STATS_ADVICE_DEADLINE_MS,
+} from './ai.constants'
 import { AiUnavailableException, MessageTooLongException } from './ai.exceptions'
 import { AiRepository } from './ai.repository'
+import type { ReadToolExecutor, ReadToolResult } from './read-tool-executor'
 
 const CHAT_COMPLETIONS_PATH = '/chat/completions'
 const INVALID_TOOL_CALLS = 'INVALID_TOOL_CALLS'
 const BAD_RESPONSE = 'BAD_RESPONSE'
 const OUTPUT_TRUNCATED = 'OUTPUT_TRUNCATED'
+const READ_TOOL_FAILED = 'READ_TOOL_FAILED'
 
 const getRunErrorCode = ({
 	isTruncated,
@@ -66,6 +85,11 @@ export interface ParseFoodParams {
 	 * not the context, so a backdated weight is compared with its real neighbour.
 	 */
 	findPreviousWeight: (localDate: string) => Promise<MeasurementPoint | null>
+	/**
+	 * Answers the model's read calls for this turn; none = no reading (the only state while
+	 * READ_TOOL_NAMES is empty).
+	 */
+	readTools?: ReadToolExecutor
 }
 
 /** What a model call is recorded as. */
@@ -120,11 +144,39 @@ const hasSideEffects = (decision: Extract<FoodParseDecision, { kind: 'reply' }>)
 	hasMemoryActions(decision.memory) ||
 	decision.attach !== null
 
+/** A tool call as the AiToolCall row keeps it. */
+interface LoggedCall {
+	name: string
+	input: unknown
+	status: ToolCallStatus
+	result?: Prisma.InputJsonValue
+}
+
 /** Arguments that aren't JSON are kept as text, so the log still shows what the model sent. */
-const toToolCallLog = (call: ParsedToolCall): Prisma.InputJsonValue => {
-	if (typeof call.input === 'string') return { raw: call.input }
+const toToolCallLog = (input: unknown): Prisma.InputJsonValue => {
+	if (typeof input === 'string') return { raw: input }
 	// parsed JSON from the model — always JSON-serializable
-	return (call.input ?? null) as Prisma.InputJsonValue
+	return (input ?? null) as Prisma.InputJsonValue
+}
+
+const parseArguments = (raw: string): Prisma.InputJsonValue => {
+	try {
+		return toToolCallLog(JSON.parse(raw))
+	} catch {
+		return { raw }
+	}
+}
+
+/** A read call that ran, one that failed, or one that was left for the next step. */
+const getReadCallStatus = ({
+	result,
+	isFailed,
+}: {
+	result: ReadToolResult | undefined
+	isFailed: boolean
+}): ToolCallStatus => {
+	if (isFailed) return ToolCallStatus.FAILED
+	return result ? ToolCallStatus.SUCCEEDED : ToolCallStatus.REJECTED
 }
 
 @Injectable()
@@ -143,44 +195,159 @@ export class AiService {
 	}
 
 	/**
-	 * One model call per attempt; an answer that fails validation gets one retry with the errors.
-	 * Every call is recorded as an AiRun. Throws AiUnavailableException when nothing valid came back.
+	 * One model call per step, all inside one deadline. An answer with read-tool calls (READ_TOOL_NAMES)
+	 * is answered by the turn's ReadToolExecutor and the model is called again, up to MAX_READ_STEPS
+	 * times; any other answer that fails validation gets one retry with the errors. Every call is
+	 * recorded as an AiRun (the turn's cost is their sum). Throws AiUnavailableException when nothing
+	 * valid came back.
 	 */
 	async parseFood(params: ParseFoodParams): Promise<FoodParseDecision> {
+		const startedAt = Date.now()
 		const signal = AbortSignal.timeout(AI_PARSE_DEADLINE_MS)
-		let messages: AiRequestMessage[] = buildFoodParseMessages(
-			params.context,
-			params.text,
-			params.image,
-		)
-		const refs = getParseRefs(params.context)
+		const reader = READ_TOOL_NAMES.size > 0 ? params.readTools : undefined
+		const firstMessages = buildFoodParseMessages(params.context, params.text, params.image)
+		let messages: AiRequestMessage[] = reader
+			? withUserCacheBreakpoint(firstMessages)
+			: firstMessages
+		let refs = getParseRefs(params.context)
+		let readSteps = 0
+		let retries = 0
 
-		for (let attempt = 0; attempt <= AI_VALIDATION_RETRY_COUNT; attempt += 1) {
+		// every pass is one model call: reads, the answer and its retry bound the count
+		for (let call = 0; call < MAX_READ_STEPS + 1 + AI_VALIDATION_RETRY_COUNT; call += 1) {
 			const { completion, durationMs } = await this.requestCompletion(
 				params,
 				messages,
 				signal,
 				PARSE_CALL,
 			)
-			const result = await this.checkWeightJumps(
-				parseToolCalls(getRawToolCalls(completion), refs, {
-					hasImage: params.image !== undefined,
-				}),
-				params,
-			)
 			const isTruncated = isOutputTruncated(completion)
+			const toolCalls = completion.choices[0]?.message.tool_calls ?? []
+			const wantsRead = !isTruncated && toolCalls.some((item) => isReadToolName(item.function.name))
+			const timeLeftMs = AI_PARSE_DEADLINE_MS - (Date.now() - startedAt)
+			if (
+				wantsRead &&
+				reader &&
+				readSteps < MAX_READ_STEPS &&
+				timeLeftMs >= AI_READ_MIN_REMAINING_MS
+			) {
+				const step = await this.runReadStep({ params, reader, completion, durationMs, signal })
+				messages = [...messages, ...step.messages]
+				refs = mergeParseRefs(refs, step.refsPatch)
+				readSteps += 1
+				continue
+			}
+
+			const parsed = wantsRead
+				? this.rejectReads(completion, refs, params)
+				: await this.checkWeightJumps(
+						parseToolCalls(getRawToolCalls(completion), refs, {
+							hasImage: params.image !== undefined,
+						}),
+						params,
+					)
 			await this.recordRun(params, {
 				completion,
 				durationMs,
-				calls: result.calls,
-				errorCode: getRunErrorCode({ isTruncated, isValid: result.ok }),
+				calls: parsed.calls,
+				errorCode: getRunErrorCode({ isTruncated, isValid: parsed.ok }),
 			})
 			// the same request would be cut at the same place — retrying only burns money
 			if (isTruncated) throw new MessageTooLongException()
-			if (result.ok) return result.decision
-			messages = [...messages, ...buildRetryMessages(completion, result.errors)]
+			if (parsed.ok) return parsed.decision
+			if (retries >= AI_VALIDATION_RETRY_COUNT) break
+			retries += 1
+			messages = [...messages, ...buildRetryMessages(completion, parsed.errors)]
 		}
 		throw new AiUnavailableException()
+	}
+
+	/** A read call when reading is closed (step limit, little time left, no executor): «answer now». */
+	private rejectReads(
+		completion: AiCompletion,
+		refs: ParseRefs,
+		{ image }: ParseFoodParams,
+	): FoodParseResult {
+		const { calls } = parseToolCalls(getRawToolCalls(completion), refs, {
+			hasImage: image !== undefined,
+		})
+		const names = new Set(
+			getRawToolCalls(completion)
+				.map((item) => item.name)
+				.filter(isReadToolName),
+		)
+		return { ok: false, errors: [...names].map((name) => `${name}: ${READ_CLOSED_ERROR}`), calls }
+	}
+
+	/**
+	 * Runs the read calls of one answer (parallel, at most MAX_PARALLEL_READS) and records the step.
+	 * Write calls of the same answer are not executed. A failed read fails the turn: the run is
+	 * recorded first, then AI_UNAVAILABLE — the user resends, nothing was written.
+	 */
+	private async runReadStep({
+		params,
+		reader,
+		completion,
+		durationMs,
+		signal,
+	}: {
+		params: ParseFoodParams
+		reader: ReadToolExecutor
+		completion: AiCompletion
+		durationMs: number
+		signal: AbortSignal
+	}): Promise<{ messages: AiRequestMessage[]; refsPatch: ParseRefsPatch }> {
+		const toolCalls = completion.choices[0]?.message.tool_calls ?? []
+		const { reads } = splitToolCalls(toolCalls)
+		const settled = await Promise.allSettled(
+			reads.map((item) =>
+				reader.execute(
+					{ name: item.function.name, arguments: item.function.arguments },
+					{ userId: params.userId, localDate: params.localDate, signal },
+				),
+			),
+		)
+		const resultById = new Map<string, ReadToolResult>()
+		const failedIds = new Set<string>()
+		settled.forEach((outcome, index) => {
+			const id = reads[index]?.id
+			if (id === undefined) return
+			if (outcome.status === 'fulfilled') resultById.set(id, outcome.value)
+			else failedIds.add(id)
+		})
+		const failure = settled.find(
+			(outcome): outcome is PromiseRejectedResult => outcome.status === 'rejected',
+		)
+
+		await this.recordRun(params, {
+			completion,
+			durationMs,
+			calls: toolCalls.map((item) => {
+				const result = resultById.get(item.id)
+				return {
+					name: item.function.name,
+					input: parseArguments(item.function.arguments),
+					status: getReadCallStatus({ result, isFailed: failedIds.has(item.id) }),
+					...(result ? { result: { text: result.text } } : {}),
+				}
+			}),
+			errorCode: failure ? READ_TOOL_FAILED : null,
+		})
+		if (failure) {
+			this.logger.warn(
+				`AI read tool failed user=${params.userId} message=${params.messageId} ` +
+					`error=${failure.reason instanceof Error ? failure.reason.name : 'unknown'}`,
+			)
+			throw new AiUnavailableException()
+		}
+		const refsPatch = [...resultById.values()].reduce<ParseRefsPatch>(
+			(merged, { refsPatch: patch }) => ({
+				memoryRefs: [...(merged.memoryRefs ?? []), ...(patch?.memoryRefs ?? [])],
+				copyRefs: [...(merged.copyRefs ?? []), ...(patch?.copyRefs ?? [])],
+			}),
+			{},
+		)
+		return { messages: buildReadStepMessages(completion, toolCalls, resultById), refsPatch }
 	}
 
 	/**
@@ -345,7 +512,7 @@ export class AiService {
 			errorCode,
 			kind = PARSE_CALL,
 		}: CompletionResult & {
-			calls: ParsedToolCall[]
+			calls: LoggedCall[]
 			errorCode: string | null
 			kind?: CallKind
 		},
@@ -354,6 +521,7 @@ export class AiService {
 		const costUsd = usage?.cost ?? 0
 		const status = errorCode === null ? AiRunStatus.SUCCEEDED : AiRunStatus.FAILED
 		const model = completion.model ?? this.getModel(params)
+		const readCount = calls.filter((call) => isReadToolName(call.name)).length
 
 		await this.aiRepository.createRun({
 			userId: params.userId,
@@ -369,8 +537,9 @@ export class AiService {
 			errorCode,
 			toolCalls: calls.map((call) => ({
 				name: call.name,
-				input: toToolCallLog(call),
+				input: toToolCallLog(call.input),
 				status: call.status,
+				...(call.result === undefined ? {} : { result: call.result }),
 			})),
 		})
 		await this.aiRepository.addDailyCost({
@@ -384,6 +553,7 @@ export class AiService {
 			`AI run ${status} purpose=${kind.purpose} user=${params.userId} message=${params.messageId} ` +
 				`model=${model} in=${usage?.prompt_tokens ?? 0} cached=${usage?.prompt_tokens_details?.cached_tokens ?? 0} ` +
 				`out=${usage?.completion_tokens ?? 0} cost=${costUsd} ms=${durationMs} toolCalls=${calls.length}` +
+				(readCount > 0 ? ` reads=${readCount}` : '') +
 				(params.image ? ' photo=1' : '') +
 				(errorCode ? ` error=${errorCode}` : ''),
 		)

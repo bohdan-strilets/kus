@@ -31,6 +31,22 @@ export interface ParseRefs extends MeasurementRefs {
 	memoryRefByName?: ReadonlyMap<string, string>
 }
 
+/**
+ * Refs a read tool hands out after the context was built (`m11…` saved foods, `h6…` earlier
+ * entries). Names only: the turn's own id maps are extended by whoever issued them.
+ */
+export interface ParseRefsPatch {
+	memoryRefs?: readonly string[]
+	copyRefs?: readonly string[]
+}
+
+/** The refs of a turn plus a patch; the input is not changed. */
+export const mergeParseRefs = (refs: ParseRefs, patch: ParseRefsPatch): ParseRefs => ({
+	...refs,
+	memoryRefs: new Set([...refs.memoryRefs, ...(patch.memoryRefs ?? [])]),
+	copyRefs: new Set([...(refs.copyRefs ?? []), ...(patch.copyRefs ?? [])]),
+})
+
 export const getParseRefs = (context: FoodParseContext): ParseRefs => ({
 	memoryRefs: new Set(context.memory.map((food) => food.ref)),
 	copyRefs: new Set((context.earlier ?? []).map((entry) => entry.ref)),

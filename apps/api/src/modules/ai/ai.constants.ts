@@ -15,10 +15,14 @@ export const VERCEL_PROXY_TIMEOUT_MS = seconds(120)
 /** The DB work around the model call: context before it, the turn transaction and response after. */
 export const CHAT_TURN_DB_BUDGET_MS = seconds(20)
 /**
- * Upper bound for the whole parse, every retry included (validation retry × the SDK's network
- * retry): 2 attempts × the 45 s default fit, and with the DB budget it ends before Vercel's 120 s.
+ * Upper bound for the whole parse, shared by every call of the turn: up to 1 + MAX_READ_STEPS reads
+ * + 1 validation retry = 4 calls, each also bound by its own timeout. With the DB budget it ends
+ * before Vercel's 120 s. Typical calls take 5–15 s, so only a slow turn meets the deadline; the
+ * read steps give way first (AI_READ_MIN_REMAINING_MS), the last answer keeps the rest.
  */
 export const AI_PARSE_DEADLINE_MS = seconds(95)
+/** Less time than this left: no more reading, the model answers with what it has. */
+export const AI_READ_MIN_REMAINING_MS = seconds(10)
 /**
  * The second call of «summary and advice» (a short reply on counted numbers). Its worst case sits
  * on top of AI_PARSE_DEADLINE_MS and the DB budget; a normal parse is far below its own limit.

@@ -75,10 +75,29 @@ export const areMemoryItemsCorrect = (
 		),
 	)
 
-export const hasMemoryExpectations = ({ expect }: EvalCase): boolean =>
-	expect.memory !== undefined || expect.memoryItems !== undefined
+/** find_food was called (true) or was not (false), by the number of calls the read rounds answered. */
+export const isFindFoodRight = (expected: boolean, result: CaseResult): boolean =>
+	(result.reads?.findFoodCalls ?? 0) > 0 === expected
 
-export const isCaseMemoryCorrect = (evalCase: EvalCase, result: CaseResult): boolean =>
-	(evalCase.expect.memory === undefined || isMemoryCorrect(evalCase.expect.memory, result.calls)) &&
-	(evalCase.expect.memoryItems === undefined ||
-		areMemoryItemsCorrect(evalCase.expect.memoryItems, result.items))
+/** Exactly these saved-food refs are used by the logged items (each ref counted once). */
+export const areMemoryRefsRight = (expected: string[], items: LoggedItem[]): boolean =>
+	isSameSet(
+		[...new Set(expected)],
+		[...new Set(items.flatMap((item) => (item.memoryRef === null ? [] : [item.memoryRef])))],
+	)
+
+export const hasMemoryExpectations = ({ expect }: EvalCase): boolean =>
+	expect.memory !== undefined ||
+	expect.memoryItems !== undefined ||
+	expect.findFoodCalled !== undefined ||
+	expect.memoryRefs !== undefined
+
+export const isCaseMemoryCorrect = (evalCase: EvalCase, result: CaseResult): boolean => {
+	const { memory, memoryItems, findFoodCalled, memoryRefs } = evalCase.expect
+	return (
+		(memory === undefined || isMemoryCorrect(memory, result.calls)) &&
+		(memoryItems === undefined || areMemoryItemsCorrect(memoryItems, result.items)) &&
+		(findFoodCalled === undefined || isFindFoodRight(findFoodCalled, result)) &&
+		(memoryRefs === undefined || areMemoryRefsRight(memoryRefs, result.items))
+	)
+}

@@ -1,13 +1,12 @@
+// The messages between two model calls of a read round: the model's tool calls and one tool result
+// for each. Shared, so the backend and the eval build the same follow-up request.
 import {
-	type AiCompletion,
-	type AiRequestMessage,
 	isReadToolName,
 	MAX_PARALLEL_READS,
 	READ_NOT_EXECUTED_RESULT,
 	WRITE_NOT_EXECUTED_RESULT,
-} from '@kus/shared'
-
-import type { ReadToolResult } from './read-tool-executor'
+} from './read-tools.js'
+import type { AiCompletion, AiRequestMessage } from './request.js'
 
 export type ModelToolCall = NonNullable<
 	AiCompletion['choices'][number]['message']['tool_calls']
@@ -38,7 +37,7 @@ export const splitToolCalls = (toolCalls: ModelToolCall[]): SplitToolCalls => {
 export const buildReadStepMessages = (
 	completion: AiCompletion,
 	toolCalls: ModelToolCall[],
-	resultById: ReadonlyMap<string, ReadToolResult>,
+	resultById: ReadonlyMap<string, { text: string }>,
 ): AiRequestMessage[] => [
 	{
 		role: 'assistant',

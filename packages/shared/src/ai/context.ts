@@ -34,7 +34,6 @@ export const HISTORY_MAX_MESSAGES = 6
  * REPLY_TEXT_MAX_LENGTH) is cut on purpose — the history budget is small and the model needs the gist.
  */
 export const HISTORY_MESSAGE_MAX_CHARS = 1000
-export const MEMORY_MAX_FOODS = 10
 /**
  * The passive "Saved foods" block goes into every request, so it is tighter than find_food (the
  * model can ask for more there): a few best matches, not everything that shares a word.

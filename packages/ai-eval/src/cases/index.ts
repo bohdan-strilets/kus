@@ -17,6 +17,7 @@ import { MEMORY_FOOD_CASES } from './memory-foods.cases.js'
 import { MEMORY_OVERRIDE_CASES } from './memory-override.cases.js'
 import { loadHoldoutCases, loadPrivateCases } from './private-cases.js'
 import { PROGRAM_CASES } from './program.cases.js'
+import { READ_TOOL_CASES } from './read-tools.cases.js'
 import { RANGE_CASES } from './range.cases.js'
 import { SAFETY_CASES } from './safety.cases.js'
 import { WORKOUT_2_CASES } from './workout-2.cases.js'
@@ -54,6 +55,7 @@ export const REPO_CASES: EvalCase[] = [
 	...MEMORY_FACT_CASES,
 	...HISTORY_MARKER_CASES,
 	...LIVE_CHAT_CASES,
+	...READ_TOOL_CASES,
 ]
 
 /** Written, but need a context the contract doesn't have yet; not run until it does. None now. */

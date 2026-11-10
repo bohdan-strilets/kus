@@ -8,6 +8,7 @@ import {
 	type AiRequestMessage,
 	AI_TOOL_NAMES,
 	buildFoodParseMessages,
+	buildReadStepMessages,
 	buildRetryMessages,
 	buildStatsAdviceToolResult,
 	createFoodParseRequest,
@@ -30,7 +31,9 @@ import {
 	parseToolCalls,
 	READ_CLOSED_ERROR,
 	READ_TOOL_NAMES,
+	splitToolCalls,
 	type StatsCard,
+	withUserCacheBreakpoint,
 } from '@kus/shared'
 import { APIConnectionError, APIConnectionTimeoutError, APIError, APIUserAbortError } from 'openai'
 
@@ -42,7 +45,6 @@ import {
 	ToolCallStatus,
 } from '../../generated/prisma/client'
 import type { AiClient } from './ai-client'
-import { buildReadStepMessages, splitToolCalls, withUserCacheBreakpoint } from './ai-read-step'
 import {
 	AI_CLIENT,
 	AI_PARSE_DEADLINE_MS,

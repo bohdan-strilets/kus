@@ -8,6 +8,7 @@ import {
 	foodCategorySchema,
 	foodSourceSchema,
 	loggableMealTypeSchema,
+	mealTypeSchema,
 	MEMORY_REF_PATTERN,
 	measurementKindSchema,
 	muscleGroupSchema,
@@ -253,6 +254,21 @@ export type ExpectedMeasurement = z.infer<typeof expectedMeasurementSchema>
 export type ExpectedEdits = z.infer<typeof expectedEditsSchema>
 export type ResolutionKind = z.infer<typeof resolutionKindSchema>
 
+/** An entry of the user's past days that find_food searches (scope history), one per distinct name. */
+export const historyEntrySchema = z.object({
+	/** `YYYY-MM-DD` */
+	date: z.iso.date(),
+	mealType: mealTypeSchema,
+	name: z.string().min(1),
+	grams: z.number().positive(),
+	kcal: z.number().nonnegative(),
+	source: foodSourceSchema,
+	/** How many times the name was logged in the searched period. */
+	count: z.int().positive().optional(),
+})
+
+export type HistoryEntryFixture = z.infer<typeof historyEntrySchema>
+
 export const evalCaseSchema = z
 	.object({
 		id: z.string().min(1),
@@ -330,6 +346,10 @@ export const evalCaseSchema = z
 			sources: z.array(foodSourceSchema).min(1).optional(),
 			/** The memory calls: save_food, save_fact, forget_fact. */
 			memory: expectedMemorySchema.optional(),
+			/** find_food must be called (true) or must not be (false). */
+			findFoodCalled: z.boolean().optional(),
+			/** Exactly these saved-food refs (m1, m11) are used by the logged items; [] = none. */
+			memoryRefs: z.array(z.string().regex(MEMORY_REF_PATTERN)).optional(),
 			/** Items logged from a saved food: its m-ref, source MEMORY and exactly these grams. */
 			memoryItems: z
 				.array(
@@ -337,6 +357,8 @@ export const evalCaseSchema = z
 				)
 				.optional(),
 		}),
+		/** Earlier entries find_food can see (90 days before the case's today); a JSON case's own. */
+		historyEntries: z.array(historyEntrySchema).optional(),
 		/** Where the numbers come from (label text, USDA FDC, typical portion). */
 		reference: z.string().min(1),
 	})
@@ -357,6 +379,8 @@ export const savedFoodSchema = z.object({
 	pieceGrams: z.number().positive().nullable().default(null),
 	defaultGrams: z.number().positive().nullable().default(null),
 	category: foodCategorySchema.catch('plate'),
+	/** How often the food was used: a small bonus of the search ranking. */
+	usageCount: z.int().nonnegative().default(0),
 })
 
 export type SavedFood = z.infer<typeof savedFoodSchema>
@@ -364,6 +388,11 @@ export type SavedFood = z.infer<typeof savedFoodSchema>
 export type EvalCase = z.infer<typeof evalCaseSchema> & {
 	/** Day state the model sees; defaults to an empty day without a goal. */
 	context?: CaseContext
+	/**
+	 * All the saved foods of the user: the passive «Saved foods» block takes those the message names
+	 * (findMentionedFoods, like the backend) unless `context.memory` is set, and find_food searches them all.
+	 */
+	savedFoods?: SavedFood[]
 	/** The loaded photo of a private case with `image`. */
 	photo?: EvalPhoto
 }

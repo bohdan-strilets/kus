@@ -7,6 +7,7 @@ import {
 	type FindFoodData,
 	type FindFoodHistoryEntry,
 	findFoodInputSchema,
+	parseFindFoodArguments,
 	type FindFoodSavedFood,
 	runFindFood,
 } from './find-food.js'
@@ -166,5 +167,20 @@ describe('runFindFood', () => {
 
 		expect(refs.memoryRefs.has('m1')).toBe(true)
 		expect(refs.copyRefs?.has('h1')).toBe(true)
+	})
+})
+
+describe('parseFindFoodArguments', () => {
+	it('reads valid arguments with the default scope', () => {
+		expect(parseFindFoodArguments('{"query":"sportyfeel"}')).toEqual({
+			query: 'sportyfeel',
+			scope: 'all',
+		})
+	})
+
+	it('returns null for broken JSON and for arguments outside the schema', () => {
+		expect(parseFindFoodArguments('{"query":')).toBeNull()
+		expect(parseFindFoodArguments('{"query":""}')).toBeNull()
+		expect(parseFindFoodArguments('{"query":"x","scope":"everything"}')).toBeNull()
 	})
 })

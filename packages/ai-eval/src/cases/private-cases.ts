@@ -2,15 +2,9 @@ import { readdir, readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import {
-	isFoodMentioned,
-	MEMORY_MAX_FOODS,
-	type MemoryFoodContext,
-	normalizeName,
-} from '@kus/shared'
 import { z } from 'zod'
 
-import { type EvalCase, evalCaseSchema, type SavedFood, savedFoodSchema } from './case.types.js'
+import { type EvalCase, evalCaseSchema, savedFoodSchema } from './case.types.js'
 import { CONTEXT_PRESETS } from './context-presets.js'
 import { loadEvalPhoto } from './photo.js'
 
@@ -44,26 +38,6 @@ const readJsonFiles = async <T>(suffix: string, schema: z.ZodType<T[]>): Promise
 	return items
 }
 
-/** The saved foods a message mentions, with `m1…` refs — the same selection the backend makes. */
-const toMemoryContext = (foods: SavedFood[], text: string): MemoryFoodContext[] =>
-	foods
-		.filter((food) =>
-			isFoodMentioned(
-				{ nameNormalized: normalizeName(food.name), aliases: food.aliases.map(normalizeName) },
-				text,
-			),
-		)
-		.slice(0, MEMORY_MAX_FOODS)
-		.map((food, index) => ({
-			ref: `m${index + 1}`,
-			name: food.name,
-			aliases: food.aliases,
-			per100g: food.per100g,
-			pieceGrams: food.pieceGrams,
-			defaultGrams: food.defaultGrams,
-			category: food.category,
-		}))
-
 const warn = (message: string): void => {
 	process.stderr.write(`⚠ data/private/${message}
 `)
@@ -82,8 +56,9 @@ const loadJsonCases = async (suffix: string, idPrefix: string): Promise<EvalCase
 			context: {
 				...(item.addressForm === undefined ? {} : { addressForm: item.addressForm }),
 				...(item.contextPreset === undefined ? {} : CONTEXT_PRESETS[item.contextPreset]),
-				memory: toMemoryContext(foods, item.text),
 			},
+			// the «Saved foods» block is picked from these by the case's words (buildCaseContext), find_food searches them all
+			savedFoods: foods,
 			// the bytes live in memory for the run only; results/ keeps ids and numbers, never the photo
 			photo: item.image === undefined ? undefined : await loadEvalPhoto(dir, item.image, warn),
 		})),

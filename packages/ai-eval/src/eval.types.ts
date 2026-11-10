@@ -41,6 +41,16 @@ export interface RawAttempt {
 	text: string | null
 	/** Cut at max_tokens: such an answer is never retried or parsed. */
 	isTruncated: boolean
+	/** The answer asked for a read (find_food): it was answered from the case's data, not parsed. */
+	isReadStep?: true
+}
+
+/** What the read rounds of a case did. */
+export interface ReadStats {
+	/** Rounds of reading before the final answer (at most MAX_READ_STEPS). */
+	steps: number
+	/** find_food calls that were answered. */
+	findFoodCalls: number
 }
 
 /** What the raw tool calls say about days; the newer tools are matched by name, not by shared types. */
@@ -90,6 +100,8 @@ export interface CaseResult {
 	program: LoggedProgram | null
 	/** Days named by log_food, show_day and delete_measurement. */
 	calls: CallFacts
+	/** Read rounds of the case; absent in results saved before the read tools. */
+	reads?: ReadStats
 	costUsd: number
 	latencyMs: number
 	inputTokens: number

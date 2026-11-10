@@ -7,8 +7,11 @@ import {
 	type FoodParseContext,
 	getRawToolCalls,
 	isOutputTruncated,
+	isReadToolName,
+	MAX_READ_STEPS,
 	type RawToolCall,
 	shouldShowProgramRules,
+	withUserCacheBreakpoint,
 } from '@kus/shared'
 
 import { toFoodContext } from './case-context.js'
@@ -17,6 +20,13 @@ import { withDayContext } from './day-context.js'
 import type { EvalCase } from './cases/index.js'
 import type { CaseResult, RawAttempt, ValidationAttempt } from './eval.types.js'
 import { type EvalModelOptions, requestFoodParse } from './openrouter.js'
+import { selectPassiveMemory } from './read-fixtures.js'
+import {
+	answerReads,
+	createReadExecutor,
+	createReadTurn,
+	getReadClosedErrors,
+} from './read-loop.js'
 import {
 	failedResult,
 	OUTPUT_TRUNCATED,
@@ -44,7 +54,16 @@ export const BASE_CONTEXT: FoodParseContext = {
 
 /** The model context of a case, as the backend builds it (the «Program» rules decided the same way). */
 export const buildCaseContext = (evalCase: EvalCase): FoodParseContext => {
-	const context = withDayContext({ ...BASE_CONTEXT, ...toFoodContext(evalCase.context) })
+	// a case with the user's saved foods gets the «Saved foods» block the backend would pick for its words
+	const passiveMemory =
+		evalCase.savedFoods !== undefined && evalCase.context?.memory === undefined
+			? { memory: selectPassiveMemory(evalCase.savedFoods, evalCase.text) }
+			: {}
+	const context = withDayContext({
+		...BASE_CONTEXT,
+		...toFoodContext(evalCase.context),
+		...passiveMemory,
+	})
 	const hasProgramRules = shouldShowProgramRules({
 		text: evalCase.text,
 		history: context.history,
@@ -98,12 +117,21 @@ const getStatsFollowUp = async ({
 	return { text: followUp.text }
 }
 
+/** One request to the model; the real one is OpenRouter, a test passes its own. */
+export type RequestFn = typeof requestFoodParse
+
+/** Every model call of a turn: the read rounds, the answer and its retry (as AiService.parseFood). */
+const MAX_MODEL_CALLS = MAX_READ_STEPS + 1 + AI_VALIDATION_RETRY_COUNT
+
 export const runCase = async (
 	evalCase: EvalCase,
 	options: EvalModelOptions,
+	request: RequestFn = requestFoodParse,
 ): Promise<CaseResult> => {
 	const context = buildCaseContext(evalCase)
-	let messages: AiRequestMessage[] = buildFoodParseMessages(context, evalCase.text, evalCase.photo)
+	let messages: AiRequestMessage[] = withUserCacheBreakpoint(
+		buildFoodParseMessages(context, evalCase.text, evalCase.photo),
+	)
 	const usage = {
 		costUsd: 0,
 		latencyMs: 0,
@@ -113,23 +141,39 @@ export const runCase = async (
 		textOnlyAnswers: 0,
 	}
 	const base = { caseId: evalCase.id, model: options.model }
+	const readTurn = createReadTurn()
+	const executeRead = createReadExecutor(evalCase, context)
 
-	let attemptsMade = 0
+	// answers that went through validation (the first and its retry); read rounds do not count
+	let attempt = 0
 	const validationErrors: ValidationAttempt[] = []
 	const rawAttempts: RawAttempt[] = []
 	try {
-		for (let attempt = 1; attempt <= 1 + AI_VALIDATION_RETRY_COUNT; attempt += 1) {
-			attemptsMade = attempt
-			const { completion, latencyMs } = await requestFoodParse(options, messages)
+		for (let call = 0; call < MAX_MODEL_CALLS; call += 1) {
+			const { completion, latencyMs } = await request(options, messages).catch((error: unknown) => {
+				// the failed request belongs to the attempt it was made for
+				attempt += 1
+				throw error
+			})
 			addUsage(usage, completion, latencyMs)
 
 			const rawCalls = getRawToolCalls(completion)
 			const isTruncated = isOutputTruncated(completion)
+			const wantsRead = !isTruncated && rawCalls.some((item) => isReadToolName(item.name))
 			rawAttempts.push({
 				toolCalls: rawCalls,
 				text: completion.choices[0]?.message.content ?? null,
 				isTruncated,
+				...(wantsRead && readTurn.stats.steps < MAX_READ_STEPS
+					? { isReadStep: true as const }
+					: {}),
 			})
+			if (wantsRead && readTurn.stats.steps < MAX_READ_STEPS) {
+				messages = [...messages, ...answerReads(readTurn, executeRead, completion)]
+				continue
+			}
+
+			attempt += 1
 			// same rule as the backend: a cut-off answer is not retried
 			if (isTruncated)
 				return failedResult(base, usage, {
@@ -137,6 +181,7 @@ export const runCase = async (
 					attempts: attempt,
 					validationErrors,
 					rawAttempts,
+					reads: readTurn.stats,
 				})
 			if (rawCalls.length === 0) usage.textOnlyAnswers += 1
 			const scoreInput: ScoreInput = {
@@ -148,8 +193,12 @@ export const runCase = async (
 				rawCalls,
 				validationErrors,
 				rawAttempts,
+				reads: readTurn,
 			}
-			const outcome = scoreAttempt(scoreInput)
+			// a read once reading is closed is a validation error: «answer now»
+			const outcome = wantsRead
+				? { errors: getReadClosedErrors(rawCalls) }
+				: scoreAttempt(scoreInput)
 			if ('result' in outcome) {
 				const statsFollowUp = await getStatsFollowUp({
 					evalCase,
@@ -167,24 +216,27 @@ export const runCase = async (
 			validationErrors.push(
 				toValidationAttempt(
 					attempt,
-					rawCalls.map((call) => call.name),
+					rawCalls.map((item) => item.name),
 					outcome.errors,
 				),
 			)
+			if (attempt >= 1 + AI_VALIDATION_RETRY_COUNT) break
 			messages = [...messages, ...buildRetryMessages(completion, outcome.errors)]
 		}
 		return failedResult(base, usage, {
 			error: 'INVALID_TOOL_CALLS',
-			attempts: 1 + AI_VALIDATION_RETRY_COUNT,
+			attempts: attempt,
 			validationErrors,
 			rawAttempts,
+			reads: readTurn.stats,
 		})
 	} catch (error) {
 		return failedResult(base, usage, {
 			error: error instanceof Error ? error.message.slice(0, 200) : 'UNKNOWN',
-			attempts: attemptsMade,
+			attempts: attempt,
 			validationErrors,
 			rawAttempts,
+			reads: readTurn.stats,
 		})
 	}
 }

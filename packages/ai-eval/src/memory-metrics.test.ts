@@ -1,10 +1,18 @@
 import { describe, expect, it } from 'vitest'
 
 import type { ExpectedMemory } from './cases/case.types.js'
+import type { EvalCase } from './cases/index.js'
 import { EMPTY_CALL_FACTS } from './call-facts.js'
 import { NO_MEMORY_CALLS } from './cases/case-builders.js'
-import type { CallFacts, LoggedItem } from './eval.types.js'
-import { areMemoryItemsCorrect, isMemoryCorrect } from './memory-metrics.js'
+import type { CallFacts, CaseResult, LoggedItem } from './eval.types.js'
+import {
+	areMemoryItemsCorrect,
+	areMemoryRefsRight,
+	hasMemoryExpectations,
+	isCaseMemoryCorrect,
+	isFindFoodRight,
+	isMemoryCorrect,
+} from './memory-metrics.js'
 
 const food = (overrides: Partial<CallFacts['savedFoods'][number]> = {}) => ({
 	name: 'Кабаноси Tarczyński',
@@ -145,5 +153,46 @@ describe('areMemoryItemsCorrect', () => {
 
 	it('nothing logged is a miss', () => {
 		expect(areMemoryItemsCorrect([{ ref: 'm1', grams: 15 }], [])).toBe(false)
+	})
+})
+
+describe('find_food and memory-ref expectations', () => {
+	const item = (memoryRef: string | null): LoggedItem => ({
+		name: 'Батончик',
+		mealType: null,
+		grams: 45,
+		quantity: null,
+		kcal: 170,
+		protein: 15,
+		source: 'MEMORY',
+		memoryRef,
+		copyRef: null,
+		assumption: null,
+	})
+	const withReads = (findFoodCalls: number) =>
+		({ reads: { steps: findFoodCalls > 0 ? 1 : 0, findFoodCalls } }) as CaseResult
+
+	it('tells a lookup that happened from one that did not, also in results saved without reads', () => {
+		expect(isFindFoodRight(true, withReads(1))).toBe(true)
+		expect(isFindFoodRight(true, withReads(0))).toBe(false)
+		expect(isFindFoodRight(false, withReads(0))).toBe(true)
+		expect(isFindFoodRight(false, {} as CaseResult)).toBe(true)
+	})
+
+	it('compares the refs of the logged items as a set, each ref once', () => {
+		expect(areMemoryRefsRight(['m1'], [item('m1'), item('m1')])).toBe(true)
+		expect(areMemoryRefsRight(['m11'], [item('m1')])).toBe(false)
+		expect(areMemoryRefsRight([], [item(null)])).toBe(true)
+		expect(areMemoryRefsRight([], [item('m1')])).toBe(false)
+	})
+
+	it('are memory expectations of their own, judged without any save_food expectation', () => {
+		const evalCase = { expect: { decision: 'log', findFoodCalled: true } } as EvalCase
+		expect(hasMemoryExpectations(evalCase)).toBe(true)
+		const result = { ...withReads(1), calls: EMPTY_CALL_FACTS, items: [] } as unknown as CaseResult
+		expect(isCaseMemoryCorrect(evalCase, result)).toBe(true)
+		expect(
+			isCaseMemoryCorrect(evalCase, { ...result, reads: { steps: 0, findFoodCalls: 0 } }),
+		).toBe(false)
 	})
 })

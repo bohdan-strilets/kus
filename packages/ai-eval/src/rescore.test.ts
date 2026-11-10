@@ -2,6 +2,7 @@ import type { RawToolCall } from '@kus/shared'
 import { describe, expect, it } from 'vitest'
 
 import type { EvalCase } from './cases/index.js'
+import { ONE_BAR_FOODS } from './cases/read-tools.cases.js'
 import type { CaseResult } from './eval.types.js'
 import { summarize } from './metrics.js'
 import { buildCaseContext } from './run-case.js'
@@ -157,5 +158,70 @@ describe('rescoreResults', () => {
 		expect(missingCases).toBe(1)
 		expect(runs.map((run) => run.model)).toEqual(['m', 'm2'])
 		expect(runs[0]?.pairs).toHaveLength(1)
+	})
+})
+
+describe('rescoreResult: read rounds', () => {
+	const barCase: EvalCase = {
+		id: 'bar',
+		text: 'Він має іншу назву, пошукай',
+		savedFoods: ONE_BAR_FOODS,
+		expect: { decision: 'log_or_clarify', findFoodCalled: true, memoryRefs: ['m1'] },
+		reference: 'r',
+	}
+	const findCall: RawToolCall = {
+		name: 'find_food',
+		arguments: JSON.stringify({ query: 'батончик', scope: 'all' }),
+	}
+	const barLog: RawToolCall = {
+		name: 'log_food',
+		arguments: JSON.stringify({
+			items: [
+				{
+					name: 'Батончик SportyFeel',
+					grams: 45,
+					kcal: 157,
+					protein: 15,
+					fat: 5,
+					carbs: 13,
+					fiber: null,
+					quantity: null,
+					category: 'protein_bar',
+					source: 'MEMORY',
+					confidence: 0.9,
+					assumption: null,
+					memoryRef: 'm1',
+					copyRef: null,
+				},
+			],
+			reply: 'Записав!',
+		}),
+	}
+	const saved = (rawCalls: RawToolCall[][]): CaseResult => ({
+		...savedResult(makeCase(EXPECTED_233), [[logCall]]),
+		caseId: 'bar',
+		rawAttempts: rawCalls.map((toolCalls, index) => ({
+			toolCalls,
+			text: null,
+			isTruncated: false,
+			...(index < rawCalls.length - 1 ? { isReadStep: true as const } : {}),
+		})),
+	})
+
+	it('answers the saved read round again, so the ref of the found food still resolves', () => {
+		const again = rescoreResult(barCase, saved([[findCall], [barLog]]))
+
+		expect(again.decision).toBe('log')
+		expect(again.error).toBeNull()
+		expect(again.items[0]?.memoryRef).toBe('m1')
+		expect(again.kcal).toBeCloseTo(169.2, 1)
+		expect(again.reads).toEqual({ steps: 1, findFoodCalls: 1 })
+		expect(again.attempts).toBe(1)
+	})
+
+	it('without the read round the same ref is invented: the answer is rejected', () => {
+		const again = rescoreResult(barCase, saved([[barLog]]))
+
+		expect(again.error).toBe('INVALID_TOOL_CALLS')
 	})
 })

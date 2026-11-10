@@ -5,6 +5,7 @@ import {
 	type FoodParseDecision,
 	getParseRefs,
 	type MemoryFoodContext,
+	mergeParseRefs,
 	parseToolCalls,
 	type RawToolCall,
 } from '@kus/shared'
@@ -15,8 +16,10 @@ import type {
 	CaseResult,
 	LoggedItem,
 	RawAttempt,
+	ReadStats,
 	ValidationAttempt,
 } from './eval.types.js'
+import { EMPTY_READ_STATS, type ReadTurn } from './read-loop.js'
 import { EMPTY_CALL_FACTS, getCallFacts } from './call-facts.js'
 import { getClarifyCalls } from './clarify-calls.js'
 import { getEditResult } from './edit-result.js'
@@ -41,7 +44,8 @@ export const toValidationAttempt = (
 
 export interface ItemSources {
 	memory: MemoryFoodContext[]
-	earlier: EarlierEntryContext[]
+	/** Entries a copyRef can point at: earlier ones (y, h) and today's own (e). */
+	earlier: Pick<EarlierEntryContext, 'ref' | 'kcal'>[]
 }
 
 /**
@@ -125,11 +129,13 @@ export const failedResult = (
 		attempts,
 		validationErrors = [],
 		rawAttempts = [],
+		reads = EMPTY_READ_STATS,
 	}: {
 		error: string
 		attempts: number
 		validationErrors?: ValidationAttempt[]
 		rawAttempts?: RawAttempt[]
+		reads?: ReadStats
 	},
 ): CaseResult => ({
 	...base,
@@ -149,6 +155,7 @@ export const failedResult = (
 	workouts: [],
 	program: null,
 	calls: EMPTY_CALL_FACTS,
+	reads: { ...reads },
 	wasRetried: attempts > 1,
 	validationErrors,
 	mixedScriptWords: [],
@@ -169,6 +176,8 @@ export interface ScoreInput {
 	rawAttempts: RawAttempt[]
 	/** The second call of «summary and advice», when the case made it (see stats-follow-up.ts). */
 	statsFollowUp?: { text: string | null }
+	/** The read rounds before this answer; none = the answer came first. */
+	reads?: ReadTurn
 }
 
 export type ScoreOutcome = { result: CaseResult } | { errors: string[] }
@@ -176,8 +185,15 @@ export type ScoreOutcome = { result: CaseResult } | { errors: string[] }
 /** One model answer through the current parse/validation and metric extraction (shared by runs and --rescore). */
 export const scoreAttempt = (input: ScoreInput): ScoreOutcome => {
 	const { evalCase, context, base, usage, attempt, rawCalls, validationErrors, rawAttempts } = input
-	const sources: ItemSources = { memory: context.memory, earlier: context.earlier ?? [] }
-	const refs = getParseRefs(context)
+	const { reads } = input
+	// what the reads handed out counts like the context's own: refs to check, values to take
+	const sources: ItemSources = {
+		memory: [...context.memory, ...(reads?.memory ?? [])],
+		earlier: [...(context.earlier ?? []), ...context.entries, ...(reads?.earlier ?? [])],
+	}
+	const refs = reads
+		? mergeParseRefs(getParseRefs(context), reads.refsPatch)
+		: getParseRefs(context)
 	const result = parseToolCalls(rawCalls, refs, { hasImage: evalCase.photo !== undefined })
 	if (!result.ok) return { errors: result.errors }
 	const { statsFollowUp } = input
@@ -205,6 +221,7 @@ export const scoreAttempt = (input: ScoreInput): ScoreOutcome => {
 			workouts: getLoggedWorkouts(result.decision),
 			program: getLoggedProgram(result.decision),
 			calls: getCallFacts(rawCalls, context.measurements.today),
+			reads: reads ? { ...reads.stats } : { ...EMPTY_READ_STATS },
 			items: items.map((item) =>
 				toLoggedItem(
 					item,

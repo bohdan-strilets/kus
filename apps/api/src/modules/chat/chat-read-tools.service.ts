@@ -2,11 +2,12 @@ import { Injectable, Logger } from '@nestjs/common'
 import {
 	createRefIssuer,
 	FIND_FOOD_HISTORY_DAYS,
+	FIND_FOOD_INVALID_ARGUMENTS_RESULT,
 	FIND_FOOD_TOOL_NAME,
 	type FindFoodHistoryEntry,
-	findFoodInputSchema,
 	type FindFoodSavedFood,
 	HISTORY_FOOD_REF_PREFIX,
+	parseFindFoodArguments,
 	runFindFood,
 	SAVED_FOOD_REF_PREFIX,
 } from '@kus/shared'
@@ -22,10 +23,6 @@ import type {
 } from '../ai/read-tool-executor'
 import { EntriesService, type RecentEntryName } from '../entries/entries.service'
 import { MemoryService, type RelevantFoods } from '../memory/memory.service'
-
-/** Told to the model as a tool result: it can fix its arguments within the same turn. */
-const INVALID_ARGUMENTS_RESULT =
-	'error: invalid arguments — query is 1–60 characters of the food name'
 
 const toSavedFood = (food: MyFood): FindFoodSavedFood => ({
 	key: food.id,
@@ -103,8 +100,8 @@ export class ChatReadToolsService {
 			this.logger.warn(`Unknown read tool user=${userId}`)
 			throw new AiUnavailableException()
 		}
-		const input = this.parseInput(call.arguments)
-		if (input === null) return { text: INVALID_ARGUMENTS_RESULT }
+		const input = parseFindFoodArguments(call.arguments)
+		if (input === null) return { text: FIND_FOOD_INVALID_ARGUMENTS_RESULT }
 
 		const [foods, recent] = await Promise.all([
 			input.scope === 'history' ? [] : once('saved', () => this.memoryService.searchFoods(userId)),
@@ -139,15 +136,5 @@ export class ChatReadToolsService {
 		// metadata only: never the query or the names (CLAUDE.md §10.1)
 		this.logger.log(`find_food user=${userId} scope=${input.scope} found=${result.foundCount}`)
 		return { text: result.text, refsPatch: result.refsPatch }
-	}
-
-	private parseInput(raw: string) {
-		try {
-			const parsed = findFoodInputSchema.safeParse(JSON.parse(raw))
-			return parsed.success ? parsed.data : null
-		} catch {
-			// not JSON: the model gets «invalid arguments» and may send them again
-			return null
-		}
 	}
 }

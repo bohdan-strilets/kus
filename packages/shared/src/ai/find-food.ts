@@ -37,6 +37,20 @@ export const findFoodInputSchema = z.object({
 
 export type FindFoodInput = z.infer<typeof findFoodInputSchema>
 
+/** Told to the model as a tool result: it can fix its arguments within the same turn. */
+export const FIND_FOOD_INVALID_ARGUMENTS_RESULT = `error: invalid arguments — query is 1–${FIND_FOOD_QUERY_MAX_LENGTH} characters of the food name`
+
+/** The model's raw JSON arguments; null when they are not JSON or do not fit the schema. */
+export const parseFindFoodArguments = (raw: string): FindFoodInput | null => {
+	try {
+		const parsed = findFoodInputSchema.safeParse(JSON.parse(raw))
+		return parsed.success ? parsed.data : null
+	} catch {
+		// not JSON: the model gets «invalid arguments» and may send them again
+		return null
+	}
+}
+
 export const FIND_FOOD_DESCRIPTION =
 	'Look up a food the user saved or ate before that is NOT already listed in "Saved foods" or "Earlier entries": ' +
 	'a brand or packaged product, "that bar", "the same as last time", or a question about what they saved. ' +

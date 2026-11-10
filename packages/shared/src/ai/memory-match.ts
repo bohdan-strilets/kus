@@ -1,38 +1,12 @@
 // Cheap fuzzy match of saved foods (MyFood) against a chat message, tolerant to Ukrainian endings
 // ("гречка" ↔ "гречки"). Shared by the backend and the eval; runs in memory (docs/database.md).
 
-import { type FoodSearchCandidate, searchFoods } from './food-search.js'
 import { MEMORY_PASSIVE_MAX_FOODS } from './context.js'
-import { normalizeFoodName } from './normalize-food-name.js'
-
-const MIN_WORD_LENGTH = 3
-const MIN_PREFIX_LENGTH = 3
-/** Characters an inflected ending may change: "яйце" → "яйця", "гречка" → "гречкою". */
-const ENDING_LENGTH = 2
+import { type FoodSearchCandidate, searchFoods } from './food-search.js'
 
 /** Same normalization as MyFood.nameNormalized: lowercase, trimmed, single spaces. */
 export const normalizeName = (name: string): string =>
 	name.trim().toLowerCase().replace(/\s+/g, ' ')
-
-// Both sides (saved name and message text) go through normalizeFoodName, so a Latin look-alike on
-// either side doesn't break the match. Only for comparing: stored values stay as they are.
-const toWords = (text: string): string[] =>
-	normalizeName(normalizeFoodName(text))
-		.split(/[^\p{L}\p{N}]+/u)
-		.filter((word) => word.length > 0)
-
-const getStem = (word: string): string =>
-	word.slice(0, Math.max(MIN_PREFIX_LENGTH, word.length - ENDING_LENGTH))
-
-/** Every significant word of the name occurs in the text, up to its ending. */
-const isNameMentioned = (name: string, textWords: string[]): boolean => {
-	const nameWords = toWords(name).filter((word) => word.length >= MIN_WORD_LENGTH)
-	if (nameWords.length === 0) return false
-	return nameWords.every((nameWord) => {
-		const stem = getStem(nameWord)
-		return textWords.some((textWord) => textWord.startsWith(stem))
-	})
-}
 
 /**
  * Minimum coverage of the message's food words for the passive "Saved foods" block. Higher than
@@ -104,12 +78,4 @@ export const findMentionedFoods = <T extends MentionableFood>(
 		.map(([index]) => index)
 		.sort((a, b) => a - b)
 		.map((index) => foods[index] as T)
-}
-
-export const isFoodMentioned = (
-	food: { nameNormalized: string; aliases: string[] },
-	text: string,
-): boolean => {
-	const textWords = toWords(text)
-	return [food.nameNormalized, ...food.aliases].some((name) => isNameMentioned(name, textWords))
 }

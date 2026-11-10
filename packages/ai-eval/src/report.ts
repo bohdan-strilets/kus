@@ -151,9 +151,10 @@ const describeMiss = (evalCase: EvalCase, result: CaseResult): Miss[] => {
 		const { savedFoods, facts, forgets } = result.calls
 		// the texts of a private or hold-out case stay out of the terminal
 		const got = isHiddenCaseId(evalCase.id) ? '…' : JSON.stringify({ savedFoods, facts, forgets })
+		const findFoodCalls = result.reads?.findFoodCalls ?? 0
 		misses.push({
 			caseId: evalCase.id,
-			issue: `рішення: пам'ять ${got}, позицій ${result.items.length}`,
+			issue: `рішення: пам'ять ${got}, позицій ${result.items.length}, find_food ${findFoodCalls}`,
 			errorPct: null,
 		})
 	}

@@ -1,7 +1,14 @@
-import { AI_VALIDATION_RETRY_COUNT } from '@kus/shared'
+import { AI_VALIDATION_RETRY_COUNT, isReadToolName } from '@kus/shared'
 
 import type { EvalCase } from './cases/index.js'
 import type { CaseResult, ValidationAttempt } from './eval.types.js'
+import {
+	createReadExecutor,
+	createReadTurn,
+	getReadCalls,
+	getReadClosedErrors,
+	runReadStep,
+} from './read-loop.js'
 import { buildCaseContext } from './run-case.js'
 import type { ModelRun } from './runner.js'
 import {
@@ -16,7 +23,10 @@ const INVALID_TOOL_CALLS = 'INVALID_TOOL_CALLS'
 export const RESCORE_NO_RAW_MESSAGE =
 	'--rescore: у файлі немає сирих викликів інструментів (rawAttempts) — перерахувати можна лише результати, збережені після їх появи. Старі файли не перераховуються.'
 
-/** Re-runs the current parse/validation and metrics on the saved raw answers of one case. */
+/**
+ * Re-runs the current parse/validation and metrics on the saved raw answers of one case. The read
+ * rounds are answered again from the case's data (no model call), so a case's refs resolve as they did.
+ */
 export const rescoreResult = (evalCase: EvalCase, saved: CaseResult): CaseResult => {
 	const rawAttempts = saved.rawAttempts ?? []
 	const context = buildCaseContext(evalCase)
@@ -30,26 +40,38 @@ export const rescoreResult = (evalCase: EvalCase, saved: CaseResult): CaseResult
 		textOnlyAnswers: saved.textOnlyAnswers,
 	}
 	const validationErrors: ValidationAttempt[] = []
-	for (const [index, answer] of rawAttempts.entries()) {
-		const attempt = index + 1
+	const readTurn = createReadTurn()
+	const executeRead = createReadExecutor(evalCase, context)
+	let attempt = 0
+	for (const answer of rawAttempts) {
+		if (answer.isReadStep) {
+			runReadStep(readTurn, executeRead, getReadCalls(answer.toolCalls))
+			continue
+		}
+		attempt += 1
 		if (answer.isTruncated)
 			return failedResult(base, usage, {
 				error: OUTPUT_TRUNCATED,
 				attempts: attempt,
 				validationErrors,
 				rawAttempts,
+				reads: readTurn.stats,
 			})
-		const outcome = scoreAttempt({
-			evalCase,
-			context,
-			base,
-			usage,
-			attempt,
-			rawCalls: answer.toolCalls,
-			validationErrors,
-			rawAttempts,
-			statsFollowUp: saved.statsFollowUp,
-		})
+		const wantsRead = answer.toolCalls.some((call) => isReadToolName(call.name))
+		const outcome = wantsRead
+			? { errors: getReadClosedErrors(answer.toolCalls) }
+			: scoreAttempt({
+					evalCase,
+					context,
+					base,
+					usage,
+					attempt,
+					rawCalls: answer.toolCalls,
+					validationErrors,
+					rawAttempts,
+					statsFollowUp: saved.statsFollowUp,
+					reads: readTurn,
+				})
 		if ('result' in outcome) return outcome.result
 		validationErrors.push(
 			toValidationAttempt(
@@ -66,6 +88,7 @@ export const rescoreResult = (evalCase: EvalCase, saved: CaseResult): CaseResult
 		attempts: keptError ? saved.attempts : 1 + AI_VALIDATION_RETRY_COUNT,
 		validationErrors,
 		rawAttempts,
+		reads: readTurn.stats,
 	})
 }
 

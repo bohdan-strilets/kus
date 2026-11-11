@@ -221,7 +221,15 @@ describe('find_food (e2e, real DB, fake model)', () => {
 		const everything = fake.bodies.map((body) => JSON.stringify(body)).join('\n')
 		expect(everything).not.toContain('Секретний батончик')
 		expect(everything).not.toContain('Секретний хумус')
-		expect(everything).not.toContain('Видалений батончик')
 		expect(everything).not.toContain('Видалений хумус')
+		// the owner's own food deleted today is listed on purpose as "Foods forgotten today" (so that
+		// "поверни X" works), but find_food never hands it out
+		expect(everything).toContain('Foods forgotten today: g1 \\"Видалений батончик\\"')
+		const toolResults = fake.bodies
+			.flatMap((body) => (body as { messages: { role: string; content: unknown }[] }).messages)
+			.filter((message) => message.role === 'tool')
+			.map((message) => JSON.stringify(message.content))
+			.join('\n')
+		expect(toolResults).not.toContain('Видалений батончик')
 	})
 })

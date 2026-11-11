@@ -547,7 +547,8 @@ model Message {
   foodEntries        FoodEntry[]
   facts              UserFact[]          @relation("FactSource")
   confirmedFacts     UserFact[]          @relation("FactConfirmation")
-  myFoods            MyFood[]
+  myFoods            MyFood[]            @relation("MyFoodSource")
+  removalProposals   MyFood[]            @relation("MyFoodRemovalProposal")
   exerciseEntries    ExerciseEntry[]
   corrections        Correction[]
   workouts           Workout[]
@@ -771,37 +772,40 @@ model FoodEntry {
 
 // Values are per 100 g only; per-piece label values are converted via pieceGrams by the backend
 model MyFood {
-  id              String       @id @default(uuid(7)) @db.Uuid
-  userId          String       @map("user_id") @db.Uuid
-  name            String
+  id                       String       @id @default(uuid(7)) @db.Uuid
+  userId                   String       @map("user_id") @db.Uuid
+  name                     String
   // lowercased, trimmed, single spaces — computed by the backend; used for uniqueness and lookup
-  nameNormalized  String       @map("name_normalized")
+  nameNormalized           String       @map("name_normalized")
   // stored normalized the same way as nameNormalized
-  aliases         String[]     @default([])
-  brand           String?
-  barcode         String?
-  kcalPer100g     Float        @map("kcal_per_100g")
-  proteinPer100g  Float        @map("protein_per_100g")
-  fatPer100g      Float        @map("fat_per_100g")
-  carbsPer100g    Float        @map("carbs_per_100g")
-  fiberPer100g    Float?       @map("fiber_per_100g")
-  pieceGrams      Float?       @map("piece_grams")
-  defaultGrams    Float?       @map("default_grams")
-  category        FoodCategory @default(plate)
-  source          MyFoodSource
-  usageCount      Int          @default(0) @map("usage_count")
-  lastUsedAt      DateTime?    @map("last_used_at") @db.Timestamptz
+  aliases                  String[]     @default([])
+  brand                    String?
+  barcode                  String?
+  kcalPer100g              Float        @map("kcal_per_100g")
+  proteinPer100g           Float        @map("protein_per_100g")
+  fatPer100g               Float        @map("fat_per_100g")
+  carbsPer100g             Float        @map("carbs_per_100g")
+  fiberPer100g             Float?       @map("fiber_per_100g")
+  pieceGrams               Float?       @map("piece_grams")
+  defaultGrams             Float?       @map("default_grams")
+  category                 FoodCategory @default(plate)
+  source                   MyFoodSource
+  usageCount               Int          @default(0) @map("usage_count")
+  lastUsedAt               DateTime?    @map("last_used_at") @db.Timestamptz
   // the chat message that saved it (save_food); null for a food made by hand on the screen
-  sourceMessageId String?      @map("source_message_id") @db.Uuid
-  createdAt       DateTime     @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt       DateTime     @updatedAt @map("updated_at") @db.Timestamptz
-  deletedAt       DateTime?    @map("deleted_at") @db.Timestamptz
+  sourceMessageId          String?      @map("source_message_id") @db.Uuid
+  // asked "remove it?" in this user message (forget_food, confirmed false); a "yes" only counts in the very next message
+  removalProposedMessageId String?      @map("removal_proposed_message_id") @db.Uuid
+  createdAt                DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt                DateTime     @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt                DateTime?    @map("deleted_at") @db.Timestamptz
 
-  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  sourceMessage     Message?           @relation(fields: [sourceMessageId], references: [id], onDelete: SetNull)
-  foodEntries       FoodEntry[]
-  recipeIngredients RecipeIngredient[]
-  corrections       Correction[]
+  user                   User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sourceMessage          Message?           @relation("MyFoodSource", fields: [sourceMessageId], references: [id], onDelete: SetNull)
+  removalProposedMessage Message?           @relation("MyFoodRemovalProposal", fields: [removalProposedMessageId], references: [id], onDelete: SetNull)
+  foodEntries            FoodEntry[]
+  recipeIngredients      RecipeIngredient[]
+  corrections            Correction[]
 
   // partial: a soft-deleted product doesn't block creating a new one with the same name
   @@unique([userId, nameNormalized], where: raw("deleted_at IS NULL"))
@@ -809,6 +813,7 @@ model MyFood {
   @@index([userId, lastUsedAt])
   @@index([userId, barcode])
   @@index([sourceMessageId])
+  @@index([removalProposedMessageId])
   @@map("my_foods")
 }
 

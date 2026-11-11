@@ -15,12 +15,21 @@ const passiveNames = (id: string): string[] =>
 	buildCaseContext(byId(id)).memory.map(({ name }) => name)
 
 describe('read-tool cases', () => {
-	it('are the fourteen cases of stage 0.11.0, valid, with ids unique across the repo set', () => {
-		expect(READ_TOOL_CASES).toHaveLength(14)
+	it('are the sixteen cases of stages 0.11.0 and 0.11.4, valid, with ids unique across the repo set', () => {
+		expect(READ_TOOL_CASES).toHaveLength(16)
 		const ids = REPO_CASES.map(({ id }) => id)
 		expect(new Set(ids).size).toBe(ids.length)
 		for (const evalCase of READ_TOOL_CASES) {
 			expect(evalCaseSchema.safeParse(evalCase).success, evalCase.id).toBe(true)
+		}
+	})
+
+	it('give the memory-list cases three saved foods and two facts for the lookup to name', () => {
+		for (const id of ['memory-list-all', 'memory-list-foods-only']) {
+			const evalCase = byId(id)
+			expect(evalCase.expect.findFoodCalled, id).toBe(true)
+			expect(evalCase.savedFoods?.length, id).toBe(3)
+			expect(buildCaseContext(evalCase).facts, id).toHaveLength(2)
 		}
 	})
 

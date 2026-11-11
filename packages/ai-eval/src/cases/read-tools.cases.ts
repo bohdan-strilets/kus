@@ -72,6 +72,9 @@ const PROTEIN_BAR_HISTORY: HistoryEntryFixture[] = [
 	},
 ]
 
+const FACT_NO_FISH = 'Не їсть рибу'
+const FACT_TUESDAYS = 'Тренується по вівторках'
+
 const PIZZA = { ref: 'e1', name: 'Піца маргарита', grams: 250, kcal: 640 }
 
 /** The reply must not deny a record that existed, nor confess to a mistake that was not made. */
@@ -324,5 +327,38 @@ export const READ_TOOL_CASES: EvalCase[] = [
 		},
 		reference:
 			'The message carries [in the app before this message: deleted e7 "Протеїновий батончик"], but the question is about the saved foods: both bars are listed and the app change is not mentioned',
+	},
+	{
+		id: 'memory-list-all',
+		text: "що в мене в пам'яті?",
+		savedFoods: [OLIMP, BUCKWHEAT, MILK],
+		context: { facts: [FACT_NO_FISH, FACT_TUESDAYS] },
+		expect: {
+			decision: 'reply',
+			findFoodCalled: true,
+			replyMatches: [
+				'^(?=[\\s\\S]*[Oo]limp)(?=[\\s\\S]*[Гг]речк)(?=[\\s\\S]*[Мм]олок)(?=[\\s\\S]*([Рр]иб|[Вв]івтор))',
+			],
+			replyExcludes: ['не бачу', 'не можу'],
+			memory: NO_MEMORY_CALLS,
+		},
+		reference:
+			'Bug 2026-11-10: «що в мене в памʼяті?» got «не бачу збережених продуктів». With no kind of food, find_food scope saved without a query lists the whole memory; the reply names the foods (Olimp, buckwheat, milk) and at least one fact from «User facts»',
+	},
+	{
+		id: 'memory-list-foods-only',
+		text: 'які продукти в мене збережені?',
+		savedFoods: [OLIMP, BUCKWHEAT, MILK],
+		context: { facts: [FACT_NO_FISH, FACT_TUESDAYS] },
+		expect: {
+			decision: 'reply',
+			findFoodCalled: true,
+			replyMatches: ['^(?=[\\s\\S]*[Oo]limp)(?=[\\s\\S]*[Гг]речк)(?=[\\s\\S]*[Мм]олок)'],
+			replyExcludes: ['не бачу', 'не можу'],
+			replyExcludesWords: ['риб', 'вівтор'],
+			memory: NO_MEMORY_CALLS,
+		},
+		reference:
+			'Only the foods are asked: the saved foods are listed from find_food (scope saved), the facts of «User facts» are not mixed in',
 	},
 ]

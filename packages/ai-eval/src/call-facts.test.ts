@@ -113,6 +113,20 @@ describe('getCallFacts: memory tools', () => {
 		expect(facts.forgets).toEqual([{ ref: 'f2' }])
 	})
 
+	it('reads forget_food and restore_food as the model sent them', () => {
+		const facts = getCallFacts(
+			[
+				call('forget_food', { ref: 'm1', confirmed: false }),
+				call('forget_food', { ref: 'x', confirmed: true }),
+				call('restore_food', { ref: 'g1' }),
+			],
+			TODAY,
+		)
+
+		expect(facts.foodRemovals).toEqual([{ ref: 'm1', confirmed: false }])
+		expect(facts.foodRestores).toEqual([{ ref: 'g1' }])
+	})
+
 	it('skips memory calls with broken arguments', () => {
 		const facts = getCallFacts(
 			[{ name: 'save_fact', arguments: '{oops' }, call('forget_fact', { ref: 'x1' })],

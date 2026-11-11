@@ -6,6 +6,7 @@ import {
 	FACT_REF_PATTERN,
 	factCategorySchema,
 	foodCategorySchema,
+	FORGOTTEN_FOOD_REF_PATTERN,
 	foodSourceSchema,
 	loggableMealTypeSchema,
 	mealTypeSchema,
@@ -199,12 +200,18 @@ export const expectedFactSchema = z.object({
 
 /**
  * What the memory tools must do. Unset part = not judged; `foods: []` / `forgets: []` = none,
- * `fact: null` = no save_fact (NO_MEMORY_CALLS in case-builders.ts sets all three).
+ * `fact: null` = no save_fact (NO_MEMORY_CALLS in case-builders.ts sets all of them).
  */
 export const expectedMemorySchema = z.object({
 	foods: z.array(expectedSavedFoodSchema).optional(),
 	fact: expectedFactSchema.nullable().optional(),
 	forgets: z.array(z.string().regex(FACT_REF_PATTERN)).optional(),
+	/** forget_food calls, exactly these (ref and whether the user agreed); `[]` = none. */
+	foodRemovals: z
+		.array(z.object({ ref: z.string().regex(MEMORY_REF_PATTERN), confirmed: z.boolean() }))
+		.optional(),
+	/** restore_food calls, exactly these g-refs; `[]` = none. */
+	foodRestores: z.array(z.string().regex(FORGOTTEN_FOOD_REF_PATTERN)).optional(),
 })
 
 const countRangeSchema = z

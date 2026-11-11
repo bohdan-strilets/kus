@@ -123,6 +123,37 @@ describe('isMemoryCorrect: forgets and no memory at all', () => {
 		expect(isMemoryCorrect(NO_MEMORY_CALLS, calls({ savedFoods: [food()] }))).toBe(false)
 		expect(isMemoryCorrect(NO_MEMORY_CALLS, calls({ facts: [fact()] }))).toBe(false)
 		expect(isMemoryCorrect(NO_MEMORY_CALLS, calls({ forgets: [{ ref: 'f1' }] }))).toBe(false)
+		expect(
+			isMemoryCorrect(NO_MEMORY_CALLS, calls({ foodRemovals: [{ ref: 'm1', confirmed: false }] })),
+		).toBe(false)
+		expect(isMemoryCorrect(NO_MEMORY_CALLS, calls({ foodRestores: [{ ref: 'g1' }] }))).toBe(false)
+	})
+
+	it('a result saved before the food tools counts as no removals', () => {
+		const { foodRemovals: _removals, foodRestores: _restores, ...old } = EMPTY_CALL_FACTS
+		expect(isMemoryCorrect(NO_MEMORY_CALLS, old)).toBe(true)
+	})
+})
+
+describe('isMemoryCorrect: forget_food and restore_food', () => {
+	it('judges the ref together with whether the user had agreed', () => {
+		const expected: ExpectedMemory = { foodRemovals: [{ ref: 'm1', confirmed: true }] }
+		expect(
+			isMemoryCorrect(expected, calls({ foodRemovals: [{ ref: 'm1', confirmed: true }] })),
+		).toBe(true)
+		expect(
+			isMemoryCorrect(expected, calls({ foodRemovals: [{ ref: 'm1', confirmed: false }] })),
+		).toBe(false)
+		expect(isMemoryCorrect(expected, EMPTY_CALL_FACTS)).toBe(false)
+	})
+
+	it('restores are the same set of g-refs', () => {
+		expect(
+			isMemoryCorrect({ foodRestores: ['g1'] }, calls({ foodRestores: [{ ref: 'g1' }] })),
+		).toBe(true)
+		expect(
+			isMemoryCorrect({ foodRestores: ['g1'] }, calls({ foodRestores: [{ ref: 'g2' }] })),
+		).toBe(false)
 	})
 })
 

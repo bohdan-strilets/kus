@@ -2,11 +2,13 @@ import type {
 	ClarifyKind,
 	ExerciseKind,
 	ForgetFactInput,
+	ForgetFoodInput,
 	GetWorkoutsInput,
 	MeasurementKind,
 	MuscleGroup,
 	ProgramMode,
 	RawToolCall,
+	RestoreFoodInput,
 	SaveFactInput,
 	SaveFoodInput,
 	WorkoutPlace,
@@ -77,6 +79,10 @@ export interface CallFacts {
 	facts: SaveFactInput[]
 	/** Every forget_fact call as the model sent it. */
 	forgets: ForgetFactInput[]
+	/** Every forget_food call as the model sent it; absent in results saved before the tool. */
+	foodRemovals?: ForgetFoodInput[]
+	/** Every restore_food call as the model sent it; absent in results saved before the tool. */
+	foodRestores?: RestoreFoodInput[]
 }
 
 export interface CaseResult {

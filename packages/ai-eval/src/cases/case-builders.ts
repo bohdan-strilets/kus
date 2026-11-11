@@ -21,8 +21,14 @@ export const per100 = (valuePer100g: number, grams: number): ExpectedValue => ({
 
 export const exact = (value: number): ExpectedValue => ({ exact: value })
 
-/** The memory expectation "no memory call at all": no save_food, no save_fact, no forget_fact. */
-export const NO_MEMORY_CALLS: ExpectedMemory = { foods: [], fact: null, forgets: [] }
+/** The memory expectation "no memory call at all": no save_food, save_fact, forget_fact, forget_food, restore_food. */
+export const NO_MEMORY_CALLS: ExpectedMemory = {
+	foods: [],
+	fact: null,
+	forgets: [],
+	foodRemovals: [],
+	foodRestores: [],
+}
 
 export const range = (min: number, max: number): ExpectedValue => ({ min, max })
 

@@ -51,7 +51,11 @@ const areFactsRight = (expected: ExpectedFact | null, actual: SavedFact[]): bool
 	return actual.length === 1 && only !== undefined && isFactRight(expected, only)
 }
 
-/** The memory calls (save_food, save_fact, forget_fact) are exactly what the case expects; unset parts are not judged. */
+/** A forget_food call as one comparable word: the ref and whether the user had agreed. */
+const toRemovalKey = ({ ref, confirmed }: { ref: string; confirmed: boolean }): string =>
+	`${ref}:${confirmed ? 'yes' : 'ask'}`
+
+/** The memory calls (save_food, save_fact, forget_fact, forget_food, restore_food) are exactly what the case expects; unset parts are not judged. */
 export const isMemoryCorrect = (expected: ExpectedMemory, calls: CallFacts): boolean =>
 	(expected.foods === undefined || areFoodsRight(expected.foods, calls.savedFoods)) &&
 	(expected.fact === undefined || areFactsRight(expected.fact, calls.facts)) &&
@@ -59,6 +63,16 @@ export const isMemoryCorrect = (expected: ExpectedMemory, calls: CallFacts): boo
 		isSameSet(
 			expected.forgets,
 			calls.forgets.map(({ ref }) => ref),
+		)) &&
+	(expected.foodRemovals === undefined ||
+		isSameSet(
+			expected.foodRemovals.map(toRemovalKey),
+			(calls.foodRemovals ?? []).map(toRemovalKey),
+		)) &&
+	(expected.foodRestores === undefined ||
+		isSameSet(
+			expected.foodRestores,
+			(calls.foodRestores ?? []).map(({ ref }) => ref),
 		))
 
 /** Every expected saved-food item is logged from it (source MEMORY, its ref) with exactly these grams. */

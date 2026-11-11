@@ -13,6 +13,7 @@ import { LIVE_CHAT_CASES } from './live-chat.cases.js'
 import { MEAL_TYPE_CASES } from './meal-type.cases.js'
 import { MEASUREMENT_CASES } from './measurement.cases.js'
 import { MEMORY_FACT_CASES } from './memory-facts.cases.js'
+import { MEMORY_FORGET_FOOD_CASES } from './memory-forget-food.cases.js'
 import { MEMORY_FOOD_CASES } from './memory-foods.cases.js'
 import { MEMORY_OVERRIDE_CASES } from './memory-override.cases.js'
 import { loadHoldoutCases, loadPrivateCases } from './private-cases.js'
@@ -55,6 +56,7 @@ export const REPO_CASES: EvalCase[] = [
 	...PROGRAM_CASES,
 	...MEMORY_FOOD_CASES,
 	...MEMORY_FACT_CASES,
+	...MEMORY_FORGET_FOOD_CASES,
 	...HISTORY_MARKER_CASES,
 	...LIVE_CHAT_CASES,
 	...READ_TOOL_CASES,

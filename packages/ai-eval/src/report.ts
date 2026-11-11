@@ -148,9 +148,11 @@ const describeMiss = (evalCase: EvalCase, result: CaseResult): Miss[] => {
 		})
 	}
 	if (hasMemoryExpectations(evalCase) && !isCaseMemoryCorrect(evalCase, result)) {
-		const { savedFoods, facts, forgets } = result.calls
+		const { savedFoods, facts, forgets, foodRemovals, foodRestores } = result.calls
 		// the texts of a private or hold-out case stay out of the terminal
-		const got = isHiddenCaseId(evalCase.id) ? '…' : JSON.stringify({ savedFoods, facts, forgets })
+		const got = isHiddenCaseId(evalCase.id)
+			? '…'
+			: JSON.stringify({ savedFoods, facts, forgets, foodRemovals, foodRestores })
 		const findFoodCalls = result.reads?.findFoodCalls ?? 0
 		misses.push({
 			caseId: evalCase.id,

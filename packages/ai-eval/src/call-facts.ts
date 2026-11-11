@@ -1,7 +1,9 @@
 import {
 	forgetFactInputSchema,
+	forgetFoodInputSchema,
 	measurementKindSchema,
 	type RawToolCall,
+	restoreFoodInputSchema,
 	saveFactInputSchema,
 	saveFoodInputSchema,
 	statsDaysSchema,
@@ -40,6 +42,8 @@ export const EMPTY_CALL_FACTS: CallFacts = {
 	savedFoods: [],
 	facts: [],
 	forgets: [],
+	foodRemovals: [],
+	foodRestores: [],
 }
 
 const parseArguments = (text: string): unknown => {
@@ -63,6 +67,8 @@ export const getCallFacts = (rawCalls: RawToolCall[], today: string): CallFacts 
 		savedFoods: [],
 		facts: [],
 		forgets: [],
+		foodRemovals: [],
+		foodRestores: [],
 	}
 	for (const call of rawCalls) {
 		const args = parseArguments(call.arguments)
@@ -104,6 +110,14 @@ export const getCallFacts = (rawCalls: RawToolCall[], today: string): CallFacts 
 		if (call.name === 'forget_fact') {
 			const parsed = forgetFactInputSchema.safeParse(args)
 			if (parsed.success) facts.forgets.push(parsed.data)
+		}
+		if (call.name === 'forget_food') {
+			const parsed = forgetFoodInputSchema.safeParse(args)
+			if (parsed.success) facts.foodRemovals?.push(parsed.data)
+		}
+		if (call.name === 'restore_food') {
+			const parsed = restoreFoodInputSchema.safeParse(args)
+			if (parsed.success) facts.foodRestores?.push(parsed.data)
 		}
 		if (call.name === 'show_stats') {
 			const parsed = showStatsFactsSchema.safeParse(args)

@@ -570,6 +570,9 @@
 			"uploading": "Надсилаю фото…"
 		},
 		"notSent": "Не надіслано",
+		"forgottenFood": "Прибрав «{{name}}» з пам'яті",
+		"forgottenFoods": "Прибрав з пам'яті: {{names}}",
+		"forgottenFoodUndo": "Скасувати",
 		"retry": "Спробувати ще",
 		"sendNow": "Надіслати",
 		"staleNotSent": "Не надіслано {{date}}. Якщо надіслати зараз, запишеться на сьогодні.",

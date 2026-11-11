@@ -9,7 +9,7 @@ import {
 	replaceFeedMessage,
 	useFreshReplyStore,
 } from '@/entities/message'
-import { MY_FOODS_QUERY_KEY } from '@/entities/my-food'
+import { MY_FOODS_QUERY_KEY, useForgottenFoodsStore } from '@/entities/my-food'
 import { useGoalCelebrationStore } from '@/entities/stats'
 import { PROGRAM_QUERY_KEY } from '@/entities/program'
 import { WORKOUTS_QUERY_KEY } from '@/entities/workout'
@@ -147,6 +147,8 @@ export const deliverMessage = async (
 			.getState()
 			.arm(turn.assistantMessage.id, { isQuiet: turn.assistantMessage.achievements.length > 0 })
 		addTurnToFeed(queryClient, turn)
+		// the toast with «Скасувати» lives in React; empty on a replayed turn
+		useForgottenFoodsStore.getState().announce(turn.assistantMessage.forgottenFoods)
 		// earlier cards this turn corrected, deleted from or answered in words
 		for (const updated of turn.updatedMessages) replaceFeedMessage(queryClient, updated)
 		handOver(clientMessageId)

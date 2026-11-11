@@ -2,6 +2,7 @@ import { AnimatePresence } from 'motion/react'
 import { type ReactNode, Suspense, useState } from 'react'
 import { useLocation, useMatch, useOutlet } from 'react-router'
 
+import { useForgottenFoodToast } from '@/features/undo-forget-food'
 import { FEATURES, ROUTES, TRAINING_LIVE_ROUTE } from '@/shared/config'
 import { useUnlockSoundOnFirstTap } from '@/shared/lib'
 import { AppLayout } from '@/shared/ui'
@@ -40,6 +41,8 @@ export const RootLayout = () => {
 	const isStripOffline = useMiniStripOffline()
 	// the first tap anywhere in the app lets iOS play the «кусь» later, outside a gesture
 	useUnlockSoundOnFirstTap()
+	// a food Kusik removed in a reply that arrived on any screen
+	useForgottenFoodToast()
 
 	return (
 		<AppLayout

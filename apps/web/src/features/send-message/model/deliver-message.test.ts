@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { playSound } from '@/shared/lib'
 import { DAY_QUERY_KEY } from '@/entities/day'
 import { FACTS_QUERY_KEY } from '@/entities/fact'
-import { MY_FOODS_QUERY_KEY } from '@/entities/my-food'
+import { MY_FOODS_QUERY_KEY, useForgottenFoodsStore } from '@/entities/my-food'
 import { WORKOUTS_QUERY_KEY } from '@/entities/workout'
 import { MESSAGES_QUERY_KEY, type MessagesPage, useFreshReplyStore } from '@/entities/message'
 import { useGoalCelebrationStore } from '@/entities/stats'
@@ -136,6 +136,28 @@ describe('deliverMessage', () => {
 		expect(invalidate).toHaveBeenCalledWith({ queryKey: WORKOUTS_QUERY_KEY })
 		expect(invalidate).toHaveBeenCalledWith({ queryKey: FACTS_QUERY_KEY })
 		expect(invalidate).toHaveBeenCalledWith({ queryKey: MY_FOODS_QUERY_KEY })
+	})
+
+	it('hands the foods Kusik removed to the undo toast, and nothing on a turn without any', async () => {
+		const client = createClient()
+		const removed = { id: '0199b3a4-0000-7000-8000-0000000000f1', name: 'Батончик' }
+		useForgottenFoodsStore.setState({ foods: [] })
+		vi.mocked(postMessage)
+			.mockResolvedValueOnce({
+				...turn,
+				assistantMessage: { ...turn.assistantMessage, forgottenFoods: [removed] },
+			})
+			.mockResolvedValueOnce(turn)
+
+		await deliverMessage(client, { clientMessageId: CLIENT_ID, text: 'видали батончик' })
+		expect(useForgottenFoodsStore.getState().take()).toEqual([removed])
+
+		await deliverMessage(client, {
+			clientMessageId: CLIENT_ID,
+			text: 'видали батончик',
+			isRetry: true,
+		})
+		expect(useForgottenFoodsStore.getState().foods).toEqual([])
 	})
 
 	it('asks for today with sendNow, and keeps asking on a later retry from the outbox', async () => {

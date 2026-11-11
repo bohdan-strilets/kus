@@ -16,3 +16,4 @@ export {
 } from './lib/my-food-search'
 export { MY_FOODS_QUERY_KEY, myFoodsQueryOptions } from './model/my-foods-query'
 export { MyFoodRow } from './ui/my-food-row/MyFoodRow'
+export { type ForgottenFood, useForgottenFoodsStore } from './model/forgotten-foods-store'

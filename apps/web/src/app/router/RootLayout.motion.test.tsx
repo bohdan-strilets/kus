@@ -40,6 +40,9 @@ vi.mock('@/widgets/bottom-nav', () => ({
 	useTodayProgress: () => 0,
 }))
 
+// needs the toast and query providers, which this test does not mount
+vi.mock('@/features/undo-forget-food', () => ({ useForgottenFoodToast: () => undefined }))
+
 let hasLiveWorkout = true
 vi.mock('@/widgets/workout-mini-strip', async (importOriginal) => ({
 	...(await importOriginal<Record<string, unknown>>()),

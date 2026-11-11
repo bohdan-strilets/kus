@@ -478,6 +478,7 @@ describe('chat memory (e2e, real DB, fake model)', () => {
 					reply('Видалив. Скажи «поверни» — і повернеться.'),
 				]),
 				createCompletion([restoreFood('g1'), reply('Повернув.')]),
+				createCompletion([reply('Будь ласка!')]),
 			)
 
 			const asked = await send(owner, "видали кабаноси з пам'яті")
@@ -498,8 +499,14 @@ describe('chat memory (e2e, real DB, fake model)', () => {
 
 			const restored = await send(owner, 'поверни кабаноси')
 			expect(JSON.stringify(fake.bodies[2])).toContain('Foods forgotten today: g1 \\"Кабаноси\\"')
+			expect(JSON.stringify(fake.bodies[2])).toContain('[Kusik: forgot food \\"Кабаноси\\" g1]')
 			expect(await isDeleted(food.id)).toBe(false)
 			expect(restored.assistantMessage.content).toBe('Повернув.')
+
+			await send(owner, 'дякую')
+			const history = JSON.stringify(fake.bodies[3])
+			expect(history).toContain('[Kusik: forgot food \\"Кабаноси\\"; restored later]')
+			expect(history).toContain('[Kusik: restored food \\"Кабаноси\\"]')
 		})
 
 		it('removes nothing for confirmed true without a question before it', async () => {

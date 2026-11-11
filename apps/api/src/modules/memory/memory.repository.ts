@@ -50,6 +50,11 @@ export class MemoryRepository {
 		})
 	}
 
+	/** Active or deleted foods by id, always the user's own: what the history says about them. */
+	findFoodsByIds({ userId, ids }: { userId: string; ids: string[] }): Promise<MyFood[]> {
+		return this.prisma.myFood.findMany({ where: { userId, id: { in: ids } } })
+	}
+
 	createFood(
 		{ userId, data }: { userId: string; data: NewMyFood },
 		tx: Prisma.TransactionClient,

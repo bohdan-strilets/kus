@@ -78,6 +78,7 @@ const createService = ({
 	const findContextFacts = vi.fn().mockResolvedValue({ confirmed: facts, proposal: null })
 	const getMarkers = vi.fn().mockResolvedValue(markers)
 	const getReadDigests = vi.fn().mockResolvedValue(readDigests)
+	const getFoodActions = vi.fn().mockResolvedValue(new Map())
 	const getEditableEntries = vi.fn().mockResolvedValue(editable)
 	const getDaysKcal = vi.fn().mockResolvedValue(daysKcal)
 	const findInRange = vi
@@ -87,7 +88,7 @@ const createService = ({
 		{ findHistory: vi.fn().mockResolvedValue(history) } as never,
 		{ findOpenClarifications: vi.fn().mockResolvedValue([]) } as never,
 		{ getContext: vi.fn().mockResolvedValue({ earlier: [], copyRefIds: new Map() }) } as never,
-		{ getMarkers, getReadDigests } as never,
+		{ getMarkers, getReadDigests, getFoodActions } as never,
 		{
 			getDaySummary: vi.fn().mockResolvedValue({ totals: {}, meals: [] }),
 			getEditableEntries,

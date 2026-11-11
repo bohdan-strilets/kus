@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common'
 import {
+	AI_TOOL_NAMES,
 	getRejectedFactNotice,
 	FACTS_LIMIT_NOTICE,
 	FOOD_RESTORE_GONE_NOTICE,
@@ -10,6 +11,7 @@ import {
 } from '@kus/shared'
 
 import type { FoodEntry, MyFood, Prisma } from '../../generated/prisma/client'
+import { AiService } from '../ai/ai.service'
 import { EntriesService } from '../entries/entries.service'
 import { FactsService } from '../facts/facts.service'
 import { MyFoodsService } from '../memory/my-foods.service'
@@ -19,6 +21,11 @@ import { toNewChatFood } from '../memory/my-foods.utils'
 export interface SavedFoodRef {
 	id: string
 	name: string
+}
+
+/** A food and the ref the model used for it in this request. */
+interface RefedFood extends SavedFoodRef {
+	ref: string
 }
 
 export interface MemoryTurnParams {
@@ -64,6 +71,7 @@ export class ChatTurnMemoryService {
 		private readonly myFoods: MyFoodsService,
 		private readonly facts: FactsService,
 		private readonly entriesService: EntriesService,
+		private readonly ai: AiService,
 	) {}
 
 	/** Texts and names never reach the log: counts only. */
@@ -72,11 +80,13 @@ export class ChatTurnMemoryService {
 		const forgotten = await this.forget(params, tx)
 		const factNotice = await this.saveFact(params, tx)
 		const savedFoods = await this.saveFoods(params, tx)
-		const forgottenFoods = await this.forgetFoods(params, tx)
+		const removed = await this.forgetFoods(params, tx)
 		await this.proposeFoodRemovals(params, tx)
 		const restore = await this.restoreFoods(params, tx)
+		await this.recordFoodCalls(params, { removed, restored: restore.restored }, tx)
+		const forgottenFoods = removed.map(({ id, name }) => ({ id, name }))
 		this.logger.log(
-			`Memory turn user=${userId} foods=${savedFoods.length}/${memory.foods.length} fact=${memory.fact ? 1 : 0} forgotten=${forgotten}/${memory.forgets.length} foodsRemoved=${forgottenFoods.length}/${memory.foodRemovals.length} foodsRestored=${restore.restored}/${memory.foodRestores.length}`,
+			`Memory turn user=${userId} foods=${savedFoods.length}/${memory.foods.length} fact=${memory.fact ? 1 : 0} forgotten=${forgotten}/${memory.forgets.length} foodsRemoved=${forgottenFoods.length}/${memory.foodRemovals.length} foodsRestored=${restore.restored.length}/${memory.foodRestores.length}`,
 		)
 		return { savedFoods, forgottenFoods, notice: factNotice ?? restore.notice }
 	}
@@ -97,12 +107,35 @@ export class ChatTurnMemoryService {
 		await this.myFoods.proposeRemovalFromChat({ userId, ids, messageId }, tx)
 	}
 
+	/** The history marker of a later turn finds the food through the result of the call that changed it. */
+	private async recordFoodCalls(
+		{ userId, messageId }: MemoryTurnParams,
+		{ removed, restored }: { removed: RefedFood[]; restored: RefedFood[] },
+		tx: Prisma.TransactionClient,
+	): Promise<void> {
+		await this.ai.recordFoodCallResults(
+			{
+				userId,
+				messageId,
+				results: [
+					...removed.map(({ ref, id }) => ({ name: AI_TOOL_NAMES.forgetFood, ref, myFoodId: id })),
+					...restored.map(({ ref, id }) => ({
+						name: AI_TOOL_NAMES.restoreFood,
+						ref,
+						myFoodId: id,
+					})),
+				],
+			},
+			tx,
+		)
+	}
+
 	/** confirmed true: the backend re-checks that the previous message asked about this very food. */
 	private async forgetFoods(
 		{ userId, memory, pendingFoodsByRef, previousUserMessageId }: MemoryTurnParams,
 		tx: Prisma.TransactionClient,
-	): Promise<SavedFoodRef[]> {
-		const forgotten: SavedFoodRef[] = []
+	): Promise<RefedFood[]> {
+		const forgotten: RefedFood[] = []
 		for (const { ref, confirmed } of memory.foodRemovals) {
 			if (!confirmed) continue
 			const food = pendingFoodsByRef.get(ref)
@@ -113,7 +146,7 @@ export class ChatTurnMemoryService {
 				{ userId, id: food.id, previousMessageId: previousUserMessageId },
 				tx,
 			)
-			if (isForgotten) forgotten.push({ id: food.id, name: food.name })
+			if (isForgotten) forgotten.push({ ref, id: food.id, name: food.name })
 		}
 		return forgotten
 	}
@@ -121,15 +154,15 @@ export class ChatTurnMemoryService {
 	private async restoreFoods(
 		{ userId, memory, forgottenFoodsByRef }: MemoryTurnParams,
 		tx: Prisma.TransactionClient,
-	): Promise<{ restored: number; notice: MemoryNotice | null }> {
-		let restored = 0
+	): Promise<{ restored: RefedFood[]; notice: MemoryNotice | null }> {
+		const restored: RefedFood[] = []
 		let notice: MemoryNotice | null = null
 		for (const { ref } of memory.foodRestores) {
 			const food = forgottenFoodsByRef.get(ref)
 			// the parser accepts only refs of this request; a miss here is a bug
 			if (!food) throw new Error('restore_food ref is not mapped')
 			const outcome = await this.myFoods.restoreFromChat({ userId, id: food.id }, tx)
-			if (outcome === 'restored') restored += 1
+			if (outcome === 'restored') restored.push({ ref, id: food.id, name: food.name })
 			if (outcome === 'name_taken') notice = FOOD_RESTORE_NAME_TAKEN_NOTICE
 			if (outcome === 'gone') notice ??= FOOD_RESTORE_GONE_NOTICE
 		}

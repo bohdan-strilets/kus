@@ -281,6 +281,9 @@ export class ChatService {
 					foodRefById: new Map([...memory.byRef].map(([ref, food]) => [food.id, ref])),
 					pendingRemovals: removals.pending,
 					forgottenFoods: removals.forgotten,
+					forgottenRefById: new Map(
+						[...removals.refs.forgottenFoodsByRef].map(([ref, food]) => [food.id, ref]),
+					),
 					...(programOnboarding ? { programOnboarding } : {}),
 				})
 			// the model's reads extend these two maps, and the decision is saved with the same ones

@@ -13,11 +13,24 @@ export interface HistoryActionEntry {
 	grams?: number
 }
 
+/** A saved food a Kusik turn removed from memory or brought back. */
+export interface HistoryFoodAction {
+	name: string
+	/** The `g…` of «Foods forgotten today» when it is there now; null otherwise. */
+	ref: string | null
+	/** A removed food that is saved again now. */
+	isRestoredLater?: boolean
+}
+
 /** What a Kusik turn did to entries that already existed; a kind with nothing is an empty list. */
 export interface HistoryKusikActions {
 	deleted: HistoryActionEntry[]
 	restored: HistoryActionEntry[]
 	corrected: HistoryActionEntry[]
+	/** Saved foods removed from memory (forget_food, agreed). */
+	forgottenFoods?: HistoryFoodAction[]
+	/** Saved foods brought back (restore_food). */
+	restoredFoods?: HistoryFoodAction[]
 }
 
 /** The user changed an entry in the app after the previous message. */
@@ -105,6 +118,9 @@ const DELETED_LATER_BY: Record<HistoryDeletedBy, string> = {
 	app: 'deleted later in the app',
 }
 const DECLINED = 'declined'
+const FOOD_FORGOTTEN_ACTION = 'forgot food'
+const FOOD_RESTORED_ACTION = 'restored food'
+const RESTORED_LATER = 'restored later'
 const KUSIK_WORD = 'Kusik'
 const APP_CHANGES_WORD = 'in the app before this message'
 const APP_CHANGES_MAX = 5
@@ -165,16 +181,34 @@ const formatActionGroup = (word: string, entries: HistoryActionEntry[]): string[
 const toReadPart = (digest: string): string =>
 	digest.replaceAll(/\s+/g, ' ').trim().slice(0, READ_DIGEST_MAX_CHARS)
 
+const formatFoodActions = (
+	word: string,
+	foods: readonly HistoryFoodAction[],
+	{ isShowingRestored }: { isShowingRestored: boolean },
+): string[] =>
+	foods.flatMap(({ name, ref, isRestoredLater }) => [
+		`${word} "${toShortName(name)}"${ref === null ? '' : ` ${ref}`}`,
+		...(isShowingRestored && isRestoredLater ? [RESTORED_LATER] : []),
+	])
+
 /**
- * `[Kusik: deleted e13; restored e16; corrected e7 → 45 g; read workouts 01.11–10.11: 3 (…)]` in front of a
+ * `[Kusik: deleted e13; restored e16; corrected e7 → 45 g; forgot food "Назва" g1; restored later; read workouts 01.11–10.11: 3 (…)]` in front of a
  * reply of Kusik; none without actions or reads.
  */
 export const formatKusikMarkers = ({ kusikActions, reads = [] }: HistoryMarkerFields): string[] => {
-	const { deleted = [], restored = [], corrected = [] } = kusikActions ?? {}
+	const {
+		deleted = [],
+		restored = [],
+		corrected = [],
+		forgottenFoods = [],
+		restoredFoods = [],
+	} = kusikActions ?? {}
 	const parts = [
 		...formatActionGroup('deleted', deleted),
 		...formatActionGroup('restored', restored),
 		...formatActionGroup('corrected', corrected),
+		...formatFoodActions(FOOD_FORGOTTEN_ACTION, forgottenFoods, { isShowingRestored: true }),
+		...formatFoodActions(FOOD_RESTORED_ACTION, restoredFoods, { isShowingRestored: false }),
 		...reads
 			.slice(-READ_DIGESTS_MAX_PER_TURN)
 			.map(toReadPart)

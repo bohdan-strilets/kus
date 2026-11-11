@@ -417,3 +417,66 @@ describe('changes made in the app', () => {
 		expect(formatAppChangeMarkers([])).toEqual([])
 	})
 })
+
+describe('Kusik food memory markers', () => {
+	const none = { deleted: [], restored: [], corrected: [] }
+
+	it('says which saved food Kusik forgot, with the g-ref while it can be brought back', () => {
+		expect(
+			formatKusikMarkers({
+				kusikActions: { ...none, forgottenFoods: [{ name: 'Батончик Olimp', ref: 'g1' }] },
+			}),
+		).toEqual(['[Kusik: forgot food "Батончик Olimp" g1]'])
+	})
+
+	it('leaves the ref out when the food is not among the foods forgotten today', () => {
+		expect(
+			formatKusikMarkers({
+				kusikActions: { ...none, forgottenFoods: [{ name: 'Скир', ref: null }] },
+			}),
+		).toEqual(['[Kusik: forgot food "Скир"]'])
+	})
+
+	it('adds that the food was restored later', () => {
+		expect(
+			formatKusikMarkers({
+				kusikActions: {
+					...none,
+					forgottenFoods: [{ name: 'Скир', ref: 'g2', isRestoredLater: true }],
+				},
+			}),
+		).toEqual(['[Kusik: forgot food "Скир" g2; restored later]'])
+	})
+
+	it('says which food Kusik brought back', () => {
+		expect(
+			formatKusikMarkers({
+				kusikActions: { ...none, restoredFoods: [{ name: 'Скир', ref: null }] },
+			}),
+		).toEqual(['[Kusik: restored food "Скир"]'])
+	})
+
+	it('shortens a long name and cannot be broken out of its quotes', () => {
+		const [marker] = formatKusikMarkers({
+			kusikActions: {
+				...none,
+				forgottenFoods: [{ name: `Х"\n${'а'.repeat(60)}`, ref: null }],
+			},
+		})
+
+		expect(marker).not.toContain('\n')
+		expect(marker).toMatch(/^\[Kusik: forgot food "Х' а+…"\]$/)
+	})
+
+	it('comes after the entry actions in one marker', () => {
+		expect(
+			formatKusikMarkers({
+				kusikActions: {
+					...none,
+					deleted: [{ ref: 'e1' }],
+					forgottenFoods: [{ name: 'Скир', ref: 'g1' }],
+				},
+			}),
+		).toEqual(['[Kusik: deleted e1; forgot food "Скир" g1]'])
+	})
+})

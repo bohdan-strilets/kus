@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common'
-import type { HistoryMarkerFields } from '@kus/shared'
+import type { HistoryFoodAction, HistoryMarkerFields } from '@kus/shared'
 
 import { AiService } from '../ai/ai.service'
 import { FactsService } from '../facts/facts.service'
@@ -18,6 +18,12 @@ export interface HistoryMarkersParams {
 	factRefById: ReadonlyMap<string, string>
 	/** Saved food id → `m1…` of this request. */
 	foodRefById: ReadonlyMap<string, string>
+}
+
+/** What Kusik did to the saved foods answering a user message. */
+export interface HistoryFoodActions {
+	forgottenFoods: HistoryFoodAction[]
+	restoredFoods: HistoryFoodAction[]
 }
 
 const invert = (refIds: ReadonlyMap<string, string>): [string, string][] =>
@@ -44,6 +50,54 @@ export class ChatHistoryMarkersService {
 	 */
 	getReadDigests(userId: string, messageIds: string[]): Promise<ReadonlyMap<string, string[]>> {
 		return this.aiService.findReadDigests(userId, messageIds)
+	}
+
+	/**
+	 * User message id → the saved foods Kusik removed and brought back answering it (forget_food,
+	 * restore_food): the name, the `g…` of this request while the food can still be brought back,
+	 * and whether a removed one is saved again.
+	 */
+	async getFoodActions({
+		userId,
+		messageIds,
+		forgottenRefById,
+	}: {
+		userId: string
+		messageIds: string[]
+		/** Food id → `g1…` of «Foods forgotten today» in this request. */
+		forgottenRefById: ReadonlyMap<string, string>
+	}): Promise<Map<string, HistoryFoodActions>> {
+		const actions = new Map<string, HistoryFoodActions>()
+		const byMessage = await this.aiService.findFoodActions(userId, messageIds)
+		if (byMessage.size === 0) return actions
+		const ids = [...byMessage.values()].flatMap(({ forgotten, restored }) => [
+			...forgotten,
+			...restored,
+		])
+		const foods = new Map(
+			(await this.memoryService.findForHistory(userId, ids)).map((food) => [food.id, food]),
+		)
+		for (const [messageId, { forgotten, restored }] of byMessage) {
+			const forgottenFoods = forgotten.flatMap((id): HistoryFoodAction[] => {
+				const food = foods.get(id)
+				if (!food) return []
+				return [
+					{
+						name: food.name,
+						ref: forgottenRefById.get(id) ?? null,
+						...(food.deletedAt === null ? { isRestoredLater: true } : {}),
+					},
+				]
+			})
+			const restoredFoods = restored.flatMap((id): HistoryFoodAction[] => {
+				const food = foods.get(id)
+				return food ? [{ name: food.name, ref: null }] : []
+			})
+			if (forgottenFoods.length > 0 || restoredFoods.length > 0) {
+				actions.set(messageId, { forgottenFoods, restoredFoods })
+			}
+		}
+		return actions
 	}
 
 	/** Message id → its markers; a message with nothing to mark is absent. */

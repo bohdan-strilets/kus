@@ -66,7 +66,7 @@ import {
 	AiUnavailableException,
 	MessageTooLongException,
 } from './ai.exceptions'
-import { AiRepository } from './ai.repository'
+import { AiRepository, type FoodCallName } from './ai.repository'
 import type { ReadToolExecutor, ReadToolResult } from './read-tool-executor'
 
 const CHAT_COMPLETIONS_PATH = '/chat/completions'
@@ -628,6 +628,46 @@ export class AiService {
 			counts.set(messageId, (counts.get(messageId) ?? 0) + 1)
 		}
 		return counts
+	}
+
+	/** Which food each forget_food (agreed) and restore_food call of the turn changed; in the turn's transaction. */
+	async recordFoodCallResults(
+		params: {
+			userId: string
+			messageId: string
+			results: { name: FoodCallName; ref: string; myFoodId: string }[]
+		},
+		tx: Prisma.TransactionClient,
+	): Promise<void> {
+		await this.aiRepository.setFoodCallResults(params, tx)
+	}
+
+	/**
+	 * Per user message: the ids of the saved foods Kusik removed (forget_food, agreed) and brought
+	 * back (restore_food) answering it. A message parsed twice counts only its latest run.
+	 */
+	async findFoodActions(
+		userId: string,
+		messageIds: string[],
+	): Promise<ReadonlyMap<string, { forgotten: string[]; restored: string[] }>> {
+		const actions = new Map<string, { forgotten: string[]; restored: string[] }>()
+		if (messageIds.length === 0) return actions
+		const rows = await this.aiRepository.findFoodCalls({ userId, messageIds })
+		const latestRunByMessage = new Map<string, { aiRunId: string; at: number }>()
+		for (const { messageId, aiRunId, runCreatedAt } of rows) {
+			const latest = latestRunByMessage.get(messageId)
+			if (!latest || runCreatedAt.getTime() > latest.at) {
+				latestRunByMessage.set(messageId, { aiRunId, at: runCreatedAt.getTime() })
+			}
+		}
+		for (const { messageId, aiRunId, name, myFoodId } of rows) {
+			if (latestRunByMessage.get(messageId)?.aiRunId !== aiRunId) continue
+			const own = actions.get(messageId) ?? { forgotten: [], restored: [] }
+			const ids = name === AI_TOOL_NAMES.forgetFood ? own.forgotten : own.restored
+			if (!ids.includes(myFoodId)) ids.push(myFoodId)
+			actions.set(messageId, own)
+		}
+		return actions
 	}
 
 	/**

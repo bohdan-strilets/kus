@@ -159,3 +159,46 @@ describe('buildCorrectionContext app changes', () => {
 		expect(changes.map(({ ref }) => ref)).toEqual(['e3', null, null, null, null])
 	})
 })
+
+describe('buildCorrectionContext food memory actions', () => {
+	const foodActions = new Map([
+		[
+			'm3',
+			{
+				forgottenFoods: [{ name: 'Скир', ref: 'g1' }],
+				restoredFoods: [],
+			},
+		],
+	])
+
+	it('adds the foods Kusik removed to the actions of the turn, next to the entry actions', () => {
+		const { kusikActionsByMessageId } = buildCorrectionContext({
+			corrections: [toCorrection({ entryId: 'a', messageId: 'm3', createdAt: at(3) })],
+			history: HISTORY,
+			current: CURRENT,
+			refByEntryId: REFS,
+			foodActionsByMessageId: foodActions,
+		})
+
+		expect(kusikActionsByMessageId.get('m3')).toEqual({
+			deleted: [{ ref: 'e1' }],
+			restored: [],
+			corrected: [],
+			forgottenFoods: [{ name: 'Скир', ref: 'g1' }],
+			restoredFoods: [],
+		})
+	})
+
+	it('makes the actions of a turn that only touched memory', () => {
+		const { kusikActionsByMessageId } = buildCorrectionContext({
+			corrections: [],
+			history: HISTORY,
+			current: CURRENT,
+			refByEntryId: REFS,
+			foodActionsByMessageId: foodActions,
+		})
+
+		expect(kusikActionsByMessageId.get('m3')?.forgottenFoods).toEqual([{ name: 'Скир', ref: 'g1' }])
+		expect(kusikActionsByMessageId.has('m1')).toBe(false)
+	})
+})

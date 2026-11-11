@@ -63,6 +63,8 @@ interface BuildContextParams {
 	/** Foods the last reply asked to remove (`m…`) and the ones forgotten today (`g…`). */
 	pendingRemovals?: FoodRefContext[]
 	forgottenFoods?: FoodRefContext[]
+	/** Food id → its `g…` while it is among the foods forgotten today: the history markers show it. */
+	forgottenRefById?: ReadonlyMap<string, string>
 	/** The last step of the training onboarding: its answers, formatted for «Program». */
 	programOnboarding?: string
 }
@@ -193,6 +195,7 @@ export class ChatContextService {
 		message,
 		deletedEntryIds,
 		refByEntryId,
+		forgottenRefById,
 	}: {
 		userId: string
 		/** Oldest first. */
@@ -200,21 +203,28 @@ export class ChatContextService {
 		message: MessageWithAttachments
 		deletedEntryIds: ReadonlySet<string>
 		refByEntryId: ReadonlyMap<string, string>
+		/** Food id → `g1…` of «Foods forgotten today». */
+		forgottenRefById: ReadonlyMap<string, string>
 	}): Promise<HistoryCorrectionContext> {
 		const [oldest] = history
-		const corrections = oldest
-			? await this.entriesService.findHistoryCorrections({
-					userId,
-					entryIds: [...deletedEntryIds],
-					messageIds: history.filter(({ role }) => role === MessageRole.USER).map(({ id }) => id),
-					since: oldest.createdAt,
-				})
-			: []
+		const messageIds = history.filter(({ role }) => role === MessageRole.USER).map(({ id }) => id)
+		const [corrections, foodActionsByMessageId] = await Promise.all([
+			oldest
+				? this.entriesService.findHistoryCorrections({
+						userId,
+						entryIds: [...deletedEntryIds],
+						messageIds,
+						since: oldest.createdAt,
+					})
+				: [],
+			this.historyMarkers.getFoodActions({ userId, messageIds, forgottenRefById }),
+		])
 		return buildCorrectionContext({
 			corrections,
 			history,
 			current: message,
 			refByEntryId,
+			foodActionsByMessageId,
 		})
 	}
 
@@ -231,6 +241,7 @@ export class ChatContextService {
 		foodRefById = new Map(),
 		pendingRemovals = [],
 		forgottenFoods = [],
+		forgottenRefById = new Map(),
 		programOnboarding,
 	}: BuildContextParams): Promise<{
 		context: FoodParseContext
@@ -327,6 +338,7 @@ export class ChatContextService {
 			message,
 			deletedEntryIds,
 			refByEntryId,
+			forgottenRefById,
 		})
 		const historyTurns = oldestFirst.flatMap((turn) =>
 			toHistoryTurns(turn, refByEntryId, entryIdsBySourceMessageId, {

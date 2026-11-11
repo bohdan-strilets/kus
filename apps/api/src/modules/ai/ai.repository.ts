@@ -34,11 +34,28 @@ export interface ForgetCallRow {
 	runCreatedAt: Date
 }
 
+/** forget_food (agreed) and restore_food are the tools that leave a food id in their result. */
+export type FoodCallName = typeof AI_TOOL_NAMES.forgetFood | typeof AI_TOOL_NAMES.restoreFood
+
+export interface FoodCallRow {
+	messageId: string
+	aiRunId: string
+	runCreatedAt: Date
+	name: FoodCallName
+	myFoodId: string
+}
+
 export interface ReadCallRow {
 	messageId: string
 	/** What the read tool stored: `{ text, digest }` for the calls since digests exist. */
 	result: Prisma.JsonValue
 	createdAt: Date
+}
+
+const getStoredFoodId = (result: Prisma.JsonValue): string | null => {
+	if (typeof result !== 'object' || result === null || Array.isArray(result)) return null
+	const { myFoodId } = result
+	return typeof myFoodId === 'string' ? myFoodId : null
 }
 
 interface DailyUsageKey {
@@ -146,6 +163,79 @@ export class AiRepository {
 				? []
 				: [{ messageId: aiRun.messageId, aiRunId, runCreatedAt: aiRun.createdAt }],
 		)
+	}
+
+	/**
+	 * Writes the food a forget_food / restore_food call of the message's latest parse run ended up
+	 * with: the turn knows it only after the model answered. A call is found by its ref.
+	 */
+	async setFoodCallResults(
+		{
+			userId,
+			messageId,
+			results,
+		}: {
+			userId: string
+			messageId: string
+			results: { name: FoodCallName; ref: string; myFoodId: string }[]
+		},
+		tx: Prisma.TransactionClient,
+	): Promise<void> {
+		if (results.length === 0) return
+		const run = await tx.aiRun.findFirst({
+			where: { userId, messageId, purpose: AiRunPurpose.PARSE_FOOD, status: AiRunStatus.SUCCEEDED },
+			orderBy: { createdAt: 'desc' },
+			select: { id: true },
+		})
+		if (!run) return
+		for (const { name, ref, myFoodId } of results) {
+			await tx.aiToolCall.updateMany({
+				where: { aiRunId: run.id, name, input: { path: ['ref'], equals: ref } },
+				data: { result: { myFoodId } },
+			})
+		}
+	}
+
+	/**
+	 * The foods the successful forget_food and restore_food calls of the messages' successful parse
+	 * runs ended up with (see setFoodCallResults); a call that changed nothing has no result.
+	 */
+	async findFoodCalls({
+		userId,
+		messageIds,
+	}: {
+		userId: string
+		messageIds: string[]
+	}): Promise<FoodCallRow[]> {
+		const names: FoodCallName[] = [AI_TOOL_NAMES.forgetFood, AI_TOOL_NAMES.restoreFood]
+		const calls = await this.prisma.aiToolCall.findMany({
+			where: {
+				name: { in: names },
+				status: ToolCallStatus.SUCCEEDED,
+				aiRun: {
+					userId,
+					messageId: { in: messageIds },
+					purpose: AiRunPurpose.PARSE_FOOD,
+					status: AiRunStatus.SUCCEEDED,
+				},
+			},
+			select: {
+				aiRunId: true,
+				name: true,
+				result: true,
+				createdAt: true,
+				aiRun: { select: { messageId: true, createdAt: true } },
+			},
+			orderBy: { createdAt: 'asc' },
+		})
+		return calls.flatMap(({ aiRunId, name, result, aiRun }) => {
+			const myFoodId = getStoredFoodId(result)
+			const isFoodCall = name === AI_TOOL_NAMES.forgetFood || name === AI_TOOL_NAMES.restoreFood
+			if (aiRun.messageId === null || myFoodId === null || !isFoodCall) return []
+			return [
+				{ messageId: aiRun.messageId, aiRunId, runCreatedAt: aiRun.createdAt, name, myFoodId },
+			]
+		})
 	}
 
 	/**

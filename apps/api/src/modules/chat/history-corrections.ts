@@ -6,6 +6,7 @@ import type {
 } from '@kus/shared'
 
 import { MessageRole } from '../../generated/prisma/client'
+import type { HistoryFoodActions } from './chat-history-markers.service'
 import type { HistoryCorrection } from '../entries/history-correction'
 
 /** Most changes made in the app shown in front of one message (the newest ones). */
@@ -19,6 +20,8 @@ export interface HistoryCorrectionInput {
 	current: { id: string; createdAt: Date }
 	/** Entry id → `e…` of this request (active and deleted entries of its window). */
 	refByEntryId: ReadonlyMap<string, string>
+	/** User message id → the saved foods Kusik removed or brought back answering it. */
+	foodActionsByMessageId?: ReadonlyMap<string, HistoryFoodActions>
 }
 
 export interface HistoryCorrectionContext {
@@ -126,6 +129,7 @@ export const buildCorrectionContext = ({
 	history,
 	current,
 	refByEntryId,
+	foodActionsByMessageId = new Map(),
 }: HistoryCorrectionInput): HistoryCorrectionContext => {
 	const deletedBy = new Map<string, HistoryDeletedBy>()
 	for (const { entryId, kind, messageId } of corrections) {
@@ -141,8 +145,16 @@ export const buildCorrectionContext = ({
 	const kusikActionsByMessageId = new Map<string, HistoryKusikActions>()
 	for (const { id, role } of history) {
 		if (role !== MessageRole.USER) continue
-		const actions = toKusikActions(byMessage.get(id) ?? [], refByEntryId)
-		if (actions) kusikActionsByMessageId.set(id, actions)
+		const entryActions = toKusikActions(byMessage.get(id) ?? [], refByEntryId)
+		const foodActions = foodActionsByMessageId.get(id)
+		if (!entryActions && !foodActions) continue
+		kusikActionsByMessageId.set(id, {
+			deleted: [],
+			restored: [],
+			corrected: [],
+			...entryActions,
+			...foodActions,
+		})
 	}
 
 	const appCorrections = corrections.filter(({ messageId }) => messageId === null)

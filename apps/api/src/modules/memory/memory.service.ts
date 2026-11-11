@@ -83,6 +83,12 @@ export class MemoryService {
 		return this.memoryRepository.findBySourceMessages({ userId, messageIds })
 	}
 
+	/** Foods by id, deleted ones too: the history markers of removed and restored foods. */
+	findForHistory(userId: string, ids: string[]): Promise<MyFood[]> {
+		if (ids.length === 0) return Promise.resolve([])
+		return this.memoryRepository.findFoodsByIds({ userId, ids })
+	}
+
 	async markUsed(
 		params: { userId: string; ids: string[]; usedAt: Date },
 		tx: Prisma.TransactionClient,

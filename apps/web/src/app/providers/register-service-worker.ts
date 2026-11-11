@@ -41,6 +41,9 @@ const hasDraft = (): boolean => {
 	)
 }
 
+const hasFocusedField = (): boolean =>
+	document.activeElement?.matches('input, textarea, [contenteditable]') ?? false
+
 /** An open session (the shared query) or sets still waiting for the server (persisted snapshots). */
 const hasLiveWorkout = (): boolean =>
 	Boolean(queryClient.getQueryData<LiveWorkoutResponse | null>(LIVE_WORKOUT_QUERY_KEY)) ||
@@ -55,13 +58,36 @@ export const setupServiceWorker = (): void => {
 
 	let isUpdatePending = false
 	let applyUpdate: (() => Promise<void>) | null = null
+	let activeRegistration: ServiceWorkerRegistration | null = null
+	// a cold start counts as «just came back»: the user opened the app and has not touched it yet
+	let lastVisibleAt: number | null = document.visibilityState === 'visible' ? Date.now() : null
+	let hasInteractedSinceVisible = false
+
+	// registered before the update listener below, so it sees the fresh values
+	document.addEventListener('visibilitychange', () => {
+		const isVisible = document.visibilityState === 'visible'
+		lastVisibleAt = isVisible ? Date.now() : null
+		if (isVisible) hasInteractedSinceVisible = false
+	})
+	// passive: these only observe; preventDefault on pointerdown breaks taps in WebKit
+	const markInteraction = (): void => {
+		hasInteractedSinceVisible = true
+	}
+	document.addEventListener('pointerdown', markInteraction, { capture: true, passive: true })
+	document.addEventListener('keydown', markInteraction, { capture: true, passive: true })
 
 	const tryApply = (trigger: UpdateTrigger): void => {
+		// the flag is spent before an apply; a version that still waits (the apply was refused or did
+		// not take) is picked up again when the tab comes back
+		if (trigger === 'visibility-change' && activeRegistration?.waiting) isUpdatePending = true
 		if (!isUpdatePending || !applyUpdate) return
 		const now = Date.now()
 		const isAllowed = shouldApplyUpdate({
 			trigger,
 			visibilityState: document.visibilityState,
+			lastVisibleAt,
+			hasInteractedSinceVisible,
+			hasFocusedField: hasFocusedField(),
 			isSending: isSending(),
 			hasDraft: hasDraft(),
 			hasLiveWorkout: hasLiveWorkout(),
@@ -83,6 +109,7 @@ export const setupServiceWorker = (): void => {
 		},
 		onRegisteredSW: (_url, registration) => {
 			if (!registration) return
+			activeRegistration = registration
 			const checkForUpdate = (): void => {
 				registration.update().catch(() => {
 					// offline or the server is down: the next check tries again

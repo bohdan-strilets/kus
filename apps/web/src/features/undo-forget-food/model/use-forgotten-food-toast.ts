@@ -46,6 +46,7 @@ export const useForgottenFoodToast = (): void => {
 				? t('chat.forgottenFood', { name: foods[0]?.name })
 				: t('chat.forgottenFoods', { names: foods.map((food) => food.name).join(', ') })
 		toast.show(message, {
+			keepUntilExpired: true,
 			action: {
 				label: t('chat.forgottenFoodUndo'),
 				onClick: () => {

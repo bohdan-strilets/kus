@@ -37,6 +37,7 @@ export const ToastProvider = ({ children }: { children: ReactNode }) => {
 					message,
 					action: options?.action,
 					keepOnNavigation: options?.keepOnNavigation,
+					keepUntilExpired: options?.keepUntilExpired,
 				}
 				// a toast with «Скасувати» replaces the previous one: only the last action can be undone
 				setToasts((current) =>
@@ -46,10 +47,10 @@ export const ToastProvider = ({ children }: { children: ReactNode }) => {
 				)
 			},
 			dismissAll: () => {
-				// a kept toast survives one reset only, then it is an ordinary one
+				// keepOnNavigation survives one reset, then it is ordinary; keepUntilExpired survives all
 				setToasts((current) =>
 					current
-						.filter((toast) => toast.keepOnNavigation)
+						.filter((toast) => toast.keepOnNavigation || toast.keepUntilExpired)
 						.map((toast) => ({ ...toast, keepOnNavigation: false })),
 				)
 			},

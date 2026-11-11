@@ -11,6 +11,8 @@ export interface ToastOptions {
 	action?: ToastAction
 	/** Survives the next route change (shown just before leaving the screen); the one after closes it. */
 	keepOnNavigation?: boolean
+	/** Survives every route change; closes only by its own timer or when a toast with an action replaces it. */
+	keepUntilExpired?: boolean
 }
 
 export interface ToastApi {

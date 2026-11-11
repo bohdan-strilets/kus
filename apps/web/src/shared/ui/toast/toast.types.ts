@@ -5,4 +5,5 @@ export interface ToastItem {
 	message: string
 	action?: ToastAction
 	keepOnNavigation?: boolean
+	keepUntilExpired?: boolean
 }

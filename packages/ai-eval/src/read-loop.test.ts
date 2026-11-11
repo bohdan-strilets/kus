@@ -131,6 +131,21 @@ describe('createReadExecutor', () => {
 		)
 	})
 
+	it('lists the saved foods of the case when find_food has no query', () => {
+		const evalCase = makeCase({ savedFoods: [bar] })
+		const execute = createReadExecutor(evalCase, buildCaseContext(evalCase))
+
+		const outcome = execute({ name: 'find_food', arguments: '{"scope":"saved"}' })
+
+		expect(outcome.text).toContain('m1 "Батончик SportyFeel"')
+		expect(outcome.text).toContain('1 saved in total; ask a name to narrow')
+		expect(outcome.refsPatch).toEqual({ memoryRefs: ['m1'], copyRefs: [] })
+		expect(outcome.memory.map((food) => food.ref)).toEqual(['m1'])
+		expect(execute({ name: 'find_food', arguments: '{"scope":"all"}' }).text).toContain(
+			'invalid arguments',
+		)
+	})
+
 	it('refuses an unknown read tool', () => {
 		const execute = createReadExecutor(makeCase({}), buildCaseContext(makeCase({})))
 

@@ -4,6 +4,9 @@ import { getParseRefs, mergeParseRefs } from './entry-edits.js'
 import {
 	createRefIssuer,
 	FIND_FOOD_DESCRIPTION,
+	FIND_FOOD_INVALID_ARGUMENTS_RESULT,
+	FIND_FOOD_LIST_LIMIT,
+	formatFindFoodDigest,
 	type FindFoodData,
 	type FindFoodHistoryEntry,
 	findFoodInputSchema,
@@ -73,10 +76,95 @@ describe('findFoodInputSchema', () => {
 		})
 	})
 
-	it('rejects an empty or too long query and an unknown scope', () => {
-		expect(findFoodInputSchema.safeParse({ query: '   ' }).success).toBe(false)
+	it('rejects a too long query and an unknown scope', () => {
 		expect(findFoodInputSchema.safeParse({ query: 'x'.repeat(61) }).success).toBe(false)
 		expect(findFoodInputSchema.safeParse({ query: 'bar', scope: 'everywhere' }).success).toBe(false)
+	})
+})
+
+describe('find_food without a query', () => {
+	const food = (
+		index: number,
+		usageCount: number,
+		lastUsedAt: Date | null = null,
+	): FindFoodSavedFood => ({
+		...sportyfeel,
+		key: `id-${index}`,
+		name: `Продукт ${index}`,
+		aliases: [],
+		usageCount,
+		lastUsedAt,
+	})
+	const list = (saved: FindFoodSavedFood[], existing: ExistingRefs = {}) =>
+		runFindFood({
+			input: { scope: 'saved' },
+			data: { saved, history: [sportyEntry] },
+			refs: {
+				saved: createRefIssuer('m', existing.saved ?? []),
+				history: createRefIssuer('h', []),
+			},
+			now: NOW,
+		})
+
+	it('lists the most used foods first and ends with the total', () => {
+		const result = list([
+			food(1, 2),
+			food(2, 9),
+			food(3, 2, new Date('2026-11-08T09:00:00Z')),
+			food(4, 2, new Date('2026-11-01T09:00:00Z')),
+		])
+
+		expect(result.text.split('\n').map((line) => line.split(' — ')[0])).toEqual([
+			'm1 "Продукт 2"',
+			'm2 "Продукт 3"',
+			'm3 "Продукт 4"',
+			'm4 "Продукт 1"',
+			'4 saved in total; ask a name to narrow',
+		])
+		expect(result.refsPatch).toEqual({ memoryRefs: ['m1', 'm2', 'm3', 'm4'], copyRefs: [] })
+		expect(result.foundCount).toBe(4)
+	})
+
+	it('shows at most 20 foods and still counts all of them', () => {
+		const result = list(Array.from({ length: 25 }, (_, index) => food(index, index)))
+		const lines = result.text.split('\n')
+
+		expect(lines).toHaveLength(FIND_FOOD_LIST_LIMIT + 1)
+		expect(lines[0]).toContain('"Продукт 24"')
+		expect(lines.at(-1)).toBe('25 saved in total; ask a name to narrow')
+		expect(result.foundCount).toBe(FIND_FOOD_LIST_LIMIT)
+		expect(result.refsPatch.memoryRefs).toHaveLength(FIND_FOOD_LIST_LIMIT)
+	})
+
+	it('keeps the ref a food already has in the turn', () => {
+		const result = list([food(1, 1)], { saved: [['m4', 'id-1']] })
+
+		expect(result.text).toMatch(/^m4 "Продукт 1"/)
+	})
+
+	it('says so when nothing is saved, without history', () => {
+		const result = list([])
+
+		expect(result.text).toBe('No saved foods')
+		expect(result.refsPatch).toEqual({ memoryRefs: [], copyRefs: [] })
+		expect(result.foundCount).toBe(0)
+	})
+
+	it('is invalid for history and all, which search by name', () => {
+		for (const scope of ['history', 'all'] as const) {
+			const result = runFindFood({
+				input: { scope },
+				data,
+				refs: { saved: createRefIssuer('m', []), history: createRefIssuer('h', []) },
+			})
+			expect(result.text).toBe(FIND_FOOD_INVALID_ARGUMENTS_RESULT)
+			expect(result.foundCount).toBe(0)
+		}
+	})
+
+	it('has a digest without the words', () => {
+		expect(formatFindFoodDigest(undefined, 3)).toBe('read food (all saved): 3 found')
+		expect(formatFindFoodDigest('батончик', 2)).toBe('read food "батончик": 2 found')
 	})
 })
 
@@ -181,6 +269,20 @@ describe('parseFindFoodArguments', () => {
 	it('returns null for broken JSON and for arguments outside the schema', () => {
 		expect(parseFindFoodArguments('{"query":')).toBeNull()
 		expect(parseFindFoodArguments('{"query":""}')).toBeNull()
+		expect(parseFindFoodArguments('{}')).toBeNull()
+		expect(parseFindFoodArguments('[]')).toBeNull()
+		expect(parseFindFoodArguments('{"scope":"history"}')).toBeNull()
+		expect(parseFindFoodArguments('{"query":"   ","scope":"all"}')).toBeNull()
 		expect(parseFindFoodArguments('{"query":"x","scope":"everything"}')).toBeNull()
+	})
+
+	it('allows no query only with scope saved; blank and null count as no query', () => {
+		expect(parseFindFoodArguments('{"scope":"saved"}')).toEqual({ scope: 'saved' })
+		expect(parseFindFoodArguments('{"query":"  ","scope":"saved"}')).toEqual({ scope: 'saved' })
+		expect(parseFindFoodArguments('{"query":null,"scope":"saved"}')).toEqual({ scope: 'saved' })
+		expect(parseFindFoodArguments('{"query":" бар ","scope":"saved"}')).toEqual({
+			query: 'бар',
+			scope: 'saved',
+		})
 	})
 })

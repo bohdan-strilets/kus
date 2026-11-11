@@ -185,7 +185,9 @@ export class ChatReadToolsService {
 		}
 		for (const [ref, key] of refs.history.getIssued()) turn.copyRefIds.set(ref, key)
 		// metadata only: never the query or the names (CLAUDE.md §10.1)
-		this.logger.log(`find_food user=${userId} scope=${input.scope} found=${result.foundCount}`)
+		this.logger.log(
+			`find_food user=${userId} scope=${input.scope} hasQuery=${input.query !== undefined} count=${result.foundCount}`,
+		)
 		return {
 			text: result.text,
 			refsPatch: result.refsPatch,

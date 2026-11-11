@@ -163,7 +163,39 @@ describe('ChatReadToolsService find_food', () => {
 		await find({ query: 'sportyfeel', scope: 'all' })
 
 		const logged = logSpy.mock.calls.map(([line]) => String(line)).join('\n')
-		expect(logged).toBe(`find_food user=${OWNER} scope=all found=2`)
+		expect(logged).toBe(`find_food user=${OWNER} scope=all hasQuery=true count=2`)
+	})
+
+	it('lists only the saved foods of the turn user when there is no query', async () => {
+		const { turn, find, findRecentEntryNames } = create()
+		logSpy.mockClear()
+
+		const own = await find({ scope: 'saved' })
+		// an executor is per turn and user: the stranger's own turn reads the stranger's foods
+		const stranger = await create().find({ scope: 'saved' }, STRANGER)
+
+		expect(own.text).toBe(
+			[
+				'm2 "Батончик SportyFeel" — per 100 g: 376 kcal, P 50 g, F 8 g, C 22 g; 1 piece = 45 g; used 7×, last 07.11; category protein_bar',
+				'1 saved in total; ask a name to narrow',
+			].join('\n'),
+		)
+		expect(stranger.text).toContain('Батончик Секретний')
+		expect(stranger.text).not.toContain('SportyFeel')
+		expect(own.refsPatch).toEqual({ memoryRefs: ['m2'], copyRefs: [] })
+		expect(turn.memory.byRef.get('m2')?.id).toBe('f-own')
+		expect(own.digest).toBe('read food (all saved): 1 found')
+		expect(findRecentEntryNames).not.toHaveBeenCalled()
+		const logged = logSpy.mock.calls.map(([line]) => String(line)).join('\n')
+		expect(logged).toContain(`find_food user=${OWNER} scope=saved hasQuery=false count=1`)
+	})
+
+	it('rejects no query with scope history or all without reading', async () => {
+		const { find, searchFoods } = create()
+
+		expect((await find({ scope: 'history' })).text).toMatch(/^error:/)
+		expect((await find({ scope: 'all' })).text).toMatch(/^error:/)
+		expect(searchFoods).not.toHaveBeenCalled()
 	})
 
 	it('fails the turn for a read tool it does not know', async () => {

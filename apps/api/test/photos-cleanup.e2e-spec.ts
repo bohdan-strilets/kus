@@ -106,6 +106,27 @@ describe('orphan photo cleanup (e2e, real DB, memory storage)', () => {
 			},
 		})
 
+	/** Rows 1..total in one statement: a loop of creates is slow on a local Docker database. */
+	const seedRows = (userId: string, total: number, createdAt: Date) =>
+		prisma.storedFile.createMany({
+			data: Array.from({ length: total }, (_, offset) => {
+				const id = fixedId(offset + 1)
+				return {
+					id,
+					userId,
+					kind: 'MESSAGE_PHOTO' as const,
+					storageKey: `${KEY_PREFIX}/users/${userId}/photos/${id}`,
+					thumbKey: `${KEY_PREFIX}/users/${userId}/photos/${id}-thumb`,
+					mimeType: 'image/jpeg',
+					width: 10,
+					height: 10,
+					sizeBytes: 1,
+					thumbSizeBytes: 1,
+					createdAt,
+				}
+			}),
+		})
+
 	const getErrorCode = (response: Response): string =>
 		apiErrorResponseSchema.parse(response.body).errorCode
 
@@ -348,9 +369,7 @@ describe('orphan photo cleanup (e2e, real DB, memory storage)', () => {
 			await start()
 			const owner = await registerUser(app, 'owner@kus.app')
 			const total = CLEANUP_BATCH_SIZE + 3
-			for (let index = 1; index <= total; index += 1) {
-				await seedRow(owner.userId, index, hoursAgo(TTL_HOURS + 1))
-			}
+			await seedRows(owner.userId, total, hoursAgo(TTL_HOURS + 1))
 
 			const result = await cleanup.cleanupOrphans(new Date())
 
@@ -362,9 +381,7 @@ describe('orphan photo cleanup (e2e, real DB, memory storage)', () => {
 			await start()
 			const owner = await registerUser(app, 'owner@kus.app')
 			const total = CLEANUP_BATCH_SIZE + 3
-			for (let index = 1; index <= total; index += 1) {
-				await seedRow(owner.userId, index, hoursAgo(TTL_HOURS + 1))
-			}
+			await seedRows(owner.userId, total, hoursAgo(TTL_HOURS + 1))
 			// the last file of the first page cannot be deleted
 			const stuck = await prisma.storedFile.findUniqueOrThrow({
 				where: { id: fixedId(CLEANUP_BATCH_SIZE) },

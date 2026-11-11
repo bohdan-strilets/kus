@@ -11,6 +11,7 @@ export const FACT_NOT_SAVED_REPLY = "Цього я не запам'ятав."
 export const FOOD_RESTORE_NAME_TAKEN_REPLY =
 	"Під цією назвою в пам'яті вже є інший продукт — повернути цей не вийшло."
 export const FOOD_RESTORE_GONE_REPLY = 'Цей продукт уже не повернути.'
+export const FOOD_REMOVE_FAILED_REPLY = 'Не вдалося прибрати цей продукт — спробуй ще раз.'
 
 export interface MemoryNotice {
 	text: string
@@ -34,6 +35,13 @@ export const FOOD_RESTORE_NAME_TAKEN_NOTICE: MemoryNotice = {
 
 export const FOOD_RESTORE_GONE_NOTICE: MemoryNotice = {
 	text: FOOD_RESTORE_GONE_REPLY,
+	isQuietUnlessClaimed: false,
+	isReplacing: true,
+}
+
+/** A forget_food the backend did not carry out (a stale ref, the question expired): the «Видалив» would be false. */
+export const FOOD_REMOVE_FAILED_NOTICE: MemoryNotice = {
+	text: FOOD_REMOVE_FAILED_REPLY,
 	isQuietUnlessClaimed: false,
 	isReplacing: true,
 }

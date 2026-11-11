@@ -9,6 +9,8 @@ import {
 	FACT_TOO_LONG_REPLY,
 	FACTS_LIMIT_NOTICE,
 	FACTS_LIMIT_REPLY,
+	FOOD_REMOVE_FAILED_NOTICE,
+	FOOD_REMOVE_FAILED_REPLY,
 	FOOD_RESTORE_NAME_TAKEN_NOTICE,
 	FOOD_RESTORE_NAME_TAKEN_REPLY,
 	getRejectedFactNotice,
@@ -91,5 +93,11 @@ describe('restore_food notices', () => {
 		expect(applyMemoryNotice('Повернув.', FOOD_RESTORE_NAME_TAKEN_NOTICE)).toBe(
 			FOOD_RESTORE_NAME_TAKEN_REPLY,
 		)
+	})
+})
+
+describe('forget_food notice', () => {
+	it('stands instead of a reply that says the food is removed', () => {
+		expect(applyMemoryNotice('Видалив.', FOOD_REMOVE_FAILED_NOTICE)).toBe(FOOD_REMOVE_FAILED_REPLY)
 	})
 })

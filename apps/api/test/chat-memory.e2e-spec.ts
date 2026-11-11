@@ -54,6 +54,8 @@ const forgetFood = (ref: string, confirmed: boolean): FakeToolCall => ({
 	args: { ref, confirmed },
 })
 
+const findFood = (args: Record<string, unknown>): FakeToolCall => ({ name: 'find_food', args })
+
 const restoreFood = (ref: string): FakeToolCall => ({ name: 'restore_food', args: { ref } })
 
 const HOUR_MS = 60 * 60 * 1000
@@ -507,6 +509,50 @@ describe('chat memory (e2e, real DB, fake model)', () => {
 			const history = JSON.stringify(fake.bodies[3])
 			expect(history).toContain('[Kusik: forgot food \\"Кабаноси\\"; restored later]')
 			expect(history).toContain('[Kusik: restored food \\"Кабаноси\\"]')
+		})
+
+		it('removes a food found by find_food (not named in the message) only after a question and a "yes"', async () => {
+			await start()
+			const owner = await registerUser('owner@kus.app')
+			const food = await seedFood(owner, 'Кабаноси')
+			fake.respond(
+				createCompletion([findFood({ query: 'кабаноси', scope: 'saved' })]),
+				createCompletion([forgetFood('m1', false), reply('Видалити «Кабаноси» з пам’яті?')]),
+				createCompletion([forgetFood('m1', true), reply('Видалив.')]),
+			)
+
+			const asked = await send(owner, 'прибери ту ковбасу')
+			expect(JSON.stringify(fake.bodies[1])).toContain('m1 \\"Кабаноси\\"')
+			expect(await isDeleted(food.id)).toBe(false)
+			expect(
+				(await prisma.myFood.findUniqueOrThrow({ where: { id: food.id } }))
+					.removalProposedMessageId,
+			).toBe(asked.userMessage.id)
+			expect(asked.assistantMessage.forgottenFoods).toEqual([])
+
+			const agreed = await send(owner, 'так')
+
+			expect(await isDeleted(food.id)).toBe(true)
+			expect(agreed.assistantMessage.forgottenFoods).toEqual([{ id: food.id, name: 'Кабаноси' }])
+		})
+
+		it('removes nothing for confirmed true after an unrelated message, even for a found food', async () => {
+			await start()
+			const owner = await registerUser('owner@kus.app')
+			const food = await seedFood(owner, 'Кабаноси')
+			fake.respond(
+				createCompletion([findFood({ query: 'кабаноси', scope: 'saved' })]),
+				createCompletion([forgetFood('m1', false), reply('Видалити?')]),
+				createCompletion([reply('Привіт!')]),
+				createCompletion([forgetFood('m1', true), reply('Видалив.')]),
+				createCompletion([reply('Не бачу, що видаляти.')]),
+			)
+
+			await send(owner, 'прибери ту ковбасу')
+			await send(owner, 'привіт')
+			await send(owner, 'так')
+
+			expect(await isDeleted(food.id)).toBe(false)
 		})
 
 		it('removes nothing for confirmed true without a question before it', async () => {

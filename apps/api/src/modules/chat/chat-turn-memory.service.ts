@@ -2,7 +2,9 @@ import { Injectable, Logger } from '@nestjs/common'
 import {
 	AI_TOOL_NAMES,
 	getRejectedFactNotice,
+	MAX_FOOD_REMOVALS_PER_MESSAGE,
 	FACTS_LIMIT_NOTICE,
+	FOOD_REMOVE_FAILED_NOTICE,
 	FOOD_RESTORE_GONE_NOTICE,
 	FOOD_RESTORE_NAME_TAKEN_NOTICE,
 	type MemoryActions,
@@ -75,36 +77,65 @@ export class ChatTurnMemoryService {
 	) {}
 
 	/** Texts and names never reach the log: counts only. */
-	async apply(params: MemoryTurnParams, tx: Prisma.TransactionClient): Promise<MemoryTurnResult> {
-		const { userId, memory } = params
+	async apply(
+		turnParams: MemoryTurnParams,
+		tx: Prisma.TransactionClient,
+	): Promise<MemoryTurnResult> {
+		const { userId, memory } = turnParams
+		const params = this.capFoodCalls(turnParams)
 		const forgotten = await this.forget(params, tx)
 		const factNotice = await this.saveFact(params, tx)
 		const savedFoods = await this.saveFoods(params, tx)
-		const removed = await this.forgetFoods(params, tx)
-		await this.proposeFoodRemovals(params, tx)
+		const { forgotten: removed, notice: removeNotice } = await this.forgetFoods(params, tx)
+		const proposeNotice = await this.proposeFoodRemovals(params, tx)
 		const restore = await this.restoreFoods(params, tx)
 		await this.recordFoodCalls(params, { removed, restored: restore.restored }, tx)
 		const forgottenFoods = removed.map(({ id, name }) => ({ id, name }))
 		this.logger.log(
 			`Memory turn user=${userId} foods=${savedFoods.length}/${memory.foods.length} fact=${memory.fact ? 1 : 0} forgotten=${forgotten}/${memory.forgets.length} foodsRemoved=${forgottenFoods.length}/${memory.foodRemovals.length} foodsRestored=${restore.restored.length}/${memory.foodRestores.length}`,
 		)
-		return { savedFoods, forgottenFoods, notice: factNotice ?? restore.notice }
+		return {
+			savedFoods,
+			forgottenFoods,
+			notice: factNotice ?? removeNotice ?? proposeNotice ?? restore.notice,
+		}
 	}
 
-	/** confirmed false: only remembers which message asked; nothing is deleted. */
+	/** The parser caps the calls too; the service keeps its own guard so a bypassed parser cannot delete more. */
+	private capFoodCalls(params: MemoryTurnParams): MemoryTurnParams {
+		const { userId, memory } = params
+		const skipped =
+			Math.max(0, memory.foodRemovals.length - MAX_FOOD_REMOVALS_PER_MESSAGE) +
+			Math.max(0, memory.foodRestores.length - MAX_FOOD_REMOVALS_PER_MESSAGE)
+		if (skipped === 0) return params
+		this.logger.warn(`Food calls over the limit user=${userId} skipped=${skipped}`)
+		return {
+			...params,
+			memory: {
+				...memory,
+				foodRemovals: memory.foodRemovals.slice(0, MAX_FOOD_REMOVALS_PER_MESSAGE),
+				foodRestores: memory.foodRestores.slice(0, MAX_FOOD_REMOVALS_PER_MESSAGE),
+			},
+		}
+	}
+
+	/** confirmed false: only remembers which message asked; nothing is deleted. A ref that vanished proposes nothing. */
 	private async proposeFoodRemovals(
 		{ userId, messageId, memory, foodsByRef }: MemoryTurnParams,
 		tx: Prisma.TransactionClient,
-	): Promise<void> {
+	): Promise<MemoryNotice | null> {
 		const asked = memory.foodRemovals.filter(({ confirmed }) => !confirmed)
-		if (asked.length === 0) return
-		const ids = asked.map(({ ref }) => {
+		const ids: string[] = []
+		for (const { ref } of asked) {
 			const food = foodsByRef.get(ref)
-			// the parser accepts only refs of this request; a miss here is a bug
-			if (!food) throw new Error('forget_food ref is not mapped')
-			return food.id
-		})
-		await this.myFoods.proposeRemovalFromChat({ userId, ids, messageId }, tx)
+			if (food) ids.push(food.id)
+		}
+		const missed = asked.length - ids.length
+		if (missed > 0) this.logger.warn(`forget_food ref not mapped user=${userId} count=${missed}`)
+		if (ids.length > 0) {
+			await this.myFoods.proposeRemovalFromChat({ userId, ids, messageId }, tx)
+		}
+		return missed > 0 ? FOOD_REMOVE_FAILED_NOTICE : null
 	}
 
 	/** The history marker of a later turn finds the food through the result of the call that changed it. */
@@ -134,21 +165,25 @@ export class ChatTurnMemoryService {
 	private async forgetFoods(
 		{ userId, memory, pendingFoodsByRef, previousUserMessageId }: MemoryTurnParams,
 		tx: Prisma.TransactionClient,
-	): Promise<RefedFood[]> {
+	): Promise<{ forgotten: RefedFood[]; notice: MemoryNotice | null }> {
 		const forgotten: RefedFood[] = []
+		let failed = 0
 		for (const { ref, confirmed } of memory.foodRemovals) {
 			if (!confirmed) continue
 			const food = pendingFoodsByRef.get(ref)
-			// the parser accepts only refs of this request; a miss here is a bug
-			if (!food) throw new Error('forget_food ref is not pending')
-			if (previousUserMessageId === null) continue
+			if (!food || previousUserMessageId === null) {
+				failed += 1
+				continue
+			}
 			const isForgotten = await this.myFoods.forgetFromChat(
 				{ userId, id: food.id, previousMessageId: previousUserMessageId },
 				tx,
 			)
 			if (isForgotten) forgotten.push({ ref, id: food.id, name: food.name })
+			else failed += 1
 		}
-		return forgotten
+		if (failed > 0) this.logger.warn(`forget_food not carried out user=${userId} count=${failed}`)
+		return { forgotten, notice: failed > 0 ? FOOD_REMOVE_FAILED_NOTICE : null }
 	}
 
 	private async restoreFoods(

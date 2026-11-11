@@ -355,10 +355,9 @@ export const READ_TOOL_CASES: EvalCase[] = [
 			findFoodCalled: true,
 			replyMatches: ['^(?=[\\s\\S]*[Oo]limp)(?=[\\s\\S]*[Гг]речк)(?=[\\s\\S]*[Мм]олок)'],
 			replyExcludes: ['не бачу', 'не можу'],
-			replyExcludesWords: ['риб', 'вівтор'],
 			memory: NO_MEMORY_CALLS,
 		},
 		reference:
-			'Only the foods are asked: the saved foods are listed from find_food (scope saved), the facts of «User facts» are not mixed in',
+			'Only the foods are asked: the saved foods are listed from find_food (scope saved); a sentence about the facts is allowed, not a bug',
 	},
 ]

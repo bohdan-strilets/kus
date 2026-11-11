@@ -28,6 +28,7 @@ import { rescoreResults } from './rescore.js'
 import { loadResultsFile } from './results-store.js'
 import { createLedger } from './stage-ledger.js'
 import { planStageRun, requireLedger, type StagePlan } from './stage-run.js'
+import { assertSharedBuildFreshOnDisk } from './stale-shared-guard.js'
 
 const SOFT_STOP_EXIT_CODE = 2
 
@@ -51,6 +52,8 @@ const rescore = async (file: string): Promise<void> => {
 }
 
 const main = async (): Promise<void> => {
+	// before the ledger, the key and any request: a stale dist runs an old prompt and wastes the budget
+	await assertSharedBuildFreshOnDisk()
 	if (args.rescore !== undefined) {
 		await rescore(args.rescore)
 		return

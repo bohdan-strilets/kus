@@ -14,6 +14,7 @@ import { MemoryService } from '../memory/memory.service'
 import { UsersService } from '../users/users.service'
 import { ChatContextService } from './chat-context.service'
 import { NO_EDITED_MESSAGES } from './chat-edits.service'
+import { ChatFoodRemovalsService } from './chat-food-removals.service'
 import { ChatReadToolsService } from './chat-read-tools.service'
 import { ChatResponseService } from './chat-response.service'
 import {
@@ -66,6 +67,7 @@ export class ChatService {
 		private readonly aiService: AiService,
 		private readonly aiUsage: AiUsageService,
 		private readonly memoryService: MemoryService,
+		private readonly foodRemovals: ChatFoodRemovalsService,
 		private readonly usersService: UsersService,
 		private readonly measurementsService: MeasurementsService,
 		private readonly trainingOnboarding: ChatTrainingOnboardingService,
@@ -259,6 +261,15 @@ export class ChatService {
 				hasPhoto: photo !== undefined,
 			})
 			const memory = await this.memoryService.findRelevantFoods(userId, params.text ?? '')
+			// extends memory.byRef with the foods the last reply asked to remove
+			const removals = await this.foodRemovals.load({
+				userId,
+				messageId: message.id,
+				now: params.now,
+				localDate: params.localDate,
+				timezone: params.timezone,
+				memory,
+			})
 			// a live session left alone for more than 3 h is closed before the model reads «Today's
 			// workouts», so the message never appends to it; its summary is a message of its own
 			const autoClosed = await this.workoutSummary.closeIdleLive({ userId, now: params.now })
@@ -268,6 +279,8 @@ export class ChatService {
 					...params,
 					memory: memory.context,
 					foodRefById: new Map([...memory.byRef].map(([ref, food]) => [food.id, ref])),
+					pendingRemovals: removals.pending,
+					forgottenFoods: removals.forgotten,
 					...(programOnboarding ? { programOnboarding } : {}),
 				})
 			// the model's reads extend these two maps, and the decision is saved with the same ones
@@ -301,6 +314,7 @@ export class ChatService {
 				workoutRefIds,
 				copyRefIds: turnCopyRefIds,
 				factRefIds,
+				foodRemovals: removals.refs,
 				templateRefIds,
 				turnStartedAt,
 				requestStatsAdvice:

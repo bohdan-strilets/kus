@@ -24,7 +24,12 @@ import {
 	WorkoutsTurnService,
 } from '../workouts/workouts-turn.service'
 import { formatDbDate, getLocalHour } from '../../common/time'
-import { AttachmentStatus, MeasurementKind, type Prisma } from '../../generated/prisma/client'
+import {
+	AttachmentStatus,
+	MeasurementKind,
+	type MyFood,
+	type Prisma,
+} from '../../generated/prisma/client'
 import { PrismaService } from '../../prisma'
 import { AchievementsService } from '../achievements/achievements.service'
 import { getStatsAdviceDeadlineMs } from '../ai/stats-advice-budget'
@@ -82,6 +87,8 @@ export interface TurnResult extends EditedMessages {
 	replacedMeasurementMessageIds: string[]
 	/** Foods saved to memory by this turn; live in the response only. */
 	savedFoods?: SavedFoodRef[]
+	/** Foods the user agreed to remove and this turn removed from memory; live in the response only. */
+	forgottenFoods?: SavedFoodRef[]
 	/** A workout record the sessions did not hold before this turn; live in the response only. */
 	hasNewWorkoutRecord?: boolean
 }
@@ -91,7 +98,30 @@ interface MemoryTurn {
 	actions: MemoryActions
 	foodsByRef: RelevantFoods['byRef']
 	factIdByRef: ReadonlyMap<string, string>
+	removals: FoodRemovalRefs
 }
+
+/** The foods behind the `m…` of «Foods to remove» and the `g…` of «Foods forgotten today» of a turn. */
+export interface FoodRemovalRefs {
+	pendingFoodsByRef: ReadonlyMap<string, MyFood>
+	forgottenFoodsByRef: ReadonlyMap<string, MyFood>
+	/** The user's message before this one; null = none, and no "yes" can count. */
+	previousUserMessageId: string | null
+}
+
+export const NO_FOOD_REMOVAL_REFS: FoodRemovalRefs = {
+	pendingFoodsByRef: new Map(),
+	forgottenFoodsByRef: new Map(),
+	previousUserMessageId: null,
+}
+
+/** What the memory tools of a turn gave back for the response. */
+interface MemoryOutcome {
+	savedFoods: SavedFoodRef[]
+	forgottenFoods: SavedFoodRef[]
+}
+
+const NO_MEMORY_OUTCOME: MemoryOutcome = { savedFoods: [], forgottenFoods: [] }
 
 const hasWeight = (measurements: LogMeasurementInput[]): boolean =>
 	measurements.some(({ kind }) => kind === MeasurementKind.WEIGHT)
@@ -192,6 +222,7 @@ export class ChatTurnService {
 			workoutRefIds = NO_WORKOUT_REFS,
 			copyRefIds,
 			factRefIds = NO_FACT_REFS,
+			foodRemovals = NO_FOOD_REMOVAL_REFS,
 			templateRefIds = NO_TEMPLATE_REFS,
 			requestStatsAdvice,
 			turnStartedAt = Date.now(),
@@ -203,6 +234,8 @@ export class ChatTurnService {
 			copyRefIds: CopyRefIds
 			/** `f1…` → fact ids; omitted where the context had no facts. */
 			factRefIds?: ReadonlyMap<string, string>
+			/** The foods «Foods to remove» and «Foods forgotten today» showed; omitted = none. */
+			foodRemovals?: FoodRemovalRefs
 			/** `t1…` of «Program»; omitted where the context had no program. */
 			templateRefIds?: TemplateRefIds
 			/** The second model call of «summary and advice»; without it a stats card is just the card. */
@@ -242,7 +275,12 @@ export class ChatTurnService {
 		const memoryTurn: MemoryTurn | null =
 			(decision.kind === 'log' || decision.kind === 'reply' || decision.kind === 'edit') &&
 			hasMemoryActions(decision.memory)
-				? { actions: decision.memory, foodsByRef: memory.byRef, factIdByRef: factRefIds }
+				? {
+						actions: decision.memory,
+						foodsByRef: memory.byRef,
+						factIdByRef: factRefIds,
+						removals: foodRemovals,
+					}
 				: null
 		return this.prisma.$transaction(async (tx) => {
 			const reply = await this.chatRepository.completeTurn(
@@ -279,7 +317,7 @@ export class ChatTurnService {
 					decision,
 					tx,
 				)
-				const savedFoods = await this.saveMemory(
+				const memoryOutcome = await this.saveMemory(
 					{ userId, message, replyId: reply.id, replyText, hasPhoto: photo !== undefined },
 					{ memoryTurn, entryIds: [] },
 					tx,
@@ -296,7 +334,7 @@ export class ChatTurnService {
 					},
 					tx,
 				)
-				return { ...NO_EDITED_MESSAGES, replacedMeasurementMessageIds: replaced, savedFoods }
+				return { ...NO_EDITED_MESSAGES, replacedMeasurementMessageIds: replaced, ...memoryOutcome }
 			}
 			if (decision.kind === 'close_day') {
 				return this.saveClosedDay(
@@ -335,7 +373,7 @@ export class ChatTurnService {
 				tx,
 			)
 			if (decision.kind === 'edit') {
-				const savedFoods = await this.saveMemory(
+				const memoryOutcome = await this.saveMemory(
 					{ userId, message, replyId: reply.id, replyText, hasPhoto: photo !== undefined },
 					{ memoryTurn, entryIds: [] },
 					tx,
@@ -353,7 +391,7 @@ export class ChatTurnService {
 					},
 					tx,
 				)
-				return { ...edited, replacedMeasurementMessageIds: [], savedFoods }
+				return { ...edited, replacedMeasurementMessageIds: [], ...memoryOutcome }
 			}
 
 			const copies = await this.loadCopySources(
@@ -375,7 +413,7 @@ export class ChatTurnService {
 			)
 			const usedFoodIds = [...new Set(entries.flatMap(({ entry }) => entry.myFoodId ?? []))]
 			await this.memoryService.markUsed({ userId, ids: usedFoodIds, usedAt: now }, tx)
-			const savedFoods = await this.saveMemory(
+			const memoryOutcome = await this.saveMemory(
 				{ userId, message, replyId: reply.id, replyText, hasPhoto: photo !== undefined },
 				{ memoryTurn, entryIds },
 				tx,
@@ -438,14 +476,14 @@ export class ChatTurnService {
 					message.id,
 				],
 				replacedMeasurementMessageIds: replaced,
-				savedFoods,
+				...memoryOutcome,
 				hasNewWorkoutRecord: workoutMessages.hasNewRecord,
 			}
 		})
 	}
 
 	/**
-	 * save_food, save_fact and forget_fact, after the entries they may point at. A notice (limit, a
+	 * The memory tools, after the entries they may point at. A notice (limit, a
 	 * fact the guard refused) goes into the reply text in this same transaction, so the history shows it.
 	 */
 	private async saveMemory(
@@ -458,8 +496,8 @@ export class ChatTurnService {
 		},
 		{ memoryTurn, entryIds }: { memoryTurn: MemoryTurn | null; entryIds: readonly string[] },
 		tx: Prisma.TransactionClient,
-	): Promise<SavedFoodRef[]> {
-		if (!memoryTurn) return []
+	): Promise<MemoryOutcome> {
+		if (!memoryTurn) return NO_MEMORY_OUTCOME
 		const { userId, message, replyId, replyText, hasPhoto } = params
 		const result = await this.turnMemory.apply(
 			{
@@ -468,6 +506,7 @@ export class ChatTurnService {
 				memory: memoryTurn.actions,
 				foodsByRef: memoryTurn.foodsByRef,
 				factIdByRef: memoryTurn.factIdByRef,
+				...memoryTurn.removals,
 				entryIds,
 				hasPhoto,
 			},
@@ -477,7 +516,7 @@ export class ChatTurnService {
 		if (content !== replyText) {
 			await this.chatRepository.setReplyContent({ userId, id: replyId, content }, tx)
 		}
-		return result.savedFoods
+		return { savedFoods: result.savedFoods, forgottenFoods: result.forgottenFoods }
 	}
 
 	/** reply(attach: program) only: the active program as it is now; undefined without one. */

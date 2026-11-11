@@ -14,6 +14,7 @@ import {
 	MAX_CONTEXT_OPEN_CLARIFICATIONS,
 	MEASUREMENT_FIX_MAX_DAYS,
 	type MeasurementsContext,
+	type FoodRefContext,
 	type MemoryFoodContext,
 	type RecentMeasurementContext,
 	shiftDate,
@@ -59,6 +60,9 @@ interface BuildContextParams {
 	memory: MemoryFoodContext[]
 	/** Saved food id → its `m1…` in `memory`: the history says which turn saved it. */
 	foodRefById?: ReadonlyMap<string, string>
+	/** Foods the last reply asked to remove (`m…`) and the ones forgotten today (`g…`). */
+	pendingRemovals?: FoodRefContext[]
+	forgottenFoods?: FoodRefContext[]
 	/** The last step of the training onboarding: its answers, formatted for «Program». */
 	programOnboarding?: string
 }
@@ -225,6 +229,8 @@ export class ChatContextService {
 		localDate,
 		memory,
 		foodRefById = new Map(),
+		pendingRemovals = [],
+		forgottenFoods = [],
 		programOnboarding,
 	}: BuildContextParams): Promise<{
 		context: FoodParseContext
@@ -367,6 +373,9 @@ export class ChatContextService {
 				// no block at all unless there is a fact or a proposal
 				...(factContexts.length > 0 ? { facts: factContexts } : {}),
 				...(facts.proposal ? { proposedFact: facts.proposal.text } : {}),
+				// the lines are only there while there is something to answer or to bring back
+				...(pendingRemovals.length > 0 ? { pendingRemovals } : {}),
+				...(forgottenFoods.length > 0 ? { forgottenFoods } : {}),
 				// no section at all unless the message points back
 				...(earlier.earlier.length > 0 ? { earlier: earlier.earlier } : {}),
 				// «Program»: always with a program or an open proposal; without them only for a talk about

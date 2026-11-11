@@ -32,6 +32,8 @@ describe('getAiFunctionTools', () => {
 			'save_food',
 			'save_fact',
 			'forget_fact',
+			'forget_food',
+			'restore_food',
 			'reply',
 			'find_food',
 			'get_workouts',

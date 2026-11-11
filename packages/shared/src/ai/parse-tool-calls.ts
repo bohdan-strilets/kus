@@ -67,8 +67,12 @@ import { getMemoryErrors } from './memory-errors.js'
 import {
 	type ForgetFactInput,
 	forgetFactInputSchema,
+	type ForgetFoodInput,
+	forgetFoodInputSchema,
 	hasMemoryActions,
 	type MemoryActions,
+	type RestoreFoodInput,
+	restoreFoodInputSchema,
 	type SaveFactInput,
 	saveFactInputSchema,
 	type SaveFoodInput,
@@ -175,6 +179,8 @@ type ValidatedCall =
 	| { name: typeof AI_TOOL_NAMES.saveFood; data: SaveFoodInput }
 	| { name: typeof AI_TOOL_NAMES.saveFact; data: SaveFactInput }
 	| { name: typeof AI_TOOL_NAMES.forgetFact; data: ForgetFactInput }
+	| { name: typeof AI_TOOL_NAMES.forgetFood; data: ForgetFoodInput }
+	| { name: typeof AI_TOOL_NAMES.restoreFood; data: RestoreFoodInput }
 	| { name: typeof AI_TOOL_NAMES.reply; data: ReplyInput }
 
 type InputParse = { ok: true; call: ValidatedCall } | { ok: false; error: z.ZodError }
@@ -214,6 +220,10 @@ const parseInput = (name: AiToolName, value: unknown): InputParse => {
 			return toInputParse(saveFactInputSchema.safeParse(value), (data) => ({ name, data }))
 		case AI_TOOL_NAMES.forgetFact:
 			return toInputParse(forgetFactInputSchema.safeParse(value), (data) => ({ name, data }))
+		case AI_TOOL_NAMES.forgetFood:
+			return toInputParse(forgetFoodInputSchema.safeParse(value), (data) => ({ name, data }))
+		case AI_TOOL_NAMES.restoreFood:
+			return toInputParse(restoreFoodInputSchema.safeParse(value), (data) => ({ name, data }))
 		case AI_TOOL_NAMES.clarify:
 			return toInputParse(clarifyInputSchema.safeParse(value), (data) => ({ name, data }))
 		case AI_TOOL_NAMES.correctEntry:
@@ -382,7 +392,7 @@ const NO_PHOTO_ERROR =
 	'photo_unusable: this message has no photo — answer with reply (or not_food) instead'
 
 const MEMORY_ANSWER_ERROR =
-	'save_food, save_fact and forget_fact go together with log_food or reply (also next to edit tools) — not with not_food, photo_unusable, show_day, close_day, show_stats, or log_workout without log_food'
+	'save_food, save_fact, forget_fact, forget_food and restore_food go together with log_food or reply (also next to edit tools) — not with not_food, photo_unusable, show_day, close_day, show_stats, or log_workout without log_food'
 const ONE_FACT_ERROR = 'save_fact: at most one per message'
 
 /**
@@ -481,6 +491,12 @@ const decide = (
 		foods: valid.flatMap((call) => (call.name === AI_TOOL_NAMES.saveFood ? [call.data] : [])),
 		fact: saveFacts[0] ?? null,
 		forgets: valid.flatMap((call) => (call.name === AI_TOOL_NAMES.forgetFact ? [call.data] : [])),
+		foodRemovals: valid.flatMap((call) =>
+			call.name === AI_TOOL_NAMES.forgetFood ? [call.data] : [],
+		),
+		foodRestores: valid.flatMap((call) =>
+			call.name === AI_TOOL_NAMES.restoreFood ? [call.data] : [],
+		),
 	}
 	const proposals = valid.flatMap((call) =>
 		call.name === AI_TOOL_NAMES.proposeProgram ? [call.data] : [],

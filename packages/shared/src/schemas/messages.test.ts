@@ -405,6 +405,15 @@ describe('chatMessageSchema memory fields', () => {
 		expect(parsed.factProposal).toBeNull()
 	})
 
+	it('defaults forgottenFoods and reads them', () => {
+		const forgottenFoods = [{ id: clientMessageId, name: 'Кабаноси' }]
+
+		expect(chatMessageSchema.parse(base).forgottenFoods).toEqual([])
+		expect(chatMessageSchema.parse({ ...base, forgottenFoods }).forgottenFoods).toEqual(
+			forgottenFoods,
+		)
+	})
+
 	it('reads the saved foods and the proposal', () => {
 		const factProposal = { id: clientMessageId, text: 'Не їсть рибу', status: 'PROPOSED' }
 		const savedFoods = [{ id: clientMessageId, name: 'Кабаноси' }]

@@ -16,7 +16,13 @@ import {
 	type HistoryMarkerFields,
 } from './history-markers.js'
 import type { MeasurementPoint } from './measurements.js'
-import { type FactContext, formatFacts, toContextText } from './memory-context.js'
+import {
+	type FactContext,
+	type FoodRefContext,
+	formatFacts,
+	formatFoodRemovals,
+	toContextText,
+} from './memory-context.js'
 import {
 	formatProgramSection,
 	type ProgramContext,
@@ -151,6 +157,10 @@ export interface FoodParseContext {
 	facts?: FactContext[]
 	/** The fact waiting for the user's «Так / Ні»; no line when omitted or null. */
 	proposedFact?: string | null
+	/** Foods the last reply asked to remove (their `m…` refs); no line when omitted or empty. */
+	pendingRemovals?: FoodRefContext[]
+	/** Foods forgotten today (`g…` refs); no line when omitted or empty. */
+	forgottenFoods?: FoodRefContext[]
 	/** Only for a message that points back («як вчора»); no section when omitted or empty. */
 	earlier?: EarlierEntryContext[]
 	/** The active program; with it the «Program» section is always there. */
@@ -302,6 +312,7 @@ export const formatContext = (context: FoodParseContext): string => {
 		...formatRecentMeasurements(context.measurements.recent ?? []),
 		memory,
 		...formatFacts(context.facts ?? [], context.proposedFact ?? null),
+		...formatFoodRemovals(context.pendingRemovals ?? [], context.forgottenFoods ?? []),
 		...formatProgramSection(context),
 		...formatEarlierEntries(context.earlier ?? []),
 	].join('\n')

@@ -306,6 +306,11 @@ export const chatMessageSchema = z.object({
 	 * after a reload only the reply text remains. Empty in payloads of older servers.
 	 */
 	savedFoods: z.array(z.object({ id: z.uuid(), name: z.string() })).default([]),
+	/**
+	 * Replies only, live like savedFoods: the foods this turn removed from memory (forget_food after
+	 * the user agreed); the app offers to undo. Empty after a reload and on a repeated turn.
+	 */
+	forgottenFoods: z.array(z.object({ id: z.uuid(), name: z.string() })).default([]),
 	/** Replies only: the fact this turn proposed or saved, with its current status. */
 	factProposal: factProposalSchema.nullable().default(null),
 })

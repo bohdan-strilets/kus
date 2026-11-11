@@ -25,6 +25,10 @@ export interface ParseRefs extends MeasurementRefs {
 	exerciseRefs?: ReadonlySet<string>
 	/** `f1…` of «User facts». */
 	factRefs?: ReadonlySet<string>
+	/** `m…` of «Foods to remove»: only these may be forgotten with confirmed true. */
+	pendingRemovalRefs?: ReadonlySet<string>
+	/** `g1…` of «Foods forgotten today». */
+	forgottenFoodRefs?: ReadonlySet<string>
 	/** `t1…` of the templates in «Program», the open proposal's included. */
 	templateRefs?: ReadonlySet<string>
 	/** Saved food name (see toFoodNameKey) → its `m1…` ref: a new save_food of such a name must update it. */
@@ -48,7 +52,9 @@ export const mergeParseRefs = (refs: ParseRefs, patch: ParseRefsPatch): ParseRef
 })
 
 export const getParseRefs = (context: FoodParseContext): ParseRefs => ({
-	memoryRefs: new Set(context.memory.map((food) => food.ref)),
+	memoryRefs: new Set(
+		[...context.memory, ...(context.pendingRemovals ?? [])].map((food) => food.ref),
+	),
 	// today's active entries too ("the same portion tomorrow"); the deleted ones are not copyable
 	copyRefs: new Set([...(context.earlier ?? []), ...context.entries].map((entry) => entry.ref)),
 	entries: new Map(context.entries.map((entry) => [entry.ref, entry])),
@@ -58,6 +64,8 @@ export const getParseRefs = (context: FoodParseContext): ParseRefs => ({
 	deletedWorkoutRefs: new Set((context.deletedWorkouts ?? []).map((workout) => workout.ref)),
 	exerciseRefs: new Set((context.exercises ?? []).map((exercise: ExerciseContext) => exercise.ref)),
 	factRefs: new Set((context.facts ?? []).map((fact) => fact.ref)),
+	pendingRemovalRefs: new Set((context.pendingRemovals ?? []).map((food) => food.ref)),
+	forgottenFoodRefs: new Set((context.forgottenFoods ?? []).map((food) => food.ref)),
 	// with the open proposal's: a proposal-only t-ref binds no workout (the backend checks)
 	templateRefs: new Set(
 		[...(context.program?.templates ?? []), ...(context.pendingProgram?.templates ?? [])].map(

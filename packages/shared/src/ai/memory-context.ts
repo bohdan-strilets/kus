@@ -14,6 +14,33 @@ export interface FactContext {
 export const toContextText = (text: string): string =>
 	text.replace(/\s+/g, ' ').trim().replaceAll('"', "'")
 
+/** A saved food as the model sees it in "Foods to remove" and "Foods forgotten today". */
+export interface FoodRefContext {
+	/** `m1`… (to remove) or `g1`… (forgotten today). */
+	ref: string
+	name: string
+}
+
+const formatFoodRefs = (title: string, foods: readonly FoodRefContext[]): string[] =>
+	foods.length === 0
+		? []
+		: [`${title}: ${foods.map(({ ref, name }) => `${ref} "${toContextText(name)}"`).join(', ')}`]
+
+/**
+ * The foods the previous reply asked about and the ones forgotten today. Names are the user's
+ * data; the refs are what forget_food and restore_food take.
+ */
+export const formatFoodRemovals = (
+	pending: readonly FoodRefContext[],
+	forgotten: readonly FoodRefContext[],
+): string[] => [
+	...formatFoodRefs(
+		'Foods to remove (asked in your last reply; remove only if the user agrees)',
+		pending,
+	),
+	...formatFoodRefs('Foods forgotten today', forgotten),
+]
+
 export const formatFacts = (
 	facts: readonly FactContext[],
 	proposedFact: string | null,

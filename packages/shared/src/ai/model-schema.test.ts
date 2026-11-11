@@ -194,7 +194,7 @@ describe('the memory tools as the model sees them', () => {
 		getAiFunctionTools().map(({ function: tool }) => [tool.name, JSON.stringify(tool.parameters)]),
 	)
 
-	it.each(['save_food', 'save_fact', 'forget_fact'])(
+	it.each(['save_food', 'save_fact', 'forget_fact', 'forget_food', 'restore_food'])(
 		'%s is bare: no bounds, counts or patterns',
 		(name) => {
 			expect(tools[name]).not.toMatch(
@@ -236,5 +236,11 @@ describe('the memory tools as the model sees them', () => {
 			AI_TOOL_SCHEMAS.save_food.safeParse({ ...food, category: null, updateRef: 'x1' }).success,
 		).toBe(false)
 		expect(AI_TOOL_SCHEMAS.forget_fact.safeParse({ ref: 'e1' }).success).toBe(false)
+		expect(AI_TOOL_SCHEMAS.forget_food.safeParse({ ref: 'g1', confirmed: false }).success).toBe(
+			false,
+		)
+		expect(AI_TOOL_SCHEMAS.forget_food.safeParse({ ref: 'm1' }).success).toBe(false)
+		expect(AI_TOOL_SCHEMAS.restore_food.safeParse({ ref: 'm1' }).success).toBe(false)
+		expect(AI_TOOL_SCHEMAS.restore_food.safeParse({ ref: 'g1' }).success).toBe(true)
 	})
 })

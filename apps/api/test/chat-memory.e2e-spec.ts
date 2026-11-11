@@ -10,6 +10,7 @@ import {
 	FACT_BODY_REPLY,
 	FACT_HEALTH_REPLY,
 	FACT_NOT_SAVED_REPLY,
+	FOOD_RESTORE_NAME_TAKEN_REPLY,
 	FACTS_LIMIT_REPLY,
 	normalizeFactText,
 	sendMessageResponseSchema,
@@ -47,6 +48,15 @@ const saveFact = (args: Record<string, unknown> = {}): FakeToolCall => ({
 })
 
 const forgetFact = (ref: string): FakeToolCall => ({ name: 'forget_fact', args: { ref } })
+
+const forgetFood = (ref: string, confirmed: boolean): FakeToolCall => ({
+	name: 'forget_food',
+	args: { ref, confirmed },
+})
+
+const restoreFood = (ref: string): FakeToolCall => ({ name: 'restore_food', args: { ref } })
+
+const HOUR_MS = 60 * 60 * 1000
 
 interface TestUser {
 	agent: TestAgent
@@ -450,6 +460,174 @@ describe('chat memory (e2e, real DB, fake model)', () => {
 			expect(
 				(await prisma.userFact.findUniqueOrThrow({ where: { id: foreign.id } })).deletedAt,
 			).toBeNull()
+		})
+	})
+
+	describe('forget_food and restore_food', () => {
+		const isDeleted = async (id: string): Promise<boolean> =>
+			(await prisma.myFood.findUniqueOrThrow({ where: { id } })).deletedAt !== null
+
+		it('removes a food only after a question and a "yes" in the next message, and brings it back', async () => {
+			await start()
+			const owner = await registerUser('owner@kus.app')
+			const food = await seedFood(owner, 'Кабаноси')
+			fake.respond(
+				createCompletion([forgetFood('m1', false), reply("Видалити «Кабаноси» з пам'яті?")]),
+				createCompletion([
+					forgetFood('m1', true),
+					reply('Видалив. Скажи «поверни» — і повернеться.'),
+				]),
+				createCompletion([restoreFood('g1'), reply('Повернув.')]),
+			)
+
+			const asked = await send(owner, "видали кабаноси з пам'яті")
+			expect(await isDeleted(food.id)).toBe(false)
+			expect(
+				(await prisma.myFood.findUniqueOrThrow({ where: { id: food.id } }))
+					.removalProposedMessageId,
+			).toBe(asked.userMessage.id)
+			expect(asked.assistantMessage.forgottenFoods).toEqual([])
+
+			const agreed = await send(owner, 'так')
+			expect(await isDeleted(food.id)).toBe(true)
+			expect(agreed.assistantMessage.forgottenFoods).toEqual([{ id: food.id, name: 'Кабаноси' }])
+			expect(JSON.stringify(fake.bodies[1])).toContain(
+				'Foods to remove (asked in your last reply; remove only if the user agrees): m1 \\"Кабаноси\\"',
+			)
+			expect((await listFeed(owner)).at(0)?.forgottenFoods).toEqual([])
+
+			const restored = await send(owner, 'поверни кабаноси')
+			expect(JSON.stringify(fake.bodies[2])).toContain('Foods forgotten today: g1 \\"Кабаноси\\"')
+			expect(await isDeleted(food.id)).toBe(false)
+			expect(restored.assistantMessage.content).toBe('Повернув.')
+		})
+
+		it('removes nothing for confirmed true without a question before it', async () => {
+			await start()
+			const owner = await registerUser('owner@kus.app')
+			const food = await seedFood(owner, 'Кабаноси')
+			fake.respond(
+				createCompletion([forgetFood('m1', true), reply('Видалив.')]),
+				createCompletion([reply('Спершу спитаю: видалити?')]),
+			)
+
+			await send(owner, "видали кабаноси з пам'яті")
+
+			expect(JSON.stringify(fake.bodies[1])).toContain('ask first with confirmed false')
+			expect(await isDeleted(food.id)).toBe(false)
+		})
+
+		it('removes nothing when the "yes" comes two messages after the question', async () => {
+			await start()
+			const owner = await registerUser('owner@kus.app')
+			const food = await seedFood(owner, 'Кабаноси')
+			fake.respond(
+				createCompletion([forgetFood('m1', false), reply('Видалити?')]),
+				createCompletion([reply('Привіт!')]),
+				createCompletion([forgetFood('m1', true), reply('Видалив.')]),
+				createCompletion([reply('Не бачу, що видаляти.')]),
+			)
+
+			await send(owner, "видали кабаноси з пам'яті")
+			await send(owner, 'привіт')
+			await send(owner, 'так')
+
+			expect(JSON.stringify(fake.bodies[2])).not.toContain('Foods to remove (asked')
+			expect(await isDeleted(food.id)).toBe(false)
+		})
+
+		it('removes nothing when the question is older than three hours', async () => {
+			await start()
+			const owner = await registerUser('owner@kus.app')
+			const food = await seedFood(owner, 'Кабаноси')
+			fake.respond(
+				createCompletion([forgetFood('m1', false), reply('Видалити?')]),
+				createCompletion([forgetFood('m1', true), reply('Видалив.')]),
+				createCompletion([reply('Не бачу, що видаляти.')]),
+			)
+			const asked = await send(owner, "видали кабаноси з пам'яті")
+			await prisma.message.update({
+				where: { id: asked.userMessage.id },
+				data: { createdAt: new Date(Date.now() - 4 * HOUR_MS) },
+			})
+
+			await send(owner, 'так')
+
+			expect(JSON.stringify(fake.bodies[1])).not.toContain('Foods to remove (asked')
+			expect(await isDeleted(food.id)).toBe(false)
+		})
+
+		it('removes only the food the user picked among several candidates', async () => {
+			await start()
+			const owner = await registerUser('owner@kus.app')
+			const sporty = await seedFood(owner, 'Батончик SportyFeel')
+			const olimp = await seedFood(owner, 'Батончик Olimp')
+			await prisma.myFood.update({ where: { id: olimp.id }, data: { usageCount: 5 } })
+			fake.respond(
+				createCompletion([forgetFood('m1', false), forgetFood('m2', false), reply('Котрий?')]),
+				createCompletion([forgetFood('m1', true), reply('Видалив.')]),
+			)
+
+			await send(owner, "видали батончик з пам'яті")
+			const picked = await send(owner, 'той, що Olimp')
+
+			expect(JSON.stringify(fake.bodies[1])).toContain('m1 \\"Батончик Olimp\\"')
+			expect(await isDeleted(olimp.id)).toBe(true)
+			expect(await isDeleted(sporty.id)).toBe(false)
+			expect(picked.assistantMessage.forgottenFoods).toEqual([
+				{ id: olimp.id, name: 'Батончик Olimp' },
+			])
+		})
+
+		it('brings back a food the user deleted on the Memory screen today', async () => {
+			await start()
+			const owner = await registerUser('owner@kus.app')
+			const food = await seedFood(owner, 'Кабаноси')
+			await prisma.myFood.update({ where: { id: food.id }, data: { deletedAt: new Date() } })
+			fake.respond(createCompletion([restoreFood('g1'), reply('Повернув.')]))
+
+			await send(owner, 'поверни кабаноси')
+
+			expect(await isDeleted(food.id)).toBe(false)
+		})
+
+		it('does not bring a food back over another one with the same name', async () => {
+			await start()
+			const owner = await registerUser('owner@kus.app')
+			const old = await seedFood(owner, 'Кабаноси')
+			await prisma.myFood.update({ where: { id: old.id }, data: { deletedAt: new Date() } })
+			await seedFood(owner, 'Кабаноси')
+			fake.respond(createCompletion([restoreFood('g1'), reply('Повернув.')]))
+
+			const sent = await send(owner, 'поверни кабаноси')
+
+			expect(await isDeleted(old.id)).toBe(true)
+			expect(sent.assistantMessage.content).toBe(FOOD_RESTORE_NAME_TAKEN_REPLY)
+		})
+
+		it("cannot touch another user's foods", async () => {
+			await start()
+			const owner = await registerUser('owner@kus.app')
+			const stranger = await registerUser('stranger@kus.app')
+			const foreign = await seedFood(stranger, 'Кабаноси')
+			const gone = await seedFood(stranger, 'Скир')
+			await prisma.myFood.update({ where: { id: gone.id }, data: { deletedAt: new Date() } })
+			fake.respond(
+				createCompletion([forgetFood('m1', false), reply('Видалити?')]),
+				createCompletion([reply('Такого продукту немає.')]),
+				createCompletion([restoreFood('g1'), reply('Повернув.')]),
+				createCompletion([reply('Нічого повертати.')]),
+			)
+
+			await send(owner, "видали кабаноси з пам'яті")
+			await send(owner, 'поверни скир')
+
+			expect(await isDeleted(foreign.id)).toBe(false)
+			expect(
+				(await prisma.myFood.findUniqueOrThrow({ where: { id: foreign.id } }))
+					.removalProposedMessageId,
+			).toBeNull()
+			expect(await isDeleted(gone.id)).toBe(true)
 		})
 	})
 })

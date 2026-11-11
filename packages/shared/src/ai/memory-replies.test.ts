@@ -9,6 +9,8 @@ import {
 	FACT_TOO_LONG_REPLY,
 	FACTS_LIMIT_NOTICE,
 	FACTS_LIMIT_REPLY,
+	FOOD_RESTORE_NAME_TAKEN_NOTICE,
+	FOOD_RESTORE_NAME_TAKEN_REPLY,
 	getRejectedFactNotice,
 	type MemoryNotice,
 } from './memory-replies.js'
@@ -81,5 +83,13 @@ describe('applyMemoryNotice', () => {
 
 	it('is just the notice for an empty reply', () => {
 		expect(applyMemoryNotice('  ', loud(FACT_BODY_REPLY))).toBe(FACT_BODY_REPLY)
+	})
+})
+
+describe('restore_food notices', () => {
+	it('stand instead of a reply that says the food is back', () => {
+		expect(applyMemoryNotice('Повернув.', FOOD_RESTORE_NAME_TAKEN_NOTICE)).toBe(
+			FOOD_RESTORE_NAME_TAKEN_REPLY,
+		)
 	})
 })

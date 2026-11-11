@@ -283,6 +283,28 @@ export class ChatRepository {
 		})
 	}
 
+	/** The user's own message before `beforeId` (completed turns only): the one a "yes" answers. */
+	async findPreviousUserMessageId({
+		userId,
+		beforeId,
+	}: {
+		userId: string
+		beforeId: string
+	}): Promise<string | null> {
+		const previous = await this.prisma.message.findFirst({
+			where: {
+				userId,
+				role: MessageRole.USER,
+				status: MessageStatus.COMPLETED,
+				id: { lt: beforeId },
+			},
+			// uuid v7 ids grow with time, see message-cursor.ts
+			orderBy: { id: 'desc' },
+			select: { id: true },
+		})
+		return previous?.id ?? null
+	}
+
 	/** Completed turns before a message, newest first — the model's short memory of the chat. */
 	findHistory({
 		userId,

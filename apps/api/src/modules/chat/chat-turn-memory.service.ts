@@ -2,6 +2,8 @@ import { Injectable, Logger } from '@nestjs/common'
 import {
 	getRejectedFactNotice,
 	FACTS_LIMIT_NOTICE,
+	FOOD_RESTORE_GONE_NOTICE,
+	FOOD_RESTORE_NAME_TAKEN_NOTICE,
 	type MemoryActions,
 	type MemoryNotice,
 	type SaveFoodInput,
@@ -28,6 +30,12 @@ export interface MemoryTurnParams {
 	foodsByRef: ReadonlyMap<string, MyFood>
 	/** `f1…` → the ids of the facts shown to the model in this request. */
 	factIdByRef: ReadonlyMap<string, string>
+	/** `m…` of «Foods to remove» → the food the previous reply asked about. */
+	pendingFoodsByRef: ReadonlyMap<string, MyFood>
+	/** `g1…` of «Foods forgotten today» → the food. */
+	forgottenFoodsByRef: ReadonlyMap<string, MyFood>
+	/** The user's message before this one: the only one whose question a "yes" can answer. */
+	previousUserMessageId: string | null
 	/** Ids of the entries this turn logged, by the index of the log_food item. */
 	entryIds: readonly string[]
 	hasPhoto: boolean
@@ -35,13 +43,19 @@ export interface MemoryTurnParams {
 
 export interface MemoryTurnResult {
 	savedFoods: SavedFoodRef[]
+	/** Foods removed from memory by this turn (the user's "yes"). */
+	forgottenFoods: SavedFoodRef[]
 	/** A sentence the backend adds to (or puts instead of) the reply; null = the reply stands. */
 	notice: MemoryNotice | null
 }
 
-export const NO_MEMORY_RESULT: MemoryTurnResult = { savedFoods: [], notice: null }
+export const NO_MEMORY_RESULT: MemoryTurnResult = {
+	savedFoods: [],
+	forgottenFoods: [],
+	notice: null,
+}
 
-/** What save_food, save_fact and forget_fact do inside the transaction of a chat turn. */
+/** What the memory tools (save_food, save_fact, forget_fact, forget_food, restore_food) do inside the transaction of a chat turn. */
 @Injectable()
 export class ChatTurnMemoryService {
 	private readonly logger = new Logger(ChatTurnMemoryService.name)
@@ -56,12 +70,70 @@ export class ChatTurnMemoryService {
 	async apply(params: MemoryTurnParams, tx: Prisma.TransactionClient): Promise<MemoryTurnResult> {
 		const { userId, memory } = params
 		const forgotten = await this.forget(params, tx)
-		const notice = await this.saveFact(params, tx)
+		const factNotice = await this.saveFact(params, tx)
 		const savedFoods = await this.saveFoods(params, tx)
+		const forgottenFoods = await this.forgetFoods(params, tx)
+		await this.proposeFoodRemovals(params, tx)
+		const restore = await this.restoreFoods(params, tx)
 		this.logger.log(
-			`Memory turn user=${userId} foods=${savedFoods.length}/${memory.foods.length} fact=${memory.fact ? 1 : 0} forgotten=${forgotten}/${memory.forgets.length}`,
+			`Memory turn user=${userId} foods=${savedFoods.length}/${memory.foods.length} fact=${memory.fact ? 1 : 0} forgotten=${forgotten}/${memory.forgets.length} foodsRemoved=${forgottenFoods.length}/${memory.foodRemovals.length} foodsRestored=${restore.restored}/${memory.foodRestores.length}`,
 		)
-		return { savedFoods, notice }
+		return { savedFoods, forgottenFoods, notice: factNotice ?? restore.notice }
+	}
+
+	/** confirmed false: only remembers which message asked; nothing is deleted. */
+	private async proposeFoodRemovals(
+		{ userId, messageId, memory, foodsByRef }: MemoryTurnParams,
+		tx: Prisma.TransactionClient,
+	): Promise<void> {
+		const asked = memory.foodRemovals.filter(({ confirmed }) => !confirmed)
+		if (asked.length === 0) return
+		const ids = asked.map(({ ref }) => {
+			const food = foodsByRef.get(ref)
+			// the parser accepts only refs of this request; a miss here is a bug
+			if (!food) throw new Error('forget_food ref is not mapped')
+			return food.id
+		})
+		await this.myFoods.proposeRemovalFromChat({ userId, ids, messageId }, tx)
+	}
+
+	/** confirmed true: the backend re-checks that the previous message asked about this very food. */
+	private async forgetFoods(
+		{ userId, memory, pendingFoodsByRef, previousUserMessageId }: MemoryTurnParams,
+		tx: Prisma.TransactionClient,
+	): Promise<SavedFoodRef[]> {
+		const forgotten: SavedFoodRef[] = []
+		for (const { ref, confirmed } of memory.foodRemovals) {
+			if (!confirmed) continue
+			const food = pendingFoodsByRef.get(ref)
+			// the parser accepts only refs of this request; a miss here is a bug
+			if (!food) throw new Error('forget_food ref is not pending')
+			if (previousUserMessageId === null) continue
+			const isForgotten = await this.myFoods.forgetFromChat(
+				{ userId, id: food.id, previousMessageId: previousUserMessageId },
+				tx,
+			)
+			if (isForgotten) forgotten.push({ id: food.id, name: food.name })
+		}
+		return forgotten
+	}
+
+	private async restoreFoods(
+		{ userId, memory, forgottenFoodsByRef }: MemoryTurnParams,
+		tx: Prisma.TransactionClient,
+	): Promise<{ restored: number; notice: MemoryNotice | null }> {
+		let restored = 0
+		let notice: MemoryNotice | null = null
+		for (const { ref } of memory.foodRestores) {
+			const food = forgottenFoodsByRef.get(ref)
+			// the parser accepts only refs of this request; a miss here is a bug
+			if (!food) throw new Error('restore_food ref is not mapped')
+			const outcome = await this.myFoods.restoreFromChat({ userId, id: food.id }, tx)
+			if (outcome === 'restored') restored += 1
+			if (outcome === 'name_taken') notice = FOOD_RESTORE_NAME_TAKEN_NOTICE
+			if (outcome === 'gone') notice ??= FOOD_RESTORE_GONE_NOTICE
+		}
+		return { restored, notice }
 	}
 
 	private async forget(

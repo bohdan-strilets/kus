@@ -35,7 +35,13 @@ import {
 	getWorkoutsInputSchema,
 } from './get-workouts.js'
 import { COPY_REF_PATTERN } from './history-context.js'
-import { forgetFactInputSchema, saveFactInputSchema, saveFoodInputSchema } from './memory-tools.js'
+import {
+	forgetFactInputSchema,
+	forgetFoodInputSchema,
+	restoreFoodInputSchema,
+	saveFactInputSchema,
+	saveFoodInputSchema,
+} from './memory-tools.js'
 import { toModelParameters } from './model-schema.js'
 import { programTemplateInputSchema } from './program-tools.js'
 import {
@@ -67,6 +73,8 @@ export const AI_TOOL_NAMES = {
 	saveFood: 'save_food',
 	saveFact: 'save_fact',
 	forgetFact: 'forget_fact',
+	forgetFood: 'forget_food',
+	restoreFood: 'restore_food',
 	reply: 'reply',
 } as const
 
@@ -445,6 +453,8 @@ export const AI_TOOL_SCHEMAS: Record<AiToolName, z.ZodType> = {
 	save_food: saveFoodInputSchema,
 	save_fact: saveFactInputSchema,
 	forget_fact: forgetFactInputSchema,
+	forget_food: forgetFoodInputSchema,
+	restore_food: restoreFoodInputSchema,
 	reply: replyInputSchema,
 }
 
@@ -463,6 +473,9 @@ const AI_TOOL_DESCRIPTIONS: Record<AiToolName, string> = {
 	save_food: 'Save a food to the user\'s memory, only when they ask. See "Memory".',
 	save_fact: 'Remember one lasting thing about the user. See "Memory".',
 	forget_fact: 'Forget a fact from "User facts". See "Memory".',
+	forget_food:
+		'Remove a saved food from memory, only when the user asks. First confirmed false with a question in reply; confirmed true only for a ref in "Foods to remove" after the user agreed. At most 3.',
+	restore_food: 'Bring back a food forgotten today when the user asks.',
 	clarify:
 		'Ask about logged items, together with log_food. See "Clarify"; kind "rename" has no kcal threshold.',
 	correct_entry:
@@ -489,6 +502,8 @@ const BARE_TOOLS: ReadonlySet<AiToolName> = new Set([
 	AI_TOOL_NAMES.saveFood,
 	AI_TOOL_NAMES.saveFact,
 	AI_TOOL_NAMES.forgetFact,
+	AI_TOOL_NAMES.forgetFood,
+	AI_TOOL_NAMES.restoreFood,
 ])
 
 /** Read tools: answered by the backend before the model writes anything (see read-tools.ts). */

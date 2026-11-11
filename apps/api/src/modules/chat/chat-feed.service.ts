@@ -130,6 +130,7 @@ const toChatMessage = (
 		trainingOnboardingState: onboarding.get(message.id)?.state ?? null,
 		// saved foods are live only (the response of the turn adds them)
 		savedFoods: [],
+		forgottenFoods: [],
 		factProposal:
 			isAssistant && message.replyToId ? (factProposals.get(message.replyToId) ?? null) : null,
 	}

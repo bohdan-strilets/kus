@@ -31,6 +31,7 @@ import { ChatTrainingOnboardingAnswersService } from './chat-training-onboarding
 import { ChatTrainingOnboardingService } from './chat-training-onboarding.service'
 import { ChatTrainingOnboardingViewsService } from './chat-training-onboarding-views.service'
 import { ChatTurnMeasurementsService } from './chat-turn-measurements.service'
+import { ChatFoodRemovalsService } from './chat-food-removals.service'
 import { ChatTurnMemoryService } from './chat-turn-memory.service'
 import { ChatTurnService } from './chat-turn.service'
 import { ChatWorkoutSummaryService } from './chat-workout-summary.service'
@@ -77,6 +78,7 @@ import { TrainingOnboardingMessagesRepository } from './training-onboarding-mess
 		ChatEarlierService,
 		ChatHistoryMarkersService,
 		ChatEditsService,
+		ChatFoodRemovalsService,
 		ChatMeasurementCardsService,
 		ChatPhotosService,
 		ChatProgramCardsService,

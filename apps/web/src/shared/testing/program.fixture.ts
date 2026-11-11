@@ -39,6 +39,7 @@ export const makeChatMessage = (overrides: Partial<ChatMessage> = {}): ChatMessa
 	trainingOnboarding: null,
 	trainingOnboardingState: null,
 	savedFoods: [],
+	forgottenFoods: [],
 	factProposal: null,
 	photo: null,
 	...overrides,

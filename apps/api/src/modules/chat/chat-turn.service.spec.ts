@@ -1,5 +1,5 @@
 import { Logger } from '@nestjs/common'
-import { STATS_EMPTY_REPLY } from '@kus/shared'
+import { NO_MEMORY_ACTIONS, STATS_EMPTY_REPLY } from '@kus/shared'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import {
@@ -51,7 +51,7 @@ const toLogDecision = (items: ReturnType<typeof toItem>[], log: Record<string, u
 		measurements: [],
 		measurementDeletions: [],
 		workouts: [],
-		memory: { foods: [], fact: null, forgets: [] },
+		memory: NO_MEMORY_ACTIONS,
 	}) as never
 
 const createService = () => {
@@ -263,7 +263,7 @@ describe('ChatTurnService.saveDecision measurement deletions', () => {
 			text: 'ok',
 			measurements: [{ kind: 'WAIST', value: 90, date: null, confirmedJump: false }],
 			measurementDeletions: [{ kind: 'WEIGHT', date: '2026-10-16' }],
-			memory: { foods: [], fact: null, forgets: [] },
+			memory: NO_MEMORY_ACTIONS,
 		} as never
 
 		const result = await save(decision)
@@ -737,7 +737,7 @@ describe('ChatTurnService.saveDecision reply with attach program', () => {
 		attach,
 		measurements: [],
 		measurementDeletions: [],
-		memory: { foods: [], fact: null, forgets: [] },
+		memory: NO_MEMORY_ACTIONS,
 	})
 
 	it('stores the active program snapshot of the token user with the reply', async () => {

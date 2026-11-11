@@ -4,6 +4,7 @@ import type { ParseRefs } from './entry-edits.js'
 import { normalizeFoodName } from './normalize-food-name.js'
 import { normalizeName } from './memory-match.js'
 import {
+	MAX_FOOD_REMOVALS_PER_MESSAGE,
 	MAX_FORGOTTEN_FACTS_PER_MESSAGE,
 	MAX_SAVED_FOODS_PER_MESSAGE,
 	type MemoryActions,
@@ -50,6 +51,63 @@ const getSaveFoodRefErrors = (food: SaveFoodInput, index: number, refs: ParseRef
 	]
 }
 
+const getFoodRemovalErrors = (
+	memory: MemoryActions,
+	log: LogFoodInput | null,
+	refs: ParseRefs,
+): string[] => {
+	const { foodRemovals } = memory
+	if (foodRemovals.length === 0) return []
+	const errors: string[] = []
+	if (foodRemovals.length > MAX_FOOD_REMOVALS_PER_MESSAGE) {
+		errors.push(`forget_food: at most ${MAX_FOOD_REMOVALS_PER_MESSAGE} per message`)
+	}
+	if (new Set(foodRemovals.map(({ confirmed }) => confirmed)).size > 1) {
+		errors.push('forget_food: all calls of one answer have the same confirmed')
+	}
+	if (new Set(foodRemovals.map(({ ref }) => ref)).size < foodRemovals.length) {
+		errors.push('forget_food: each ref once')
+	}
+	if (foodRemovals.some(({ confirmed }) => !confirmed) && log) {
+		errors.push('forget_food with confirmed false asks in reply — not together with log_food')
+	}
+	const usedRefs = new Set([
+		...memory.foods.flatMap(({ updateRef }) => updateRef ?? []),
+		...(log?.items.flatMap(({ memoryRef }) => memoryRef ?? []) ?? []),
+	])
+	for (const { ref, confirmed } of foodRemovals) {
+		const isPending = refs.pendingRemovalRefs?.has(ref) === true
+		if (!isPending && !refs.memoryRefs.has(ref)) {
+			errors.push(`forget_food: ${ref} is not in "Saved foods" or "Foods to remove"`)
+		} else if (confirmed && !isPending) {
+			errors.push(
+				`forget_food: ${ref} is not in "Foods to remove" — ask first with confirmed false`,
+			)
+		}
+		if (usedRefs.has(ref)) {
+			errors.push(`forget_food: ${ref} is also saved or logged in this answer — choose one`)
+		}
+	}
+	return errors
+}
+
+const getFoodRestoreErrors = (memory: MemoryActions, refs: ParseRefs): string[] => {
+	const { foodRestores } = memory
+	const errors: string[] = []
+	if (foodRestores.length > MAX_FOOD_REMOVALS_PER_MESSAGE) {
+		errors.push(`restore_food: at most ${MAX_FOOD_REMOVALS_PER_MESSAGE} per message`)
+	}
+	if (new Set(foodRestores.map(({ ref }) => ref)).size < foodRestores.length) {
+		errors.push('restore_food: each ref once')
+	}
+	for (const { ref } of foodRestores) {
+		if (!refs.forgottenFoodRefs?.has(ref)) {
+			errors.push(`restore_food: ${ref} is not in "Foods forgotten today"`)
+		}
+	}
+	return errors
+}
+
 export const getMemoryErrors = (
 	memory: MemoryActions,
 	log: LogFoodInput | null,
@@ -71,5 +129,6 @@ export const getMemoryErrors = (
 	for (const { ref } of memory.forgets) {
 		if (!refs.factRefs?.has(ref)) errors.push(`forget_fact: ${ref} is not in "User facts"`)
 	}
+	errors.push(...getFoodRemovalErrors(memory, log, refs), ...getFoodRestoreErrors(memory, refs))
 	return errors
 }

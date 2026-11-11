@@ -5,9 +5,11 @@ import { toFoodNameKey } from './memory-errors.js'
 import { parseToolCalls, type RawToolCall } from './parse-tool-calls.js'
 
 const refs: ParseRefs = {
-	memoryRefs: new Set(['m1']),
+	memoryRefs: new Set(['m1', 'm2', 'm3']),
 	memoryRefByName: new Map([[toFoodNameKey('Кабаноси'), 'm1']]),
 	factRefs: new Set(['f1', 'f2']),
+	pendingRemovalRefs: new Set(['m2']),
+	forgottenFoodRefs: new Set(['g1', 'g2']),
 	entries: new Map(),
 	deletedEntryRefs: new Set(),
 	clarifications: new Map(),
@@ -253,5 +255,96 @@ describe('parseToolCalls with the memory tools', () => {
 
 			expect(result.ok).toBe(false)
 		})
+	})
+})
+
+const forgetFood = (ref: string, confirmed: boolean): RawToolCall =>
+	call('forget_food', { ref, confirmed })
+const restoreFood = (ref: string): RawToolCall => call('restore_food', { ref })
+
+describe('parseToolCalls with forget_food and restore_food', () => {
+	it('reads the question: confirmed false with a reply', () => {
+		const result = parseToolCalls([forgetFood('m1', false), reply], refs)
+
+		expect(result).toMatchObject({
+			ok: true,
+			decision: {
+				kind: 'reply',
+				memory: { foodRemovals: [{ ref: 'm1', confirmed: false }], foodRestores: [] },
+			},
+		})
+	})
+
+	it('reads the agreed removal of a food from "Foods to remove"', () => {
+		const result = parseToolCalls([forgetFood('m2', true), reply], refs)
+
+		expect(result).toMatchObject({
+			ok: true,
+			decision: { memory: { foodRemovals: [{ ref: 'm2', confirmed: true }] } },
+		})
+	})
+
+	it('refuses confirmed true for a food that was not asked about', () => {
+		expect(getErrors([forgetFood('m1', true), reply])).toContain('ask first with confirmed false')
+	})
+
+	it('refuses a ref that is in neither the saved foods nor the foods to remove', () => {
+		expect(getErrors([forgetFood('m9', false), reply])).toContain('m9 is not in')
+	})
+
+	it('wants one confirmed value, at most three foods and each ref once', () => {
+		expect(getErrors([forgetFood('m1', false), forgetFood('m2', true), reply])).toContain(
+			'same confirmed',
+		)
+		expect(getErrors([forgetFood('m1', false), forgetFood('m1', false), reply])).toContain(
+			'each ref once',
+		)
+		const four = ['m1', 'm2', 'm3', 'm1'].map((ref) => forgetFood(ref, false))
+		expect(getErrors([...four, reply])).toContain('at most 3')
+	})
+
+	it('keeps the question for reply: confirmed false does not go with log_food', () => {
+		expect(getErrors([forgetFood('m1', false), logFood])).toContain('not together with log_food')
+	})
+
+	it('lets the agreed removal go next to log_food', () => {
+		expect(parseToolCalls([forgetFood('m2', true), logFood], refs).ok).toBe(true)
+	})
+
+	it('refuses one food removed and used in the same answer', () => {
+		expect(
+			getErrors([
+				forgetFood('m2', true),
+				call('log_food', {
+					items: [{ ...egg, memoryRef: 'm2' }],
+					mealType: null,
+					reply: 'Записав.',
+				}),
+			]),
+		).toContain('choose one')
+		expect(getErrors([forgetFood('m1', false), fromValues({ updateRef: 'm1' }), reply])).toContain(
+			'choose one',
+		)
+	})
+
+	it('goes only with log_food or reply', () => {
+		expect(
+			getErrors([forgetFood('m1', false), call('not_food', { reply: 'Це не їжа.' })]),
+		).toContain('go together with log_food or reply')
+	})
+
+	it('reads restore_food for a food forgotten today', () => {
+		const result = parseToolCalls([restoreFood('g1'), reply], refs)
+
+		expect(result).toMatchObject({
+			ok: true,
+			decision: { memory: { foodRestores: [{ ref: 'g1' }], foodRemovals: [] } },
+		})
+	})
+
+	it('refuses restore_food for a ref outside "Foods forgotten today" and a fourth one', () => {
+		expect(getErrors([restoreFood('g7'), reply])).toContain('g7 is not in "Foods forgotten today"')
+		const many = ['g1', 'g2', 'g1', 'g2'].map(restoreFood)
+		expect(getErrors([...many, reply])).toContain('at most 3')
 	})
 })

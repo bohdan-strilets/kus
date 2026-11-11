@@ -16,6 +16,8 @@ export interface MemoryNotice {
 	text: string
 	/** Said only to correct a reply that claims «запам'ятав»; otherwise the refusal stays silent. */
 	isQuietUnlessClaimed: boolean
+	/** The reply is about the very thing that did not happen, so the notice stands instead of it. */
+	isReplacing?: boolean
 }
 
 export const FACTS_LIMIT_NOTICE: MemoryNotice = {
@@ -27,11 +29,13 @@ export const FACTS_LIMIT_NOTICE: MemoryNotice = {
 export const FOOD_RESTORE_NAME_TAKEN_NOTICE: MemoryNotice = {
 	text: FOOD_RESTORE_NAME_TAKEN_REPLY,
 	isQuietUnlessClaimed: false,
+	isReplacing: true,
 }
 
 export const FOOD_RESTORE_GONE_NOTICE: MemoryNotice = {
 	text: FOOD_RESTORE_GONE_REPLY,
 	isQuietUnlessClaimed: false,
+	isReplacing: true,
 }
 
 /** The model's reply claims the fact is remembered; any apostrophe the model may type. */
@@ -42,7 +46,7 @@ const CLAIMS_REMEMBERED = /запам['’ʼ]ятав/i
  * notice is added after it, or — for a quiet one — the reply stays as it is.
  */
 export const applyMemoryNotice = (reply: string, notice: MemoryNotice): string => {
-	if (CLAIMS_REMEMBERED.test(reply)) return notice.text
+	if (notice.isReplacing || CLAIMS_REMEMBERED.test(reply)) return notice.text
 	if (notice.isQuietUnlessClaimed) return reply
 	const trimmed = reply.trim()
 	return trimmed.length === 0 ? notice.text : `${trimmed} ${notice.text}`

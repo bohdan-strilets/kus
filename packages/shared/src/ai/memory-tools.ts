@@ -1,5 +1,6 @@
-// The memory tools: save_food, save_fact, forget_fact. They never answer on their own — a reply or
-// log_food in the same turn does. The model points at saved foods and facts by refs (`m1`, `f1`).
+// The memory tools: save_food, save_fact, forget_fact, forget_food, restore_food. They never answer on
+// their own — a reply or log_food in the same turn does. The model points at saved foods and facts
+// by refs (`m1`, `f1`); a food forgotten today by `g1`.
 // After any change here: run `pnpm --filter ai-eval eval` and add a line to PROMPT_CHANGELOG.md.
 import { z } from 'zod'
 
@@ -11,6 +12,9 @@ import { withOpenEnumForModel } from './model-schema.js'
 
 /** Refs the backend gives the confirmed facts in the model context (`f1`…), never database ids. */
 export const FACT_REF_PATTERN = /^f\d{1,2}$/
+
+/** Refs the backend gives the foods forgotten today in the model context (`g1`…). */
+export const FORGOTTEN_FOOD_REF_PATTERN = /^g\d{1,2}$/
 
 export const MAX_SAVED_FOODS_PER_MESSAGE = 5
 export const MAX_FORGOTTEN_FACTS_PER_MESSAGE = 5
@@ -87,15 +91,50 @@ export const forgetFactInputSchema = z.object({
 
 export type ForgetFactInput = z.infer<typeof forgetFactInputSchema>
 
+export const forgetFoodInputSchema = z.object({
+	ref: z
+		.string()
+		.regex(MEMORY_REF_PATTERN)
+		.describe('m-ref from "Saved foods", find_food or "Foods to remove"'),
+	confirmed: z.boolean().describe('false = ask the user; true = the user agreed to this food'),
+})
+
+export type ForgetFoodInput = z.infer<typeof forgetFoodInputSchema>
+
+export const restoreFoodInputSchema = z.object({
+	ref: z.string().regex(FORGOTTEN_FOOD_REF_PATTERN).describe('g-ref from "Foods forgotten today"'),
+})
+
+export type RestoreFoodInput = z.infer<typeof restoreFoodInputSchema>
+
 /** What the memory tools of one answer ask for; empty when the model used none. */
 export interface MemoryActions {
 	foods: SaveFoodInput[]
 	/** At most one per message. */
 	fact: SaveFactInput | null
 	forgets: ForgetFactInput[]
+	/** All with the same `confirmed`: a question (false) or the removal the user agreed to (true). */
+	foodRemovals: ForgetFoodInput[]
+	foodRestores: RestoreFoodInput[]
 }
 
-export const NO_MEMORY_ACTIONS: MemoryActions = { foods: [], fact: null, forgets: [] }
+export const NO_MEMORY_ACTIONS: MemoryActions = {
+	foods: [],
+	fact: null,
+	forgets: [],
+	foodRemovals: [],
+	foodRestores: [],
+}
 
-export const hasMemoryActions = ({ foods, fact, forgets }: MemoryActions): boolean =>
-	foods.length > 0 || fact !== null || forgets.length > 0
+export const hasMemoryActions = ({
+	foods,
+	fact,
+	forgets,
+	foodRemovals,
+	foodRestores,
+}: MemoryActions): boolean =>
+	foods.length > 0 ||
+	fact !== null ||
+	forgets.length > 0 ||
+	foodRemovals.length > 0 ||
+	foodRestores.length > 0

@@ -2,19 +2,19 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import type { UpdateMyFoodRequest } from '@kus/shared'
 import { useTranslation } from 'react-i18next'
 
-import { MY_FOODS_QUERY_KEY } from '@/entities/my-food'
+import {
+	getExistingFoodName,
+	getMyFoodErrorKey,
+	isDuplicateNameError,
+	MY_FOODS_QUERY_KEY,
+	type MyFoodAction,
+	restoreMyFood,
+} from '@/entities/my-food'
 import { getApiError } from '@/shared/api'
 import { useToast } from '@/shared/ui'
 
 import { deleteMyFood } from '../api/delete-my-food'
 import { patchMyFood } from '../api/patch-my-food'
-import { restoreMyFood } from '../api/restore-my-food'
-import {
-	getExistingFoodName,
-	getMyFoodErrorKey,
-	isDuplicateNameError,
-	type MyFoodAction,
-} from '../lib/get-my-food-error-key'
 
 export interface MyFoodActions {
 	/** `onDuplicate`: the 409 about the name; the form shows it under the field instead of a toast. */

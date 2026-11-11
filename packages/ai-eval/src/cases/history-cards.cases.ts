@@ -209,6 +209,17 @@ export const HISTORY_CARD_CASES: EvalCase[] = [
 		reference: 'No coffee among the entries → a short «no» reply, nothing logged, no card',
 	},
 	{
+		id: 'gender-neutral-did-i-log',
+		text: 'Я сьогодні додавав каву?',
+		context: { ...NO_COFFEE_TODAY, addressForm: 'NEUTRAL' },
+		expect: {
+			decision: 'reply',
+			replyExcludes: ['ти додавав', 'ти не додавав', 'ти записав'],
+		},
+		reference:
+			'Neutral address: the «додавав» of the user is not echoed back; the reply speaks of the entries («кави сьогодні немає в записах»)',
+	},
+	{
 		id: 'last-time-ratatouille',
 		text: 'Коли я останній раз додавав рататуй?',
 		context: { earlier: [earlierEntry('h1', '2026-09-29', 'DINNER', 'Рататуй', 300, 210)] },

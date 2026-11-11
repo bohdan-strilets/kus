@@ -403,6 +403,14 @@ export const WORKOUT_CASES: EvalCase[] = [
 			'neutral: even if the user writes in the masculine, no gendered form about them in the reply',
 	},
 	{
+		id: 'gender-neutral-agree',
+		text: 'ти ж сам казав, що на вечерю краще білок',
+		context: { addressForm: 'NEUTRAL' },
+		expect: { decision: 'reply', replyExcludes: ['ти правий', 'ти права'] },
+		reference:
+			'Neutral address: agreeing without «ти правий» / «ти права» — «так, слушно» or another form without gender',
+	},
+	{
 		id: 'neutral-no-double-forms',
 		text: 'я вже поїв і готовий до тренування, що порадиш?',
 		context: { addressForm: 'NEUTRAL' },

@@ -72,6 +72,14 @@ const PROTEIN_BAR_HISTORY: HistoryEntryFixture[] = [
 	},
 ]
 
+const BAR_E1_CONTEXT: EvalCase['context'] = {
+	entries: [entry('e1', 'Протеїновий батончик', 'SNACK', 45, 210, 'protein_bar')],
+	history: [
+		{ role: 'user', content: 'Додай останній протеїновий батончик', loggedRefs: ['e1'] },
+		{ role: 'assistant', content: 'Додав батончик: 45 г, 210 ккал.' },
+	],
+}
+
 const FACT_NO_FISH = 'Не їсть рибу'
 const FACT_TUESDAYS = 'Тренується по вівторках'
 
@@ -168,6 +176,30 @@ export const READ_TOOL_CASES: EvalCase[] = [
 		},
 		reference:
 			'The user remembers an earlier entry: the model looks it up (history), sees 170 kcal and corrects e1 to it instead of «не бачу такого запису»',
+	},
+	{
+		id: 'edit-kcal-from-user',
+		text: 'там було 170 ккал, а не 210',
+		context: BAR_E1_CONTEXT,
+		expect: {
+			decision: 'edit',
+			edits: { corrected: [{ ref: 'e1', kcal: exact(170) }] },
+		},
+		reference:
+			'The user names the right kcal: correct_entry on e1 with 170, no delete_entry and no new log_food',
+	},
+	{
+		id: 'edit-number-like-last-time',
+		text: 'ні, батончик був як минулого разу',
+		savedFoods: [BUCKWHEAT, MILK],
+		historyEntries: PROTEIN_BAR_HISTORY,
+		context: BAR_E1_CONTEXT,
+		expect: {
+			decision: 'edit',
+			edits: { corrected: [{ ref: 'e1', kcal: range(165, 175) }] },
+		},
+		reference:
+			'The right number is in the history (170 kcal): correct_entry on e1 with its numbers, not delete + log with copyRef',
 	},
 	{
 		id: 'read-typo-i',

@@ -15,8 +15,8 @@ const passiveNames = (id: string): string[] =>
 	buildCaseContext(byId(id)).memory.map(({ name }) => name)
 
 describe('read-tool cases', () => {
-	it('are the sixteen cases of stages 0.11.0 and 0.11.4, valid, with ids unique across the repo set', () => {
-		expect(READ_TOOL_CASES).toHaveLength(16)
+	it('are the eighteen cases of stages 0.11.0 and 0.11.4, valid, with ids unique across the repo set', () => {
+		expect(READ_TOOL_CASES).toHaveLength(18)
 		const ids = REPO_CASES.map(({ id }) => id)
 		expect(new Set(ids).size).toBe(ids.length)
 		for (const evalCase of READ_TOOL_CASES) {

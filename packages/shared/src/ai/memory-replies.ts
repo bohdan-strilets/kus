@@ -8,6 +8,9 @@ export const FACT_HEALTH_REPLY = "Дані про здоров'я я не збе
 export const FACT_BODY_REPLY = 'Вагу й заміри записую окремо, а не як факт.'
 export const FACT_TOO_LONG_REPLY = "Це задовго для пам'яті — скажи одним коротким реченням."
 export const FACT_NOT_SAVED_REPLY = "Цього я не запам'ятав."
+export const FOOD_RESTORE_NAME_TAKEN_REPLY =
+	"Під цією назвою в пам'яті вже є інший продукт — повернути цей не вийшло."
+export const FOOD_RESTORE_GONE_REPLY = 'Цей продукт уже не повернути.'
 
 export interface MemoryNotice {
 	text: string
@@ -17,6 +20,17 @@ export interface MemoryNotice {
 
 export const FACTS_LIMIT_NOTICE: MemoryNotice = {
 	text: FACTS_LIMIT_REPLY,
+	isQuietUnlessClaimed: false,
+}
+
+/** A restore_food that did not bring the food back: said even when the model claims it did. */
+export const FOOD_RESTORE_NAME_TAKEN_NOTICE: MemoryNotice = {
+	text: FOOD_RESTORE_NAME_TAKEN_REPLY,
+	isQuietUnlessClaimed: false,
+}
+
+export const FOOD_RESTORE_GONE_NOTICE: MemoryNotice = {
+	text: FOOD_RESTORE_GONE_REPLY,
 	isQuietUnlessClaimed: false,
 }
 

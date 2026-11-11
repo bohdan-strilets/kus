@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common'
 import {
+	FOOD_REMOVAL_PROPOSAL_TTL_MS,
 	normalizeName,
 	type MyFoodResponse,
 	type MyFoodsQuery,
@@ -21,6 +22,12 @@ import {
 	toMyFoodUpdate,
 	toNewMyFood,
 } from './my-foods.utils'
+
+/** Foods "Foods forgotten today" shows the model. */
+const MAX_RECENTLY_DELETED_FOODS = 5
+
+/** What bringing a forgotten food back from the chat came to. */
+export type FoodRestoreOutcome = 'restored' | 'name_taken' | 'gone'
 
 const UNIQUE_VIOLATION = 'P2002'
 
@@ -106,6 +113,72 @@ export class MyFoodsService {
 		return this.memoryRepository.findFood({ userId, id }, tx)
 	}
 
+	/** The chat asked "remove it?" about these foods in this user message; nothing is deleted yet. */
+	proposeRemovalFromChat(
+		{ userId, ids, messageId }: { userId: string; ids: string[]; messageId: string },
+		tx: Prisma.TransactionClient,
+	): Promise<void> {
+		return this.memoryRepository.setRemovalProposed({ userId, ids, messageId }, tx)
+	}
+
+	/** Active foods asked about in `previousMessageId` (the user's message before this one) in time. */
+	findPendingRemovals(
+		{ userId, previousMessageId, now }: { userId: string; previousMessageId: string; now: Date },
+		tx?: Prisma.TransactionClient,
+	): Promise<MyFood[]> {
+		return this.memoryRepository.findRemovalProposed(
+			{ userId, messageId: previousMessageId, since: this.getProposalSince(now) },
+			tx,
+		)
+	}
+
+	/**
+	 * The chat's forget_food with the user's "yes": soft delete, but only a food that the question of
+	 * the previous message was about, asked not longer ago than the TTL. false = nothing deleted.
+	 */
+	forgetFromChat(
+		{ userId, id, previousMessageId }: { userId: string; id: string; previousMessageId: string },
+		tx: Prisma.TransactionClient,
+	): Promise<boolean> {
+		const now = new Date()
+		return this.memoryRepository.deleteProposed(
+			{
+				userId,
+				id,
+				messageId: previousMessageId,
+				since: this.getProposalSince(now),
+				deletedAt: now,
+			},
+			tx,
+		)
+	}
+
+	/** Foods deleted since `since` (the user's local midnight), the newest first: what restore_food reaches. */
+	findRecentlyDeleted(userId: string, since: Date): Promise<MyFood[]> {
+		return this.memoryRepository.findDeletedSince({
+			userId,
+			since,
+			limit: MAX_RECENTLY_DELETED_FOODS,
+		})
+	}
+
+	/** The chat's restore_food; a name another food has taken meanwhile is not overwritten. */
+	async restoreFromChat(
+		{ userId, id }: { userId: string; id: string },
+		tx: Prisma.TransactionClient,
+	): Promise<FoodRestoreOutcome> {
+		const food = await this.memoryRepository.findFood({ userId, id }, tx)
+		if (!food) return 'gone'
+		if (food.deletedAt === null) return 'restored'
+		const holder = await this.memoryRepository.findActiveFoodByName(
+			{ userId, nameNormalized: food.nameNormalized },
+			tx,
+		)
+		if (holder) return 'name_taken'
+		const isRestored = await this.memoryRepository.setDeletedAt({ userId, id, deletedAt: null }, tx)
+		return isRestored ? 'restored' : 'gone'
+	}
+
 	async remove(userId: string, id: string): Promise<void> {
 		const isDeleted = await this.memoryRepository.setDeletedAt({
 			userId,
@@ -174,6 +247,10 @@ export class MyFoodsService {
 			}
 			return { created: created.map(toMyFoodResponse), skipped }
 		})
+	}
+
+	private getProposalSince(now: Date): Date {
+		return new Date(now.getTime() - FOOD_REMOVAL_PROPOSAL_TTL_MS)
 	}
 
 	private async getActiveFood(userId: string, id: string): Promise<MyFood> {

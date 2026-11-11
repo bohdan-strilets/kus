@@ -15,6 +15,10 @@ export const FACT_REF_PATTERN = /^f\d{1,2}$/
 export const MAX_SAVED_FOODS_PER_MESSAGE = 5
 export const MAX_FORGOTTEN_FACTS_PER_MESSAGE = 5
 export const MAX_FOOD_ALIASES = 5
+/** forget_food and restore_food, each, per message. */
+export const MAX_FOOD_REMOVALS_PER_MESSAGE = 3
+/** The user's "yes" counts only in the message right after the question, and only this long after it. */
+export const FOOD_REMOVAL_PROPOSAL_TTL_MS = 3 * 60 * 60 * 1000
 
 const gramsSchema = z.number().min(MIN_ENTRY_GRAMS).max(MAX_ENTRY_GRAMS)
 

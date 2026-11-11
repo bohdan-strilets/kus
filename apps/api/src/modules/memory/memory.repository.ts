@@ -98,20 +98,86 @@ export class MemoryRepository {
 	}
 
 	/** Soft delete (a date) or restore (null); only a row in the opposite state. */
-	async setDeletedAt({
-		userId,
-		id,
-		deletedAt,
-	}: {
-		userId: string
-		id: string
-		deletedAt: Date | null
-	}): Promise<boolean> {
-		const { count } = await this.prisma.myFood.updateMany({
+	async setDeletedAt(
+		{ userId, id, deletedAt }: { userId: string; id: string; deletedAt: Date | null },
+		tx?: Prisma.TransactionClient,
+	): Promise<boolean> {
+		const { count } = await (tx ?? this.prisma).myFood.updateMany({
 			where: { id, userId, deletedAt: deletedAt === null ? { not: null } : null },
 			data: { deletedAt },
 		})
 		return count === 1
+	}
+
+	/** forget_food asked "remove it?" in this user message; a newer question overwrites the older one. */
+	async setRemovalProposed(
+		{ userId, ids, messageId }: { userId: string; ids: string[]; messageId: string },
+		tx: Prisma.TransactionClient,
+	): Promise<void> {
+		await tx.myFood.updateMany({
+			where: { id: { in: ids }, userId, deletedAt: null },
+			data: { removalProposedMessageId: messageId },
+		})
+	}
+
+	/** Active foods the question of that user message (not older than `since`) is about. */
+	findRemovalProposed(
+		{ userId, messageId, since }: { userId: string; messageId: string; since: Date },
+		tx?: Prisma.TransactionClient,
+	): Promise<MyFood[]> {
+		return (tx ?? this.prisma).myFood.findMany({
+			where: {
+				userId,
+				deletedAt: null,
+				removalProposedMessageId: messageId,
+				removalProposedMessage: { createdAt: { gte: since } },
+			},
+			orderBy: { createdAt: 'asc' },
+		})
+	}
+
+	/**
+	 * Soft delete that the question of the previous message (not older than `since`) allows: the
+	 * condition and the write are one statement. The proposal stays on the row for the history marker.
+	 */
+	async deleteProposed(
+		{
+			userId,
+			id,
+			messageId,
+			since,
+			deletedAt,
+		}: { userId: string; id: string; messageId: string; since: Date; deletedAt: Date },
+		tx: Prisma.TransactionClient,
+	): Promise<boolean> {
+		const { count } = await tx.myFood.updateMany({
+			where: {
+				id,
+				userId,
+				deletedAt: null,
+				removalProposedMessageId: messageId,
+				removalProposedMessage: { createdAt: { gte: since } },
+			},
+			data: { deletedAt },
+		})
+		return count === 1
+	}
+
+	/** Foods deleted since `since`, the newest first: what "bring it back" can still reach. */
+	findDeletedSince({
+		userId,
+		since,
+		limit,
+	}: {
+		userId: string
+		since: Date
+		limit: number
+	}): Promise<MyFood[]> {
+		return this.prisma.myFood.findMany({
+			where: { userId, deletedAt: { gte: since } },
+			orderBy: { deletedAt: 'desc' },
+			take: limit,
+		})
 	}
 
 	async markUsed(

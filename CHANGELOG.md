@@ -6,6 +6,27 @@ All notable changes to Kusik are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.11.4] — 2026-11-11
+
+A saved food can be removed from the memory right in the chat, and "що в мене в пам'яті?" finally lists the memory. Kusik asks before removing, the removal is a soft delete that "Скасувати" or "поверни …" undoes the same day, and `find_food` can list the saved foods without a query. One additive migration (`my_foods.removal_proposed_message_id`); prompt `2026-11-10.9` and `.10`; the web version is 0.11.4.
+
+### Added
+
+- `forget_food` and `restore_food`: removing a saved food takes two turns that the backend guarantees. A first call with `confirmed: false` asks in the reply and remembers the proposal in `MyFood.removalProposedMessageId`; `confirmed: true` removes only a food proposed in the previous user message, not older than 3 hours; at most 3 foods per turn, "видали все" removes nothing. `restore_food` brings back a food forgotten the same local day, including one removed by hand on the "Пам'ять" screen ([1666570], [084f420], [1dd7879], [097f850])
+- `[Kusik: forgot food "Назва"]` markers in the history (with `g1` for a food forgotten today and `; restored later` after a restore) ([dfe633e])
+- The toast "Прибрав «X» з пам'яті" with "Скасувати" on any screen, kept through navigation until it expires; `restoreMyFood` moved to `entities/my-food` ([0cf25dc], [9519a5b], [6703f18])
+- `find_food` without a query and with `scope: saved` lists the saved foods (up to 20, the most used first, "N saved in total; ask a name to narrow"); prompt `.10` sends "що в пам'яті?" there and answers with both the facts and the foods ([e5da2cb], [b11730f])
+- The eval runner stops when the `@kus/shared` build is older than its sources or the `PROMPT_VERSION` differs ([0661ddb])
+- Eval cases `forget-food-*`, `restore-food-*`, `memory-list-all`, `memory-list-foods-only` ([d8ebb52], [769931b], [32e069a])
+
+### Fixed
+
+- "Що в мене в пам'яті?" answered "не бачу збережених продуктів": the prompt asked for `find_food` with the scope saved, but the query was required ([e5da2cb], [b11730f])
+
+### Known
+
+- `read-last-time-170` (eval) fails three times in a row on `.8`–`.10`: the model deletes `e1` and logs a new entry instead of correcting it; the final state is right. Next release: "a corrected number of an entry → `correct_entry`, not delete + log"
+
 ## [0.11.3] — 2026-11-11
 
 Kusik no longer takes back his own answers, keeps two similar exercises apart, and the web app updates itself quietly. The result of a read is now remembered in the history (`[Kusik: read …]`), the program check counts only whole weeks, and a bench press on a machine is never glued to a barbell bench. No migrations; prompt `2026-11-10.7` and `.8`; the web version is 0.11.3.
@@ -833,7 +854,22 @@ Design sync with `design/` v0.5.2. Web only: no API, shared-package or migration
 
 ## 0.2.0 / 0.1.0 — see tags
 
-[Unreleased]: https://github.com/bohdan-strilets/kus/compare/v0.11.3...HEAD
+[Unreleased]: https://github.com/bohdan-strilets/kus/compare/v0.11.4...HEAD
+[0.11.4]: https://github.com/bohdan-strilets/kus/compare/v0.11.3...v0.11.4
+[1666570]: https://github.com/bohdan-strilets/kus/commit/1666570aeece57e1fb620152ded05b8da4ea7b2c
+[084f420]: https://github.com/bohdan-strilets/kus/commit/084f420a14e0f27a8ed8ac9090ce073ae2ac38b1
+[1dd7879]: https://github.com/bohdan-strilets/kus/commit/1dd7879edd13c73cf08511f09bb96059494e9fd1
+[097f850]: https://github.com/bohdan-strilets/kus/commit/097f8503f886cc07ff59bf615a074eca82fc122e
+[dfe633e]: https://github.com/bohdan-strilets/kus/commit/dfe633e4458676390882919bc978b7812ae03193
+[0cf25dc]: https://github.com/bohdan-strilets/kus/commit/0cf25dc115cfc8aff68250053cb533e47399daad
+[9519a5b]: https://github.com/bohdan-strilets/kus/commit/9519a5bdf9a5f75b85fdab8fac70fd0c7d273ec3
+[6703f18]: https://github.com/bohdan-strilets/kus/commit/6703f18e9d558e77468c6e08cdd3a47fd895d10d
+[e5da2cb]: https://github.com/bohdan-strilets/kus/commit/e5da2cb8b86ff1fed6a18c515e6b4fb39fceb6a3
+[b11730f]: https://github.com/bohdan-strilets/kus/commit/b11730fd68753d241cd163039b4e46ed4cfde74d
+[0661ddb]: https://github.com/bohdan-strilets/kus/commit/0661ddb9d81fefa6dd6a602c3ddcfc561d1803ce
+[d8ebb52]: https://github.com/bohdan-strilets/kus/commit/d8ebb5251d914c6041e1346029acb8aa9054f503
+[769931b]: https://github.com/bohdan-strilets/kus/commit/769931b690c5d7956ce581ac4de89575909378c5
+[32e069a]: https://github.com/bohdan-strilets/kus/commit/32e069ad96469b65a223eb54c5e554db6819f621
 [0.11.3]: https://github.com/bohdan-strilets/kus/compare/v0.11.2...v0.11.3
 [f595af0]: https://github.com/bohdan-strilets/kus/commit/f595af0d95f460e077cfd43da4c425cc4c537f20
 [ca15eca]: https://github.com/bohdan-strilets/kus/commit/ca15eca2f99acb21dc1b38d451347035a37dc565

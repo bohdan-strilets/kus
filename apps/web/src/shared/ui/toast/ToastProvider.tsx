@@ -1,14 +1,17 @@
 import * as RadixToast from '@radix-ui/react-toast'
 import { AnimatePresence, motion } from 'motion/react'
-import { type ReactNode, useCallback, useMemo, useRef, useState } from 'react'
+import { type CSSProperties, type ReactNode, useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { TRANSITION } from '@/shared/lib'
+import { TRANSITION, useViewportBox, type ViewportBox } from '@/shared/lib'
 
 import { MAX_VISIBLE_TOASTS, TOAST_ENTER_OFFSET_PX } from './toast.constants'
 import { type ToastApi, ToastContext } from './toast.context'
 import type { ToastItem } from './toast.types'
 import { useToastTimers } from './use-toast-timers'
+
+const getViewportOffsetStyle = (box: ViewportBox): CSSProperties | undefined =>
+	box.height === null ? undefined : { transform: `translateY(${box.offsetTop}px)` }
 
 /**
  * No mockup exists for toasts; agreed minimal look: a surface card, radius 18, shadow-chip,
@@ -18,6 +21,7 @@ import { useToastTimers } from './use-toast-timers'
  */
 export const ToastProvider = ({ children }: { children: ReactNode }) => {
 	const { t } = useTranslation()
+	const viewport = useViewportBox()
 	const [toasts, setToasts] = useState<ToastItem[]>([])
 	// a counter, not crypto.randomUUID(): that one exists only in secure contexts (no http on LAN)
 	const nextId = useRef(0)
@@ -98,9 +102,12 @@ export const ToastProvider = ({ children }: { children: ReactNode }) => {
 						</RadixToast.Root>
 					))}
 				</AnimatePresence>
-				{/* under the header, inside the app column, above sheets and dialogs (z-50) */}
+				{/* under the header, inside the app column, above sheets and dialogs (z-50). iOS pans the
+				    visual viewport down inside the layout one when the keyboard is open, so a `fixed` top
+				    offset would leave the toast above the visible area: follow offsetTop */}
 				<RadixToast.Viewport
 					label={t('toast.viewport')}
+					style={getViewportOffsetStyle(viewport)}
 					className="pointer-events-none fixed inset-x-0 top-below-header z-60 mx-auto flex max-w-app flex-col gap-2 px-gutter outline-none"
 				/>
 			</RadixToast.Provider>

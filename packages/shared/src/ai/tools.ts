@@ -479,7 +479,7 @@ const AI_TOOL_DESCRIPTIONS: Record<AiToolName, string> = {
 	clarify:
 		'Ask about logged items, together with log_food. See "Clarify"; kind "rename" has no kcal threshold.',
 	correct_entry:
-		'Change entries already logged today (by ref): portion weight, values or what the food is. Use instead of logging the food again.',
+		'Change entries already logged today (by ref): portion weight, values or what the food is. Use instead of logging the food again or delete_entry + log_food.',
 	delete_entry:
 		'Delete entries ("e1") or workouts ("w1") logged today that the user wants removed.',
 	restore_entry: 'Bring back entries or workouts deleted today (by ref), e.g. "поверни".',

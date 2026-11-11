@@ -6,6 +6,32 @@ All notable changes to Kusik are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.11.3] — 2026-11-11
+
+Kusik no longer takes back his own answers, keeps two similar exercises apart, and the web app updates itself quietly. The result of a read is now remembered in the history (`[Kusik: read …]`), the program check counts only whole weeks, and a bench press on a machine is never glued to a barbell bench. No migrations; prompt `2026-11-10.7` and `.8`; the web version is 0.11.3.
+
+### Added
+
+- `[Kusik: read …]` markers in the history: the digest of a read (`get_workouts`, `find_food`) is stored next to its result in `AiToolCall.result` and shown on Kusik's reply, up to 2 per turn and 200 characters; only successful runs of the same user ([c1e5581], [9421aa8])
+- Quiet service worker update: the new version is applied when the tab comes back from the background, nothing is being sent, the composer is empty and no live workout is open ([f595af0], [01b51c8])
+- Eval cases: a read remembered with and without the marker, month count with a program, the current week, an ambiguous press asks which exercise, an exact press is logged ([1534e24], [523ff08])
+
+### Changed
+
+- `get_workouts`: the program check counts only whole Mon–Sun weeks that are over and says how many workouts are outside it; the current week is shown apart ("This week so far"); with an exercise filter all similar exercises are returned and counted separately, records say "this exercise only" ([c1e5581])
+- Prompt `2026-11-10.7`: a lookup for another period or one exercise is not a contradiction, an earlier answer is not taken back unless the new numbers contradict it ([c1e5581]); `.8`: `exerciseRef` is used only for exactly that exercise, two fitting exercises → ask which ([9421aa8])
+- A stale failed message (from another local day) sits at the bottom of the feed; a failed message that cannot be retried stays on its date ([f595af0])
+- `find_food` marker is `read food "…": N found` ([9421aa8])
+
+### Fixed
+
+- A model answer was retracted ("поправка") on the next question because the first read was not in the history ([c1e5581])
+- An exercise ref of the model glued different exercises or was rejected into a duplicate; aliases are written only on an unambiguous match, a deleted exercise is not reused by ref, program acceptance goes through the same resolver ([ca15eca])
+
+### Known
+
+- `read-last-time-170` (eval) is unstable since prompt `.3`: sometimes `log` with a deletion instead of `edit`; the final state is right ([eaec335])
+
 ## [0.11.2] — 2026-11-10
 
 Kusik sees past workouts, and an unsent message can be dismissed or sent for today. A second read tool, `get_workouts`, answers "коли я почав ходити в зал", "скільки тренувань цього місяця", records and missed program days from numbers the backend counts. The chat outbox gets a way out of every failed message. No migrations; prompt `2026-11-10.6`; the web version is 0.11.2.
@@ -807,7 +833,16 @@ Design sync with `design/` v0.5.2. Web only: no API, shared-package or migration
 
 ## 0.2.0 / 0.1.0 — see tags
 
-[Unreleased]: https://github.com/bohdan-strilets/kus/compare/v0.11.2...HEAD
+[Unreleased]: https://github.com/bohdan-strilets/kus/compare/v0.11.3...HEAD
+[0.11.3]: https://github.com/bohdan-strilets/kus/compare/v0.11.2...v0.11.3
+[f595af0]: https://github.com/bohdan-strilets/kus/commit/f595af0d95f460e077cfd43da4c425cc4c537f20
+[ca15eca]: https://github.com/bohdan-strilets/kus/commit/ca15eca2f99acb21dc1b38d451347035a37dc565
+[c1e5581]: https://github.com/bohdan-strilets/kus/commit/c1e55813efdfc5356ebc74fd9d6ffffc6bd2a79c
+[1534e24]: https://github.com/bohdan-strilets/kus/commit/1534e24fac7eb44c7e56b38824f8908f6dfa69b0
+[01b51c8]: https://github.com/bohdan-strilets/kus/commit/01b51c8de54cd19ba14ea78011164535d5ee4c78
+[9421aa8]: https://github.com/bohdan-strilets/kus/commit/9421aa831cd861b2554edd7f016be497ed12546e
+[523ff08]: https://github.com/bohdan-strilets/kus/commit/523ff08c3e146ea4ec7d8610048d5ea7cf34fff1
+[eaec335]: https://github.com/bohdan-strilets/kus/commit/eaec335a18758c4df36aef24719ccf1cd0d4ac5c
 [0.11.2]: https://github.com/bohdan-strilets/kus/compare/v0.11.1...v0.11.2
 [8b33331]: https://github.com/bohdan-strilets/kus/commit/8b33331fce313dcc632bea024845579a4b098c74
 [2bab573]: https://github.com/bohdan-strilets/kus/commit/2bab573b603a822dfc370e16bea50f701f9e2c30

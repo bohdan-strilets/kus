@@ -298,7 +298,7 @@ export const MEMORY_FORGET_FOOD_CASES: EvalCase[] = [
 	},
 	{
 		id: 'forget-food-marker-no-repeat',
-		text: "що в мене в пам'яті?",
+		text: 'які протеїнові батончики в мене збережені?',
 		savedFoods: [OLIMP, BUCKWHEAT, MILK],
 		context: {
 			history: [
@@ -321,6 +321,6 @@ export const MEMORY_FORGET_FOOD_CASES: EvalCase[] = [
 			memory: NO_MEMORY_CALLS,
 		},
 		reference:
-			'[Kusik: forgot food "Батончик SportyFeel"] is in the history: the list comes from the memory (Olimp), nothing is removed or restored again',
+			'[Kusik: forgot food "Батончик SportyFeel"] is in the history: the list of the bars comes from the memory (Olimp, not the forgotten SportyFeel), nothing is removed or restored again',
 	},
 ]

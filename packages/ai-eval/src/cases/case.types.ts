@@ -210,6 +210,8 @@ export const expectedMemorySchema = z.object({
 	foodRemovals: z
 		.array(z.object({ ref: z.string().regex(MEMORY_REF_PATTERN), confirmed: z.boolean() }))
 		.optional(),
+	/** forget_food may be asked again (confirmed false), but none may be confirmed: nothing is removed. */
+	noConfirmedRemoval: z.literal(true).optional(),
 	/** restore_food calls, exactly these g-refs; `[]` = none. */
 	foodRestores: z.array(z.string().regex(FORGOTTEN_FOOD_REF_PATTERN)).optional(),
 })

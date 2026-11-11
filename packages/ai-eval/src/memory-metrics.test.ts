@@ -147,6 +147,17 @@ describe('isMemoryCorrect: forget_food and restore_food', () => {
 		expect(isMemoryCorrect(expected, EMPTY_CALL_FACTS)).toBe(false)
 	})
 
+	it('noConfirmedRemoval allows a repeated question but not a confirmed removal', () => {
+		const expected: ExpectedMemory = { noConfirmedRemoval: true }
+		expect(isMemoryCorrect(expected, EMPTY_CALL_FACTS)).toBe(true)
+		expect(
+			isMemoryCorrect(expected, calls({ foodRemovals: [{ ref: 'm1', confirmed: false }] })),
+		).toBe(true)
+		expect(
+			isMemoryCorrect(expected, calls({ foodRemovals: [{ ref: 'm1', confirmed: true }] })),
+		).toBe(false)
+	})
+
 	it('restores are the same set of g-refs', () => {
 		expect(
 			isMemoryCorrect({ foodRestores: ['g1'] }, calls({ foodRestores: [{ ref: 'g1' }] })),

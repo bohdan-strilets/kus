@@ -285,10 +285,16 @@ export const MEMORY_FORGET_FOOD_CASES: EvalCase[] = [
 		expect: {
 			decision: 'reply',
 			replyExcludes: NOT_REMOVED_YET,
-			memory: NO_MEMORY_CALLS,
+			memory: {
+				foods: [],
+				fact: null,
+				forgets: [],
+				foodRestores: [],
+				noConfirmedRemoval: true,
+			},
 		},
 		reference:
-			'The question expired (there is no «Foods to remove», another message came between): «так» removes nothing; ask what is meant',
+			'The question expired (there is no «Foods to remove», another message came between): «так» confirms nothing. Asking again (forget_food with confirmed false) is fine, confirmed true is not; the reply never claims the food is gone',
 	},
 	{
 		id: 'forget-food-marker-no-repeat',

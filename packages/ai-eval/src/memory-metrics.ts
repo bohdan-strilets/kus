@@ -69,6 +69,8 @@ export const isMemoryCorrect = (expected: ExpectedMemory, calls: CallFacts): boo
 			expected.foodRemovals.map(toRemovalKey),
 			(calls.foodRemovals ?? []).map(toRemovalKey),
 		)) &&
+	(expected.noConfirmedRemoval === undefined ||
+		(calls.foodRemovals ?? []).every(({ confirmed }) => !confirmed)) &&
 	(expected.foodRestores === undefined ||
 		isSameSet(
 			expected.foodRestores,

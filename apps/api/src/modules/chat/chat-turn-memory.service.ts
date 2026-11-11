@@ -5,6 +5,7 @@ import {
 	MAX_FOOD_REMOVALS_PER_MESSAGE,
 	FACTS_LIMIT_NOTICE,
 	FOOD_REMOVE_FAILED_NOTICE,
+	FOOD_RESTORE_FAILED_NOTICE,
 	FOOD_RESTORE_GONE_NOTICE,
 	FOOD_RESTORE_NAME_TAKEN_NOTICE,
 	type MemoryActions,
@@ -192,14 +193,21 @@ export class ChatTurnMemoryService {
 	): Promise<{ restored: RefedFood[]; notice: MemoryNotice | null }> {
 		const restored: RefedFood[] = []
 		let notice: MemoryNotice | null = null
+		let missed = 0
 		for (const { ref } of memory.foodRestores) {
 			const food = forgottenFoodsByRef.get(ref)
-			// the parser accepts only refs of this request; a miss here is a bug
-			if (!food) throw new Error('restore_food ref is not mapped')
+			if (!food) {
+				missed += 1
+				continue
+			}
 			const outcome = await this.myFoods.restoreFromChat({ userId, id: food.id }, tx)
 			if (outcome === 'restored') restored.push({ ref, id: food.id, name: food.name })
 			if (outcome === 'name_taken') notice = FOOD_RESTORE_NAME_TAKEN_NOTICE
 			if (outcome === 'gone') notice ??= FOOD_RESTORE_GONE_NOTICE
+		}
+		if (missed > 0) {
+			this.logger.warn(`restore_food ref not mapped user=${userId} count=${missed}`)
+			notice = FOOD_RESTORE_FAILED_NOTICE
 		}
 		return { restored, notice }
 	}

@@ -1,5 +1,6 @@
 import {
 	FOOD_REMOVE_FAILED_NOTICE,
+	FOOD_RESTORE_FAILED_NOTICE,
 	MAX_FOOD_REMOVALS_PER_MESSAGE,
 	NO_MEMORY_ACTIONS,
 	type MemoryActions,
@@ -103,6 +104,18 @@ describe('ChatTurnMemoryService forget_food', () => {
 		})
 
 		expect(myFoods.restoreFromChat).toHaveBeenCalledTimes(MAX_FOOD_REMOVALS_PER_MESSAGE)
+	})
+
+	it('refuses softly when a restore ref is unknown and restores the others', async () => {
+		const { myFoods, run } = setup()
+
+		const result = await run({
+			memory: { ...NO_MEMORY_ACTIONS, foodRestores: [{ ref: 'm9' }, { ref: refOf(1) }] },
+			forgottenFoodsByRef: createFoods(1),
+		})
+
+		expect(myFoods.restoreFromChat).toHaveBeenCalledOnce()
+		expect(result.notice).toBe(FOOD_RESTORE_FAILED_NOTICE)
 	})
 
 	it('refuses softly when a confirmed ref is no longer pending', async () => {

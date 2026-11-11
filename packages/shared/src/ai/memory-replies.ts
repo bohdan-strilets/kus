@@ -12,6 +12,7 @@ export const FOOD_RESTORE_NAME_TAKEN_REPLY =
 	"Під цією назвою в пам'яті вже є інший продукт — повернути цей не вийшло."
 export const FOOD_RESTORE_GONE_REPLY = 'Цей продукт уже не повернути.'
 export const FOOD_REMOVE_FAILED_REPLY = 'Не вдалося прибрати цей продукт — спробуй ще раз.'
+export const FOOD_RESTORE_FAILED_REPLY = 'Не вдалося повернути цей продукт — спробуй ще раз.'
 
 export interface MemoryNotice {
 	text: string
@@ -42,6 +43,13 @@ export const FOOD_RESTORE_GONE_NOTICE: MemoryNotice = {
 /** A forget_food the backend did not carry out (a stale ref, the question expired): the «Видалив» would be false. */
 export const FOOD_REMOVE_FAILED_NOTICE: MemoryNotice = {
 	text: FOOD_REMOVE_FAILED_REPLY,
+	isQuietUnlessClaimed: false,
+	isReplacing: true,
+}
+
+/** A restore_food whose ref is not known (a stale request): the «Повернув» would be false. */
+export const FOOD_RESTORE_FAILED_NOTICE: MemoryNotice = {
+	text: FOOD_RESTORE_FAILED_REPLY,
 	isQuietUnlessClaimed: false,
 	isReplacing: true,
 }

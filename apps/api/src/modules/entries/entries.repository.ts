@@ -206,6 +206,21 @@ export class EntriesRepository {
 		})
 	}
 
+	/**
+	 * Which entries the given messages logged, deleted ones too (the history says «deleted later»).
+	 * Ids only: the entries themselves are not editable from here.
+	 */
+	findSourceEntries(
+		{ userId, messageIds }: { userId: string; messageIds: string[] },
+		tx?: Prisma.TransactionClient,
+	): Promise<{ id: string; sourceMessageId: string | null; deletedAt: Date | null }[]> {
+		return (tx ?? this.prisma).foodEntry.findMany({
+			where: { userId, sourceMessageId: { in: messageIds } },
+			select: { id: true, sourceMessageId: true, deletedAt: true },
+			orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+		})
+	}
+
 	/** Active entries of one day's active meals, oldest first: what «як вчора» can point at. */
 	findActiveDayEntriesWithMeal({
 		userId,
@@ -306,7 +321,7 @@ export class EntriesRepository {
 	 * Corrections the chat history needs, oldest first: every change of `entryIds` (who deleted
 	 * them), every change made by one of `messageIds`, and the changes made in the app since `since`.
 	 */
-	findHistoryCorrections({
+	async findHistoryCorrections({
 		userId,
 		entryIds,
 		messageIds,
@@ -317,7 +332,7 @@ export class EntriesRepository {
 		messageIds: string[]
 		since: Date
 	}): Promise<HistoryCorrectionRow[]> {
-		return this.prisma.correction.findMany({
+		const rows = await this.prisma.correction.findMany({
 			where: {
 				userId,
 				OR: [
@@ -333,9 +348,11 @@ export class EntriesRepository {
 				after: true,
 				foodEntry: { select: { name: true, meal: { select: { localDate: true } } } },
 			},
-			orderBy: { createdAt: 'asc' },
+			// the newest are kept on overflow: the latest changes decide what the history says
+			orderBy: { createdAt: 'desc' },
 			take: HISTORY_CORRECTIONS_MAX,
 		})
+		return rows.reverse()
 	}
 
 	async createCorrections(

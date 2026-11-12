@@ -57,8 +57,9 @@ export const buildReadStepMessages = (
 ]
 
 /**
- * A second cache point on the user's message: the read step's request then reads the whole input of
- * the first one from the cache. A message ending in a photo is left alone (the cache point needs text).
+ * A third cache point, on the user's message (after the prompt and the day's history): the read
+ * step's request then reads the whole input of the first one from the cache. At most 3 points in
+ * all, Anthropic allows 4. A message ending in a photo is left alone (the cache point needs text).
  */
 export const withUserCacheBreakpoint = (messages: AiRequestMessage[]): AiRequestMessage[] => {
 	const last = messages.at(-1)

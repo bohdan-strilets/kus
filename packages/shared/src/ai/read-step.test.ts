@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
+import { buildFoodParseMessages } from './context.js'
 import {
 	buildReadStepMessages,
 	type ModelToolCall,
@@ -67,5 +68,33 @@ describe('withUserCacheBreakpoint', () => {
 			},
 		]
 		expect(withUserCacheBreakpoint(messages)).toBe(messages)
+	})
+})
+
+describe('withUserCacheBreakpoint over the whole input', () => {
+	it('keeps the breakpoints of a request within three (Anthropic allows four)', () => {
+		const history = Array.from({ length: 4 }, (_, index) => ({
+			role: index % 2 === 0 ? ('user' as const) : ('assistant' as const),
+			content: `m${index}`,
+		}))
+		const messages = withUserCacheBreakpoint(
+			buildFoodParseMessages(
+				{
+					localTime: '2026-11-12 13:20, Thursday',
+					dayTotals: { kcal: 0, protein: 0, fat: 0, carbs: 0 },
+					meals: [],
+					entries: [],
+					deletedEntries: [],
+					openClarifications: [],
+					goal: null,
+					measurements: { today: '2026-11-12', weights: [], waist: null, targetWeightKg: null },
+					memory: [],
+					history,
+				},
+				'ще чай',
+			),
+		)
+		const breakpoints = (JSON.stringify(messages).match(/"cache_control"/g) ?? []).length
+		expect(breakpoints).toBe(3)
 	})
 })

@@ -225,6 +225,23 @@ export class EntriesService {
 		}
 	}
 
+	/**
+	 * Which entries the given messages logged, whatever day they went to: the messages of the evening
+	 * before are outside `getEditableEntries`, yet the history must show them as logged.
+	 */
+	async findSourceEntries(
+		userId: string,
+		messageIds: string[],
+	): Promise<{ id: string; sourceMessageId: string | null; isDeleted: boolean }[]> {
+		if (messageIds.length === 0) return []
+		const entries = await this.entriesRepository.findSourceEntries({ userId, messageIds })
+		return entries.map(({ id, sourceMessageId, deletedAt }) => ({
+			id,
+			sourceMessageId,
+			isDeleted: deletedAt !== null,
+		}))
+	}
+
 	/** What edited entries held before their changes; an entry with nothing to restore is missing. */
 	async getValuesBefore(
 		userId: string,

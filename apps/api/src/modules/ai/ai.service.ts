@@ -10,6 +10,7 @@ import {
 	buildFoodParseMessages,
 	buildReadStepMessages,
 	buildRetryMessages,
+	selectContextHistory,
 	buildStatsAdviceToolResult,
 	createFoodParseRequest,
 	type FoodParseContext,
@@ -740,12 +741,15 @@ export class AiService {
 			localDate: params.localDate,
 			costUsd,
 		})
+		// counts and an estimate only: the day's history is the part of the input that grows
+		const history = selectContextHistory(params.context)
 		// metadata only — never message text or food (CLAUDE.md §10.1)
 		const log = errorCode === OUTPUT_TRUNCATED ? 'warn' : 'log'
 		this.logger[log](
 			`AI run ${status} purpose=${kind.purpose} user=${params.userId} message=${params.messageId} ` +
 				`model=${model} in=${usage?.prompt_tokens ?? 0} cached=${usage?.prompt_tokens_details?.cached_tokens ?? 0} ` +
 				`out=${usage?.completion_tokens ?? 0} cost=${costUsd} ms=${durationMs} toolCalls=${calls.length}` +
+				` history=${history.messages.length} historyTokens~${history.tokens} historyDropped=${history.droppedCount}` +
 				(readCount > 0 ? ` reads=${readCount}` : '') +
 				(params.image ? ' photo=1' : '') +
 				(errorCode ? ` error=${errorCode}` : ''),

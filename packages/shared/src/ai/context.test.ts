@@ -1,17 +1,25 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+	APP_CONTEXT_HEADER,
 	buildFoodParseMessages,
 	type DayContext,
 	formatContext,
 	type FoodParseContext,
 	formatMeasurements,
-	HISTORY_MESSAGE_MAX_CHARS,
+	type RecentMeasurementContext,
+} from './context.js'
+import {
+	DAY_HISTORY_MAX_TOKENS,
+	DAY_HISTORY_TRIM_STEP_TOKENS,
+	HISTORY_CHARS_PER_TOKEN,
 	type HistoryTurn,
 	PHOTO_HISTORY_MARKER,
-	type RecentMeasurementContext,
-	selectHistory,
-} from './context.js'
+	PREVIOUS_DAY_TAIL_MAX_TOKENS,
+	selectDayHistory,
+	selectPreviousDayTail,
+	toHistoryText,
+} from './day-history.js'
 import type { TodayEntryContext } from './edit-context.js'
 
 describe('formatMeasurements', () => {
@@ -162,21 +170,20 @@ describe('app changes in front of the message', () => {
 describe('history turns with what Kusik read', () => {
 	const digest = (text: string): string => `read workouts 01.11–10.11: ${text}`.padEnd(200, 'x')
 
-	it('keeps both read digests whole in front of a long reply and inside the budget', () => {
+	it('keeps both read digests and a long reply whole', () => {
 		const reads = [digest('3'), digest('4')]
-		const turns = selectHistory([
+		const long = 'a'.repeat(3000)
+		const { messages } = selectDayHistory([
 			{ role: 'user', content: 'Як мої тренування цього місяця?' },
-			{ role: 'assistant', content: 'a'.repeat(HISTORY_MESSAGE_MAX_CHARS * 2), reads },
+			{ role: 'assistant', content: long, reads },
 		])
 
-		expect(turns).toHaveLength(2)
-		const reply = turns[1]?.content ?? ''
-		expect(reply.startsWith(`[Kusik: ${reads.join('; ')}] `)).toBe(true)
-		expect(reply).toHaveLength(HISTORY_MESSAGE_MAX_CHARS)
+		expect(messages).toHaveLength(2)
+		expect(messages[1]?.content).toBe(`[Kusik: ${reads.join('; ')}] ${long}`)
 	})
 
-	it('does not push the earlier turns out of the history budget when the digests are short', () => {
-		const turns = selectHistory(
+	it('keeps every turn of a day with short digests', () => {
+		const { messages } = selectDayHistory(
 			Array.from({ length: 3 }, (_, index) => [
 				{ role: 'user' as const, content: `питання ${index}` },
 				{
@@ -187,10 +194,10 @@ describe('history turns with what Kusik read', () => {
 			]).flat(),
 		)
 
-		expect(turns).toHaveLength(6)
-		expect(turns.filter(({ content }) => content.startsWith('[Kusik: read workouts'))).toHaveLength(
-			3,
-		)
+		expect(messages).toHaveLength(6)
+		expect(
+			messages.filter(({ content }) => content.startsWith('[Kusik: read workouts')),
+		).toHaveLength(3)
 	})
 })
 
@@ -202,57 +209,239 @@ describe('history turns with logged entries', () => {
 	})
 
 	it('starts the user turn with the logged refs marker', () => {
-		const [turn] = selectHistory([userTurn({ loggedRefs: ['e1', 'e2'] })])
-		expect(turn?.content).toBe('[logged: e1, e2] вівсянка 300 г')
-	})
-
-	it('keeps the marker when the long text is cut', () => {
-		const long = 'x'.repeat(HISTORY_MESSAGE_MAX_CHARS * 2)
-		const [turn] = selectHistory([userTurn({ content: long, loggedRefs: ['e1', 'e2'] })])
-		expect(turn?.content.startsWith('[logged: e1, e2] ')).toBe(true)
-		expect(turn?.content).toHaveLength(HISTORY_MESSAGE_MAX_CHARS)
+		expect(toHistoryText(userTurn({ loggedRefs: ['e1', 'e2'] }))).toBe(
+			'[logged: e1, e2] вівсянка 300 г',
+		)
 	})
 
 	it('keeps both the logged marker and the photo marker', () => {
-		const [turn] = selectHistory([userTurn({ hasPhoto: true, loggedRefs: ['e1'] })])
-		expect(turn?.content.startsWith('[logged: e1] ')).toBe(true)
-		expect(turn?.content).toContain(PHOTO_HISTORY_MARKER)
-		expect(turn?.content).toContain('вівсянка 300 г')
+		const text = toHistoryText(userTurn({ hasPhoto: true, loggedRefs: ['e1'] }))
+		expect(text.startsWith('[logged: e1] ')).toBe(true)
+		expect(text).toContain(PHOTO_HISTORY_MARKER)
+		expect(text).toContain('вівсянка 300 г')
 	})
 
 	it('adds no marker without logged refs', () => {
-		const [plain, empty] = selectHistory([userTurn({}), userTurn({ loggedRefs: [] })])
-		expect(plain?.content).toBe('вівсянка 300 г')
-		expect(empty?.content).toBe('вівсянка 300 г')
+		expect(toHistoryText(userTurn({}))).toBe('вівсянка 300 г')
+		expect(toHistoryText(userTurn({ loggedRefs: [] }))).toBe('вівсянка 300 г')
 	})
 
 	it('marks a turn that logged entries without refs as just logged', () => {
-		const [turn] = selectHistory([userTurn({ hasLoggedEntries: true })])
-		expect(turn?.content).toBe('[logged] вівсянка 300 г')
+		expect(toHistoryText(userTurn({ hasLoggedEntries: true }))).toBe('[logged] вівсянка 300 г')
 	})
 
 	it('prefers the refs over the bare flag', () => {
-		const [turn] = selectHistory([userTurn({ hasLoggedEntries: true, loggedRefs: ['e2'] })])
-		expect(turn?.content).toBe('[logged: e2] вівсянка 300 г')
-	})
-
-	it('keeps the bare marker when the long text is cut', () => {
-		const long = 'x'.repeat(HISTORY_MESSAGE_MAX_CHARS * 2)
-		const [turn] = selectHistory([userTurn({ content: long, hasLoggedEntries: true })])
-		expect(turn?.content.startsWith('[logged] ')).toBe(true)
-		expect(turn?.content).toHaveLength(HISTORY_MESSAGE_MAX_CHARS)
+		expect(toHistoryText(userTurn({ hasLoggedEntries: true, loggedRefs: ['e2'] }))).toBe(
+			'[logged: e2] вівсянка 300 г',
+		)
 	})
 
 	it('never marks an assistant turn with the bare flag', () => {
-		const [turn] = selectHistory([
-			{ role: 'assistant', content: 'Записано', hasLoggedEntries: true },
-		])
-		expect(turn?.content).toBe('Записано')
+		expect(toHistoryText({ role: 'assistant', content: 'Записано', hasLoggedEntries: true })).toBe(
+			'Записано',
+		)
 	})
 
 	it('never marks an assistant turn', () => {
-		const [turn] = selectHistory([{ role: 'assistant', content: 'Записано', loggedRefs: ['e1'] }])
-		expect(turn?.content).toBe('Записано')
+		expect(toHistoryText({ role: 'assistant', content: 'Записано', loggedRefs: ['e1'] })).toBe(
+			'Записано',
+		)
+	})
+})
+
+describe('the whole day in front of the context', () => {
+	// ~1000 chars of Ukrainian, the proposal is in the last sentence
+	const LONG_REPLY = `${'Записав борщ, вівсянку та чай. '.repeat(50)}Хочеш, запишу омлет з 3 яєць із сиром ≈ 420 ккал?`
+	const pair = (index: number): HistoryTurn[] => [
+		{ role: 'user', content: `питання ${index}` },
+		{ role: 'assistant', content: `відповідь ${index}` },
+	]
+	const stripCacheControl = (value: unknown): unknown =>
+		JSON.parse(
+			JSON.stringify(value, (key, item: unknown) => (key === 'cache_control' ? undefined : item)),
+		)
+	const countBreakpoints = (value: unknown): number =>
+		(JSON.stringify(value).match(/"cache_control"/g) ?? []).length
+
+	it('keeps a long reply of Kusik whole, with the proposal at its end', () => {
+		expect(LONG_REPLY.length).toBeGreaterThan(1500)
+		const messages = buildFoodParseMessages(
+			{
+				...baseContext,
+				history: [
+					{ role: 'user', content: 'що з`їв?' },
+					{ role: 'assistant', content: LONG_REPLY },
+				],
+			},
+			'так',
+		)
+		expect(JSON.stringify(messages)).toContain('омлет з 3 яєць із сиром ≈ 420 ккал?')
+		expect(messages[2]).toEqual({
+			role: 'assistant',
+			content: [{ type: 'text', text: LONG_REPLY, cache_control: { type: 'ephemeral' } }],
+		})
+	})
+
+	it('orders the prompt, the day before, the day, the context and the message', () => {
+		const messages = buildFoodParseMessages(
+			{
+				...baseContext,
+				previousDayHistory: [
+					{ role: 'user', content: 'вчора вечір' },
+					{ role: 'assistant', content: 'вчора відповідь' },
+				],
+				history: pair(1),
+			},
+			'ще чай',
+		)
+		expect(messages.map(({ role }) => role)).toEqual([
+			'system',
+			'user',
+			'assistant',
+			'user',
+			'assistant',
+			'user',
+			'user',
+		])
+		expect(JSON.stringify(messages[1])).toContain('вчора вечір')
+		expect(JSON.stringify(messages[3])).toContain('питання 1')
+		const context = messages.at(-2)
+		expect(context?.role).toBe('user')
+		expect(
+			typeof context?.content === 'string' && context.content.startsWith(APP_CONTEXT_HEADER),
+		).toBe(true)
+		expect(messages.at(-1)).toEqual({ role: 'user', content: 'ще чай' })
+	})
+
+	it('sets the history breakpoint on the last history message only', () => {
+		const messages = buildFoodParseMessages(
+			{ ...baseContext, history: [...pair(1), ...pair(2)] },
+			'ще',
+		)
+		const withBreakpoint = messages.flatMap((message, index) =>
+			JSON.stringify(message).includes('cache_control') ? [index] : [],
+		)
+		expect(withBreakpoint).toEqual([0, 4])
+	})
+
+	it('has one breakpoint without any history', () => {
+		expect(countBreakpoints(buildFoodParseMessages(baseContext, 'привіт'))).toBe(1)
+	})
+
+	it('does not change the bytes of the history between the turn k and k + 1', () => {
+		const turnK = buildFoodParseMessages({ ...baseContext, history: pair(1) }, 'a')
+		const turnNext = buildFoodParseMessages(
+			{ ...baseContext, history: [...pair(1), ...pair(2)] },
+			'b',
+		)
+		expect(stripCacheControl(turnNext.slice(0, 3))).toEqual(stripCacheControl(turnK.slice(0, 3)))
+	})
+
+	it('leaves the day before out once the valve has cut the day', () => {
+		const big = 'x'.repeat(Math.ceil(HISTORY_CHARS_PER_TOKEN * DAY_HISTORY_MAX_TOKENS))
+		const messages = buildFoodParseMessages(
+			{
+				...baseContext,
+				previousDayHistory: pair(0),
+				history: [{ role: 'user', content: big }, ...pair(1)],
+			},
+			'a',
+		)
+		expect(JSON.stringify(messages)).not.toContain('питання 0')
+	})
+})
+
+describe('selectDayHistory', () => {
+	const sized = (tokens: number): string => 'x'.repeat(Math.ceil(tokens * HISTORY_CHARS_PER_TOKEN))
+	const turns = (count: number, tokensEach: number): HistoryTurn[] =>
+		Array.from({ length: count }, (_, index) => ({
+			role: index % 2 === 0 ? ('user' as const) : ('assistant' as const),
+			content: `${index} ${sized(tokensEach)}`,
+		}))
+
+	it('keeps a day under the valve whole', () => {
+		const selection = selectDayHistory(turns(20, 500))
+		expect(selection.messages).toHaveLength(20)
+		expect(selection.droppedCount).toBe(0)
+		expect(selection.isTrimmed).toBe(false)
+	})
+
+	it('drops the oldest whole messages above the valve, keeps a user first and the last message', () => {
+		const all = turns(50, 500)
+		const selection = selectDayHistory(all)
+		expect(selection.isTrimmed).toBe(true)
+		expect(selection.droppedCount).toBeGreaterThan(0)
+		expect(selection.messages[0]?.role).toBe('user')
+		expect(selection.messages.at(-1)?.content).toBe(all.at(-1)?.content)
+		expect(selection.tokens).toBeLessThanOrEqual(DAY_HISTORY_MAX_TOKENS)
+		// whole messages, never cut
+		expect(selection.messages.every(({ content }) => content.length > sized(500).length)).toBe(true)
+	})
+
+	it('moves the cut by blocks: a new pair does not move it, a new block does', () => {
+		const dropped = (count: number): number => selectDayHistory(turns(count, 500)).droppedCount
+		// 42 messages = 21 000 tokens: 1 000 over, the first block of 5 000 goes
+		expect(dropped(42)).toBe(dropped(44))
+		expect(dropped(42)).toBe(dropped(46))
+		// 54 messages = 27 000: 7 000 over, two blocks
+		expect(dropped(54)).toBeGreaterThan(dropped(46))
+		expect(DAY_HISTORY_TRIM_STEP_TOKENS).toBe(5000)
+	})
+})
+
+describe('selectPreviousDayTail', () => {
+	const sized = (tokens: number): string => 'x'.repeat(Math.ceil(tokens * HISTORY_CHARS_PER_TOKEN))
+
+	it('takes at most 6 whole messages from the end', () => {
+		const all: HistoryTurn[] = Array.from({ length: 10 }, (_, index) => ({
+			role: index % 2 === 0 ? 'user' : 'assistant',
+			content: `m${index}`,
+		}))
+		expect(
+			selectPreviousDayTail(all, { isDayTrimmed: false }).map(({ content }) => content),
+		).toEqual(['m4', 'm5', 'm6', 'm7', 'm8', 'm9'])
+	})
+
+	it('stops at the first message that does not fit and never cuts one', () => {
+		const tail = selectPreviousDayTail(
+			[
+				{ role: 'user', content: 'старе' },
+				{ role: 'assistant', content: sized(PREVIOUS_DAY_TAIL_MAX_TOKENS + 10) },
+				{ role: 'user', content: 'останнє питання' },
+				{ role: 'assistant', content: 'остання відповідь' },
+			],
+			{ isDayTrimmed: false },
+		)
+		expect(tail.map(({ content }) => content)).toEqual(['останнє питання', 'остання відповідь'])
+	})
+
+	it('is empty when there is no user message to start with', () => {
+		expect(
+			selectPreviousDayTail([{ role: 'assistant', content: 'Привіт' }], { isDayTrimmed: false }),
+		).toEqual([])
+		expect(selectDayHistory([{ role: 'assistant', content: 'Привіт' }]).messages).toEqual([])
+	})
+
+	it('is empty once the valve has cut the day', () => {
+		expect(selectPreviousDayTail([{ role: 'user', content: 'a' }], { isDayTrimmed: true })).toEqual(
+			[],
+		)
+	})
+
+	it('marks photo turns, with and without words, and never carries the image', () => {
+		const tail = selectPreviousDayTail(
+			[
+				{ role: 'user', content: '', hasPhoto: true },
+				{ role: 'assistant', content: 'Записав' },
+				{ role: 'user', content: '150 г', hasPhoto: true },
+			],
+			{ isDayTrimmed: false },
+		)
+		expect(tail).toEqual([
+			{ role: 'user', content: '[фото]' },
+			{ role: 'assistant', content: 'Записав' },
+			{ role: 'user', content: '[фото] 150 г' },
+		])
 	})
 })
 

@@ -1,5 +1,7 @@
 // The user's "day" is their calendar day in User.timezone (docs/database.md), never the UTC date.
+import { DAY_HISTORY_LOOKBACK_HOURS } from '@kus/shared'
 
+const HOURS_IN_DAY = 24
 const MS_IN_DAY = 24 * 60 * 60 * 1000
 
 const getParts = (date: Date, timezone: string): Record<string, string> => {
@@ -95,3 +97,10 @@ export const listDays = (from: string, to: string): string[] => {
 		formatDbDate(addDays(first, index)),
 	)
 }
+
+/**
+ * Where the chat of a day begins for the model: the evening before at 24 − DAY_HISTORY_LOOKBACK_HOURS
+ * (20:00) on the user's wall clock. Never in a DST gap or fold, those fall at night.
+ */
+export const getDayHistoryStart = (localDate: Date, timezone: string): Date =>
+	getZonedMoment(addDays(localDate, -1), HOURS_IN_DAY - DAY_HISTORY_LOOKBACK_HOURS, timezone)

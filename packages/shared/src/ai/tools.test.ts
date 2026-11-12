@@ -1,12 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { FOOD_CATEGORIES } from '../schemas/enums.js'
-import {
-	buildFoodParseMessages,
-	type FoodParseContext,
-	HISTORY_MESSAGE_MAX_CHARS,
-	selectHistory,
-} from './context.js'
+import { buildFoodParseMessages, type FoodParseContext } from './context.js'
 import { getAiFunctionTools, logWorkoutInputSchema } from './tools.js'
 
 describe('getAiFunctionTools', () => {
@@ -129,44 +124,6 @@ describe('buildFoodParseMessages', () => {
 			role: 'user',
 			content: [{ type: 'image_url', image_url: { url: 'data:image/png;base64,BBBB' } }],
 		})
-	})
-})
-
-describe('selectHistory', () => {
-	it('keeps the most recent turns within the budget, oldest first', () => {
-		const turns = Array.from({ length: 10 }, (_, index) => ({
-			role: index % 2 === 0 ? ('user' as const) : ('assistant' as const),
-			content: `m${index}`,
-		}))
-		expect(selectHistory(turns).map((turn) => turn.content)).toEqual([
-			'm4',
-			'm5',
-			'm6',
-			'm7',
-			'm8',
-			'm9',
-		])
-	})
-
-	it('marks photo turns, with and without words, and never carries the image', () => {
-		const selected = selectHistory([
-			{ role: 'user', content: '', hasPhoto: true },
-			{ role: 'assistant', content: 'Записав' },
-			{ role: 'user', content: '150 г', hasPhoto: true },
-		])
-		expect(selected).toEqual([
-			{ role: 'user', content: '[фото]' },
-			{ role: 'assistant', content: 'Записав' },
-			{ role: 'user', content: '[фото] 150 г' },
-		])
-	})
-
-	it('cuts long messages and stops at the token budget', () => {
-		const long = { role: 'user' as const, content: 'x'.repeat(5000) }
-		const selected = selectHistory(Array.from({ length: 6 }, () => long))
-		expect(selected[0]?.content).toHaveLength(HISTORY_MESSAGE_MAX_CHARS)
-		// 1500 tokens ≈ 6000 chars → exactly 6 cut messages fit, and 6 is the message cap
-		expect(selected).toHaveLength(6)
 	})
 })
 

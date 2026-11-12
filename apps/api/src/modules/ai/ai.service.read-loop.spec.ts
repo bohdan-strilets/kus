@@ -234,15 +234,32 @@ describe('AiService.parseFood read-tool loop', () => {
 		expect(logged).not.toContain('food text')
 	})
 
-	it('puts a second cache point on the user message only when reading is possible', async () => {
-		fake.respond(createCompletion([logFoodCall()]), createCompletion([logFoodCall()]))
+	it('puts a cache point on the user message only when reading is possible, history included', async () => {
+		fake.respond(
+			createCompletion([logFoodCall()]),
+			createCompletion([logFoodCall()]),
+			createCompletion([logFoodCall()]),
+		)
+		const withHistory = {
+			...params,
+			context: {
+				...params.context,
+				history: [
+					{ role: 'user' as const, content: 'чай' },
+					{ role: 'assistant' as const, content: 'Записав чай' },
+				],
+			},
+		}
 
 		await service.parseFood(params)
 		await service.parseFood({ ...params, readTools: undefined })
+		await service.parseFood(withHistory)
 
 		const cachePoints = (body: unknown): number =>
 			(JSON.stringify(body).match(/"cache_control"/g) ?? []).length
 		expect(cachePoints(fake.bodies[0])).toBe(2)
 		expect(cachePoints(fake.bodies[1])).toBe(1)
+		// prompt, the last message of the day, the user message: within Anthropic's four
+		expect(cachePoints(fake.bodies[2])).toBe(3)
 	})
 })

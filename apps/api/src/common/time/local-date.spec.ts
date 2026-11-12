@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
 	formatLocalClock,
 	formatLocalTime,
+	getDayHistoryStart,
 	getLocalDate,
 	getLocalDateString,
 	getLocalHour,
@@ -50,5 +51,32 @@ describe('local date', () => {
 			expect(getZonedMoment(day, 1, WARSAW).toISOString()).toBe('2026-10-24T23:00:00.000Z')
 			expect(getZonedMoment(day, 13, WARSAW).toISOString()).toBe('2026-10-25T12:00:00.000Z')
 		})
+	})
+})
+
+describe('getDayHistoryStart', () => {
+	const day = (localDate: string): Date => new Date(`${localDate}T00:00:00Z`)
+	const start = (localDate: string): string =>
+		getDayHistoryStart(day(localDate), WARSAW).toISOString()
+
+	it('is 20:00 of the evening before on the wall clock', () => {
+		// 2026-11-12 in Warsaw is UTC+1
+		expect(start('2026-11-12')).toBe('2026-11-11T19:00:00.000Z')
+	})
+
+	it('puts 21:00 of yesterday inside the window and 19:00 outside', () => {
+		const since = getDayHistoryStart(day('2026-11-12'), WARSAW)
+		expect(new Date('2026-11-11T20:00:00Z') >= since).toBe(true) // 21:00 local
+		expect(new Date('2026-11-11T18:00:00Z') >= since).toBe(false) // 19:00 local
+	})
+
+	it('stays at 20:00 across the spring DST switch (2026-03-29)', () => {
+		expect(start('2026-03-29')).toBe('2026-03-28T19:00:00.000Z') // 20:00 CET
+		expect(start('2026-03-30')).toBe('2026-03-29T18:00:00.000Z') // 20:00 CEST
+	})
+
+	it('stays at 20:00 across the autumn DST switch (2026-10-25)', () => {
+		expect(start('2026-10-25')).toBe('2026-10-24T18:00:00.000Z') // 20:00 CEST
+		expect(start('2026-10-26')).toBe('2026-10-25T19:00:00.000Z') // 20:00 CET
 	})
 })

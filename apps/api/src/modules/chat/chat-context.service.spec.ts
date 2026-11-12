@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { MessageRole } from '../../generated/prisma/client'
 import { NO_TEMPLATE_REFS } from '../programs/program-chat-context'
 import { ChatContextService } from './chat-context.service'
+import { DAY_HISTORY_QUERY_CAP } from './chat.repository'
 
 const TODAY = new Date('2026-10-18T00:00:00Z')
 
@@ -42,7 +43,12 @@ const toMeasurement = (kind: string, localDate: string, value: number) => ({
 
 interface Mocks {
 	editable?: unknown
+	/** The day's messages, oldest first. */
 	history?: unknown[]
+	/** The end of the day before, oldest first. */
+	tail?: unknown[]
+	/** The entries the service finds by the messages from before midnight. */
+	sourceEntries?: unknown[]
 	daysKcal?: Map<string, { kcal: number; entryCount: number }>
 	goalKcal?: Map<string, number | null>
 	range?: Record<string, unknown[]>
@@ -63,6 +69,8 @@ interface Mocks {
 const createService = ({
 	editable = { active: [], deleted: [], sourceMessages: [] },
 	history = [],
+	tail = [],
+	sourceEntries = [],
 	daysKcal = new Map(),
 	goalKcal = new Map(),
 	range = {},
@@ -80,12 +88,15 @@ const createService = ({
 	const getReadDigests = vi.fn().mockResolvedValue(readDigests)
 	const getFoodActions = vi.fn().mockResolvedValue(new Map())
 	const getEditableEntries = vi.fn().mockResolvedValue(editable)
+	const findSourceEntries = vi.fn().mockResolvedValue(sourceEntries)
+	const findDayHistory = vi.fn().mockResolvedValue(history)
+	const findHistory = vi.fn().mockResolvedValue(tail)
 	const getDaysKcal = vi.fn().mockResolvedValue(daysKcal)
 	const findInRange = vi
 		.fn()
 		.mockImplementation(({ kind }: { kind: string }) => Promise.resolve(range[kind] ?? []))
 	const service = new ChatContextService(
-		{ findHistory: vi.fn().mockResolvedValue(history) } as never,
+		{ findDayHistory, findHistory } as never,
 		{ findOpenClarifications: vi.fn().mockResolvedValue([]) } as never,
 		{ getContext: vi.fn().mockResolvedValue({ earlier: [], copyRefIds: new Map() }) } as never,
 		{ getMarkers, getReadDigests, getFoodActions } as never,
@@ -95,6 +106,7 @@ const createService = ({
 			getValuesBefore: vi.fn().mockResolvedValue(new Map()),
 			getDaysKcal,
 			findHistoryCorrections,
+			findSourceEntries,
 		} as never,
 		{
 			getGoalForDate: vi.fn().mockResolvedValue(null),
@@ -128,6 +140,9 @@ const createService = ({
 		getMarkers,
 		getReadDigests,
 		findHistoryCorrections,
+		findSourceEntries,
+		findDayHistory,
+		findHistory,
 	}
 }
 
@@ -146,7 +161,7 @@ describe('ChatContextService.buildContext history markers', () => {
 	it('marks a turn logged also when its entries fell out of the context window', async () => {
 		// the window holds only entry "in-window"; "out-of-window" (message m1) was trimmed away
 		const { service } = createService({
-			history: [toUserMessage('m2', 'чай'), toUserMessage('m1', 'борщ')],
+			history: [toUserMessage('m1', 'борщ'), toUserMessage('m2', 'чай')],
 			editable: {
 				active: [toEntry('in-window', 'm2')],
 				deleted: [],
@@ -212,7 +227,7 @@ describe('ChatContextService.buildContext history marker sources', () => {
 	it('adds the markers of the other kinds to their turn, asking for the user turns only', async () => {
 		const workout = { refs: ['w1'], deletedRefs: [], isDeleted: false }
 		const { service, getMarkers } = createService({
-			history: [toAssistantMessage('a1', 'Записано'), toUserMessage('m2', 'жим 80×8')],
+			history: [toUserMessage('m2', 'жим 80×8'), toAssistantMessage('a1', 'Записано')],
 			markers: new Map([['m2', { workout }]]),
 		})
 
@@ -228,8 +243,7 @@ describe('ChatContextService.buildContext history marker sources', () => {
 	it('puts what Kusik read in front of its reply, asking for the user messages of the history', async () => {
 		const read = 'read workouts 01.11–10.11: 3 (01.11, 05.11, 09.11)'
 		const { service, getReadDigests } = createService({
-			// newest first, like the repository returns it
-			history: [toAssistantMessage('a2', 'Три', 'm2'), toUserMessage('m2', 'Скільки тренувань?')],
+			history: [toUserMessage('m2', 'Скільки тренувань?'), toAssistantMessage('a2', 'Три', 'm2')],
 			readDigests: new Map([['m2', [read]]]),
 		})
 
@@ -284,7 +298,7 @@ describe('ChatContextService.buildContext correction markers', () => {
 
 	it('says the user deleted it in the app, in the turn and in front of the next message', async () => {
 		const { service, findHistoryCorrections } = createService({
-			history: [toAssistantMessage('a2', 'Записав борщ', 'm1'), toUserMessage('m1', 'борщ')],
+			history: [toUserMessage('m1', 'борщ'), toAssistantMessage('a2', 'Записав борщ', 'm1')],
 			editable: loggedBorsch,
 			// after Kusik's reply (2), before the message being answered (9)
 			corrections: [toCorrection({ createdAt: toCreatedAt('x5') })],
@@ -313,10 +327,10 @@ describe('ChatContextService.buildContext correction markers', () => {
 	it('says Kusik deleted it when a chat turn did, and puts the action on Kusik reply', async () => {
 		const { service } = createService({
 			history: [
-				toAssistantMessage('a4', 'Видалив', 'm3'),
-				toUserMessage('m3', 'видали борщ'),
-				toAssistantMessage('a2', 'Записав борщ', 'm1'),
 				toUserMessage('m1', 'борщ'),
+				toAssistantMessage('a2', 'Записав борщ', 'm1'),
+				toUserMessage('m3', 'видали борщ'),
+				toAssistantMessage('a4', 'Видалив', 'm3'),
 			],
 			editable: loggedBorsch,
 			corrections: [toCorrection({ messageId: 'm3', createdAt: toCreatedAt('x3') })],
@@ -336,10 +350,10 @@ describe('ChatContextService.buildContext correction markers', () => {
 	it('marks the reply of the turn that restored an entry', async () => {
 		const { service } = createService({
 			history: [
-				toAssistantMessage('a6', 'Повернув', 'm5'),
-				toUserMessage('m5', 'поверни борщ'),
-				toAssistantMessage('a4', 'Видалив', 'm3'),
 				toUserMessage('m3', 'видали борщ'),
+				toAssistantMessage('a4', 'Видалив', 'm3'),
+				toUserMessage('m5', 'поверни борщ'),
+				toAssistantMessage('a6', 'Повернув', 'm5'),
 			],
 			editable: {
 				active: [toEntry('borsch', 'm1')],
@@ -478,10 +492,9 @@ describe('ChatContextService.buildContext «Program»', () => {
 
 	it('gives the rules without a program for a talk about one in the last 4 turns', async () => {
 		const { service } = createService({
-			// newest first, as the repository returns them
 			history: [
-				toAssistantMessage('m2', 'Можна 3 рази на тиждень.'),
 				toUserMessage('m1', 'скільки разів тренуватись?'),
+				toAssistantMessage('m2', 'Можна 3 рази на тиждень.'),
 			],
 		})
 
@@ -494,16 +507,130 @@ describe('ChatContextService.buildContext «Program»', () => {
 	it('gives no rules when neither the message nor the last 4 turns talk about a program', async () => {
 		const { service } = createService({
 			history: [
-				toAssistantMessage('m5', 'Записав.'),
-				toUserMessage('m4', 'чай'),
-				toAssistantMessage('m3', 'Записав.'),
-				toUserMessage('m2', 'гречка'),
 				toUserMessage('m1', 'склади програму'),
+				toUserMessage('m2', 'гречка'),
+				toAssistantMessage('m3', 'Записав.'),
+				toUserMessage('m4', 'чай'),
+				toAssistantMessage('m5', 'Записав.'),
 			],
 		})
 
 		const { context } = await build(service, 'давай так')
 
 		expect(context.hasProgramRules).toBeUndefined()
+	})
+})
+
+describe('ChatContextService.buildContext the day of the chat', () => {
+	// 20:00 on Oct 17 in Warsaw (UTC+2); midnight is 2026-10-17T22:00:00Z
+	const SINCE = new Date('2026-10-17T18:00:00Z')
+	const eveningMessage = (id: string, content: string) => ({
+		...toUserMessage(id, content),
+		createdAt: new Date('2026-10-17T19:30:00Z'),
+	})
+
+	it('asks for the day from 20:00 of the evening before and for the end of the day before', async () => {
+		const { service, findDayHistory, findHistory } = createService()
+
+		await build(service, 'привіт', 'm9')
+
+		expect(findDayHistory).toHaveBeenCalledWith({ userId: 'u1', beforeId: 'm9', since: SINCE })
+		expect(findHistory).toHaveBeenCalledWith({
+			userId: 'u1',
+			beforeId: 'm9',
+			before: SINCE,
+			limit: 6,
+		})
+	})
+
+	it('hands the end of the day before over apart from the day', async () => {
+		const { service } = createService({
+			tail: [toUserMessage('m1', 'вчора пізно'), toAssistantMessage('a2', 'Добраніч', 'm1')],
+			history: [toUserMessage('m3', 'доброго ранку')],
+		})
+
+		const { context } = await build(service, 'привіт', 'm9')
+
+		expect(context.previousDayHistory).toEqual([
+			{ role: 'user', content: 'вчора пізно' },
+			{ role: 'assistant', content: 'Добраніч' },
+		])
+		expect(context.history).toEqual([{ role: 'user', content: 'доброго ранку' }])
+	})
+
+	it('drops the end of the day before when the day hit the query cap', async () => {
+		const day = Array.from({ length: DAY_HISTORY_QUERY_CAP }, (_, index) =>
+			index % 2 === 0
+				? toUserMessage(`d${index}`, `питання ${index}`)
+				: toAssistantMessage(`d${index}`, `відповідь ${index}`, `d${index - 1}`),
+		)
+		const { service } = createService({
+			tail: [toUserMessage('m1', 'вчора пізно')],
+			history: day,
+		})
+
+		const { context } = await build(service, 'привіт', 'm9')
+
+		expect(context.previousDayHistory).toBeUndefined()
+		expect(context.history).toHaveLength(DAY_HISTORY_QUERY_CAP)
+	})
+
+	it('has no previousDayHistory when there is no end of the day before', async () => {
+		const { service } = createService({ history: [toUserMessage('m3', 'доброго ранку')] })
+
+		const { context } = await build(service, 'привіт', 'm9')
+
+		expect(context.previousDayHistory).toBeUndefined()
+	})
+
+	it('marks a message of the evening before as logged by looking for its entries', async () => {
+		const { service, findSourceEntries } = createService({
+			history: [eveningMessage('m1', 'вечеря 21:00'), toUserMessage('m5', 'чай')],
+			sourceEntries: [{ id: 'dinner', sourceMessageId: 'm1', isDeleted: false }],
+		})
+
+		const { context } = await build(service, 'ще', 'm9')
+
+		// only the messages from before midnight need the extra look
+		expect(findSourceEntries).toHaveBeenCalledWith('u1', ['m1'])
+		expect(context.history[0]).toEqual({
+			role: 'user',
+			content: 'вечеря 21:00',
+			hasLoggedEntries: true,
+		})
+		expect(context.history[1]).toEqual({ role: 'user', content: 'чай' })
+	})
+
+	it('says deleted later for an entry of the evening before that was removed', async () => {
+		const { service } = createService({
+			history: [eveningMessage('m1', 'вечеря 21:00')],
+			sourceEntries: [{ id: 'dinner', sourceMessageId: 'm1', isDeleted: true }],
+		})
+
+		const { context } = await build(service, 'ще', 'm9')
+
+		expect(context.history[0]).toMatchObject({
+			hasLoggedEntries: true,
+			areLoggedEntriesDeleted: true,
+		})
+	})
+
+	it('counts an entry both the day and the extra look return once', async () => {
+		const { service } = createService({
+			history: [eveningMessage('m1', 'вечеря 21:00')],
+			editable: {
+				active: [],
+				deleted: [],
+				sourceMessages: [{ id: 'dinner', sourceMessageId: 'm1', isDeleted: true }],
+			},
+			sourceEntries: [{ id: 'dinner', sourceMessageId: 'm1', isDeleted: true }],
+		})
+
+		const { context } = await build(service, 'ще', 'm9')
+
+		expect(context.history[0]).toMatchObject({
+			hasLoggedEntries: true,
+			areLoggedEntriesDeleted: true,
+		})
 	})
 })

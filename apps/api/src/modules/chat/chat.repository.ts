@@ -31,6 +31,18 @@ const IS_ONBOARDING_QUESTION = {
 	NOT: { trainingOnboarding: { path: ['step'], equals: 0 } },
 } satisfies Prisma.MessageWhereInput
 
+/** Turns the model may remember: finished, with words or a photo, not an onboarding answer. */
+const HISTORY_WHERE = {
+	status: MessageStatus.COMPLETED,
+	// a photo-only message has no text but still happened
+	OR: [{ content: { not: null } }, { attachments: { some: {} } }],
+	// the answers to onboarding questions 1–4 reach the model only as «Onboarding answers»
+	NOT: { replies: { some: IS_ONBOARDING_QUESTION } },
+} satisfies Prisma.MessageWhereInput
+
+/** A day of the chat is far below this; the cap only guards the query against a runaway day. */
+export const DAY_HISTORY_QUERY_CAP = 200
+
 /** The stored copy a message binds: the attachment repeats its type and size. */
 export interface StoredPhotoRef {
 	id: string
@@ -305,31 +317,51 @@ export class ChatRepository {
 		return previous?.id ?? null
 	}
 
-	/** Completed turns before a message, newest first — the model's short memory of the chat. */
-	findHistory({
+	/**
+	 * Completed turns before a message and before `since`, oldest first — the end of the day before.
+	 * Newest `limit` messages are taken; the list is reversed to chronological.
+	 */
+	async findHistory({
 		userId,
 		beforeId,
+		before,
 		limit,
 	}: {
 		userId: string
 		beforeId: string
+		/** Only messages created before this moment. */
+		before: Date
 		limit: number
 	}): Promise<MessageWithAttachments[]> {
-		return this.prisma.message.findMany({
-			where: {
-				userId,
-				status: MessageStatus.COMPLETED,
-				// a photo-only message has no text but still happened
-				OR: [{ content: { not: null } }, { attachments: { some: {} } }],
-				// the answers to onboarding questions 1–4 reach the model only as «Onboarding answers»
-				NOT: { replies: { some: IS_ONBOARDING_QUESTION } },
-				id: { lt: beforeId },
-			},
-			// uuid v7 ids grow with time, see message-cursor.ts
-			orderBy: { id: 'desc' },
+		const rows = await this.prisma.message.findMany({
+			where: { ...HISTORY_WHERE, userId, id: { lt: beforeId }, createdAt: { lt: before } },
+			orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
 			take: limit,
 			include: WITH_ATTACHMENTS,
 		})
+		return rows.reverse()
+	}
+
+	/**
+	 * Completed turns of the day before a message: from `since` on, oldest first. The safety cap keeps
+	 * the newest DAY_HISTORY_QUERY_CAP messages, so on overflow the oldest are the ones lost.
+	 */
+	async findDayHistory({
+		userId,
+		beforeId,
+		since,
+	}: {
+		userId: string
+		beforeId: string
+		since: Date
+	}): Promise<MessageWithAttachments[]> {
+		const rows = await this.prisma.message.findMany({
+			where: { ...HISTORY_WHERE, userId, id: { lt: beforeId }, createdAt: { gte: since } },
+			orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+			take: DAY_HISTORY_QUERY_CAP,
+			include: WITH_ATTACHMENTS,
+		})
+		return rows.reverse()
 	}
 
 	findPage({

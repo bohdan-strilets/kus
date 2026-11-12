@@ -3,6 +3,7 @@ export {
 	formatDbDate,
 	formatLocalClock,
 	formatLocalTime,
+	getDayHistoryStart,
 	getLocalDate,
 	getLocalDateString,
 	getLocalHour,

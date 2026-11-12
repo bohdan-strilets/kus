@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { HISTORY_MESSAGE_MAX_CHARS, selectHistory } from './context.js'
+import { toHistoryText } from './day-history.js'
 import {
 	formatAppChangeMarkers,
 	formatHistoryMarkers,
@@ -12,8 +12,7 @@ const render = (
 	fields: HistoryMarkerFields & { hasPhoto?: boolean },
 	content = 'текст',
 ): string => {
-	const [turn] = selectHistory([{ role: 'user', content, ...fields }])
-	return turn?.content ?? ''
+	return toHistoryText({ role: 'user', content, ...fields })
 }
 
 describe('food markers', () => {
@@ -229,8 +228,8 @@ describe('history text', () => {
 		).toBe('[fact updated: f11] [фото] ось новий графік')
 	})
 
-	it('keeps all the markers when a long message is cut', () => {
-		const long = 'x'.repeat(HISTORY_MESSAGE_MAX_CHARS * 2)
+	it('puts all the markers in front of a long message and keeps it whole', () => {
+		const long = 'x'.repeat(3000)
 		const text = render(
 			{
 				loggedRefs: ['e1'],
@@ -240,21 +239,19 @@ describe('history text', () => {
 			long,
 		)
 		expect(text.startsWith('[logged: e1] [workout logged] [fact forgotten] ')).toBe(true)
-		expect(text).toHaveLength(HISTORY_MESSAGE_MAX_CHARS)
+		expect(text.endsWith(long)).toBe(true)
 	})
 
 	it('gives an assistant turn no markers', () => {
-		const [turn] = selectHistory([
-			{
-				role: 'assistant',
-				content: 'Записано',
-				workout: { refs: ['w1'], deletedRefs: [], isDeleted: false },
-				facts: [{ kind: 'forgotten' }],
-				measurements: [{ kind: 'weight', isDeleted: false }],
-				savedFoods: [{ ref: 'm1', isDeleted: false }],
-			},
-		])
-		expect(turn?.content).toBe('Записано')
+		const text = toHistoryText({
+			role: 'assistant',
+			content: 'Записано',
+			workout: { refs: ['w1'], deletedRefs: [], isDeleted: false },
+			facts: [{ kind: 'forgotten' }],
+			measurements: [{ kind: 'weight', isDeleted: false }],
+			savedFoods: [{ ref: 'm1', isDeleted: false }],
+		})
+		expect(text).toBe('Записано')
 	})
 
 	it('adds nothing for a turn without markers', () => {
@@ -345,10 +342,10 @@ describe('Kusik action markers', () => {
 
 	it('goes in front of Kusik reply and survives a cut, user turns never get it', () => {
 		const kusikActions = { ...none, deleted: [{ ref: 'e1' }] }
-		const [reply] = selectHistory([{ role: 'assistant', content: 'Видалив', kusikActions }])
-		expect(reply?.content).toBe('[Kusik: deleted e1] Видалив')
-		const [user] = selectHistory([{ role: 'user', content: 'ок', kusikActions }])
-		expect(user?.content).toBe('ок')
+		expect(toHistoryText({ role: 'assistant', content: 'Видалив', kusikActions })).toBe(
+			'[Kusik: deleted e1] Видалив',
+		)
+		expect(toHistoryText({ role: 'user', content: 'ок', kusikActions })).toBe('ок')
 	})
 
 	it('adds what Kusik read, next to or without actions, at most two reads', () => {

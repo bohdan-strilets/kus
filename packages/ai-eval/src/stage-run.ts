@@ -35,7 +35,7 @@ export const requireLedger = async (stage: string): Promise<StageLedger> => {
 	if (ledger) return ledger
 	const name = getLedgerFile(stage).pathname.split('/').pop()
 	throw new Error(
-		`Немає бюджету етапу ${stage} (${name}). Створи його: --stage ${stage} --stage-cap <usd>`,
+		`Немає бюджету етапу ${stage} (${name}). Створи його: --stage ${stage} --stage-cap 0.3`,
 	)
 }
 

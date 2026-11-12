@@ -4,13 +4,14 @@ import { AI_REASONING_MODES, type AiReasoningMode, FOOD_PARSE_REASONING } from '
 
 import type { EvalCase } from './cases/index.js'
 import { PRIVATE_ID_PREFIX } from './cases/private-cases.js'
-import { assertSmokeResolvable, getSelectedIds } from './cli-guards.js'
+import { DEFAULT_MAX_COST_USD } from './budget-limits.js'
+import { assertSmokeResolvable, getSelectedIds, withDefaultStageCap } from './cli-guards.js'
 import { loadSmokeIds } from './smoke-ids.js'
 
-const DEFAULT_MAX_COST_USD = 3
 const DEFAULT_CONCURRENCY = 4
 
 export const { values: args } = parseArgs({
+	args: withDefaultStageCap(process.argv.slice(2)),
 	options: {
 		models: { type: 'string' },
 		estimate: { type: 'boolean', default: false },
@@ -22,6 +23,8 @@ export const { values: args } = parseArgs({
 		reasoning: { type: 'string', default: FOOD_PARSE_REASONING },
 		stage: { type: 'string' },
 		'stage-cap': { type: 'string' },
+		'raise-stage-cap': { type: 'string' },
+		'allow-over-month': { type: 'boolean', default: false },
 		'past-80': { type: 'boolean', default: false },
 		rescore: { type: 'string' },
 	},

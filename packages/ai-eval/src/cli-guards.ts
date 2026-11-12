@@ -1,3 +1,4 @@
+import { DEFAULT_STAGE_CAP_USD } from './budget-limits.js'
 import type { EvalCase } from './cases/index.js'
 import { isHiddenCaseId, PRIVATE_ID_PREFIX } from './cases/private-cases.js'
 
@@ -6,7 +7,7 @@ export const EVAL_KEY_ENV = 'OPENROUTER_EVAL_API_KEY'
 export const EVAL_KEY_MISSING_MESSAGE = `${EVAL_KEY_ENV} не задано: eval ходить в OpenRouter лише окремим ключем з місячним лімітом (не виробничим OPENROUTER_API_KEY). Створи окремий ключ в OpenRouter, постав йому місячний ліміт і впиши в apps/api/.env.`
 
 export const STAGE_REQUIRED_MESSAGE =
-	'Платний прогін потребує --stage <етап>. Створи бюджет етапу один раз: --stage <етап> --stage-cap 1 (без прогону), потім запускай з --stage <етап>.'
+	'Платний прогін потребує --stage <етап>. Створи бюджет етапу один раз: --stage <етап> --stage-cap 0.3 (без прогону), потім запускай з --stage <етап>.'
 
 export const SMOKE_EMPTY_MESSAGE =
 	'--smoke: список SMOKE_CASE_IDS (src/cases/smoke.ts) порожній — спершу його має заповнити ai-eval-analyst.'
@@ -22,6 +23,16 @@ export const requireStage = (stage: string | undefined): string => {
 	if (!stage) throw new Error(STAGE_REQUIRED_MESSAGE)
 	return stage
 }
+
+const STAGE_CAP_FLAG = '--stage-cap'
+
+/** `--stage-cap` with no value after it creates the ledger with the default per-release cap. */
+export const withDefaultStageCap = (argv: readonly string[]): string[] =>
+	argv.flatMap((arg, index) => {
+		const next = argv[index + 1]
+		const isValueMissing = next === undefined || next.startsWith('--')
+		return arg === STAGE_CAP_FLAG && isValueMissing ? [arg, String(DEFAULT_STAGE_CAP_USD)] : [arg]
+	})
 
 export const parseIdList = (raw: string | undefined): string[] =>
 	(raw ?? '')

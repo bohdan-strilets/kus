@@ -1,7 +1,9 @@
-// pnpm --filter ai-eval eval --stage <етап> [--models a,b] [--max-cost 3] [--concurrency 4]
+// pnpm --filter ai-eval eval --stage <етап> [--models a,b] [--max-cost 0.3] [--concurrency 4]
 //   [--only id,id] [--smoke] [--reasoning minimal|low] (default: FOOD_PARSE_REASONING from shared)
 //   pnpm --filter ai-eval eval --estimate [--models a,b] — price estimate, no key and no stage needed
-//   --stage <етап> is mandatory for every paid run; create its ledger once: --stage <етап> --stage-cap 1
+//   --stage <етап> is mandatory for every paid run; create its ledger once: --stage <етап> --stage-cap 0.3
+//   --raise-stage-cap <usd> --stage <етап> — raise the cap of an existing ledger (up only, logged), no run, no key
+//   Month limit $3 over all ledgers (UTC): a paid run that could pass it refuses unless --allow-over-month
 //   --smoke — the fixed cheap set from src/cases/smoke.ts; with --only it is a union (deduplicated)
 //   [--set all|repo|private|holdout] — private = real cases from data/private (aggregated metrics
 //   only); holdout = data/private/*.holdout.json, never in `all`: run once per final prompt version
@@ -26,7 +28,8 @@ import { printReport } from './cli-report.js'
 import { executePaidRun, INTERRUPTED_EXIT_CODE } from './cli-run.js'
 import { rescoreResults } from './rescore.js'
 import { loadResultsFile } from './results-store.js'
-import { createLedger } from './stage-ledger.js'
+import { assertWithinMonthlyCap } from './monthly-cap.js'
+import { createLedger, raiseStageCap } from './stage-ledger.js'
 import { planStageRun, requireLedger, type StagePlan } from './stage-run.js'
 import { assertSharedBuildFreshOnDisk } from './stale-shared-guard.js'
 
@@ -35,6 +38,14 @@ const SOFT_STOP_EXIT_CODE = 2
 const createStageLedger = async (stage: string): Promise<void> => {
 	const ledger = await createLedger(stage, Number(args['stage-cap']))
 	print(`Бюджет етапу ${stage} створено: стеля $${ledger.capUsd.toFixed(2)}. Прогін не запускався.`)
+}
+
+const raiseStageLedger = async (stage: string, newCap: string): Promise<void> => {
+	const before = await requireLedger(stage)
+	const ledger = await raiseStageCap(stage, Number(newCap))
+	print(
+		`Стелю етапу ${stage} підвищено: $${before.capUsd.toFixed(2)} → $${ledger.capUsd.toFixed(2)} (витрачено $${ledger.spentUsd.toFixed(2)}). Прогін не запускався.`,
+	)
 }
 
 const planRun = async (stage: string, maxUsd: number): Promise<StagePlan> =>
@@ -56,6 +67,11 @@ const main = async (): Promise<void> => {
 	await assertSharedBuildFreshOnDisk()
 	if (args.rescore !== undefined) {
 		await rescore(args.rescore)
+		return
+	}
+	if (args['raise-stage-cap'] !== undefined) {
+		if (!args.stage) throw new Error('--raise-stage-cap needs --stage <name>')
+		await raiseStageLedger(args.stage, args['raise-stage-cap'])
 		return
 	}
 	if (args['stage-cap'] !== undefined) {
@@ -81,6 +97,11 @@ const main = async (): Promise<void> => {
 	if (!Number.isFinite(maxCostUsd) || maxCostUsd <= 0)
 		throw new Error('--max-cost must be a positive number')
 	const stagePlan = await planRun(stage, maxCostUsd)
+	// before the first request: the month's spend (all ledgers) plus this run's hard cap must fit
+	await assertWithinMonthlyCap({
+		reserveUsd: stagePlan.capUsd,
+		isOverMonthAllowed: args['allow-over-month'],
+	})
 	const reasoning = getReasoning()
 	const runStartIso = new Date().toISOString()
 	const { runs, budget } = await executePaidRun({

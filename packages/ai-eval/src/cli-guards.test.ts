@@ -32,7 +32,7 @@ describe('requireEvalKey', () => {
 describe('requireStage', () => {
 	it('refuses a paid run without --stage', () => {
 		expect(() => requireStage(undefined)).toThrow(STAGE_REQUIRED_MESSAGE)
-		expect(STAGE_REQUIRED_MESSAGE).toContain('--stage-cap 1')
+		expect(STAGE_REQUIRED_MESSAGE).toContain('--stage-cap 0.3')
 	})
 
 	it('passes the stage through', () => {

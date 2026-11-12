@@ -246,6 +246,22 @@ describe('isCallDetailsCorrect', () => {
 		expect(isCallDetailsCorrect(evalCase({ decision: 'log', maxItems: 1 }), logged)).toBe(false)
 	})
 
+	it('judges the minimum item count and the names the items must not carry', () => {
+		const named = (...names: string[]) =>
+			result({ items: names.map((name) => ({ name }) as never) })
+		const want = evalCase({
+			decision: 'log',
+			minItems: 2,
+			maxItems: 3,
+			itemNameExcludes: ['Канапк'],
+		})
+
+		expect(isCallDetailsCorrect(want, named('Рисовий коржик', 'Індича ковбаска'))).toBe(true)
+		expect(isCallDetailsCorrect(want, named('Канапка з ковбаскою'))).toBe(false)
+		expect(isCallDetailsCorrect(want, named('Рисовий коржик', 'канапка'))).toBe(false)
+		expect(isCallDetailsCorrect(want, named('a', 'b', 'c', 'd'))).toBe(false)
+	})
+
 	it('wants exactly one day card of the expected day', () => {
 		const expectCard = evalCase({ decision: 'day_card', dayCard: { date: '2026-10-06' } })
 		expect(isCallDetailsCorrect(expectCard, result({ calls }))).toBe(true)

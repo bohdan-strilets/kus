@@ -334,6 +334,10 @@ export const evalCaseSchema = z
 			itemDates: z.array(z.object({ stem: z.string().min(1), date: z.iso.date() })).optional(),
 			/** At most this many items logged (a feast is one item, not a made-up menu). */
 			maxItems: z.int().positive().optional(),
+			/** At least this many items logged (a composed dish is its parts, not one named lump). */
+			minItems: z.int().positive().optional(),
+			/** Stems no item name may contain, case-insensitive ("канапк": the dish's own name is not an item). */
+			itemNameExcludes: z.array(z.string().min(1)).optional(),
 			/** The day card the answer must show (show_day); a null date of the call counts as the case's today. */
 			dayCard: z.object({ date: z.iso.date() }).optional(),
 			/** The close_day call (a null date counts as the case's today); the verdict is the backend's. */

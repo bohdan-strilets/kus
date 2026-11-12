@@ -147,6 +147,8 @@ const hasCallDetails = ({ expect }: EvalCase): boolean =>
 	expect.logDate !== undefined ||
 	expect.itemDates !== undefined ||
 	expect.maxItems !== undefined ||
+	expect.minItems !== undefined ||
+	expect.itemNameExcludes !== undefined ||
 	expect.dayCard !== undefined ||
 	expect.closeDay !== undefined ||
 	expect.stats !== undefined ||
@@ -162,6 +164,8 @@ export const isCallDetailsCorrect = (evalCase: EvalCase, result: CaseResult): bo
 		logDate,
 		itemDates,
 		maxItems,
+		minItems,
+		itemNameExcludes,
 		dayCard,
 		deletedMeasurements,
 		closeDay,
@@ -177,7 +181,12 @@ export const isCallDetailsCorrect = (evalCase: EvalCase, result: CaseResult): bo
 	const areItemDaysRight = (itemDates ?? []).every(({ stem, date }) =>
 		calls.itemDates.some((item) => item.name.toLowerCase().includes(stem) && item.date === date),
 	)
-	const isCountRight = maxItems === undefined || result.items.length <= maxItems
+	const isCountRight =
+		(maxItems === undefined || result.items.length <= maxItems) &&
+		(minItems === undefined || result.items.length >= minItems)
+	const areNamesRight = (itemNameExcludes ?? []).every((stem) =>
+		result.items.every((item) => !item.name.toLowerCase().includes(stem.toLowerCase())),
+	)
 	const isCardRight =
 		dayCard === undefined ||
 		(calls.dayCards.length === 1 && calls.dayCards.every(({ date }) => date === dayCard.date))
@@ -216,6 +225,7 @@ export const isCallDetailsCorrect = (evalCase: EvalCase, result: CaseResult): bo
 		isLogDayRight &&
 		areItemDaysRight &&
 		isCountRight &&
+		areNamesRight &&
 		isCardRight &&
 		areDeletedRight &&
 		isCloseRight &&

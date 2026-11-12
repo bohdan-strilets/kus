@@ -13,7 +13,7 @@
 		"build": "pnpm -r build",
 		"lint": "eslint .",
 		"typecheck": "pnpm --filter @kus/shared build && pnpm -r typecheck",
-		"test": "pnpm -r test",
+		"test": "pnpm -r --workspace-concurrency=1 test",
 		"format": "prettier --write .",
 		"format:check": "prettier --check .",
 		"db:up": "docker compose up -d",

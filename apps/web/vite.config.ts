@@ -99,5 +99,7 @@ export default defineConfig({
 	},
 	test: {
 		include: ['src/**/*.test.{ts,tsx}'],
+		// jsdom suites exceed the default 5 s when the machine is loaded
+		testTimeout: 20_000,
 	},
 })

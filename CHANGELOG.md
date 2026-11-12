@@ -6,6 +6,27 @@ All notable changes to Kusik are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.11.6] — 2026-11-12
+
+A dish whose parts the user names is logged as its parts only. "Канапка з рисового коржика, ковбаски й кетчупу" used to be written twice (a "Канапка" of about 250 kcal and its three parts); now only the parts are. The paid eval got a hard budget (0.30 USD per release, 3 USD per month) and a warmed prompt cache. No migrations; prompt `2026-11-12.1`; the web version is 0.11.6.
+
+### Fixed
+
+- Double counting of a composed dish: the model logged the dish and its listed parts in one `log_food`. The prompt now says that listed parts are logged one item per part without an item for the dish, and that a dish named without parts stays one item ([ae185a4])
+
+### Changed
+
+- Eval cost: the first case of a run goes alone and warms the prompt cache, one cold-start reserve per run, `--max-cost` and the per-release cap default to 0.30 USD, a monthly limit of 3 USD (over it only with `--allow-over-month`), `--raise-stage-cap` raises a stage cap with a log of the changes ([7b178ab], [6c45b7a], [7e31b24])
+- Tests: the root `pnpm test` runs the packages one by one, and web and ai-eval have a 20 s test timeout (three unrelated tests timed out at random under the parallel load) ([127a304])
+
+### Added
+
+- Eval cases `dish-parts-canape`, `dish-parts-colon`, `dish-parts-sandwich-weights`, `dish-parts-borscht-sour-cream` with new expectations `minItems` and `itemNameExcludes` ([2eaf8e4], [1fb5cd2])
+
+### Known
+
+- A server-side check of the reply for a neutral address form and prompt compression (the prefix is 24 167 of 25 000 tokens) stay in the backlog
+
 ## [0.11.5] — 2026-11-12
 
 The "Скасувати" toast is visible above an open iOS keyboard, the app updates itself when it is opened, and a corrected number changes the entry instead of creating a new one. No migrations; prompt `2026-11-11.1`; the web version is 0.11.5.
@@ -878,7 +899,15 @@ Design sync with `design/` v0.5.2. Web only: no API, shared-package or migration
 
 ## 0.2.0 / 0.1.0 — see tags
 
-[Unreleased]: https://github.com/bohdan-strilets/kus/compare/v0.11.5...HEAD
+[Unreleased]: https://github.com/bohdan-strilets/kus/compare/v0.11.6...HEAD
+[0.11.6]: https://github.com/bohdan-strilets/kus/compare/v0.11.5...v0.11.6
+[ae185a4]: https://github.com/bohdan-strilets/kus/commit/ae185a473701907ba9daf2c75d041c40146fb24c
+[7b178ab]: https://github.com/bohdan-strilets/kus/commit/7b178abf8b88665c03dab11436da95b0eda9d1a3
+[6c45b7a]: https://github.com/bohdan-strilets/kus/commit/6c45b7afdb281d5e8f6bea0e98430e099251a6e9
+[7e31b24]: https://github.com/bohdan-strilets/kus/commit/7e31b244a2b02c48f7368ebf40607fc83abb8311
+[127a304]: https://github.com/bohdan-strilets/kus/commit/127a3043426585ab164f2dc0e1393727add6fc7e
+[2eaf8e4]: https://github.com/bohdan-strilets/kus/commit/2eaf8e48f61c4abdeadfca7fab7676877081166e
+[1fb5cd2]: https://github.com/bohdan-strilets/kus/commit/1fb5cd2fa7ee13a870abe03a9e15c31c242d2456
 [0.11.5]: https://github.com/bohdan-strilets/kus/compare/v0.11.4...v0.11.5
 [35203f4]: https://github.com/bohdan-strilets/kus/commit/35203f4f6fc5d1f1922d7acb5cc56a4b69c87bc5
 [791c86d]: https://github.com/bohdan-strilets/kus/commit/791c86d76a4fd000b52258c8513f5131a03f0c82

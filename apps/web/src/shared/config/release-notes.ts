@@ -10,6 +10,13 @@ export type ReleaseNote = {
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
 	{
+		version: '0.11.6',
+		date: '2026-11-12',
+		items: [
+			'Коли ти пишеш склад страви («канапка: рисовий коржик, ковбаска, кетчуп»), Kusik записує лише складники, без зайвого рядка самої страви.',
+		],
+	},
+	{
 		version: '0.11.5',
 		date: '2026-11-12',
 		items: [

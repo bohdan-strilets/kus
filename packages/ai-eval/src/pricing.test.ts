@@ -1,9 +1,10 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { READ_TOOL_CASES } from './cases/read-tools.cases.js'
 import {
 	CACHE_READ_RATIO,
 	CACHE_WRITE_RATIO,
+	estimateCost,
 	estimateInputParts,
 	getCaseReserveUsd,
 	getCaseUpperBoundUsd,
@@ -73,5 +74,43 @@ describe('case reserve upper bound', () => {
 			)
 		}
 		expect(getCaseReserveUsd(measured, PRICE, 'low')).toBeGreaterThanOrEqual(0.0632)
+	})
+})
+
+describe('estimateCost with the warm-up', () => {
+	afterEach(() => {
+		vi.unstubAllGlobals()
+	})
+
+	const stubPrices = (): void => {
+		vi.stubGlobal(
+			'fetch',
+			vi.fn().mockResolvedValue({
+				ok: true,
+				json: () =>
+					Promise.resolve({
+						data: [
+							{
+								id: 'm',
+								pricing: { prompt: String(PRICE.prompt), completion: String(PRICE.completion) },
+							},
+						],
+					}),
+			}),
+		)
+	}
+
+	it('writes the cached prefix once and reads it for the other cases', async () => {
+		stubPrices()
+		const cases = READ_TOOL_CASES.slice(0, 5)
+		const [one] = await estimateCost(['m'], cases.slice(0, 1), 'low')
+		const [five] = await estimateCost(['m'], cases, 'low')
+		const prefix = cases[0] ? estimateInputParts(cases[0]).prefix : 0
+
+		// the 4 extra cases save the write premium of the prefix against a cold start each
+		const coldEach = 4 * prefix * PRICE.prompt * (CACHE_WRITE_RATIO - CACHE_READ_RATIO) * 1.15
+		const extra = (five?.usdPerRun ?? 0) - (one?.usdPerRun ?? 0)
+		expect(extra).toBeGreaterThan(0)
+		expect(extra).toBeLessThan(4 * (one?.usdPerRun ?? 0) - coldEach * 0.9)
 	})
 })

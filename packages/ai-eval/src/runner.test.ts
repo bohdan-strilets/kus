@@ -105,21 +105,21 @@ describe('runModel with a hard budget', () => {
 		expect(result.pairs.length).toBeGreaterThan(2)
 	})
 
-	it('fits a 46-case smoke under 0.55 with a warm reserve, and never passes the limit', async () => {
+	it('fits a 46-case smoke under 0.4 with one cold start, and never passes the limit', async () => {
 		let calls = 0
 		runCaseMock.mockImplementation(async () => {
 			const index = (calls += 1)
 			await new Promise((resolve) => setTimeout(resolve, 1))
-			// the first 4 start together with no cache; the rest read it
-			return costing(index <= 4 ? 0.06 : 0.0065)
+			// the first case runs alone and writes the cache; the rest read it
+			return costing(index === 1 ? 0.06 : 0.0065)
 		})
-		const budget = { spentUsd: 0, maxUsd: 0.55, reservedUsd: 0 }
+		const budget = { spentUsd: 0, maxUsd: 0.4, reservedUsd: 0 }
 
 		const result = await run(makeCases(46), budget, 0.02, 4)
 
 		expect(result.skipped).toBe(0)
 		expect(result.pairs).toHaveLength(46)
-		expect(budget.spentUsd).toBeCloseTo(4 * 0.06 + 42 * 0.0065)
+		expect(budget.spentUsd).toBeCloseTo(0.06 + 45 * 0.0065)
 		expect(budget.spentUsd).toBeLessThanOrEqual(budget.maxUsd)
 	})
 
@@ -159,6 +159,70 @@ describe('runModel with a hard budget', () => {
 
 		// 0.06 is under the cold reserve (0.07) of the first case, but over the 0.02 of the second
 		expect(result.overReserve).toEqual(['case-1'])
+	})
+})
+
+describe('runModel warm-up', () => {
+	it('finishes the first case before the others start', async () => {
+		const events: string[] = []
+		runCaseMock.mockImplementation(async (evalCase) => {
+			events.push(`start ${evalCase.id}`)
+			await new Promise((resolve) => setTimeout(resolve, 5))
+			events.push(`end ${evalCase.id}`)
+			return costing(0.01)
+		})
+		const budget = { spentUsd: 0, maxUsd: 10, reservedUsd: 0 }
+
+		await run(makeCases(6), budget, 0.02, 4)
+
+		expect(events.slice(0, 2)).toEqual(['start case-0', 'end case-0'])
+		// after the warm-up the rest start together
+		expect(events.slice(2, 6).every((event) => event.startsWith('start'))).toBe(true)
+		expect(events.filter((event) => event.startsWith('start'))).toHaveLength(6)
+	})
+
+	it('runs a single case as it did before', async () => {
+		runCaseMock.mockResolvedValue(costing(0.05))
+		const budget = { spentUsd: 0, maxUsd: 1, reservedUsd: 0 }
+
+		const result = await run(makeCases(1), budget, 0.02, 4)
+
+		expect(runCaseMock).toHaveBeenCalledTimes(1)
+		expect(result.pairs).toHaveLength(1)
+		expect(result.skipped).toBe(0)
+	})
+
+	it('goes on with the rest when the warm-up case fails without a cost', async () => {
+		runCaseMock.mockResolvedValueOnce({ costUsd: 0, error: 'HTTP_500' } as CaseResult)
+		runCaseMock.mockResolvedValue(costing(0.01))
+		const budget = { spentUsd: 0, maxUsd: 1, reservedUsd: 0 }
+
+		const result = await run(makeCases(4), budget, 0.02, 2)
+
+		expect(result.pairs).toHaveLength(4)
+		expect(result.skipped).toBe(0)
+	})
+
+	it('reserves the cold start once: the second case needs only its own reserve', async () => {
+		runCaseMock.mockResolvedValue(costing(0.01))
+		// cold 0.09 for the first + 0.02 for the second fit into 0.12, 3 cold ones (0.27) never would
+		const budget = { spentUsd: 0, maxUsd: 0.12, reservedUsd: 0 }
+
+		const result = await run(makeCases(2), budget, 0.02, 4)
+
+		expect(runCaseMock).toHaveBeenCalledTimes(2)
+		expect(result.skipped).toBe(0)
+	})
+
+	it('does not start the rest after the warm-up when the soft stop is reached', async () => {
+		runCaseMock.mockResolvedValue(costing(0.3))
+		const budget: RunBudget = { spentUsd: 0, maxUsd: 10, reservedUsd: 0, softStopUsd: 0.2 }
+
+		const result = await run(makeCases(5), budget, 0.1, 4)
+
+		expect(runCaseMock).toHaveBeenCalledTimes(1)
+		expect(result.skipped).toBe(4)
+		expect(result.isSoftStopped).toBe(true)
 	})
 })
 

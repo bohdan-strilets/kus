@@ -129,6 +129,14 @@ export const getCaseReserveUsd = (
 	return Math.max(0, ...cases.map((evalCase) => getCaseUpperBoundUsd(evalCase, price, reasoning)))
 }
 
+/** Input cost of a run in prompt-price tokens: the first case writes the cached prefix, the rest read it (warm-up). */
+const getCachedInputTokens = (cases: EvalCase[]): number =>
+	cases.reduce((sum, evalCase, index) => {
+		const { prefix, rest } = estimateInputParts(evalCase)
+		const prefixRatio = index === 0 ? CACHE_WRITE_RATIO : CACHE_READ_RATIO
+		return sum + prefix * prefixRatio + rest
+	}, 0)
+
 export const estimateCost = async (
 	models: string[],
 	cases: EvalCase[],
@@ -136,6 +144,7 @@ export const estimateCost = async (
 ): Promise<CostEstimate[]> => {
 	const prices = await fetchPrices()
 	const inputTokens = cases.reduce((sum, evalCase) => sum + estimateInputTokens(evalCase), 0)
+	const billedInputTokens = getCachedInputTokens(cases)
 	const outputTokens = cases.reduce(
 		(sum, evalCase) => sum + estimateOutputTokens(evalCase, reasoning),
 		0,
@@ -144,7 +153,7 @@ export const estimateCost = async (
 		const price = prices.get(model)
 		if (!price) throw new Error(`Model "${model}" is not on OpenRouter`)
 		const usd =
-			(inputTokens * price.prompt + outputTokens * price.completion) * (1 + RETRY_OVERHEAD)
+			(billedInputTokens * price.prompt + outputTokens * price.completion) * (1 + RETRY_OVERHEAD)
 		return {
 			model,
 			promptPerMillion: price.prompt * 1e6,

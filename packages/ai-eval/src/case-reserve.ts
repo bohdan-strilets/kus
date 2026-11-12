@@ -8,7 +8,8 @@ import { loadResultsFile } from './results-store.js'
 export const MIN_CASE_RESERVE_USD = 0.02
 /**
  * A case that meets the prompt prefix cold writes it (21k tokens at $2.5/M ≈ $0.054) and may still
- * make read rounds on top (measured $0.056–0.064 with up to one); later ones read the cache.
+ * make read rounds on top (measured $0.056–0.064 with up to one); later ones read the cache. The
+ * runner warms the cache with the first case alone, so this is reserved once per run (model).
  */
 export const COLD_START_RESERVE_USD = 0.09
 /** A case may be retried once, so its reserve covers both attempts. */
@@ -49,7 +50,7 @@ export const getPercentile = (values: number[], fraction: number): number => {
  * so the caller falls back to the price-based upper bound. Warm samples (cache read) are preferred:
  * cold ones (≈ $0.06 each, they write the prefix) would inflate the reserve of every later case
  * ~8× (≈ $0.096 vs a real $0.0065–0.01), while the cold cost is already covered separately by
- * COLD_START_RESERVE_USD for the first `concurrency` cases. Without any warm sample the cold ones
+ * COLD_START_RESERVE_USD for the first case. Without any warm sample the cold ones
  * are used, as before.
  */
 export const getHistoricalP95Usd = (
@@ -114,8 +115,8 @@ export const getOwnCaseReserves = (input: CaseReserveInput): Map<string, number>
 }
 
 /**
- * The cases that start before the cache is written (the first `concurrency` of a model's run all
- * start together) reserve the cold prefix write, the rest the usual reserve.
+ * The first case of a model's run (it runs alone and writes the cache) reserves the cold prefix
+ * write, the rest the usual reserve.
  */
 export const getStartReserveUsd = (caseReserveUsd: number, isColdStart: boolean): number =>
 	isColdStart ? Math.max(caseReserveUsd, COLD_START_RESERVE_USD) : caseReserveUsd

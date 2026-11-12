@@ -92,48 +92,51 @@ export const runModel = async (cases: EvalCase[], options: RunOptions): Promise<
 		return true
 	}
 
-	// the first `concurrency` cases start with no cache and each pays for the cold prompt prefix;
-	// read it again until they have started
+	// only the first case meets the cache cold: it runs alone (warm-up) and reserves the prefix write
 	const getReserveUsd = (evalCase: EvalCase): number =>
-		getStartReserveUsd(
-			options.caseReserves?.get(evalCase.id) ?? caseReserveUsd,
-			started < options.concurrency,
-		)
+		getStartReserveUsd(options.caseReserves?.get(evalCase.id) ?? caseReserveUsd, started === 0)
 
-	const worker = async (): Promise<void> => {
-		while (next < cases.length) {
-			const evalCase = cases[next]
-			next += 1
-			if (!evalCase) return
-			if (stopAtSoftLimit()) return
-			// a case in flight may finish under its reserve and free room for this one
-			while (!canStartCase(budget, getReserveUsd(evalCase)) && inFlight.size > 0) {
-				await Promise.race(inFlight)
-			}
-			if (stopAtSoftLimit()) return
-			if (!canStartCase(budget, getReserveUsd(evalCase))) {
-				// nothing in flight, so the budget only shrinks from here: skip the rest
-				skipped += cases.length - next + 1
-				next = cases.length
-				return
-			}
-			const reserveUsd = getReserveUsd(evalCase)
-			started += 1
-			const task = runReserved(evalCase, reserveUsd)
-			// waiters only need to know it settled; this worker still sees the error
-			const settled = task.then(
-				() => undefined,
-				() => undefined,
-			)
-			inFlight.add(settled)
-			try {
-				await task
-			} finally {
-				inFlight.delete(settled)
-			}
+	/** Takes the next case and runs it; false = nothing left for this worker. */
+	const runNext = async (): Promise<boolean> => {
+		const evalCase = cases[next]
+		if (!evalCase) return false
+		next += 1
+		if (stopAtSoftLimit()) return false
+		// a case in flight may finish under its reserve and free room for this one
+		while (!canStartCase(budget, getReserveUsd(evalCase)) && inFlight.size > 0) {
+			await Promise.race(inFlight)
 		}
+		if (stopAtSoftLimit()) return false
+		if (!canStartCase(budget, getReserveUsd(evalCase))) {
+			// nothing in flight, so the budget only shrinks from here: skip the rest
+			skipped += cases.length - next + 1
+			next = cases.length
+			return false
+		}
+		const reserveUsd = getReserveUsd(evalCase)
+		started += 1
+		const task = runReserved(evalCase, reserveUsd)
+		// waiters only need to know it settled; this worker still sees the error
+		const settled = task.then(
+			() => undefined,
+			() => undefined,
+		)
+		inFlight.add(settled)
+		try {
+			await task
+		} finally {
+			inFlight.delete(settled)
+		}
+		return true
 	}
 
+	const worker = async (): Promise<void> => {
+		while (await runNext());
+	}
+
+	// warm-up: the first case alone writes the prompt cache, the others then read it instead of each
+	// paying the write. A failed case is an ordinary result (runCase does not throw for it), so the rest goes on.
+	await runNext()
 	await Promise.all(Array.from({ length: options.concurrency }, worker))
 	// keep the case order stable for the report and diffs between runs
 	const order = new Map(cases.map((evalCase, index) => [evalCase.id, index]))

@@ -6,6 +6,30 @@ All notable changes to Kusik are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.11.5] — 2026-11-12
+
+The "Скасувати" toast is visible above an open iOS keyboard, the app updates itself when it is opened, and a corrected number changes the entry instead of creating a new one. No migrations; prompt `2026-11-11.1`; the web version is 0.11.5.
+
+### Fixed
+
+- The undo toast "Прибрав «X» з пам'яті" was placed above the visible area while the iOS keyboard was open: the toast layer was the only fixed layer that ignored `visualViewport.offsetTop` ([35203f4])
+- `forget_food` and `restore_food` no longer throw (500) when a ref is missing, the proposal was lost or the TTL raced; they answer with a fixed notice, and the service caps a turn at 3 foods ([0569676], [3973ff0])
+- "там було 170 ккал" deleted the entry and logged a new one (with `copyRef`) instead of correcting it ([4468bac])
+
+### Changed
+
+- The quiet service worker update also applies within 10 s after the tab became visible or the app started, when nothing was touched, no field is focused, no draft, nothing sending and no live workout; a worker that is already waiting is picked up again ([791c86d])
+- Prompt `2026-11-11.1`: a different number for an entry → `correct_entry` (also when the number comes from `find_food`), the description of `correct_entry` says so; the address form rule names the traps of agreement and echo ("ти правий", "ти додавав каву") ([4468bac])
+
+### Added
+
+- Eval cases `edit-kcal-from-user`, `edit-number-like-last-time`, `gender-neutral-agree`, `gender-neutral-did-i-log`, a unit and an end-to-end test of the `forget_food` hardening ([6332e64], [0569676], [f82524d])
+
+### Known
+
+- Masculine forms in long replies for a neutral address form remain (eval: 2 of 19, e.g. a double form "поїв(-ла)"); the plan is a server-side check of the reply instead of more sentences in the prompt
+- The prefix is 24 088 of 25 000 tokens; prompt compression is planned before stage 2
+
 ## [0.11.4] — 2026-11-11
 
 A saved food can be removed from the memory right in the chat, and "що в мене в пам'яті?" finally lists the memory. Kusik asks before removing, the removal is a soft delete that "Скасувати" or "поверни …" undoes the same day, and `find_food` can list the saved foods without a query. One additive migration (`my_foods.removal_proposed_message_id`); prompt `2026-11-10.9` and `.10`; the web version is 0.11.4.
@@ -854,7 +878,15 @@ Design sync with `design/` v0.5.2. Web only: no API, shared-package or migration
 
 ## 0.2.0 / 0.1.0 — see tags
 
-[Unreleased]: https://github.com/bohdan-strilets/kus/compare/v0.11.4...HEAD
+[Unreleased]: https://github.com/bohdan-strilets/kus/compare/v0.11.5...HEAD
+[0.11.5]: https://github.com/bohdan-strilets/kus/compare/v0.11.4...v0.11.5
+[35203f4]: https://github.com/bohdan-strilets/kus/commit/35203f4f6fc5d1f1922d7acb5cc56a4b69c87bc5
+[791c86d]: https://github.com/bohdan-strilets/kus/commit/791c86d76a4fd000b52258c8513f5131a03f0c82
+[0569676]: https://github.com/bohdan-strilets/kus/commit/0569676beb88aa65d86561ba70b94104d1f5379e
+[3973ff0]: https://github.com/bohdan-strilets/kus/commit/3973ff0ee7d467ba5e022bd4eb9aaf38f01ad286
+[4468bac]: https://github.com/bohdan-strilets/kus/commit/4468bacdb5187b819b2d5895e5d6d48da18b034c
+[6332e64]: https://github.com/bohdan-strilets/kus/commit/6332e6409a2e38a74f410e2803f5d8b417807a15
+[f82524d]: https://github.com/bohdan-strilets/kus/commit/f82524da2de0ca056e91c730b805cb50e80d26e3
 [0.11.4]: https://github.com/bohdan-strilets/kus/compare/v0.11.3...v0.11.4
 [1666570]: https://github.com/bohdan-strilets/kus/commit/1666570aeece57e1fb620152ded05b8da4ea7b2c
 [084f420]: https://github.com/bohdan-strilets/kus/commit/084f420a14e0f27a8ed8ac9090ce073ae2ac38b1

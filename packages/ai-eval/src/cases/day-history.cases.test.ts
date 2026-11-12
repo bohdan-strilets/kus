@@ -11,8 +11,8 @@ const byId = (id: string) => {
 }
 
 describe('day history cases', () => {
-	it('are the two cases of step 2.1a, valid, with ids unique across the repo set', () => {
-		expect(DAY_HISTORY_CASES).toHaveLength(2)
+	it('are the cases of step 2.1a and the short-answer fix, valid, with ids unique across the repo set', () => {
+		expect(DAY_HISTORY_CASES).toHaveLength(4)
 		const ids = REPO_CASES.map(({ id }) => id)
 		expect(new Set(ids).size).toBe(ids.length)
 		for (const evalCase of DAY_HISTORY_CASES) {

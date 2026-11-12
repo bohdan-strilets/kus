@@ -4,6 +4,7 @@ import {
 	buildFoodParseMessages,
 	createFoodParseRequest,
 	MAX_READ_STEPS,
+	selectContextHistory,
 } from '@kus/shared'
 import { z } from 'zod'
 
@@ -70,31 +71,36 @@ export const fetchPrices = async (): Promise<Map<string, ModelPrice>> => {
 interface InputTokens {
 	/** The cached part: the system prompt and the tools. */
 	prefix: number
-	/** What follows the cache breakpoint: context, history, the message, a photo. */
+	/** The day's chat, cached by its own breakpoint: written once per case, read by its other calls. */
+	history: number
+	/** What follows the breakpoints: the backend's context, the message, a photo. */
 	rest: number
 }
 
 /** The words and the tools by their characters; a photo by its patches, not by its base64. */
 export const estimateInputParts = (evalCase: EvalCase): InputTokens => {
-	const messages = buildFoodParseMessages(
-		{ ...BASE_CONTEXT, ...toFoodContext(evalCase.context) },
-		evalCase.text,
-	)
+	const context = { ...BASE_CONTEXT, ...toFoodContext(evalCase.context) }
+	const messages = buildFoodParseMessages(context, evalCase.text)
 	const request = createFoodParseRequest('estimate', messages)
 	const toTokens = (value: unknown): number =>
 		Math.ceil(JSON.stringify(value).length / CHARS_PER_TOKEN)
 	const prefix = toTokens({ system: request.messages[0], tools: request.tools })
+	const historyCount = selectContextHistory(context).messages.length
+	const history = historyCount === 0 ? 0 : toTokens(request.messages.slice(1, 1 + historyCount))
 	const total = toTokens({ messages: request.messages, tools: request.tools })
 	const { photo } = evalCase
 	return {
 		prefix,
-		rest: Math.max(total - prefix, 0) + (photo ? getImageTokens(photo.width, photo.height) : 0),
+		history,
+		rest:
+			Math.max(total - prefix - history, 0) +
+			(photo ? getImageTokens(photo.width, photo.height) : 0),
 	}
 }
 
 const estimateInputTokens = (evalCase: EvalCase): number => {
-	const { prefix, rest } = estimateInputParts(evalCase)
-	return prefix + rest
+	const { prefix, history, rest } = estimateInputParts(evalCase)
+	return prefix + history + rest
 }
 
 const estimateOutputTokens = (evalCase: EvalCase, reasoning: AiReasoningMode): number =>
@@ -108,11 +114,12 @@ export const getCaseUpperBoundUsd = (
 	price: ModelPrice,
 	reasoning: AiReasoningMode,
 ): number => {
-	const { prefix, rest } = estimateInputParts(evalCase)
+	const { prefix, history, rest } = estimateInputParts(evalCase)
 	const output = estimateOutputTokens(evalCase, reasoning) * price.completion
 	const restCost = rest * price.prompt
-	const coldCall = prefix * price.prompt * CACHE_WRITE_RATIO + restCost + output
-	const warmCall = prefix * price.prompt * CACHE_READ_RATIO + restCost + output
+	const coldCall = (prefix + history) * price.prompt * CACHE_WRITE_RATIO + restCost + output
+	const warmCall =
+		(prefix * CACHE_READ_RATIO + history * CACHE_READ_RATIO) * price.prompt + restCost + output
 	return coldCall + (MAX_MODEL_CALLS_PER_CASE - 1) * warmCall
 }
 
@@ -132,9 +139,10 @@ export const getCaseReserveUsd = (
 /** Input cost of a run in prompt-price tokens: the first case writes the cached prefix, the rest read it (warm-up). */
 const getCachedInputTokens = (cases: EvalCase[]): number =>
 	cases.reduce((sum, evalCase, index) => {
-		const { prefix, rest } = estimateInputParts(evalCase)
+		const { prefix, history, rest } = estimateInputParts(evalCase)
 		const prefixRatio = index === 0 ? CACHE_WRITE_RATIO : CACHE_READ_RATIO
-		return sum + prefix * prefixRatio + rest
+		// the history is the case's own: nobody has written it before
+		return sum + prefix * prefixRatio + history * CACHE_WRITE_RATIO + rest
 	}, 0)
 
 export const estimateCost = async (

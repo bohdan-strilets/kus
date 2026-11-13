@@ -17,7 +17,7 @@ describe('parseRichText', () => {
 		expect(parseRichText('## Інгредієнти')).toEqual([
 			{ type: 'heading', content: [t('Інгредієнти')] },
 		])
-		expect(parseRichText('# a b c d e f g')[0]?.type).toBe('paragraph')
+		expect(parseRichText('# a b c d e f g h i j k')[0]?.type).toBe('paragraph')
 		expect(parseRichText('#### x')[0]).toEqual({ type: 'paragraph', lines: [[t('#### x')]] })
 	})
 
@@ -51,20 +51,35 @@ describe('parseRichText', () => {
 		])
 	})
 
-	it('accepts a heading of exactly 6 words and 60 chars', () => {
-		const text = [...'abcde'.split('').map(() => 'a'.repeat(10)), 'a'.repeat(5)].join(' ')
-		expect(text).toHaveLength(60)
+	it('accepts a heading of exactly 10 words and 80 chars', () => {
+		const text = [...'abcdefghi'.split('').map(() => 'a'.repeat(7)), 'a'.repeat(8)].join(' ')
+		expect(text).toHaveLength(80)
+		expect(text.split(' ')).toHaveLength(10)
 		expect(parseRichText(`# ${text}`)).toEqual([{ type: 'heading', content: [t(text)] }])
 	})
 
-	it('turns a heading over the word or char limit into a paragraph', () => {
-		const sevenWords = 'a b c d e f g'
-		expect(parseRichText(`# ${sevenWords}`)).toEqual([
-			{ type: 'paragraph', lines: [[t(`# ${sevenWords}`)]] },
+	it('turns a heading over the word or char limit into a paragraph without the marker', () => {
+		const elevenWords = 'a b c d e f g h i j k'
+		expect(parseRichText(`# ${elevenWords}`)).toEqual([
+			{ type: 'paragraph', lines: [[t(elevenWords)]] },
 		])
-		const long = [...'abcde'.split('').map(() => 'a'.repeat(10)), 'a'.repeat(6)].join(' ')
-		expect(long).toHaveLength(61)
-		expect(parseRichText(`# ${long}`)).toEqual([{ type: 'paragraph', lines: [[t(`# ${long}`)]] }])
+		const long = [...'abcdefghi'.split('').map(() => 'a'.repeat(7)), 'a'.repeat(9)].join(' ')
+		expect(long).toHaveLength(81)
+		expect(parseRichText(`### ${long}`)).toEqual([{ type: 'paragraph', lines: [[t(long)]] }])
+	})
+
+	it('parses a variant title with a colon and a slash as a heading', () => {
+		expect(parseRichText('### Варіант 2: Все тіло А / Б')).toEqual([
+			{ type: 'heading', content: [t('Варіант 2: Все тіло А / Б')] },
+		])
+	})
+
+	it('starts a heading right after a list item without a blank line', () => {
+		expect(parseRichText('- a\n### Варіант 2: Все тіло А / Б\n- b')).toEqual([
+			{ type: 'list', ordered: false, start: 0, items: [[t('a')]] },
+			{ type: 'heading', content: [t('Варіант 2: Все тіло А / Б')] },
+			{ type: 'list', ordered: false, start: 0, items: [[t('b')]] },
+		])
 	})
 
 	it('keeps # without a space as a paragraph', () => {

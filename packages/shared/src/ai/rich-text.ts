@@ -9,8 +9,8 @@ export type RichBlock =
 	| { type: 'heading'; content: RichInline[] }
 	| { type: 'list'; ordered: boolean; start: number; items: RichInline[][] }
 
-export const HEADING_MAX_WORDS = 6
-export const HEADING_MAX_CHARS = 60
+export const HEADING_MAX_WORDS = 10
+export const HEADING_MAX_CHARS = 80
 const HEADING_MAX_HASHES = 3
 const ORDERED_MARKER_MAX_DIGITS = 9
 const STRONG_MARK = '**'
@@ -79,15 +79,22 @@ const parseListMarker = (line: string): ListMarker | null => {
 	return { ordered: true, number: Number(text.slice(0, digits)), content }
 }
 
-const parseHeading = (line: string): string | null => {
+interface HashLine {
+	content: string
+	isHeading: boolean
+}
+
+/** A line with a heading marker; one too long for a heading stays a line of text, but without the marker. */
+const parseHashLine = (line: string): HashLine | null => {
 	if (line[0] !== '#') return null
 	let hashes = 0
 	while (line[hashes] === '#') hashes += 1
 	if (hashes > HEADING_MAX_HASHES || line[hashes] !== ' ') return null
 	const content = line.slice(hashes + 1).trim()
-	if (content.length === 0 || content.length > HEADING_MAX_CHARS) return null
-	if (content.split(/\s+/).length > HEADING_MAX_WORDS) return null
-	return content
+	if (content.length === 0) return null
+	const fits =
+		content.length <= HEADING_MAX_CHARS && content.split(/\s+/).length <= HEADING_MAX_WORDS
+	return { content, isHeading: fits }
 }
 
 export const parseRichText = (text: string): RichBlock[] => {
@@ -102,14 +109,14 @@ export const parseRichText = (text: string): RichBlock[] => {
 			list = null
 			continue
 		}
-		const heading = parseHeading(line)
-		if (heading !== null) {
-			blocks.push({ type: 'heading', content: parseInline(heading) })
+		const hashLine = parseHashLine(line)
+		if (hashLine?.isHeading) {
+			blocks.push({ type: 'heading', content: parseInline(hashLine.content) })
 			paragraph = null
 			list = null
 			continue
 		}
-		const marker = parseListMarker(line)
+		const marker = hashLine === null ? parseListMarker(line) : null
 		if (marker !== null) {
 			paragraph = null
 			if (list === null || list.ordered !== marker.ordered) {
@@ -124,7 +131,7 @@ export const parseRichText = (text: string): RichBlock[] => {
 			paragraph = []
 			blocks.push({ type: 'paragraph', lines: paragraph })
 		}
-		paragraph.push(parseInline(line))
+		paragraph.push(parseInline(hashLine?.content ?? line))
 	}
 	return blocks
 }

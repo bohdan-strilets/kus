@@ -15,7 +15,7 @@ export {
 	formatCardioTarget,
 	formatProgramTarget,
 	formatProgramTemplateMeta,
-	formatProgramVersionDate,
+	formatProgramVersionLabel,
 	formatStrengthTarget,
 	getProgramTemplateMeta,
 	type ProgramTemplateMeta,

@@ -2,11 +2,12 @@ import type { TemplateExerciseTarget } from '@kus/shared'
 import { describe, expect, it } from 'vitest'
 
 import { i18n } from '@/shared/i18n'
+import { formatShortDate, formatTime } from '@/shared/lib'
 
 import {
 	formatProgramTarget,
 	formatProgramTemplateMeta,
-	formatProgramVersionDate,
+	formatProgramVersionLabel,
 	getProgramTemplateMeta,
 } from './format-program'
 
@@ -62,9 +63,13 @@ describe('template meta', () => {
 	})
 })
 
-describe('version date', () => {
-	it('is dd.MM', () => {
-		expect(formatProgramVersionDate('2026-10-31T12:00:00.000Z', t)).toBe('Версія від 31.10')
+describe('version label', () => {
+	it('is dd.MM, HH:mm in the local time', () => {
+		const created = new Date('2026-10-31T19:15:00.000Z')
+
+		expect(formatProgramVersionLabel(created.toISOString(), t)).toBe(
+			`Версія від ${formatShortDate(created)}, ${formatTime(created)}`,
+		)
 	})
 })
 

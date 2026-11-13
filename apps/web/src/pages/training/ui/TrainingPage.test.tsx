@@ -12,6 +12,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { SESSION_QUERY_KEY } from '@/entities/session'
 import { httpClient } from '@/shared/api'
+import { formatShortDate, formatTime } from '@/shared/lib'
 import {
 	ROUTES,
 	TRAINING_PROGRAM_ROUTE,
@@ -342,7 +343,10 @@ describe('TrainingPage', () => {
 
 		const tile = screen.getByRole('link', { name: /Програма/ })
 		expect(tile.getAttribute('href')).toBe(TRAINING_PROGRAM_ROUTE)
-		expect(within(tile).getByText('Версія від 31.10')).toBeTruthy()
+		const created = new Date('2026-10-31T19:15:00.000Z')
+		expect(
+			within(tile).getByText(`Версія від ${formatShortDate(created)}, ${formatTime(created)}`),
+		).toBeTruthy()
 		const statsTile = screen.getByRole('link', { name: /Статистика/ })
 		expect(await within(statsTile).findByText('11 за жовтень')).toBeTruthy()
 		expect(screen.queryByText('Налаштуємо тренування?')).toBeNull()

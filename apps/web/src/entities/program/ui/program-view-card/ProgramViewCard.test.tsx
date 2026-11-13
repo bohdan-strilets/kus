@@ -5,6 +5,7 @@ import { MemoryRouter, useLocation } from 'react-router'
 import { afterEach, describe, expect, it } from 'vitest'
 
 import '@/shared/i18n'
+import { formatShortDate, formatTime } from '@/shared/lib'
 
 import { ProgramViewCard } from './ProgramViewCard'
 
@@ -110,9 +111,12 @@ describe('ProgramViewCard', () => {
 		expect(name.parentElement?.className).toContain('flex-col')
 	})
 
-	it('tells the date of the version', () => {
+	it('tells the date and time of the version', () => {
 		renderCard(makeView(1))
-		expect(screen.getByText('Версія від 31.10.')).toBeTruthy()
+		const created = new Date(2026, 9, 31, 20, 15)
+		expect(
+			screen.getByText(`Версія від ${formatShortDate(created)}, ${formatTime(created)}.`),
+		).toBeTruthy()
 	})
 
 	it('shows only the pinned template in SINGLE, with the others as one quiet line', () => {

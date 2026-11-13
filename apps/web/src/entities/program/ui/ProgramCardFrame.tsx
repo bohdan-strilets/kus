@@ -3,9 +3,10 @@ import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 
 import { TRAINING_PROGRAM_ROUTE } from '@/shared/config'
-import { cn, formatShortDate } from '@/shared/lib'
+import { cn } from '@/shared/lib'
 import { Button, Icon, ICON_SIZE, Surface, Text } from '@/shared/ui'
 
+import { formatProgramVersionStamp } from '../lib/format-program'
 import type { ProgramCardControls } from './program-card.types'
 
 interface ProgramCardFrameProps {
@@ -91,7 +92,7 @@ export const ProgramCardFrame = ({ controls, note, children }: ProgramCardFrameP
 						{versionCreatedAt === null
 							? t('program.card.accepted')
 							: t('program.card.acceptedVersion', {
-									date: formatShortDate(new Date(versionCreatedAt)),
+									date: formatProgramVersionStamp(versionCreatedAt, t),
 								})}
 					</Text>
 					<Link

@@ -3,9 +3,9 @@ import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 
 import { TRAINING_PROGRAM_ROUTE } from '@/shared/config'
-import { formatShortDate } from '@/shared/lib'
 import { Icon, ICON_SIZE, Surface, Text } from '@/shared/ui'
 
+import { formatProgramVersionStamp } from '../../lib/format-program'
 import { formatProgramViewSubtitle } from '../../lib/format-program-screen'
 import { getShownTemplates } from '../../lib/get-shown-templates'
 import { ProgramTemplateRow } from '../ProgramTemplateRow'
@@ -52,7 +52,7 @@ export const ProgramViewCard = ({ view }: ProgramViewCardProps) => {
 			)}
 			<Text variant="small" tone="muted" weight="regular">
 				{t('program.view.version', {
-					date: formatShortDate(new Date(view.versionCreatedAt)),
+					date: formatProgramVersionStamp(view.versionCreatedAt, t),
 				})}
 			</Text>
 			<Link

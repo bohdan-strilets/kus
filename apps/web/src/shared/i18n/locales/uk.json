@@ -566,7 +566,7 @@
 			"thinking": "Думаю…",
 			"second": "Ще секунду…",
 			"almost": "Майже готово…",
-			"long": "Довгий опис — рахую все по черзі",
+			"long": "Довге повідомлення — читаю все по черзі",
 			"uploading": "Надсилаю фото…"
 		},
 		"notSent": "Не надіслано",
@@ -953,6 +953,7 @@
 	},
 	"program": {
 		"versionFrom": "Версія від {{date}}",
+		"versionStamp": "{{date}}, {{time}}",
 		"meta": {
 			"withCardio": "{{exercises}} + кардіо",
 			"duration": "~{{duration}}"
@@ -1692,7 +1693,7 @@
 		"stopAndSend": "Зупинити й надіслати",
 		"recording": "Йде запис голосу",
 		"voiceHint": "Говори, як у месенджері: «на вечерю курка з гречкою…»",
-		"longHint": "Kusik розбере все на окремі продукти"
+		"longHint": "Довге повідомлення — Kusik прочитає все"
 	},
 	"onboarding": {
 		"composerPlaceholder": "Наприклад: вівсянка і кава"

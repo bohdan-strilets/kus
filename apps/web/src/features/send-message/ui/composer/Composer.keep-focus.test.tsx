@@ -114,7 +114,7 @@ describe('Composer buttons keep the field focused (iOS keyboard stays up)', () =
 
 		it('on the send button of the long layout', () => {
 			renderComposer({ isMultiline: true })
-			expect(screen.getByText('Kusik розбере все на окремі продукти')).toBeTruthy()
+			expect(screen.getByText('Довге повідомлення — Kusik прочитає все')).toBeTruthy()
 
 			expect(fireEvent[eventName](getSend())).toBe(expected)
 		})

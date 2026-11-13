@@ -35,7 +35,7 @@ const PHOTO_INPUT_ACCEPT = 'image/*'
  * docs InputBar (the design spec wins over mockups/chat.html, which drew mic and send side by
  * side). One textarea for both layouts so it never remounts and keeps focus: single line — camera,
  * field and one primary slot that is the mic while empty and «надіслати» with text; long text
- * (chat-long-input.html) — the field on top, then camera, «Kusik розбере все на окремі продукти»
+ * (chat-long-input.html) — the field on top, then camera, «Довге повідомлення — Kusik прочитає все»
  * and send. A picked photo is a row above the field. Enter sends only with a physical keyboard (getEnterAction). While recording the bar
  * turns into the voice recorder. Presentational: the caller owns the text and the actions.
  */

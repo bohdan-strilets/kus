@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 
-import { formatProgramVersionDate } from '@/entities/program'
+import { formatProgramVersionLabel } from '@/entities/program'
 import { cn } from '@/shared/lib'
 import { Icon, ICON_SIZE, Surface, Text } from '@/shared/ui'
 
@@ -24,7 +24,7 @@ export const ProgramVersionRow = ({ createdAt, onOpen }: ProgramVersionRowProps)
 			>
 				<Icon name="clock" size={ICON_SIZE.small} className="flex-none text-muted-strong" />
 				<Text as="span" variant="caption" tone="mutedStrong" weight="regular" className="flex-1">
-					{formatProgramVersionDate(createdAt, t)}
+					{formatProgramVersionLabel(createdAt, t)}
 					{' · '}
 					<Text as="span" variant="caption" tone="primaryDeep" weight="bold">
 						{t('program.screen.whatChanged')}

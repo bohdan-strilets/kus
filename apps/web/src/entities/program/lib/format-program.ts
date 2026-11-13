@@ -7,7 +7,7 @@ import {
 	formatNumber,
 	formatWorkoutMinutes,
 } from '@/entities/workout'
-import { formatShortDate } from '@/shared/lib'
+import { formatShortDate, formatTime } from '@/shared/lib'
 
 export interface ProgramTemplateMeta {
 	/** Without cardio. */
@@ -53,9 +53,14 @@ export const formatProgramTemplateMeta = (
 	return parts.join(DETAIL_SEPARATOR)
 }
 
-/** «Версія від 31.10» in the local time of the phone. */
-export const formatProgramVersionDate = (createdAt: string, t: TFunction): string =>
-	t('program.versionFrom', { date: formatShortDate(new Date(createdAt)) })
+/** «31.10, 20:15» in the local time of the phone. */
+export const formatProgramVersionStamp = (createdAt: string, t: TFunction): string => {
+	const created = new Date(createdAt)
+	return t('program.versionStamp', { date: formatShortDate(created), time: formatTime(created) })
+}
+
+export const formatProgramVersionLabel = (createdAt: string, t: TFunction): string =>
+	t('program.versionFrom', { date: formatProgramVersionStamp(createdAt, t) })
 
 const formatReps = ({ repsMin, repsMax }: TemplateExerciseTarget): string | null => {
 	if (repsMin === null && repsMax === null) return null

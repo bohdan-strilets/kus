@@ -5,6 +5,7 @@ import { MemoryRouter } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import '@/shared/i18n'
+import { formatShortDate, formatTime } from '@/shared/lib'
 
 import type { ProgramCardControls } from './program-card.types'
 import { ProgramDiffCard } from './ProgramDiffCard'
@@ -139,7 +140,10 @@ describe('ProgramProposalCard', () => {
 	it('after the accept: the plaque with the version date and the link, no buttons', () => {
 		renderProposal({ status: 'ACCEPTED', versionCreatedAt: '2026-10-31T10:00:00.000Z' })
 
-		expect(screen.getByText('Прийнято · версія від 31.10')).toBeTruthy()
+		const created = new Date('2026-10-31T10:00:00.000Z')
+		expect(
+			screen.getByText(`Прийнято · версія від ${formatShortDate(created)}, ${formatTime(created)}`),
+		).toBeTruthy()
 		expect(screen.getByRole('link', { name: 'Відкрити програму' }).getAttribute('href')).toBe(
 			'/app/training/program',
 		)

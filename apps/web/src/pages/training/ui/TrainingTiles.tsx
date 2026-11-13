@@ -1,7 +1,7 @@
 import type { ProgramResponse } from '@kus/shared'
 import { useTranslation } from 'react-i18next'
 
-import { formatProgramVersionDate } from '@/entities/program'
+import { formatProgramVersionLabel } from '@/entities/program'
 import { TRAINING_PROGRAM_ROUTE } from '@/shared/config'
 
 import { useStartTrainingSetup } from '../model/use-start-training-setup'
@@ -28,7 +28,7 @@ export const TrainingTiles = ({ today, isStatsShown, program }: TrainingTilesPro
 				<TrainingTile
 					icon="calendar"
 					title={t('training.programTile.title')}
-					subtitle={formatProgramVersionDate(program.version.createdAt, t)}
+					subtitle={formatProgramVersionLabel(program.version.createdAt, t)}
 					to={TRAINING_PROGRAM_ROUTE}
 				/>
 			)}

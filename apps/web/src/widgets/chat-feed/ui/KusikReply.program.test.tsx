@@ -4,6 +4,7 @@ import { cleanup, screen } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+import { formatShortDate, formatTime } from '@/shared/lib'
 import { makeChatMessage, renderWithProviders } from '@/shared/testing'
 
 import { KusikReply } from './KusikReply'
@@ -151,7 +152,10 @@ describe('KusikReply: program and training onboarding routing', () => {
 		expect(screen.getByText('Ось твоя програма.')).toBeTruthy()
 		expect(screen.getByText('Твоя програма: 2 тренування')).toBeTruthy()
 		expect(screen.getByText('Все тіло · по черзі · 3 рази на тиждень · наступне — Б')).toBeTruthy()
-		expect(screen.getByText('Версія від 01.11.')).toBeTruthy()
+		const created = new Date('2026-11-01T10:00:00.000Z')
+		expect(
+			screen.getByText(`Версія від ${formatShortDate(created)}, ${formatTime(created)}.`),
+		).toBeTruthy()
 		expect(screen.getByRole('link', { name: 'Відкрити програму' }).getAttribute('href')).toBe(
 			'/app/training/program',
 		)
@@ -166,6 +170,9 @@ describe('KusikReply: program and training onboarding routing', () => {
 		})
 
 		expect(screen.getByRole('button', { name: 'Прийняти' })).toBeTruthy()
-		expect(screen.queryByText('Версія від 01.11.')).toBeNull()
+		const created = new Date('2026-11-01T10:00:00.000Z')
+		expect(
+			screen.queryByText(`Версія від ${formatShortDate(created)}, ${formatTime(created)}.`),
+		).toBeNull()
 	})
 })

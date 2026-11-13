@@ -280,6 +280,29 @@ describe('program proposals in the chat (e2e, real DB, fake model)', () => {
 		expect(await prisma.programVersion.count({ where: { userId: owner.userId } })).toBe(2)
 	})
 
+	it('accepts a card whose templates came without t-refs onto the same templates, one swapped exercise', async () => {
+		await start()
+		const owner = await registerUser('norefs@kus.app')
+		await seedAccepted(owner)
+
+		const { assistantMessage } = await send(
+			owner,
+			'заміни присідання на віджимання в Б',
+			proposeCall([
+				{ ref: null, name: 'Тренування А', exercises: [bench] },
+				{ ref: null, name: 'Тренування Б', exercises: [pushUps] },
+			]),
+		)
+
+		expect(
+			assistantMessage.programCard?.changes.lines.map(({ op, name }) => `${op} ${name}`),
+		).toEqual(['ADD Віджимання', 'REMOVE Присідання'])
+		await accept(owner, assistantMessage.id)
+		// a template found by its name keeps its key across versions: no third or fourth template
+		const templates = await prisma.workoutTemplate.findMany({ where: { userId: owner.userId } })
+		expect(new Set(templates.map(({ key }) => key)).size).toBe(2)
+	})
+
 	it('answers with a sentence of its own and no card when the program already is that', async () => {
 		await start()
 		const owner = await registerUser('owner@kus.app')

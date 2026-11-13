@@ -5,7 +5,7 @@ import type {
 	ProgramTemplateDraft,
 	TemplateExerciseDraft,
 } from '../schemas/programs.js'
-import { diffPrograms } from './program-diff.js'
+import { diffPrograms, pairTemplates } from './program-diff.js'
 
 const KEY_A = '00000000-0000-4000-8000-00000000000a'
 const KEY_B = '00000000-0000-4000-8000-00000000000b'
@@ -301,5 +301,25 @@ describe('diffPrograms — exercises', () => {
 
 	it('handles an empty template on both sides', () => {
 		expect(diffPrograms(single([]), single([]))).toMatchObject({ lines: [], unchangedTemplates: 1 })
+	})
+})
+
+describe('pairTemplates', () => {
+	it('pairs by key first, then by normalized name among the untaken base templates', () => {
+		const base = [
+			{ key: KEY_A, name: 'День' },
+			{ key: KEY_B, name: ' день ' },
+		]
+		const next = [
+			{ key: KEY_C, name: 'День' },
+			{ key: KEY_B, name: 'Інший' },
+			{ key: KEY_C, name: 'день' },
+		]
+
+		// the key pass takes B for the second; the name pass gives the first the free A, the third has none
+		expect([...pairTemplates(base, next)]).toEqual([
+			[1, 1],
+			[0, 0],
+		])
 	})
 })

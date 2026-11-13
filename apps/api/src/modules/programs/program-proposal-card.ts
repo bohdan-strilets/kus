@@ -5,6 +5,7 @@ import {
 	matchMuscleGroup,
 	type MuscleGroup,
 	normalizeExerciseName,
+	pairTemplates,
 	type ProgramCard,
 	type ProgramDraft,
 	type ProgramExerciseInput,
@@ -76,8 +77,9 @@ const getRefExerciseId = (
 }
 
 /**
- * The model never sees the step and the rest: an exercise already in the template keeps them (the
- * model's rest wins when it names one); normalizeDraft fills the defaults for the rest.
+ * The model never sees the step and the rest: an exercise already in the template keeps them, the
+ * model's rest is ignored for it; a new exercise takes the model's rest, normalizeDraft fills the
+ * other defaults.
  */
 const toDraftExercise = (
 	input: ProgramExerciseInput,
@@ -95,6 +97,7 @@ const toDraftExercise = (
 ): TemplateExerciseDraft => {
 	const exerciseId = getRefExerciseId(input, { refs, refRows }) ?? row?.id ?? null
 	const kept = findBaseExercise(baseTemplate, exerciseId, input.name)?.target
+	const restSec = kept === undefined ? input.restSec : kept.restSec
 	return {
 		name: input.name,
 		exerciseId,
@@ -106,7 +109,7 @@ const toDraftExercise = (
 			repsMax: input.repsMax,
 			weightKg: input.weightKg,
 			progressStepKg: kept?.progressStepKg ?? null,
-			restSec: input.restSec ?? kept?.restSec ?? null,
+			restSec,
 			durationMin: input.durationMin,
 			distanceM: toDistanceM(input.distanceKm),
 		},
@@ -119,6 +122,32 @@ const toDraftExercise = (
  */
 const getTemplateKey = (ref: string | null, { refs }: ProposalSources): string =>
 	(ref === null ? undefined : refs.templateKeys.get(ref)) ?? randomUUID()
+
+/**
+ * The template's key and the active template it stands for. The diff pairs templates by key, then
+ * by name; so does this, and a template paired by name takes the base key (accepting it then
+ * rewrites that template instead of adding a new one).
+ */
+const pairWithBase = (
+	input: ProposeProgramInput,
+	sources: ProposalSources,
+): { key: string; baseTemplate: ProgramTemplateDraft | undefined }[] => {
+	const taken = new Set<string>()
+	const provisional = input.templates.map((template) => {
+		const known = getTemplateKey(template.ref, sources)
+		// Two templates with the same ref: the earlier keeps the key, the later is a new template.
+		const key = taken.has(known) ? randomUUID() : known
+		taken.add(key)
+		return { key, name: template.name }
+	})
+	const baseTemplates = sources.base?.templates ?? []
+	const pairs = pairTemplates(baseTemplates, provisional)
+	return provisional.map(({ key }, index) => {
+		const baseIndex = pairs.get(index)
+		const baseTemplate = baseIndex === undefined ? undefined : baseTemplates[baseIndex]
+		return { key: baseTemplate?.key ?? key, baseTemplate }
+	})
+}
 
 /** The pin named by the model, else the program's own while its template stays. */
 const getPinnedKey = (
@@ -137,13 +166,14 @@ export const toProposalDraft = (
 	input: ProposeProgramInput,
 	sources: ProposalSources,
 ): ProgramDraft => {
-	const keyed = input.templates.map((template) => ({
+	const paired = pairWithBase(input, sources)
+	const keyed = input.templates.map((template, index) => ({
 		ref: template.ref,
-		key: getTemplateKey(template.ref, sources),
+		key: paired[index]?.key ?? randomUUID(),
 	}))
 	const templates: ProgramTemplateDraft[] = input.templates.map((template, index) => {
 		const key = keyed[index]?.key ?? randomUUID()
-		const baseTemplate = sources.base?.templates.find((candidate) => candidate.key === key)
+		const baseTemplate = paired[index]?.baseTemplate
 		const rows = sources.rows[index] ?? []
 		return {
 			key,

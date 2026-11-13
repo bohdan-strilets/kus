@@ -178,14 +178,26 @@ const diffTemplate = (
 	return [...lines, ...diffExercises(base, next)]
 }
 
+export type TemplateIdentity = Pick<ProgramTemplateDraft, 'key' | 'name'>
+
+/**
+ * Pairs `next` templates with `base` ones: by key first, then by normalized name among the base
+ * templates not yet taken. Returns `next` index → `base` index.
+ */
+export const pairTemplates = (
+	base: readonly TemplateIdentity[],
+	next: readonly TemplateIdentity[],
+): Map<number, number> =>
+	pairItems(base, next, [
+		(a, b) => a.key === b.key,
+		(a, b) => normalizeExerciseName(a.name) === normalizeExerciseName(b.name),
+	])
+
 const diffTemplates = (
 	base: ProgramDraft,
 	next: ProgramDraft,
 ): { lines: ProgramChangeLine[]; unchanged: number } => {
-	const pairs = pairItems(base.templates, next.templates, [
-		(a, b) => a.key === b.key,
-		(a, b) => normalizeExerciseName(a.name) === normalizeExerciseName(b.name),
-	])
+	const pairs = pairTemplates(base.templates, next.templates)
 	const lines: ProgramChangeLine[] = []
 	let unchanged = 0
 	next.templates.forEach((template, nextIndex) => {

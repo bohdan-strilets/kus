@@ -215,11 +215,137 @@ describe('toProposalDraft', () => {
 		expect(fresh.templates.map(({ key }) => key)).not.toContain(KEY_A)
 	})
 
+	it('gives a later template with a repeated ref a fresh key; the first keeps it and the pin', () => {
+		const draft = toProposalDraft(
+			input({
+				pinnedRef: 't1',
+				templates: [
+					{ ref: 't1', name: 'Тренування А', weekdays: [], exercises: [] },
+					{ ref: 't1', name: 'Тренування В', weekdays: [], exercises: [] },
+				],
+			}),
+			sources({ base: null, baseVersionId: null }),
+		)
+		const keys = draft.templates.map(({ key }) => key)
+
+		expect(keys[0]).toBe(KEY_A)
+		expect(keys[1]).not.toBe(KEY_A)
+		expect(new Set(keys).size).toBe(2)
+		expect(draft.pinnedKey).toBe(KEY_A)
+	})
+
 	it('keeps the key of an open proposal template without a program (no step or rest to keep)', () => {
 		const draft = toProposalDraft(input(), sources({ base: null, baseVersionId: null }))
 
 		expect(draft.templates.map(({ key }) => key)).toEqual([KEY_A, KEY_B])
 		expect(draft.templates[0]?.exercises[0]?.target.progressStepKg).not.toBe(5)
+	})
+})
+
+describe('toProposalDraft without t-refs', () => {
+	const squat = exercise({ name: 'Присідання' })
+	const noRefs = (templates: ProposeProgramInput['templates']): ProposeProgramInput =>
+		input({ templates })
+	const noRefSources = (overrides: Partial<ProposalSources> = {}): ProposalSources =>
+		sources({ refs: { templateKeys: new Map(), exerciseIds: new Map() }, ...overrides })
+	const customBase: ProgramDraft = {
+		...base,
+		templates: [
+			{ key: KEY_A, name: 'Тренування А', weekdays: [], exercises: [benchDraft], estimatedMin: 10 },
+			{
+				key: KEY_B,
+				name: 'Тренування Б',
+				weekdays: [],
+				exercises: [
+					benchDraft,
+					{
+						...benchDraft,
+						name: 'Тяга',
+						exerciseId: null,
+						target: { ...benchDraft.target, restSec: 75, progressStepKg: 1.25 },
+					},
+				],
+				estimatedMin: 10,
+			},
+		],
+	}
+
+	it('pairs a template with ref null by its name: base key, kept step and rest, no spurious change', () => {
+		const draft = toProposalDraft(
+			noRefs([
+				{ ref: null, name: 'Тренування А', weekdays: [], exercises: [exercise({})] },
+				{
+					ref: null,
+					name: 'Тренування Б',
+					weekdays: [],
+					exercises: [exercise({}), exercise({ name: 'Тяга' })],
+				},
+			]),
+			noRefSources({ base: customBase }),
+		)
+
+		expect(draft.templates.map(({ key }) => key)).toEqual([KEY_A, KEY_B])
+		expect(draft.templates[1]?.exercises[1]?.target).toMatchObject({
+			restSec: 75,
+			progressStepKg: 1.25,
+		})
+		expect(draft.pinnedKey).toBe(KEY_B)
+		expect(toProposalCard(draft, { base: customBase, baseVersionId: VERSION_ID })).toBeNull()
+	})
+
+	it('swapping one exercise in a template without a t-ref is one ADD and one REMOVE', () => {
+		const draft = toProposalDraft(
+			noRefs([
+				{ ref: null, name: 'Тренування А', weekdays: [], exercises: [exercise({})] },
+				{ ref: null, name: 'Тренування Б', weekdays: [], exercises: [exercise({}), squat] },
+			]),
+			noRefSources({ base: customBase }),
+		)
+		const card = toProposalCard(draft, { base: customBase, baseVersionId: VERSION_ID })
+
+		expect(card?.changes.lines.map(({ op, name }) => `${op} ${name}`)).toEqual([
+			'ADD Присідання',
+			'REMOVE Тяга',
+		])
+	})
+
+	it('pairs two templates of the same normalized name with two base templates in order', () => {
+		const twins: ProgramDraft = {
+			...base,
+			templates: [
+				{ key: KEY_A, name: 'День', weekdays: [], exercises: [], estimatedMin: 5 },
+				{ key: KEY_B, name: 'день', weekdays: [], exercises: [], estimatedMin: 5 },
+			],
+		}
+		const draft = toProposalDraft(
+			noRefs([
+				{ ref: null, name: 'День', weekdays: [], exercises: [] },
+				{ ref: null, name: 'День', weekdays: [], exercises: [] },
+				{ ref: null, name: 'День', weekdays: [], exercises: [] },
+			]),
+			noRefSources({ base: twins }),
+		)
+		const keys = draft.templates.map(({ key }) => key)
+
+		expect(keys.slice(0, 2)).toEqual([KEY_A, KEY_B])
+		expect(keys[2]).not.toBe(KEY_A)
+		expect(keys[2]).not.toBe(KEY_B)
+	})
+
+	it('ignores the rest of the model for a paired exercise and takes it for a new one', () => {
+		const draft = toProposalDraft(
+			noRefs([
+				{
+					ref: 't1',
+					name: 'Тренування А',
+					weekdays: [],
+					exercises: [exercise({ restSec: 30 }), exercise({ name: 'Присідання', restSec: 45 })],
+				},
+			]),
+			sources(),
+		)
+
+		expect(draft.templates[0]?.exercises.map(({ target }) => target.restSec)).toEqual([120, 45])
 	})
 })
 

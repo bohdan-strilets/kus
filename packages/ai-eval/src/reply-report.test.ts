@@ -50,4 +50,48 @@ describe('formatReplyChecks', () => {
 
 		expect(report).toContain('- pl: pl → uk')
 	})
+
+	describe('names from the history', () => {
+		const withHistory = (context: EvalCase['context']) => ({
+			...pair('hist', 'ще таке саме', 'Записав.', [item('Сливи')]),
+			evalCase: {
+				id: 'hist',
+				text: 'ще таке саме',
+				expect: { decision: 'log' },
+				reference: 'r',
+				context,
+			} as EvalCase,
+		})
+
+		it('does not flag a name the user wrote earlier in the day', () => {
+			const report = formatReplyChecks([
+				withHistory({ history: [{ role: 'user', content: 'на сніданок сливи' }] }),
+			])
+
+			expect(report).toContain('Назви не зі слів користувача: 0 з 1')
+		})
+
+		it('does not flag a name from the end of the day before', () => {
+			const report = formatReplyChecks([
+				withHistory({ previousDayHistory: [{ role: 'user', content: 'вчора сливи' }] }),
+			])
+
+			expect(report).toContain('Назви не зі слів користувача: 0 з 1')
+		})
+
+		it('still flags a name only Kusik used in its own reply of the history', () => {
+			const report = formatReplyChecks([
+				withHistory({ history: [{ role: 'assistant', content: 'Записав сливи' }] }),
+			])
+
+			expect(report).toContain('Назви не зі слів користувача: 1 з 1')
+			expect(report).toContain('- hist: Сливи')
+		})
+
+		it('flags it as before without a history', () => {
+			const report = formatReplyChecks([withHistory(undefined)])
+
+			expect(report).toContain('Назви не зі слів користувача: 1 з 1')
+		})
+	})
 })

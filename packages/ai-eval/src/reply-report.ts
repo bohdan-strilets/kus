@@ -69,7 +69,19 @@ const formatMarkup = (pairs: Pair[]): string => {
 	return formatFlagged('Порушення розмітки в reply (ціль 0)', flagged, withReply.length)
 }
 
-/** A name the user never wrote: «слизу» for «сливи». Copies, memory, photos and day totals are skipped. */
+/** The words of the user the names may come from: the message and the user's turns of the history. */
+const getUserTexts = ({ evalCase }: Pair): string[] => [
+	evalCase.text,
+	...[...(evalCase.context?.history ?? []), ...(evalCase.context?.previousDayHistory ?? [])]
+		.filter(({ role }) => role === 'user')
+		.map(({ content }) => content),
+]
+
+/**
+ * A name the user never wrote: «слизу» for «сливи». The user's words are the message and the user's
+ * turns of the history, the end of the day before included; a name only Kusik's own reply of the
+ * history used stays suspicious. Copies, memory, photos and day totals are skipped.
+ */
 const formatNames = (pairs: Pair[]): string => {
 	let total = 0
 	const flagged = pairs.flatMap((pair) => {
@@ -79,8 +91,9 @@ const formatNames = (pairs: Pair[]): string => {
 			(item) => !item.memoryRef && !item.copyRef && item.name !== UNDETAILED_ENTRY_NAME,
 		)
 		total += items.length
+		const texts = getUserTexts(pair)
 		return items
-			.filter((item) => !isNameFromText(item.name, evalCase.text))
+			.filter((item) => !texts.some((text) => isNameFromText(item.name, text)))
 			.map((item) => ({ pair, detail: item.name }))
 	})
 	return formatFlagged('Назви не зі слів користувача', flagged, total)

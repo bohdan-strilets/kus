@@ -15,6 +15,7 @@ import {
 	formatProgramTemplateMeta,
 	type ProgramTemplateMetaSource,
 } from './format-program'
+import { type IndexedChangeLine, pairReplacedExercises } from './pair-replaced-exercises'
 import { getWeekdayShortName } from './weekdays'
 
 /**
@@ -38,6 +39,8 @@ export interface ProgramChangeRow {
 	detail: string | null
 	/** The new target of a changed exercise, «4 підходи · 12–15 повт.»; the one-line list says only that. */
 	after?: string | null
+	/** The new order of a reordered template (its exercises) or program (its templates), shown numbered. */
+	order?: string[]
 }
 
 export interface ProgramChangeGroup {
@@ -155,6 +158,37 @@ const getTemplateMeta = (
 	return template ? formatProgramTemplateMeta(template, t) : null
 }
 
+/** A CHANGE of an exercise whose shown plan is the same: only the hidden rest, step, … differ. */
+const isInvisibleChange = (line: ProgramChangeLine, t: TFunction): boolean =>
+	line.scope === 'EXERCISE' &&
+	line.op === 'CHANGE' &&
+	formatTargetValue(line.before, t) === formatTargetValue(line.after, t)
+
+/** The new order: the exercises of the template, or the templates when the line has no template. */
+const getOrderNames = (line: ProgramChangeLine, program: ProgramChangeContext): string[] => {
+	if (line.templateName === null) return program.templates.map((template) => template.name)
+	const template = program.templates.find((candidate) => candidate.name === line.templateName)
+	return template ? template.exercises.map((exercise) => exercise.name) : []
+}
+
+/** The exercises of a new template under its «+» row, one «+» row each. */
+const getTemplateExerciseRows = (
+	line: ProgramChangeLine,
+	index: number,
+	program: ProgramChangeContext,
+	t: TFunction,
+): ProgramChangeRow[] => {
+	const template = program.templates.find(
+		(candidate) => candidate.name === (line.templateName ?? line.name),
+	)
+	return (template?.exercises ?? []).map((exercise, position) => ({
+		key: `${index}-${position}`,
+		kind: 'added',
+		title: exercise.name,
+		detail: formatProgramTarget(exercise, t),
+	}))
+}
+
 const toRow = (
 	line: ProgramChangeLine,
 	index: number,
@@ -163,6 +197,16 @@ const toRow = (
 ): ProgramChangeRow | null => {
 	const key = `${index}`
 	const name = line.name ?? ''
+	if (line.op === 'REORDER') {
+		const order = getOrderNames(line, program)
+		return {
+			key,
+			kind: 'changed',
+			title: t('program.diff.reorder'),
+			detail: null,
+			...(order.length > 0 && { order }),
+		}
+	}
 	if (line.scope === 'EXERCISE') {
 		if (line.op === 'ADD') {
 			return { key, kind: 'added', title: name, detail: getExerciseTarget(line, program, t) }
@@ -172,27 +216,21 @@ const toRow = (
 			const detail = isTarget(line.before) ? formatTargetValue(line.before, t) : null
 			return { key, kind: 'removed', title: name, detail: detail === NO_VALUE ? null : detail }
 		}
-		if (line.op === 'CHANGE') {
-			return {
-				key,
-				kind: 'changed',
-				title: name,
-				detail: beforeAfter(formatTargetValue(line.before, t), formatTargetValue(line.after, t), t),
-				after:
-					formatSetsInstead(line, t) ??
-					(isTarget(line.after) ? formatTargetValue(line.after, t) : null),
-			}
+		return {
+			key,
+			kind: 'changed',
+			title: name,
+			detail: beforeAfter(formatTargetValue(line.before, t), formatTargetValue(line.after, t), t),
+			after:
+				formatSetsInstead(line, t) ??
+				(isTarget(line.after) ? formatTargetValue(line.after, t) : null),
 		}
-		return null
 	}
 	if (line.scope === 'TEMPLATE') {
 		if (line.op === 'ADD') {
 			return { key, kind: 'added', title: name, detail: getTemplateMeta(line, program, t) }
 		}
 		if (line.op === 'REMOVE') return { key, kind: 'removed', title: name, detail: null }
-		if (line.op === 'REORDER') {
-			return { key, kind: 'changed', title: t('program.diff.reorder'), detail: null }
-		}
 		if (line.field === 'weekdays') {
 			return {
 				key,
@@ -228,9 +266,21 @@ const toRow = (
 	}
 }
 
+const toRows = (
+	{ line, index }: IndexedChangeLine,
+	program: ProgramChangeContext,
+	t: TFunction,
+): ProgramChangeRow[] => {
+	const row = toRow(line, index, program, t)
+	if (row === null) return []
+	const isNewTemplate = line.scope === 'TEMPLATE' && line.op === 'ADD'
+	return isNewTemplate ? [row, ...getTemplateExerciseRows(line, index, program, t)] : [row]
+}
+
 /**
  * The lines of a proposal card by template, in the order they came: the lines of the whole
- * program first. A line the card can not tell in words is left out rather than shown wrong.
+ * program first. A replaced exercise is a «−» row with its «+» row under it; a line the card can
+ * not tell in words, or whose shown plan did not change, is left out rather than shown wrong.
  */
 export const getProgramChangeGroups = (
 	changes: ProgramChanges,
@@ -238,16 +288,19 @@ export const getProgramChangeGroups = (
 	t: TFunction,
 ): ProgramChangeGroup[] => {
 	const groups = new Map<string, ProgramChangeGroup>()
-	changes.lines.forEach((line, index) => {
-		const row = toRow(line, index, program, t)
-		if (row === null) return
-		const key = line.scope === 'PROGRAM' ? '' : (line.templateName ?? '')
+	const visible = changes.lines
+		.map((line, index) => ({ line, index }))
+		.filter(({ line }) => !isInvisibleChange(line, t))
+	pairReplacedExercises(visible).forEach((item) => {
+		const rows = toRows(item, program, t)
+		if (rows.length === 0) return
+		const key = item.line.scope === 'PROGRAM' ? '' : (item.line.templateName ?? '')
 		const group = groups.get(key) ?? {
 			key,
 			label: key === '' ? t('program.diff.programGroup') : key,
 			rows: [],
 		}
-		group.rows.push(row)
+		group.rows.push(...rows)
 		groups.set(key, group)
 	})
 	return [...groups.values()]

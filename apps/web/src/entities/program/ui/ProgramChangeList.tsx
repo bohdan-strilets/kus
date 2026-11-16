@@ -86,6 +86,13 @@ export const ProgramChangeList = ({ groups, isPrefixed = false }: ProgramChangeL
 									{row.detail !== null && (
 										<span className="text-small font-normal">{row.detail}</span>
 									)}
+									{row.order && (
+										<ol className="list-decimal pl-4 text-small font-normal">
+											{row.order.map((name, position) => (
+												<li key={`${position}-${name}`}>{name}</li>
+											))}
+										</ol>
+									)}
 								</span>
 							</li>
 						))}

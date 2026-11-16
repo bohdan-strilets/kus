@@ -239,9 +239,173 @@ describe('getProgramChangeGroups', () => {
 
 		expect(groups[0]?.rows).toEqual([
 			{ key: '0', kind: 'changed', title: 'Дні тижня', detail: 'було Пн, Ср · стало Вт, Чт' },
-			{ key: '1', kind: 'changed', title: 'Змінено порядок вправ', detail: null },
+			{ key: '1', kind: 'changed', title: 'Порядок змінено', detail: null, order: ['Присідання'] },
 			{ key: '2', kind: 'added', title: 'Тренування Б', detail: '1 вправа · ~55 хв' },
+			{ key: '2-0', kind: 'added', title: 'Присідання', detail: '3 підходи · 8–12 повт. · 70 кг' },
 		])
+	})
+
+	describe('a stored card of two templates', () => {
+		const exercise = (name: string, patch: Partial<TemplateExerciseTarget> = {}) => ({
+			name,
+			exerciseId: null,
+			kind: 'STRENGTH' as const,
+			muscleGroup: 'LEGS' as const,
+			target: target({ sets: 3, repsMin: 8, repsMax: 12, weightKg: 60, ...patch }),
+		})
+		const twoTemplates: ProgramDraft = {
+			...program,
+			templates: [
+				{
+					key: KEY,
+					name: 'Тренування А',
+					weekdays: [],
+					estimatedMin: 50,
+					exercises: [exercise('Жим лежачи'), exercise('Тяга блока'), exercise('Присідання')],
+				},
+				{
+					key: '0199b3a4-0000-7000-8000-000000000002',
+					name: 'Тренування Б',
+					weekdays: [],
+					estimatedMin: 55,
+					exercises: [exercise('Станова тяга'), exercise('Випади', { weightKg: 20 })],
+				},
+			],
+		}
+		const inA = (patch: Partial<ProgramChangeLine>) =>
+			line({ templateName: 'Тренування А', ...patch })
+
+		it('puts the added exercise right under the one it replaces', () => {
+			const groups = getProgramChangeGroups(
+				changes([
+					inA({ op: 'REMOVE', name: 'Жим ногами', before: target({ sets: 3, repsMin: 10 }) }),
+					inA({ op: 'REMOVE', name: 'Розведення', before: target({ sets: 3, repsMin: 12 }) }),
+					inA({ op: 'ADD', name: 'Жим лежачи' }),
+					inA({ op: 'ADD', name: 'Тяга блока' }),
+					inA({ op: 'ADD', name: 'Присідання' }),
+				]),
+				twoTemplates,
+				t,
+			)
+
+			expect(groups[0]?.rows.map((row) => `${row.kind}:${row.title}`)).toEqual([
+				'removed:Жим ногами',
+				'added:Жим лежачи',
+				'removed:Розведення',
+				'added:Тяга блока',
+				'added:Присідання',
+			])
+		})
+
+		it('pairs a replacement only inside its own template', () => {
+			const groups = getProgramChangeGroups(
+				changes([inA({ op: 'REMOVE', name: 'Жим ногами' }), line({ op: 'ADD', name: 'Випади' })]),
+				twoTemplates,
+				t,
+			)
+
+			expect(groups.map((group) => group.rows.map((row) => row.title))).toEqual([
+				['Жим ногами'],
+				['Випади'],
+			])
+		})
+
+		it('shows a new template with its exercises as «+» rows', () => {
+			const groups = getProgramChangeGroups(
+				changes([
+					line({
+						scope: 'TEMPLATE',
+						op: 'ADD',
+						templateName: 'Тренування Б',
+						name: 'Тренування Б',
+					}),
+				]),
+				twoTemplates,
+				t,
+			)
+
+			expect(groups[0]?.rows.map((row) => [row.kind, row.title, row.detail])).toEqual([
+				['added', 'Тренування Б', '2 вправи · ~55 хв'],
+				['added', 'Станова тяга', '3 підходи · 8–12 повт. · 60 кг'],
+				['added', 'Випади', '3 підходи · 8–12 повт. · 20 кг'],
+			])
+		})
+
+		it('tells a new template of a version whose draft is gone without exercises', () => {
+			const groups = getProgramChangeGroups(
+				changes([line({ scope: 'TEMPLATE', op: 'ADD', templateName: 'Верх', name: 'Верх' })]),
+				twoTemplates,
+				t,
+			)
+			expect(groups[0]?.rows).toHaveLength(1)
+		})
+
+		it('lists the new order of the exercises of a reordered template', () => {
+			const groups = getProgramChangeGroups(
+				changes([line({ scope: 'TEMPLATE', op: 'REORDER', templateName: 'Тренування А' })]),
+				twoTemplates,
+				t,
+			)
+
+			expect(groups[0]?.rows).toEqual([
+				{
+					key: '0',
+					kind: 'changed',
+					title: 'Порядок змінено',
+					detail: null,
+					order: ['Жим лежачи', 'Тяга блока', 'Присідання'],
+				},
+			])
+		})
+
+		it('lists the new order of the templates when the line has no template', () => {
+			const groups = getProgramChangeGroups(
+				changes([line({ scope: 'PROGRAM', op: 'REORDER', templateName: null })]),
+				twoTemplates,
+				t,
+			)
+			expect(groups[0]?.rows[0]?.order).toEqual(['Тренування А', 'Тренування Б'])
+		})
+
+		it('hides a change whose shown plan is the same and drops its template', () => {
+			const hidden = {
+				field: 'target' as const,
+				before: target({ sets: 3, repsMin: 8, repsMax: 12, weightKg: 60, restSec: 90 }),
+				after: target({ sets: 3, repsMin: 8, repsMax: 12, weightKg: 60, restSec: 120 }),
+			}
+			const groups = getProgramChangeGroups(
+				changes([
+					inA({ name: 'Жим лежачи', ...hidden }),
+					line({
+						name: 'Випади',
+						field: 'target',
+						before: target({ sets: 3, repsMin: 8, repsMax: 12, weightKg: 20 }),
+						after: target({ sets: 4, repsMin: 8, repsMax: 12, weightKg: 20 }),
+					}),
+				]),
+				twoTemplates,
+				t,
+			)
+
+			expect(groups.map((group) => group.label)).toEqual(['Тренування Б'])
+			expect(groups[0]?.rows.map((row) => row.title)).toEqual(['Випади'])
+		})
+
+		it('has no groups when every change is invisible', () => {
+			const groups = getProgramChangeGroups(
+				changes([
+					inA({
+						name: 'Жим лежачи',
+						field: 'target',
+						before: target({ sets: 3, restSec: 90, progressStepKg: 2.5 }),
+						after: target({ sets: 3, restSec: 120, progressStepKg: 5 }),
+					}),
+				]),
+				twoTemplates,
+				t,
+			)
+			expect(groups).toEqual([])
+		})
 	})
 
 	it('has no groups when nothing changed', () => {

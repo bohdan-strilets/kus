@@ -240,8 +240,14 @@ describe('getProgramChangeGroups', () => {
 		expect(groups[0]?.rows).toEqual([
 			{ key: '0', kind: 'changed', title: 'Дні тижня', detail: 'було Пн, Ср · стало Вт, Чт' },
 			{ key: '1', kind: 'changed', title: 'Порядок змінено', detail: null, order: ['Присідання'] },
-			{ key: '2', kind: 'added', title: 'Тренування Б', detail: '1 вправа · ~55 хв' },
-			{ key: '2-0', kind: 'added', title: 'Присідання', detail: '3 підходи · 8–12 повт. · 70 кг' },
+			{ key: '2', kind: 'added', title: 'Тренування Б', detail: null },
+			{
+				key: '2-0',
+				kind: 'added',
+				title: 'Присідання',
+				detail: '3 підходи · 8–12 повт. · 70 кг',
+				isNested: true,
+			},
 		])
 	})
 
@@ -324,11 +330,13 @@ describe('getProgramChangeGroups', () => {
 				t,
 			)
 
-			expect(groups[0]?.rows.map((row) => [row.kind, row.title, row.detail])).toEqual([
-				['added', 'Тренування Б', '2 вправи · ~55 хв'],
-				['added', 'Станова тяга', '3 підходи · 8–12 повт. · 60 кг'],
-				['added', 'Випади', '3 підходи · 8–12 повт. · 20 кг'],
-			])
+			expect(groups[0]?.rows.map((row) => [row.kind, row.title, row.detail, row.isNested])).toEqual(
+				[
+					['added', 'Тренування Б', null, undefined],
+					['added', 'Станова тяга', '3 підходи · 8–12 повт. · 60 кг', true],
+					['added', 'Випади', '3 підходи · 8–12 повт. · 20 кг', true],
+				],
+			)
 		})
 
 		it('tells a new template of a version whose draft is gone without exercises', () => {

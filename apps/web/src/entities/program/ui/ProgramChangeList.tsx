@@ -68,6 +68,7 @@ export const ProgramChangeList = ({ groups, isPrefixed = false }: ProgramChangeL
 								className={cn(
 									'flex items-start gap-2 rounded-icon px-3 py-2',
 									ROW_CLASS_BY_KIND[row.kind],
+									row.isNested && 'ml-5',
 								)}
 							>
 								<span aria-hidden="true" className="w-3 flex-none text-card-title font-bold">

@@ -41,6 +41,8 @@ export interface ProgramChangeRow {
 	after?: string | null
 	/** The new order of a reordered template (its exercises) or program (its templates), shown numbered. */
 	order?: string[]
+	/** An exercise of a new template: it sits under the template's «+» row, indented. */
+	isNested?: boolean
 }
 
 export interface ProgramChangeGroup {
@@ -186,6 +188,7 @@ const getTemplateExerciseRows = (
 		kind: 'added',
 		title: exercise.name,
 		detail: formatProgramTarget(exercise, t),
+		isNested: true,
 	}))
 }
 
@@ -274,7 +277,11 @@ const toRows = (
 	const row = toRow(line, index, program, t)
 	if (row === null) return []
 	const isNewTemplate = line.scope === 'TEMPLATE' && line.op === 'ADD'
-	return isNewTemplate ? [row, ...getTemplateExerciseRows(line, index, program, t)] : [row]
+	if (!isNewTemplate) return [row]
+	const exerciseRows = getTemplateExerciseRows(line, index, program, t)
+	if (exerciseRows.length === 0) return [row]
+	// «2 вправи · ~55 хв» only repeats the rows listed under it
+	return [{ ...row, detail: null }, ...exerciseRows]
 }
 
 /**

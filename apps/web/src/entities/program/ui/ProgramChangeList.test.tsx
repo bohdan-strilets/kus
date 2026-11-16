@@ -45,6 +45,17 @@ describe('ProgramChangeList', () => {
 		expect(names).toEqual(['Присідання', 'Жим'])
 	})
 
+	it('indents the exercise of a new template under its row', () => {
+		const { container } = renderRows([
+			{ key: '0', kind: 'added', title: 'Тренування Б', detail: null },
+			{ key: '0-0', kind: 'added', title: 'Випади', detail: '3 підходи', isNested: true },
+		])
+
+		const items = Array.from(container.querySelectorAll('section > ul > li'))
+		expect(items[0]?.className).not.toContain('ml-5')
+		expect(items[1]?.className).toContain('ml-5')
+	})
+
 	it('has no numbered list for rows without an order', () => {
 		const { container } = renderRows(rows.slice(0, 2))
 		expect(container.querySelector('ol')).toBeNull()

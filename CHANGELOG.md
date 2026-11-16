@@ -6,6 +6,27 @@ All notable changes to Kusik are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.12.1] — 2026-11-16
+
+The program change card is readable: a replaced exercise, a new template and a new order show what they are, and rows with no visible difference are gone. Found in the live chat of the night of 12.11 (a second A/B program). The prompt and the tool descriptions are unchanged; no eval.
+
+### Fixed
+
+- Program card diff: "было 4 підходи · 6–10 · 70 кг · стало 4 підходи · 6–10 · 70 кг" came from the model's own `restSec` (it does not see the stored rest) that the diff counted and the card did not show. The model's rest is now ignored for an exercise that is already in the template; a template the model sent without `t-ref` is paired with its base by name and keeps the base key; equal refs in one proposal get distinct keys ([aa1e845])
+- Program card: a replaced exercise shows its «−» and «+» rows one under the other, a new template lists its exercises, a reorder shows «Порядок змінено» with the new numbered order, and a change with no visible difference is hidden; stored cards render as before ([edb88fa])
+- Chat text: «### Варіант 2: Все тіло А / Б» (7 words) showed with its hashes because a heading was limited to 6 words and 60 characters; now 10 words and 80 characters, and a hash line that still does not fit loses the marker ([092b9d1])
+- Hints for a long message no longer talk about food: «Довге повідомлення — читаю все по черзі» and «Довге повідомлення — Kusik прочитає все» ([0c9068d])
+
+### Changed
+
+- Program version label with the time: «Версія від 12.11, 03:12»; `formatProgramVersionDate` is `formatProgramVersionLabel` ([0c9068d])
+
+### Known
+
+- A card shows the changes against the active version, so changes of earlier drafts that are not accepted yet appear in it together with the new ones (confirmed on the data of 12.11); a "changes in this message" view is in the backlog until the new cards are seen on the phone
+- The model's words «скажи «застосуй» / напиши «заміни»» are its own, not the app's; they wait for the prompt compression (2.0)
+- The model does not see the stored rest of an exercise (a context change, needs an eval)
+
 ## [0.12.0] — 2026-11-12
 
 Kusik now reads the whole local day of the chat instead of the last six messages cut to 1000 characters. A proposal at the end of a long reply ("Так, підскажи") is no longer lost. The prompt and the tool descriptions are unchanged; only the context of the model changed (step 2.1a of the history stage).
@@ -919,7 +940,12 @@ Design sync with `design/` v0.5.2. Web only: no API, shared-package or migration
 
 ## 0.2.0 / 0.1.0 — see tags
 
-[Unreleased]: https://github.com/bohdan-strilets/kus/compare/v0.12.0...HEAD
+[Unreleased]: https://github.com/bohdan-strilets/kus/compare/v0.12.1...HEAD
+[0.12.1]: https://github.com/bohdan-strilets/kus/compare/v0.12.0...v0.12.1
+[aa1e845]: https://github.com/bohdan-strilets/kus/commit/aa1e845870102514916508e8d08cae178625213e
+[092b9d1]: https://github.com/bohdan-strilets/kus/commit/092b9d10ae18cc36c0c027d4dcec0ca9bbc6978b
+[0c9068d]: https://github.com/bohdan-strilets/kus/commit/0c9068dda431e2ecb44bad725996bd46552844e2
+[edb88fa]: https://github.com/bohdan-strilets/kus/commit/edb88fae4b599638eb92de21569fe42ddec3273b
 [0.12.0]: https://github.com/bohdan-strilets/kus/compare/v0.11.6...v0.12.0
 [5c46bb4]: https://github.com/bohdan-strilets/kus/commit/5c46bb42217fd4fb574f9f9373deb7180ddcb0e9
 [b0e935f]: https://github.com/bohdan-strilets/kus/commit/b0e935fecb889be856b257915e48004368c56c4d

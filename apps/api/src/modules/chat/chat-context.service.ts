@@ -10,13 +10,11 @@ import {
 	ENTRY_AHEAD_MAX_DAYS,
 	ENTRY_BACKDATE_MAX_DAYS,
 	getLoggableDays,
-	type HistoryTurn,
 	MAX_CONTEXT_OPEN_CLARIFICATIONS,
 	MEASUREMENT_FIX_MAX_DAYS,
 	type MeasurementsContext,
 	type FoodRefContext,
 	type MemoryFoodContext,
-	PREVIOUS_DAY_TAIL_MAX_MESSAGES,
 	type RecentMeasurementContext,
 	shiftDate,
 	shouldShowProgramRules,
@@ -29,7 +27,7 @@ import {
 	getDayHistoryStart,
 	getZonedMoment,
 } from '../../common/time'
-import { MeasurementKind, MessageRole } from '../../generated/prisma/client'
+import { MeasurementKind } from '../../generated/prisma/client'
 import { type DaySummary, EntriesService } from '../entries/entries.service'
 import { FactsService } from '../facts/facts.service'
 import { GoalsService } from '../goals/goals.service'
@@ -38,20 +36,14 @@ import { ProfileService } from '../profile/profile.service'
 import type { TemplateRefIds } from '../programs/program-chat-context'
 import { ProgramProposalsService } from '../programs/program-proposals.service'
 import { type WorkoutRefIds, WorkoutsTurnService } from '../workouts/workouts-turn.service'
-import {
-	ChatRepository,
-	DAY_HISTORY_QUERY_CAP,
-	type MessageWithAttachments,
-} from './chat.repository'
+import type { MessageWithAttachments } from './chat.repository'
 import { ChatEarlierService } from './chat-earlier.service'
-import { ChatHistoryMarkersService } from './chat-history-markers.service'
+import { ChatHistoryContextService } from './chat-history-context.service'
 import { ChatProgramCardsService } from './chat-program-cards.service'
 import { ClarificationsRepository } from './clarifications.repository'
 import { buildDaysContext } from './days-context'
 import { buildEditContext, type EditRefIds } from './edit-context'
 import type { CopyRefIds } from './history-context'
-import { buildCorrectionContext, type HistoryCorrectionContext } from './history-corrections'
-import { toHistoryTurns } from './history-turns'
 
 export interface DayOverview {
 	summary: DaySummary
@@ -80,27 +72,6 @@ interface BuildContextParams {
 	programOnboarding?: string
 }
 
-/** Message id → ids of the entries it logged; built from the day already loaded, no extra query. */
-const groupEntryIdsBySourceMessage = (
-	entries: { id: string; sourceMessageId: string | null }[],
-): Map<string, string[]> => {
-	const grouped = new Map<string, string[]>()
-	for (const { id, sourceMessageId } of entries) {
-		if (sourceMessageId === null) continue
-		grouped.set(sourceMessageId, [...(grouped.get(sourceMessageId) ?? []), id])
-	}
-	return grouped
-}
-
-/** The entries of the day and those found by their message; an entry in both counts once. */
-const mergeSourceEntries = <T extends { id: string }>(day: T[], earlier: T[]): T[] => {
-	const known = new Set(day.map(({ id }) => id))
-	return [...day, ...earlier.filter(({ id }) => !known.has(id))]
-}
-
-const getDeletedEntryIds = (entries: { id: string; isDeleted: boolean }[]): Set<string> =>
-	new Set(entries.filter(({ isDeleted }) => isDeleted).map(({ id }) => id))
-
 const FACT_REF_PREFIX = 'f'
 const CONTEXT_WEIGHT_COUNT = 2
 const MEASUREMENT_KINDS = [MeasurementKind.WEIGHT, MeasurementKind.WAIST] as const
@@ -116,10 +87,9 @@ const toPoint = ({ value, localDate }: { value: number; localDate: Date }) => ({
 @Injectable()
 export class ChatContextService {
 	constructor(
-		private readonly chatRepository: ChatRepository,
+		private readonly historyContext: ChatHistoryContextService,
 		private readonly clarificationsRepository: ClarificationsRepository,
 		private readonly chatEarlier: ChatEarlierService,
-		private readonly historyMarkers: ChatHistoryMarkersService,
 		private readonly entriesService: EntriesService,
 		private readonly goalsService: GoalsService,
 		private readonly measurementsService: MeasurementsService,
@@ -205,46 +175,6 @@ export class ChatContextService {
 		}
 	}
 
-	/** Who deleted the entries, what Kusik did in each turn and what the user changed in the app. */
-	private async getCorrectionContext({
-		userId,
-		history,
-		message,
-		deletedEntryIds,
-		refByEntryId,
-		forgottenRefById,
-	}: {
-		userId: string
-		/** Oldest first. */
-		history: MessageWithAttachments[]
-		message: MessageWithAttachments
-		deletedEntryIds: ReadonlySet<string>
-		refByEntryId: ReadonlyMap<string, string>
-		/** Food id → `g1…` of «Foods forgotten today». */
-		forgottenRefById: ReadonlyMap<string, string>
-	}): Promise<HistoryCorrectionContext> {
-		const [oldest] = history
-		const messageIds = history.filter(({ role }) => role === MessageRole.USER).map(({ id }) => id)
-		const [corrections, foodActionsByMessageId] = await Promise.all([
-			oldest
-				? this.entriesService.findHistoryCorrections({
-						userId,
-						entryIds: [...deletedEntryIds],
-						messageIds,
-						since: oldest.createdAt,
-					})
-				: [],
-			this.historyMarkers.getFoodActions({ userId, messageIds, forgottenRefById }),
-		])
-		return buildCorrectionContext({
-			corrections,
-			history,
-			current: message,
-			refByEntryId,
-			foodActionsByMessageId,
-		})
-	}
-
 	/** The model input and the ref → id maps its edit and copy tools are checked against. */
 	async buildContext({
 		userId,
@@ -275,8 +205,7 @@ export class ChatContextService {
 		const dayStart = getZonedMoment(localDate, 0, timezone)
 		const [
 			{ summary, goal, totals },
-			dayRows,
-			tailRows,
+			rows,
 			editable,
 			measurements,
 			days,
@@ -286,14 +215,7 @@ export class ChatContextService {
 			openCard,
 		] = await Promise.all([
 			this.getDayOverview(userId, localDate),
-			this.chatRepository.findDayHistory({ userId, beforeId: message.id, since: historySince }),
-			// the end of the day before; the selection trims it to its budget
-			this.chatRepository.findHistory({
-				userId,
-				beforeId: message.id,
-				before: historySince,
-				limit: PREVIOUS_DAY_TAIL_MAX_MESSAGES,
-			}),
+			this.historyContext.loadRows({ userId, message, historySince }),
 			// entries of other days written today stay editable in the chat
 			this.entriesService.getEditableEntries(userId, localDate, {
 				from: toDbDate(shiftDate(today, -ENTRY_BACKDATE_MAX_DAYS)),
@@ -313,28 +235,20 @@ export class ChatContextService {
 			text,
 		}))
 		const factContexts: FactContext[] = factRefs.map(({ ref, text }) => ({ ref, text }))
-		// both lists are oldest first: the day before, then the day
-		// a day that hit the query cap lost its oldest messages: the day before would sit next to a gap
-		const tail = dayRows.length >= DAY_HISTORY_QUERY_CAP ? [] : tailRows
-		const history = [...tail, ...dayRows]
-		const userMessages = history.filter(({ role }) => role === MessageRole.USER)
-		const userMessageIds = userMessages.map(({ id }) => id)
-		const [programContext, markers, readDigests] = await Promise.all([
+		const [programContext, markersData] = await Promise.all([
 			// after the workouts: an exercise of the program shows its x-ref when «Exercises» lists it
 			this.programProposals.getContext(userId, {
 				exerciseRefs: new Map([...workouts.refIds.exercises].map(([ref, id]) => [id, ref])),
 				pending: openCard?.program ?? null,
 			}),
 			// after the workouts and facts: the refs they got in this request are what the markers show
-			this.historyMarkers.getMarkers({
+			this.historyContext.loadMarkers({
 				userId,
-				messageIds: userMessageIds,
+				userMessageIds: rows.userMessages.map(({ id }) => id),
 				workoutRefIds: workouts.refIds,
 				factRefById: new Map(factRefs.map(({ id, ref }) => [id, ref])),
 				foodRefById,
 			}),
-			// what Kusik read in each turn: the numbers of its replies come from there
-			this.historyMarkers.getReadDigests(userId, userMessageIds),
 		])
 		const clarifications = await this.clarificationsRepository.findOpenClarifications({
 			userId,
@@ -353,37 +267,16 @@ export class ChatContextService {
 			valuesBefore,
 			today,
 		})
-		// the messages from before midnight (the evening before, the end of the day before) logged
-		// entries that `editable` does not hold
-		const earlierSourceEntries = await this.entriesService.findSourceEntries(
+		const { historyTurns, previousDayTurns, appChanges } = await this.historyContext.buildTurns({
 			userId,
-			userMessages.filter(({ createdAt }) => createdAt < dayStart).map(({ id }) => id),
-		)
-		// all the entries, not only the windowed ones: a turn whose entries lost their refs must
-		// still read as logged
-		const sourceMessages = mergeSourceEntries(editable.sourceMessages, earlierSourceEntries)
-		const entryIdsBySourceMessageId = groupEntryIdsBySourceMessage(sourceMessages)
-		const deletedEntryIds = getDeletedEntryIds(sourceMessages)
-		const corrections = await this.getCorrectionContext({
-			userId,
-			history,
 			message,
-			deletedEntryIds,
+			rows,
+			dayStart,
 			refByEntryId,
+			editableSourceEntries: editable.sourceMessages,
+			markersData,
 			forgottenRefById,
 		})
-		const toTurns = (rows: MessageWithAttachments[]): HistoryTurn[] =>
-			rows.flatMap((turn) =>
-				toHistoryTurns(turn, refByEntryId, entryIdsBySourceMessageId, {
-					deletedEntryIds,
-					markers: markers.get(turn.id),
-					corrections,
-					readDigests,
-				}),
-			)
-		const historyTurns = toTurns(dayRows)
-		const previousDayTurns = toTurns(tail)
-		const appChanges = corrections.appChangesByMessageId.get(message.id)
 		const hasProgramRules = shouldShowProgramRules({
 			text,
 			history: [...previousDayTurns, ...historyTurns],

@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { MessageRole } from '../../generated/prisma/client'
 import { NO_TEMPLATE_REFS } from '../programs/program-chat-context'
 import { ChatContextService } from './chat-context.service'
+import { ChatHistoryContextService } from './chat-history-context.service'
 import { DAY_HISTORY_QUERY_CAP } from './chat.repository'
 
 const TODAY = new Date('2026-10-18T00:00:00Z')
@@ -95,19 +96,24 @@ const createService = ({
 	const findInRange = vi
 		.fn()
 		.mockImplementation(({ kind }: { kind: string }) => Promise.resolve(range[kind] ?? []))
-	const service = new ChatContextService(
+	const entriesService = {
+		getDaySummary: vi.fn().mockResolvedValue({ totals: {}, meals: [] }),
+		getEditableEntries,
+		getValuesBefore: vi.fn().mockResolvedValue(new Map()),
+		getDaysKcal,
+		findHistoryCorrections,
+		findSourceEntries,
+	}
+	const historyContext = new ChatHistoryContextService(
 		{ findDayHistory, findHistory } as never,
+		{ getMarkers, getReadDigests, getFoodActions } as never,
+		entriesService as never,
+	)
+	const service = new ChatContextService(
+		historyContext,
 		{ findOpenClarifications: vi.fn().mockResolvedValue([]) } as never,
 		{ getContext: vi.fn().mockResolvedValue({ earlier: [], copyRefIds: new Map() }) } as never,
-		{ getMarkers, getReadDigests, getFoodActions } as never,
-		{
-			getDaySummary: vi.fn().mockResolvedValue({ totals: {}, meals: [] }),
-			getEditableEntries,
-			getValuesBefore: vi.fn().mockResolvedValue(new Map()),
-			getDaysKcal,
-			findHistoryCorrections,
-			findSourceEntries,
-		} as never,
+		entriesService as never,
 		{
 			getGoalForDate: vi.fn().mockResolvedValue(null),
 			getGoalKcalByDay: vi.fn().mockResolvedValue(goalKcal),

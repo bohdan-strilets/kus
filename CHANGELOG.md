@@ -6,6 +6,19 @@ All notable changes to Kusik are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.12.2] — 2026-11-16
+
+Program change card details after a look on the phone, and the chat history moved out of the context service. The prompt and the tool descriptions are unchanged; no eval.
+
+### Fixed
+
+- Program change card and the versions sheet: the exercises of a new template are indented under its «+» row, and the «N вправ · ~хв» line is dropped when the exercises are listed ([161bb36])
+
+### Changed
+
+- The day history of the chat context moved to `ChatHistoryContextService`; what the model gets is the same ([1e240f8])
+- The AI run log shows `tailTokens`, the estimate of the previous-day tail sent to the model ([29effba])
+
 ## [0.12.1] — 2026-11-16
 
 The program change card is readable: a replaced exercise, a new template and a new order show what they are, and rows with no visible difference are gone. Found in the live chat of the night of 12.11 (a second A/B program). The prompt and the tool descriptions are unchanged; no eval.
@@ -940,7 +953,11 @@ Design sync with `design/` v0.5.2. Web only: no API, shared-package or migration
 
 ## 0.2.0 / 0.1.0 — see tags
 
-[Unreleased]: https://github.com/bohdan-strilets/kus/compare/v0.12.1...HEAD
+[Unreleased]: https://github.com/bohdan-strilets/kus/compare/v0.12.2...HEAD
+[0.12.2]: https://github.com/bohdan-strilets/kus/compare/v0.12.1...v0.12.2
+[161bb36]: https://github.com/bohdan-strilets/kus/commit/161bb3691f71f23b695a731cf8295f50d389d933
+[1e240f8]: https://github.com/bohdan-strilets/kus/commit/1e240f8756f16070eceec65268cace5a651dd2c4
+[29effba]: https://github.com/bohdan-strilets/kus/commit/29effba792d79a876a8610321e10ce1be2f718d1
 [0.12.1]: https://github.com/bohdan-strilets/kus/compare/v0.12.0...v0.12.1
 [aa1e845]: https://github.com/bohdan-strilets/kus/commit/aa1e845870102514916508e8d08cae178625213e
 [092b9d1]: https://github.com/bohdan-strilets/kus/commit/092b9d10ae18cc36c0c027d4dcec0ca9bbc6978b

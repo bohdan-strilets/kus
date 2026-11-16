@@ -3,6 +3,7 @@
 import type { AddressForm, FoodCategory, MealType, MeasurementKind } from '../schemas/enums.js'
 import { getWeekday, type LoggableDayLabel } from './dates.js'
 import {
+	estimateHistoryTokens,
 	type HistoryMessage,
 	type HistoryTurn,
 	selectDayHistory,
@@ -305,6 +306,8 @@ export interface ContextHistory {
 	droppedCount: number
 	/** Estimated tokens of the day part. */
 	tokens: number
+	/** Estimated tokens of the end of the day before that the model gets. */
+	tailTokens: number
 }
 
 /** The history the model gets: the end of the day before, then the whole day. */
@@ -317,6 +320,7 @@ export const selectContextHistory = (context: FoodParseContext): ContextHistory 
 		messages: [...tail, ...day.messages],
 		droppedCount: day.droppedCount,
 		tokens: day.tokens,
+		tailTokens: tail.reduce((sum, { content }) => sum + estimateHistoryTokens(content), 0),
 	}
 }
 

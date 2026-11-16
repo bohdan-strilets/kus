@@ -749,7 +749,7 @@ export class AiService {
 			`AI run ${status} purpose=${kind.purpose} user=${params.userId} message=${params.messageId} ` +
 				`model=${model} in=${usage?.prompt_tokens ?? 0} cached=${usage?.prompt_tokens_details?.cached_tokens ?? 0} ` +
 				`out=${usage?.completion_tokens ?? 0} cost=${costUsd} ms=${durationMs} toolCalls=${calls.length}` +
-				` history=${history.messages.length} historyTokens~${history.tokens} historyDropped=${history.droppedCount}` +
+				` history=${history.messages.length} historyTokens~${history.tokens} historyDropped=${history.droppedCount} tailTokens~${history.tailTokens}` +
 				(readCount > 0 ? ` reads=${readCount}` : '') +
 				(params.image ? ' photo=1' : '') +
 				(errorCode ? ` error=${errorCode}` : ''),

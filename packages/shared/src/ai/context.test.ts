@@ -8,6 +8,7 @@ import {
 	type FoodParseContext,
 	formatMeasurements,
 	type RecentMeasurementContext,
+	selectContextHistory,
 } from './context.js'
 import {
 	DAY_HISTORY_MAX_TOKENS,
@@ -509,5 +510,33 @@ describe('formatContext program', () => {
 				program: { mode: 'ROTATE', perWeek: null, title: null, nextRef: null, templates: [] },
 			}),
 		).toContain('Active: ROTATE.')
+	})
+})
+
+describe('selectContextHistory tailTokens', () => {
+	const sized = (tokens: number): string => 'x'.repeat(Math.ceil(tokens * HISTORY_CHARS_PER_TOKEN))
+
+	it('counts the tail the model gets, not the day, and not the messages the budget cut', () => {
+		const context: FoodParseContext = {
+			...baseContext,
+			history: [{ role: 'user', content: sized(100) }],
+			previousDayHistory: [
+				{ role: 'user', content: sized(PREVIOUS_DAY_TAIL_MAX_TOKENS + 10) },
+				{ role: 'assistant', content: sized(30) },
+				{ role: 'user', content: sized(20) },
+				{ role: 'assistant', content: sized(10) },
+			],
+		}
+
+		const { tokens, tailTokens, messages } = selectContextHistory(context)
+
+		// the big first message is over the budget; the reply that would open the tail is dropped too
+		expect(tailTokens).toBe(20 + 10)
+		expect(messages).toHaveLength(3)
+		expect(tokens).toBe(100)
+	})
+
+	it('has no tail tokens without an end of the day before', () => {
+		expect(selectContextHistory(baseContext).tailTokens).toBe(0)
 	})
 })

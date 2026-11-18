@@ -23,6 +23,7 @@ import { MeasurementEditsModule } from './modules/measurements/measurement-edits
 import { ProfileModule } from './modules/profile/profile.module'
 import { PhotosModule } from './modules/photos/photos.module'
 import { ProgressModule } from './modules/progress/progress.module'
+import { RecipesModule } from './modules/recipes/recipes.module'
 import { StorageModule } from './modules/storage/storage.module'
 import { UsersModule } from './modules/users/users.module'
 import { ProgramsModule } from './modules/programs/programs.module'
@@ -55,6 +56,7 @@ const DEFAULT_THROTTLE = { ttl: minutes(1), limit: 100 }
 		MeasurementEditsModule,
 		FactsModule,
 		MemoryModule,
+		RecipesModule,
 		WorkoutsModule,
 		WorkoutLoggingModule,
 		ProgramsModule,

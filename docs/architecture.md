@@ -244,6 +244,15 @@ sequenceDiagram
 - `DELETE /my-foods/:id` — soft delete, 204; `POST /my-foods/:id/restore` — повертає, 409 `MY_FOOD_EXISTS`, якщо за цей час зʼявився активний продукт із тією ж назвою.
 - `POST /my-foods/from-entries { entryIds }` — кнопка «Запамʼятати». Записи читаються лише через `EntriesService`: чужий, невідомий чи видалений (запис або прийом) id → 404 `ENTRY_NOT_FOUND` на весь запит, нічого не пишеться. В одній транзакції: звичне значення на 100 г = значення запису / грами × 100, `pieceGrams = грами / quantity`, `defaultGrams = грами`; назва, що вже є серед продуктів (або повторилась у запиті), — у `skipped { reason: 'exists' }`. Створений продукт привʼязується до запису (`FoodEntry.myFoodId`), тож `canRemember` у відповіді запису (`myFoodId === null`) стає `false`.
 
+## Рецепти (`/recipes`)
+
+Модуль `recipes` (`RecipesController` / `RecipesService` / `RecipesRepository`). Усі маршрути — лише власні рецепти (`userId` з токена; інгредієнти читаються лише через `include` рецепта), чужий, видалений чи невідомий id → 404 `RECIPE_NOT_FOUND`.
+
+- `GET /recipes?page&limit` — активні, спершу нещодавно вжиті (`lastUsedAt desc nulls last, createdAt desc`), `{ data, meta }`; ккал і макроси — на порцію (`defaultGrams`, без нього вся готова страва).
+- `GET /recipes/:id` — склад (без води) і порції ½ / 1 / 1½; цифри рахує `getRecipePortionValues` із `packages/shared`.
+- `POST /recipes/:id/log { share }` — «Додати на сьогодні»: у транзакції запис через `EntriesService.logEntries` (`sourceMessageId: null`, `source: MEMORY`, `confidence 0.9`, `recipeId`), тип прийому за локальною годиною, далі `usageCount++`, `lastUsedAt`. Порція понад 5000 г або густіша за 9,5 ккал/г → 422 `RECIPE_PORTION_INVALID`.
+- `DELETE /recipes/:id` — soft delete, 204; `POST /recipes/:id/restore` — повертає, 409 `RECIPE_NAME_TAKEN`, якщо зʼявився активний рецепт з тією ж назвою.
+
 ## Факти про тебе (`/facts`)
 
 Модуль `facts`: короткі факти про звички користувача (`UserFact`, до 120 символів, одна строка). Усі маршрути — лише власні факти (`userId` з токена), чужий, видалений чи не в потрібному стані id → 404 `FACT_NOT_FOUND`, ніколи 403.

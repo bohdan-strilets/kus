@@ -110,6 +110,14 @@ export const ErrorCodes = {
 	/** Another active food of the user has this name; details: { existingId, name }. */
 	MY_FOOD_EXISTS: 'MY_FOOD_EXISTS',
 
+	// recipes
+	/** No active recipe with this id for this user (another user's is "not found" too). */
+	RECIPE_NOT_FOUND: 'RECIPE_NOT_FOUND',
+	/** Restore: another active recipe of the user has this name; details: { existingId, name }. */
+	RECIPE_NAME_TAKEN: 'RECIPE_NAME_TAKEN',
+	/** The portion would be over 5000 g or denser than 9.5 kcal/g. */
+	RECIPE_PORTION_INVALID: 'RECIPE_PORTION_INVALID',
+
 	// facts about the user
 	/** No active fact with this id for this user, or not in the state the route needs (another user's reads the same). */
 	FACT_NOT_FOUND: 'FACT_NOT_FOUND',

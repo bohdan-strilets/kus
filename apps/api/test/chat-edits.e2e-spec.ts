@@ -318,6 +318,56 @@ describe('chat edits of logged food (e2e, real DB, fake model)', () => {
 		expect(entry).toMatchObject({ grams: 200, kcal: 100 })
 	})
 
+	it('shows the model a recipe portion logged in the app (no source message) as e1 and in the day totals', async () => {
+		await start()
+		const owner = await registerUser('owner@kus.app')
+		const recipe = await prisma.recipe.create({
+			data: {
+				userId: owner.userId,
+				name: 'Борщ домашній',
+				nameNormalized: 'борщ домашній',
+				cookedGrams: 1000,
+				defaultGrams: 400,
+				category: 'borscht',
+				ingredients: {
+					create: [
+						{
+							name: 'Буряк',
+							grams: 1000,
+							kcal: 1000,
+							proteinG: 40,
+							fatG: 20,
+							carbsG: 120,
+							position: 0,
+						},
+					],
+				},
+			},
+		})
+		const logResponse = await owner.agent
+			.post(`/api/v1/recipes/${recipe.id}/log`)
+			.send({ share: 1 })
+		expect([200, 201]).toContain(logResponse.status)
+		const logged = await prisma.foodEntry.findFirstOrThrow({ where: { userId: owner.userId } })
+		expect(logged.sourceMessageId).toBeNull()
+		fake.respond(
+			createCompletion([
+				{ name: 'correct_entry', args: { changes: [{ ref: 'e1', grams: 200 }] } },
+				reply('Змінив борщ на 200 г'),
+			]),
+		)
+
+		const answer = await send(owner, 'зміни порцію на 200 г')
+
+		const prompt = JSON.stringify(fake.bodies[0])
+		expect(prompt).toContain('e1')
+		expect(prompt).toContain('Борщ домашній')
+		expect(prompt).not.toContain('Nothing logged yet today.')
+		expect(answer.assistantMessage.content).toBe('Змінив борщ на 200 г')
+		const entry = await prisma.foodEntry.findFirstOrThrow({ where: { id: logged.id } })
+		expect(entry).toMatchObject({ grams: 200, isEdited: true })
+	})
+
 	it('IDOR: another user sees none of the entries and cannot change them by ref', async () => {
 		await start()
 		const owner = await registerUser('owner@kus.app')

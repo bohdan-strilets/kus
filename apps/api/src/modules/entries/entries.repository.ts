@@ -7,7 +7,11 @@ import type { LoggableMealType } from '@kus/shared'
 import type { NewFoodEntry } from './entries.types'
 
 /** An entry with the state of its saved food when the query loads it (a deleted food can be remembered again). */
-export type EntryWithSavedFood = FoodEntry & { myFood?: { deletedAt: Date | null } | null }
+export type EntryWithSavedFood = FoodEntry & {
+	myFood?: { deletedAt: Date | null } | null
+	/** A saved recipe stays linked after soft delete, so its state decides «Запам'ятати». */
+	recipe?: { deletedAt: Date | null } | null
+}
 
 export type MealWithEntries = Meal & { entries: EntryWithSavedFood[] }
 
@@ -36,12 +40,14 @@ interface FindOrCreateMealData {
 	sourceMessageId: string | null
 }
 
+const SAVED_STATE = { select: { deletedAt: true } }
+
 // entries of one message share createdAt: the id keeps their order stable across updates;
 // the saved food's deletedAt decides whether «Запам'ятати» comes back (one batched lookup by id)
 const ACTIVE_ENTRIES = {
 	where: { deletedAt: null },
 	orderBy: [{ createdAt: 'asc' as const }, { id: 'asc' as const }],
-	include: { myFood: { select: { deletedAt: true } } },
+	include: { myFood: SAVED_STATE, recipe: SAVED_STATE },
 }
 
 @Injectable()
@@ -66,7 +72,7 @@ export class EntriesRepository {
 			mealId,
 			sourceMessageId,
 			entries,
-		}: { userId: string; mealId: string; sourceMessageId: string; entries: NewFoodEntry[] },
+		}: { userId: string; mealId: string; sourceMessageId: string | null; entries: NewFoodEntry[] },
 		tx: Prisma.TransactionClient,
 	): Promise<FoodEntry[]> {
 		return tx.foodEntry.createManyAndReturn({
@@ -134,9 +140,10 @@ export class EntriesRepository {
 	findVisibleEntries(
 		{ userId, ids }: { userId: string; ids: string[] },
 		tx: Prisma.TransactionClient,
-	): Promise<FoodEntry[]> {
+	): Promise<EntryWithSavedFood[]> {
 		return tx.foodEntry.findMany({
 			where: { id: { in: ids }, userId, deletedAt: null, meal: { deletedAt: null } },
+			include: { myFood: SAVED_STATE, recipe: SAVED_STATE },
 		})
 	}
 

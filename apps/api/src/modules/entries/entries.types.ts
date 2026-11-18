@@ -23,6 +23,8 @@ export interface NewFoodEntry {
 	copiedFromDate?: Date
 	/** The «Без деталей» estimate of a closed day; only closing a day sets it. */
 	isUndetailed?: boolean
+	/** The saved recipe this entry is a portion of; absent = not from a recipe. */
+	recipeId?: string | null
 }
 
 export interface MealEntryInput {
@@ -34,7 +36,8 @@ export interface MealEntryInput {
 
 export interface LogEntriesParams {
 	userId: string
-	sourceMessageId: string
+	/** null for entries added without a chat message (a portion of a saved recipe). */
+	sourceMessageId: string | null
 	/** When a meal created by this log was eaten; an existing meal keeps its time. */
 	getEatenAt: (meal: { type: LoggableMealType; localDate: Date }) => Date
 	/** In the model's item order; a whole day may span several meals. */

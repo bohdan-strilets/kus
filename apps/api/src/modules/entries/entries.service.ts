@@ -13,6 +13,7 @@ import {
 import { formatDbDate } from '../../common/time'
 import type { FoodEntry, Prisma } from '../../generated/prisma/client'
 import {
+	isNeverRememberable,
 	roundNutrition,
 	sumEntries,
 	toDayMeal,
@@ -130,7 +131,7 @@ export class EntriesService {
 			)
 			// the meal was found or created a moment ago in this same transaction
 			if (!withEntries) throw new Error('Meal disappeared inside its own transaction')
-			meals.push(toLoggedMeal(withEntries, sourceMessageId))
+			meals.push(toLoggedMeal(withEntries, new Set(created.map(({ id }) => id))))
 		}
 		return { meals, entryIds }
 	}
@@ -277,7 +278,9 @@ export class EntriesService {
 
 	/**
 	 * The user's entries that can be remembered, in the order of `ids`. Any id that isn't theirs,
-	 * doesn't exist or is deleted (the entry or its meal) fails the whole request: not found.
+	 * doesn't exist or is deleted (the entry or its meal) fails the whole request: not found. Entries
+	 * that are never a food («Без деталей», a portion of an active recipe) are left out; one linked
+	 * to an active saved food stays, so remembering reports it as skipped «exists».
 	 */
 	async getRememberableEntries(
 		userId: string,
@@ -286,10 +289,10 @@ export class EntriesService {
 	): Promise<FoodEntry[]> {
 		const found = await this.entriesRepository.findVisibleEntries({ userId, ids }, tx)
 		const byId = new Map(found.map((entry) => [entry.id, entry]))
-		return ids.map((id) => {
+		return ids.flatMap((id) => {
 			const entry = byId.get(id)
 			if (!entry) throw new EntryNotFoundException()
-			return entry
+			return isNeverRememberable(entry) ? [] : [entry]
 		})
 	}
 
@@ -377,10 +380,12 @@ export class EntriesService {
 				a.localDate.getTime() - b.localDate.getTime() || getMealRank(a.type) - getMealRank(b.type),
 		)
 		for (const meal of ordered) {
-			const sources = new Set(meal.entries.map((entry) => entry.sourceMessageId))
 			for (const messageId of messageIds) {
-				if (!sources.has(messageId)) continue
-				result.set(messageId, [...(result.get(messageId) ?? []), toLoggedMeal(meal, messageId)])
+				const ownIds = new Set(
+					meal.entries.filter((entry) => entry.sourceMessageId === messageId).map(({ id }) => id),
+				)
+				if (ownIds.size === 0) continue
+				result.set(messageId, [...(result.get(messageId) ?? []), toLoggedMeal(meal, ownIds)])
 			}
 		}
 		return result

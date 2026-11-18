@@ -169,6 +169,7 @@ const copyEntryValues = (
 	| 'confidence'
 	| 'myFoodId'
 	| 'copiedFromDate'
+	| 'recipeId'
 > => {
 	const factor = grams / entry.grams
 	return {
@@ -182,6 +183,7 @@ const copyEntryValues = (
 		confidence: entry.confidence,
 		myFoodId: entry.myFoodId,
 		copiedFromDate: entry.meal.localDate,
+		recipeId: entry.recipeId,
 	}
 }
 

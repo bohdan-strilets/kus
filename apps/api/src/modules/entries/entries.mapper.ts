@@ -33,12 +33,21 @@ export const sumEntries = (entries: FoodEntry[]): NutritionTotals => {
 }
 
 /**
+ * Entries that are never a food to remember: «Без деталей» (the rest of a day) and a portion of
+ * an active saved recipe (the recipe is its food; read without it, it counts as active).
+ */
+export const isNeverRememberable = (entry: EntryWithSavedFood): boolean => {
+	if (entry.isUndetailed) return true
+	if (entry.recipeId === null) return false
+	return entry.recipe ? entry.recipe.deletedAt === null : true
+}
+
+/**
  * «Запам'ятати» is offered for an entry with no saved food, or whose saved food was deleted; a
  * linked entry read without its food (myFood not loaded) stays not rememberable.
  */
-const canRemember = (entry: EntryWithSavedFood): boolean => {
-	// «Без деталей» is the rest of a day, not a food
-	if (entry.isUndetailed) return false
+export const canRemember = (entry: EntryWithSavedFood): boolean => {
+	if (isNeverRememberable(entry)) return false
 	if (entry.myFoodId === null) return true
 	return (entry.myFood?.deletedAt ?? null) !== null
 }
@@ -74,11 +83,11 @@ const toMeal = (meal: MealWithEntries, entries: EntryWithSavedFood[]): LoggedMea
 	entries: entries.map(toFoodEntryResponse),
 })
 
-/** A chat card: only the entries that came from `sourceMessageId`. */
-export const toLoggedMeal = (meal: MealWithEntries, sourceMessageId: string): LoggedMeal =>
+/** A chat card: only the entries with the given ids (a message's own entries, or just created ones). */
+export const toLoggedMeal = (meal: MealWithEntries, entryIds: ReadonlySet<string>): LoggedMeal =>
 	toMeal(
 		meal,
-		meal.entries.filter((entry) => entry.sourceMessageId === sourceMessageId),
+		meal.entries.filter((entry) => entryIds.has(entry.id)),
 	)
 
 /** A meal on «Сьогодні»: every entry. */

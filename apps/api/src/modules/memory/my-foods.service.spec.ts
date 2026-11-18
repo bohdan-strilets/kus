@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from 'vitest'
 import { FOOD_REMOVAL_PROPOSAL_TTL_MS } from '@kus/shared'
 
 import type { Prisma } from '../../generated/prisma/client'
+import { EntriesService } from '../entries/entries.service'
+import type { EntriesRepository } from '../entries/entries.repository'
 import type { MemoryRepository } from './memory.repository'
 import { MyFoodsService } from './my-foods.service'
 import type { NewMyFood } from './my-foods.utils'
@@ -120,5 +122,58 @@ describe('MyFoodsService.restoreFromChat', () => {
 		const service = makeService({ findFood: vi.fn().mockResolvedValue(null) })
 
 		expect(await service.restoreFromChat({ userId: USER_ID, id: 'f1' }, TX)).toBe('gone')
+	})
+})
+
+describe('MyFoodsService.rememberEntries', () => {
+	const createRow = (overrides: Record<string, unknown>) => ({
+		id: 'e1',
+		userId: USER_ID,
+		name: 'Скир',
+		grams: 150,
+		quantity: null,
+		kcal: 95,
+		proteinG: 16,
+		fatG: 0.3,
+		carbsG: 6,
+		fiberG: null,
+		category: 'plate',
+		source: 'MEMORY',
+		isUndetailed: false,
+		myFoodId: null,
+		recipeId: null,
+		myFood: null,
+		recipe: null,
+		...overrides,
+	})
+
+	it('skips an entry linked to an active food as exists, drops the rest without a trace', async () => {
+		const rows = [
+			createRow({ id: 'linked', myFoodId: 'f1', myFood: { deletedAt: null } }),
+			createRow({ id: 'rest', name: 'Інше', isUndetailed: true }),
+			createRow({ id: 'portion', name: 'Пончик', recipeId: 'r1', recipe: { deletedAt: null } }),
+			createRow({
+				id: 'both',
+				name: 'Суп',
+				myFoodId: 'f1',
+				myFood: { deletedAt: null },
+				recipeId: 'r1',
+				recipe: { deletedAt: null },
+			}),
+		]
+		const entriesService = new EntriesService({
+			findVisibleEntries: vi.fn().mockResolvedValue(rows),
+		} as unknown as EntriesRepository)
+		const findActiveFoodByName = vi.fn().mockResolvedValue({ id: 'f1' })
+		const prisma = { $transaction: (fn: (tx: unknown) => unknown) => fn(TX) }
+		const service = new MyFoodsService(
+			prisma as never,
+			{ findActiveFoodByName } as unknown as MemoryRepository,
+			entriesService,
+		)
+
+		const response = await service.rememberEntries(USER_ID, ['linked', 'rest', 'portion', 'both'])
+
+		expect(response).toEqual({ created: [], skipped: [{ entryId: 'linked', reason: 'exists' }] })
 	})
 })

@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest'
 
 import type { FoodEntry } from '../../generated/prisma/client'
-import { toFoodEntryResponse } from './entries.mapper'
+import { toFoodEntryResponse, toLoggedMeal } from './entries.mapper'
+import type { MealWithEntries } from './entries.repository'
 
 const FOOD_ID = '0190f3a0-0000-7000-8000-000000000002'
+const RECIPE_ID = '0190f3a0-0000-7000-8000-000000000003'
 
 const createEntry = (overrides: Partial<FoodEntry> = {}): FoodEntry =>
 	({
@@ -24,6 +26,8 @@ const createEntry = (overrides: Partial<FoodEntry> = {}): FoodEntry =>
 		copiedFromDate: null,
 		isUndetailed: false,
 		myFoodId: null,
+		recipeId: null,
+		sourceMessageId: null,
 		...overrides,
 	}) as FoodEntry
 
@@ -50,5 +54,41 @@ describe('toFoodEntryResponse canRemember', () => {
 
 	it('hides it for «Без деталей», the rest of a day', () => {
 		expect(toFoodEntryResponse(createEntry({ isUndetailed: true })).canRemember).toBe(false)
+	})
+
+	it('hides it for a portion of a saved recipe', () => {
+		const entry = { ...createEntry({ recipeId: RECIPE_ID }), recipe: { deletedAt: null } }
+
+		expect(toFoodEntryResponse(entry).canRemember).toBe(false)
+	})
+
+	it('keeps it hidden for a recipe portion read without its recipe', () => {
+		expect(toFoodEntryResponse(createEntry({ recipeId: RECIPE_ID })).canRemember).toBe(false)
+	})
+
+	it('offers it again once the recipe is deleted', () => {
+		const entry = { ...createEntry({ recipeId: RECIPE_ID }), recipe: { deletedAt: new Date() } }
+
+		expect(toFoodEntryResponse(entry).canRemember).toBe(true)
+	})
+})
+
+describe('toLoggedMeal', () => {
+	it('returns exactly the entries with the given ids, including ones without a source message', () => {
+		const created = createEntry({ id: 'created', kcal: 100 })
+		const other = createEntry({ id: 'other', kcal: 50, sourceMessageId: 'm1' })
+		const meal = {
+			id: 'meal-1',
+			type: 'LUNCH',
+			localDate: new Date('2026-11-18T00:00:00Z'),
+			eatenAt: new Date('2026-11-18T12:00:00Z'),
+			entries: [other, created],
+		} as unknown as MealWithEntries
+
+		const card = toLoggedMeal(meal, new Set(['created']))
+
+		expect(card.entries.map(({ id }) => id)).toEqual(['created'])
+		expect(card.totals.kcal).toBe(100)
+		expect(card.mealTotalKcal).toBe(150)
 	})
 })

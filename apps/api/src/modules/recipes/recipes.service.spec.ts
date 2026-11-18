@@ -38,6 +38,7 @@ const makeRecipe = (overrides: Partial<RecipeWithIngredients> = {}): RecipeWithI
 	category: 'soup',
 	usageCount: 2,
 	lastUsedAt: null,
+	sourceMessageId: null,
 	createdAt: new Date(),
 	updatedAt: new Date(),
 	deletedAt: null,

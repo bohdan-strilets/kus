@@ -44,6 +44,7 @@ export const HAMSTER_LABEL_KEYS = {
 	surprised: 'hamster.mood.surprised',
 	yum: 'hamster.mood.yum',
 	hungry: 'hamster.mood.hungry',
+	dreamy: 'hamster.mood.dreamy',
 	proud: 'hamster.mood.proud',
 	remind: 'hamster.mood.remind',
 	oops: 'hamster.mood.oops',

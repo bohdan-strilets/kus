@@ -13,12 +13,14 @@ export const RecipesEmpty = () => {
 
 	return (
 		<div className="flex flex-1 flex-col items-center justify-center gap-3.5 px-8 text-center">
-			<Hamster mood="hungry" size={HAMSTER_SIZE} />
+			<Hamster mood="dreamy" size={HAMSTER_SIZE} />
 			<Heading as="h2" level="title">
 				{t('recipes.empty.title')}
 			</Heading>
 			<Text tone="mutedStrong">{t('recipes.empty.text')}</Text>
-			<Button onClick={() => void navigate(ROUTES.chat)}>{t('recipes.empty.action')}</Button>
+			<Button className="mt-1.5" onClick={() => void navigate(ROUTES.chat)}>
+				{t('recipes.empty.action')}
+			</Button>
 		</div>
 	)
 }

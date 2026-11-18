@@ -162,6 +162,15 @@ export const HAMSTER_MOODS: Record<HamsterMood, MoodParts> = {
 			</>
 		),
 	},
+	dreamy: {
+		face: (
+			<>
+				<path d="M42 58 Q47 52 52 58" {...getLineProps()} />
+				<path d="M68 58 Q73 52 78 58" {...getLineProps()} />
+				<path d="M54 73 Q57 71 60 73 Q63 75 66 73" {...getLineProps(2.2)} />
+			</>
+		),
+	},
 	proud: {
 		badge: true,
 		face: (

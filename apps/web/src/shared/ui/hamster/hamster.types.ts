@@ -24,6 +24,8 @@ export type HamsterMood =
 	| 'remind'
 	/** Ой — error, offline */
 	| 'oops'
+	/** Мріє — empty recipes list (closed eyes, wavy mouth, cookie in paws) */
+	| 'dreamy'
 	/** Вечір — day summary */
 	| 'sleepy'
 	/** Розминка — empty workout journal (headband, no cookie) */

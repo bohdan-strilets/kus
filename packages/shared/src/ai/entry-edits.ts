@@ -33,6 +33,8 @@ export interface ParseRefs extends MeasurementRefs {
 	templateRefs?: ReadonlySet<string>
 	/** Saved food name (see toFoodNameKey) → its `m1…` ref: a new save_food of such a name must update it. */
 	memoryRefByName?: ReadonlyMap<string, string>
+	/** `r1…` of «Saved recipes», find_food's included; none when omitted. */
+	recipeRefs?: ReadonlySet<string>
 }
 
 /**
@@ -42,6 +44,7 @@ export interface ParseRefs extends MeasurementRefs {
 export interface ParseRefsPatch {
 	memoryRefs?: readonly string[]
 	copyRefs?: readonly string[]
+	recipeRefs?: readonly string[]
 }
 
 /** The refs of a turn plus a patch; the input is not changed. */
@@ -49,6 +52,7 @@ export const mergeParseRefs = (refs: ParseRefs, patch: ParseRefsPatch): ParseRef
 	...refs,
 	memoryRefs: new Set([...refs.memoryRefs, ...(patch.memoryRefs ?? [])]),
 	copyRefs: new Set([...(refs.copyRefs ?? []), ...(patch.copyRefs ?? [])]),
+	recipeRefs: new Set([...(refs.recipeRefs ?? []), ...(patch.recipeRefs ?? [])]),
 })
 
 export const getParseRefs = (context: FoodParseContext): ParseRefs => ({

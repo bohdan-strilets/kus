@@ -188,7 +188,9 @@ export class EntryEditsService {
 			await this.correctEntries(
 				{
 					userId,
-					corrections: [{ id, change: { grams, values: null, name: null, category: null } }],
+					corrections: [
+						{ id, change: { grams, values: null, name: null, category: null, recipe: null } },
+					],
 				},
 				tx,
 			)

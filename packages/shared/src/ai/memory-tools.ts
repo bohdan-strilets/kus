@@ -9,6 +9,7 @@ import { FACT_TEXT_MAX_LENGTH } from '../schemas/facts.js'
 import { MAX_ENTRY_GRAMS, MEMORY_REF_PATTERN, MIN_ENTRY_GRAMS } from '../schemas/food-entry.js'
 import { MY_FOOD_NAME_MAX_LENGTH, myFoodPer100gSchema } from '../schemas/my-foods.js'
 import { withOpenEnumForModel } from './model-schema.js'
+import type { SaveRecipeInput } from './recipe-tools.js'
 
 /** Refs the backend gives the confirmed facts in the model context (`f1`…), never database ids. */
 export const FACT_REF_PATTERN = /^f\d{1,2}$/
@@ -116,6 +117,8 @@ export interface MemoryActions {
 	/** All with the same `confirmed`: a question (false) or the removal the user agreed to (true). */
 	foodRemovals: ForgetFoodInput[]
 	foodRestores: RestoreFoodInput[]
+	/** save_recipe, at most MAX_SAVED_RECIPES_PER_MESSAGE; the recipes module does the saving. */
+	recipes: SaveRecipeInput[]
 }
 
 export const NO_MEMORY_ACTIONS: MemoryActions = {
@@ -124,6 +127,7 @@ export const NO_MEMORY_ACTIONS: MemoryActions = {
 	forgets: [],
 	foodRemovals: [],
 	foodRestores: [],
+	recipes: [],
 }
 
 export const hasMemoryActions = ({
@@ -132,9 +136,11 @@ export const hasMemoryActions = ({
 	forgets,
 	foodRemovals,
 	foodRestores,
+	recipes,
 }: MemoryActions): boolean =>
 	foods.length > 0 ||
 	fact !== null ||
 	forgets.length > 0 ||
 	foodRemovals.length > 0 ||
-	foodRestores.length > 0
+	foodRestores.length > 0 ||
+	recipes.length > 0

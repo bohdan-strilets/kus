@@ -10,6 +10,7 @@ import {
 	type MemoryActions,
 	type SaveFoodInput,
 } from './memory-tools.js'
+import { getSaveRecipeErrors } from './recipe-errors.js'
 import type { LogFoodInput } from './tools.js'
 
 /** The key saved foods are matched by: lowercase, single spaces, no Latin look-alikes. */
@@ -129,6 +130,10 @@ export const getMemoryErrors = (
 	for (const { ref } of memory.forgets) {
 		if (!refs.factRefs?.has(ref)) errors.push(`forget_fact: ${ref} is not in "User facts"`)
 	}
-	errors.push(...getFoodRemovalErrors(memory, log, refs), ...getFoodRestoreErrors(memory, refs))
+	errors.push(
+		...getFoodRemovalErrors(memory, log, refs),
+		...getFoodRestoreErrors(memory, refs),
+		...getSaveRecipeErrors(memory.recipes, refs),
+	)
 	return errors
 }

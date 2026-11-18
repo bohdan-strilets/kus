@@ -14,6 +14,7 @@ import {
 	MIN_ENTRY_GRAMS,
 	refineFoodEntry,
 } from '../schemas/food-entry.js'
+import { recipeBodySchema, RECIPE_WATER_ML_MAX } from '../schemas/recipe-body.js'
 import {
 	PROGRAM_PER_WEEK_MAX,
 	PROGRAM_TEMPLATES_MAX,
@@ -44,6 +45,7 @@ import {
 } from './memory-tools.js'
 import { toModelParameters } from './model-schema.js'
 import { programTemplateInputSchema } from './program-tools.js'
+import { RECIPE_REF_PATTERN, saveRecipeInputSchema } from './recipe-tools.js'
 import {
 	MAX_EXERCISES_PER_WORKOUT,
 	MAX_WORKOUT_KCAL,
@@ -71,6 +73,7 @@ export const AI_TOOL_NAMES = {
 	closeDay: 'close_day',
 	showStats: 'show_stats',
 	saveFood: 'save_food',
+	saveRecipe: 'save_recipe',
 	saveFact: 'save_fact',
 	forgetFact: 'forget_fact',
 	forgetFood: 'forget_food',
@@ -136,6 +139,20 @@ export const aiFoodItemSchema = foodEntryBaseSchema
 			.describe(
 				'Ref of an entry from "Earlier entries" ("y1" yesterday, "h1" older) or "Today\'s entries" ("e1") when the user says the food is the same as then; the backend copies its values and scales them to grams. Never together with memoryRef',
 			),
+		recipe: recipeBodySchema
+			.nullable()
+			.default(null)
+			.describe(
+				'Ingredients of the whole pot or dish this portion comes from, with water, cooked weight or servings when said; the backend counts the portion. Never with memoryRef, copyRef or recipeRef.',
+			),
+		recipeRef: z
+			.string()
+			.regex(RECIPE_REF_PATTERN)
+			.nullable()
+			.default(null)
+			.describe(
+				'r-ref from "Saved recipes" or find_food when the user eats a saved recipe again; the backend takes its values.',
+			),
 		mealType: loggableMealTypeSchema
 			.nullable()
 			.default(null)
@@ -146,10 +163,12 @@ export const aiFoodItemSchema = foodEntryBaseSchema
 			.default(null)
 			.describe('Day of this item, only when one message has food of different days'),
 	})
-	// a copyRef item takes its numbers from the copied entry on the backend; the model's own
-	// macros are never stored, so only the bounds are checked (the parser rejects an unknown ref)
+	// a copyRef, recipe or recipeRef item takes its numbers from the copied entry, the pot or the
+	// saved recipe on the backend; the model's own macros are never stored, so only the bounds are
+	// checked (the parser rejects an unknown ref)
 	.superRefine((item, context) => {
-		refineFoodEntry(item, context, { isMacrosCheckSkipped: item.copyRef !== null })
+		const isCounted = item.copyRef !== null || item.recipe !== null || item.recipeRef !== null
+		refineFoodEntry(item, context, { isMacrosCheckSkipped: isCounted })
 	})
 
 export type AiFoodItem = z.infer<typeof aiFoodItemSchema>
@@ -198,6 +217,15 @@ export const clarifyOptionSchema = z.object({
 	fiber: optionMacroSchema.nullable().default(null),
 	grams: z.number().min(MIN_ENTRY_GRAMS).max(MAX_OPTION_GRAMS).nullable().default(null),
 	name: foodEntryBaseSchema.shape.name.nullable().default(null),
+	waterMl: z
+		.number()
+		.min(0)
+		.max(RECIPE_WATER_ML_MAX)
+		.nullable()
+		.default(null)
+		.describe(
+			'Water of the pot for this option; the backend counts the option\'s values. Null for "Не знаю".',
+		),
 })
 
 export type ClarifyOption = z.infer<typeof clarifyOptionSchema>
@@ -451,6 +479,7 @@ export const AI_TOOL_SCHEMAS: Record<AiToolName, z.ZodType> = {
 	close_day: closeDayInputSchema,
 	show_stats: showStatsInputSchema,
 	save_food: saveFoodInputSchema,
+	save_recipe: saveRecipeInputSchema,
 	save_fact: saveFactInputSchema,
 	forget_fact: forgetFactInputSchema,
 	forget_food: forgetFoodInputSchema,
@@ -471,6 +500,8 @@ const AI_TOOL_DESCRIPTIONS: Record<AiToolName, string> = {
 	close_day: 'The user closes a day: show its card with the verdict. See "Closing the day".',
 	show_stats: 'Show the summary of a period of 2–92 days. See "Stats".',
 	save_food: 'Save a food to the user\'s memory, only when they ask. See "Memory".',
+	save_recipe:
+		'Saves a recipe the user agreed to keep: entryRef of a logged pot (e-ref) or recipe with the ingredients. A saved recipe with the same name is replaced.',
 	save_fact: 'Remember one lasting thing about the user. See "Memory".',
 	forget_fact: 'Forget a fact from "User facts". See "Memory".',
 	forget_food:
@@ -500,6 +531,7 @@ export interface AiFunctionTool {
 /** Tools the model sees bare (types, enums, descriptions): their rules live in zod and the parser. */
 const BARE_TOOLS: ReadonlySet<AiToolName> = new Set([
 	AI_TOOL_NAMES.saveFood,
+	AI_TOOL_NAMES.saveRecipe,
 	AI_TOOL_NAMES.saveFact,
 	AI_TOOL_NAMES.forgetFact,
 	AI_TOOL_NAMES.forgetFood,

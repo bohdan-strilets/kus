@@ -78,6 +78,8 @@ import {
 	type SaveFoodInput,
 	saveFoodInputSchema,
 } from './memory-tools.js'
+import { getLogRecipeErrors } from './recipe-errors.js'
+import { type SaveRecipeInput, saveRecipeInputSchema } from './recipe-tools.js'
 import { MAX_WORKOUTS_PER_MESSAGE } from './workout-tools.js'
 import { normalizeFoodName } from './normalize-food-name.js'
 import { getProgramErrors } from './program-errors.js'
@@ -177,6 +179,7 @@ type ValidatedCall =
 	| { name: typeof AI_TOOL_NAMES.notFood; data: NotFoodInput }
 	| { name: typeof AI_TOOL_NAMES.photoUnusable; data: PhotoUnusableInput }
 	| { name: typeof AI_TOOL_NAMES.saveFood; data: SaveFoodInput }
+	| { name: typeof AI_TOOL_NAMES.saveRecipe; data: SaveRecipeInput }
 	| { name: typeof AI_TOOL_NAMES.saveFact; data: SaveFactInput }
 	| { name: typeof AI_TOOL_NAMES.forgetFact; data: ForgetFactInput }
 	| { name: typeof AI_TOOL_NAMES.forgetFood; data: ForgetFoodInput }
@@ -216,6 +219,8 @@ const parseInput = (name: AiToolName, value: unknown): InputParse => {
 			return toInputParse(showStatsInputSchema.safeParse(value), (data) => ({ name, data }))
 		case AI_TOOL_NAMES.saveFood:
 			return toInputParse(saveFoodInputSchema.safeParse(value), (data) => ({ name, data }))
+		case AI_TOOL_NAMES.saveRecipe:
+			return toInputParse(saveRecipeInputSchema.safeParse(value), (data) => ({ name, data }))
 		case AI_TOOL_NAMES.saveFact:
 			return toInputParse(saveFactInputSchema.safeParse(value), (data) => ({ name, data }))
 		case AI_TOOL_NAMES.forgetFact:
@@ -258,6 +263,15 @@ const normalizeCallNames = (call: ValidatedCall): ValidatedCall => {
 				},
 			}
 		case AI_TOOL_NAMES.saveFood:
+			return {
+				...call,
+				data: {
+					...call.data,
+					name: normalizeFoodName(call.data.name),
+					aliases: call.data.aliases.map(normalizeFoodName),
+				},
+			}
+		case AI_TOOL_NAMES.saveRecipe:
 			return {
 				...call,
 				data: {
@@ -355,7 +369,12 @@ const checkLogReferences = (
 		}
 		// a copy takes source, confidence and myFoodId from the entry it points at (backend), so the
 		// model's source is irrelevant for it
-		if (item.source === 'MEMORY' && item.memoryRef === null && item.copyRef === null) {
+		if (
+			item.source === 'MEMORY' &&
+			item.memoryRef === null &&
+			item.copyRef === null &&
+			item.recipeRef === null
+		) {
 			errors.push(`log_food: items.${index} has source MEMORY but no memoryRef`)
 		}
 		// the backend rescales a memoryRef item from the saved food, which would silently drop an
@@ -392,7 +411,7 @@ const NO_PHOTO_ERROR =
 	'photo_unusable: this message has no photo — answer with reply (or not_food) instead'
 
 const MEMORY_ANSWER_ERROR =
-	'save_food, save_fact, forget_fact, forget_food and restore_food go together with log_food or reply (also next to edit tools) — not with not_food, photo_unusable, show_day, close_day, show_stats, or log_workout without log_food'
+	'save_food, save_recipe, save_fact, forget_fact, forget_food and restore_food go together with log_food or reply (also next to edit tools) — not with not_food, photo_unusable, show_day, close_day, show_stats, or log_workout without log_food'
 const ONE_FACT_ERROR = 'save_fact: at most one per message'
 
 /**
@@ -497,6 +516,7 @@ const decide = (
 		foodRestores: valid.flatMap((call) =>
 			call.name === AI_TOOL_NAMES.restoreFood ? [call.data] : [],
 		),
+		recipes: valid.flatMap((call) => (call.name === AI_TOOL_NAMES.saveRecipe ? [call.data] : [])),
 	}
 	const proposals = valid.flatMap((call) =>
 		call.name === AI_TOOL_NAMES.proposeProgram ? [call.data] : [],
@@ -601,6 +621,7 @@ const decide = (
 		const errors = [
 			...getWorkoutErrors(workouts, refs, edits.deletions),
 			...checkLogReferences(log, clarifications, refs),
+			...getLogRecipeErrors(log, refs),
 			...getFoodDateErrors(log, refs.today),
 			...getEditErrors(edits, refs),
 			...measurementErrors,

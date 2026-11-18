@@ -45,6 +45,7 @@ const option = (label: string, kcal: number) => ({
 	fiber: null,
 	grams: null,
 	name: null,
+	waterMl: null,
 })
 
 const call = (name: string, input: unknown): RawToolCall => ({

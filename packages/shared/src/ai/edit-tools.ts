@@ -4,6 +4,7 @@
 import { z } from 'zod'
 
 import { foodEntryBaseSchema } from '../schemas/food-entry.js'
+import { RECIPE_COOKED_GRAMS_MAX, RECIPE_WATER_ML_MAX } from '../schemas/recipe-body.js'
 import { ENTRY_OR_WORKOUT_REF_PATTERN } from './workout-tools.js'
 
 /** Refs the backend gives today's entries and open questions in the context, never database ids. */
@@ -44,6 +45,12 @@ const portionValuesSchema = z.object({
 
 export type PortionValues = z.infer<typeof portionValuesSchema>
 
+/** What of the pot an entry came from was different; the backend recounts the pot and its portions. */
+const potCorrectionSchema = z.object({
+	waterMl: z.number().min(0).max(RECIPE_WATER_ML_MAX).nullable().default(null),
+	cookedGrams: z.number().min(1).max(RECIPE_COOKED_GRAMS_MAX).nullable().default(null),
+})
+
 export const entryChangeSchema = z
 	.object({
 		ref: entryRefSchema,
@@ -67,12 +74,33 @@ export const entryChangeSchema = z
 			.describe(
 				'New values of the whole portion, only when the user gives numbers or the food itself is different',
 			),
+		recipe: potCorrectionSchema
+			.nullable()
+			.default(null)
+			.describe(
+				'New water or cooked weight of the pot this entry came from; the backend recounts it and its other portions.',
+			),
 	})
 	.refine(
-		(change) => [change.name, change.category, change.grams, change.values].some((v) => v !== null),
+		(change) =>
+			[change.name, change.category, change.grams, change.values, change.recipe].some(
+				(v) => v !== null,
+			),
 		{
-			message: 'change at least one of name, category, grams or values',
+			message: 'change at least one of name, category, grams, values or recipe',
 		},
+	)
+	// the pot's water or weight changes the portion's numbers itself: a weight or values next to it
+	// would be two answers to the same question, so the model has to pick one
+	.refine((change) => change.recipe === null || (change.grams === null && change.values === null), {
+		message: 'recipe is not combined with grams or values — the backend recounts the portion',
+	})
+	.refine(
+		(change) =>
+			change.recipe === null ||
+			change.recipe.waterMl !== null ||
+			change.recipe.cookedGrams !== null,
+		{ message: 'recipe needs waterMl or cookedGrams' },
 	)
 
 export type EntryChange = z.infer<typeof entryChangeSchema>

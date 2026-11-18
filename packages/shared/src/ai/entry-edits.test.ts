@@ -41,6 +41,7 @@ const porkOption = (label: string, kcal: number, protein: number, fat: number) =
 	fiber: 0,
 	grams: 300,
 	name: null,
+	waterMl: null,
 })
 
 const context: FoodParseContext = {

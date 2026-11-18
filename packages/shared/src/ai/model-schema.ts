@@ -22,7 +22,9 @@ export interface ModelParametersOptions {
  * log_food»): the list is dropped from what the model sees, the description stays.
  */
 export const withOpenEnumForModel = <T extends z.ZodType>(schema: T, description: string): T =>
-	schema.meta({ description, [OPEN_ENUM_KEY]: true })
+	schema.meta(
+		description === '' ? { [OPEN_ENUM_KEY]: true } : { description, [OPEN_ENUM_KEY]: true },
+	)
 
 /**
  * Per node of the generated schema:

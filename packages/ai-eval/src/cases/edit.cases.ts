@@ -37,6 +37,7 @@ const porkOption = (label: string, kcal: number, protein: number, fat: number) =
 	fiber: 0,
 	grams: 300,
 	name: null,
+	waterMl: null,
 })
 
 /** A day with an open question about the pork: «Пісна 450 · Середня 600 · Жирна 800». */
@@ -87,6 +88,7 @@ const DAY_WITH_SOUP_QUESTION: Partial<FoodParseContext> = {
 					fiber: null,
 					grams: null,
 					name: null,
+					waterMl: null,
 				},
 				{
 					label: 'Харчо',
@@ -97,6 +99,7 @@ const DAY_WITH_SOUP_QUESTION: Partial<FoodParseContext> = {
 					fiber: null,
 					grams: null,
 					name: null,
+					waterMl: null,
 				},
 			],
 		},

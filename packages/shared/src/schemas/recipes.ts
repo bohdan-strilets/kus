@@ -78,3 +78,12 @@ export const logRecipePortionResponseSchema = z.object({
 })
 
 export type LogRecipePortionResponse = z.infer<typeof logRecipePortionResponseSchema>
+
+export {
+	recipeBodySchema,
+	recipeDraftSchema,
+	recipeIngredientInputSchema,
+	type RecipeBody,
+	type RecipeDraft,
+	type RecipeIngredientInput,
+} from './recipe-body.js'

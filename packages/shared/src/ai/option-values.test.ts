@@ -15,6 +15,7 @@ const option = (values: Partial<ClarifyOption>): ClarifyOption => ({
 	fiber: null,
 	grams: null,
 	name: null,
+	waterMl: null,
 	...values,
 })
 

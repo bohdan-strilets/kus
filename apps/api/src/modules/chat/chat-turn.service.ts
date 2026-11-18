@@ -810,9 +810,18 @@ export class ChatTurnService {
 	 * A memory item takes its numbers from the saved food, a copy item from the earlier entry, both
 	 * scaled by the backend. A copyRef always has its entry here (loadCopySources throws otherwise).
 	 */
-	// mealType, date, memoryRef and copyRef aren't FoodEntry columns: left in the spread, Prisma would reject them
+	// mealType, date, memoryRef, copyRef, recipe and recipeRef aren't FoodEntry columns: left in the
+	// spread, Prisma would reject them (recipe and recipeRef are not carried out here yet)
 	private toNewEntry(
-		{ memoryRef, copyRef, mealType: _mealType, date: _date, ...item }: AiFoodItem,
+		{
+			memoryRef,
+			copyRef,
+			mealType: _mealType,
+			date: _date,
+			recipe: _recipe,
+			recipeRef: _recipeRef,
+			...item
+		}: AiFoodItem,
 		{ memory, copies }: { memory: RelevantFoods; copies: ReadonlyMap<string, EntryWithMealType> },
 		fromPhoto: boolean,
 	): NewFoodEntry {

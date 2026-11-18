@@ -1714,7 +1714,9 @@
 		},
 		"detail": {
 			"title": "Рецепт",
-			"portionLine": "1 порція · {{grams}} г готової страви",
+			"portionLine": "1 порція · {{grams}} г",
+			"wholeDish": "на всю страву · {{grams}} г",
+			"metaLine": "{{portion}} · {{used}}",
 			"usedTimes_one": "додано {{count}} раз",
 			"usedTimes_few": "додано {{count}} рази",
 			"usedTimes_many": "додано {{count}} разів",

@@ -2,6 +2,7 @@ import { createBrowserRouter, Navigate, type RouteObject } from 'react-router'
 
 import {
 	DEV_ROUTES,
+	RECIPE_ROUTE,
 	ROUTES,
 	TRAINING_EXERCISE_ROUTE,
 	TRAINING_FILL_ROUTE,
@@ -22,6 +23,7 @@ import {
 	MyDataPage,
 	ProfilePage,
 	ProgressPage,
+	RecipeDetailPage,
 	RecipesPage,
 	RegisterPage,
 	SettingsPage,
@@ -116,6 +118,7 @@ export const router = createBrowserRouter([
 									{ path: ROUTES.memory, element: <MemoryPage /> },
 									{ path: ROUTES.settings, element: <SettingsPage /> },
 									{ path: TRAINING_FILL_ROUTE, element: <TrainingFillPage /> },
+									{ path: RECIPE_ROUTE, element: <RecipeDetailPage /> },
 									{ path: ROUTES.settingsPassword, element: <ChangePasswordPage /> },
 									{ path: ROUTES.accountRestore, element: <AccountRestorePage /> },
 								],

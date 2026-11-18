@@ -81,3 +81,8 @@ export const getTrainingFillPath = (templateId: string | null): string =>
 	templateId === null
 		? TRAINING_FILL_ROUTE
 		: `${TRAINING_FILL_ROUTE}?${TRAINING_FILL_TEMPLATE_PARAM}=${templateId}`
+
+/** The pattern of one recipe in the router; links use getRecipePath. */
+export const RECIPE_ROUTE = `${TAB_ROUTES.recipes}/:id`
+
+export const getRecipePath = (recipeId: string): string => `${TAB_ROUTES.recipes}/${recipeId}`

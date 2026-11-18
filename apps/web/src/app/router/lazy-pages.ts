@@ -9,6 +9,9 @@ export const ProgressPage = lazy(() =>
 export const RecipesPage = lazy(() =>
 	import('@/pages/recipes').then((m) => ({ default: m.RecipesPage })),
 )
+export const RecipeDetailPage = lazy(() =>
+	import('@/pages/recipe-detail').then((m) => ({ default: m.RecipeDetailPage })),
+)
 export const TrainingPage = lazy(() =>
 	import('@/pages/training').then((m) => ({ default: m.TrainingPage })),
 )

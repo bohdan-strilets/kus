@@ -4,6 +4,7 @@ export { RELEASE_NOTES, type ReleaseNote } from './release-notes'
 export {
 	AUTH_ROUTES,
 	DEV_ROUTES,
+	getRecipePath,
 	getTrainingExercisePath,
 	getTrainingFillPath,
 	getTrainingSessionPath,
@@ -13,6 +14,7 @@ export {
 	MEMORY_FACTS_TAB,
 	MEMORY_TAB_PARAM,
 	PROFILE_ROUTES,
+	RECIPE_ROUTE,
 	ROUTES,
 	TAB_ROUTES,
 	TRAINING_EXERCISE_ROUTE,

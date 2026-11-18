@@ -5,5 +5,5 @@ export { FALLBACK_FOOD_CATEGORY, FOOD_CATEGORIES, type FoodCategory } from '@kus
 export type FoodGroup =
 	'grain' | 'soup' | 'protein' | 'plant' | 'dairy' | 'sweet' | 'drink' | 'neutral'
 
-/** row — food line in the chat card (36); meal — «Сьогодні» list (44); recipe — white tip tile (52). */
-export type FoodIconSize = 'row' | 'meal' | 'recipe'
+/** row — food line in the chat card (36); meal — «Сьогодні» list (44); recipe — white tip tile (52); card — recipe list card (84 tall). */
+export type FoodIconSize = 'row' | 'meal' | 'recipe' | 'card'

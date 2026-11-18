@@ -70,6 +70,8 @@ export const FOOD_ICON_SIZE: Record<
 	row: { tileClassName: 'size-9 rounded-icon', iconPx: 23, hasGroupTile: true },
 	meal: { tileClassName: 'size-11 rounded-tile-sm', iconPx: 28, hasGroupTile: true },
 	recipe: { tileClassName: 'size-13 rounded-tile bg-surface', iconPx: 38, hasGroupTile: false },
+	/** the recipe list tile (mockups/recipes.html): the full card width, 84 tall, a 62 icon */
+	card: { tileClassName: 'h-21 w-full rounded-tile', iconPx: 62, hasGroupTile: true },
 }
 
 /** i18n key of a category's short name, e.g. «Каша» (food.category.* in the locale). */

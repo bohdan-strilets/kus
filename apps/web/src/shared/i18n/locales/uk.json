@@ -107,6 +107,9 @@
 			"TRAINING_ONBOARDING_CLOSED": "Це питання вже закрите — напиши, що хочеш змінити",
 			"MY_FOOD_NOT_FOUND": "Цього продукту вже немає. Онови екран.",
 			"MY_FOOD_EXISTS": "Такий продукт уже є.",
+			"RECIPE_NOT_FOUND": "Цього рецепта вже немає.",
+			"RECIPE_NAME_TAKEN": "Рецепт з такою назвою вже є.",
+			"RECIPE_PORTION_INVALID": "Не вийшло додати цю порцію.",
 			"PASSWORD_INCORRECT": "Неправильний пароль.",
 			"PASSWORD_SAME": "Новий пароль має відрізнятися від поточного.",
 			"ACCOUNT_PENDING_DELETION": "Акаунт чекає на видалення. Віднови його, щоб продовжити.",
@@ -1677,6 +1680,61 @@
 	"recipe": {
 		"nutrition": "{{kcal}} ккал · {{protein}} г білка",
 		"addToMeal": "Додати в «{{meal}}»"
+	},
+	"recipes": {
+		"title": "Рецепти",
+		"newRecipe": "Новий рецепт",
+		"search": {
+			"label": "Пошук",
+			"placeholder": "Пошук страв і продуктів"
+		},
+		"tabs": {
+			"recipes": "Мої рецепти · {{count}}",
+			"foods": "Мої продукти · {{count}}"
+		},
+		"card": {
+			"nutrition": "{{kcal}} ккал · {{grams}} г",
+			"usage": "{{count}}×"
+		},
+		"createTile": {
+			"title": "Опиши страву в чаті",
+			"hint": "Kusik створить рецепт"
+		},
+		"empty": {
+			"title": "Тут житимуть твої страви",
+			"text": "Опиши улюблену страву в чаті. Kusik порахує калорії й збереже рецепт, щоб наступного разу додати його одним тапом.",
+			"action": "Описати страву в чаті"
+		},
+		"error": {
+			"title": "Не вдалося завантажити"
+		},
+		"notFound": {
+			"title": "Рецепт не знайдено",
+			"action": "До рецептів"
+		},
+		"detail": {
+			"title": "Рецепт",
+			"portionLine": "1 порція · {{grams}} г готової страви",
+			"usedTimes_one": "додано {{count}} раз",
+			"usedTimes_few": "додано {{count}} рази",
+			"usedTimes_many": "додано {{count}} разів",
+			"usedTimes_other": "додано {{count}} разу",
+			"kcal": "Ккал",
+			"ingredients": "Склад",
+			"ingredientGrams": "· {{grams}} г",
+			"portionGroup": "Порція",
+			"share": {
+				"half": "½ · {{kcal}}",
+				"one": "1 · {{kcal}}",
+				"oneAndHalf": "1½ · {{kcal}}"
+			},
+			"addToday": "Додати на сьогодні",
+			"added": "Додано на сьогодні",
+			"undo": "Скасувати",
+			"editInChat": "Змінити склад у чаті",
+			"delete": "Видалити рецепт",
+			"deleted": "Рецепт видалено"
+		}
 	},
 	"composer": {
 		"label": "Повідомлення",

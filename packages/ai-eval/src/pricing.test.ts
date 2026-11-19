@@ -15,7 +15,8 @@ import {
 /** Claude Sonnet 5.5 on OpenRouter: $2 in, $10 out per million. */
 const PRICE: ModelPrice = { prompt: 2e-6, completion: 10e-6 }
 
-const PREFIX_ANCHOR = 23_500
+// real cached prefix of prompt 2026-11-19.1 (eval 0.13.0: cached_tokens 24 671 of the single-turn requests)
+const PREFIX_ANCHOR = 24_671
 
 /** Billed cost of the 2026-11-10 read-tools run (results/2026-11-10T11-57-11-981Z.jsonl). */
 const ACTUAL_USD: Record<string, number> = {
@@ -54,7 +55,7 @@ describe('case reserve upper bound', () => {
 
 	// 22 006 cached by the eval of prompt .5; get_workouts (+~300 tokens of schema and prompt) is not
 	// measured yet, so the anchor is the estimate — set it to the eval's number after the first run
-	it('estimates the cached prefix of about 23.5k tokens, within 20 % of the real one', () => {
+	it('estimates the cached prefix of about 24.7k tokens, within 20 % of the real one', () => {
 		for (const evalCase of READ_TOOL_CASES) {
 			const { prefix } = estimateInputParts(evalCase)
 			expect(prefix, evalCase.id).toBeGreaterThan(PREFIX_ANCHOR * 0.8)

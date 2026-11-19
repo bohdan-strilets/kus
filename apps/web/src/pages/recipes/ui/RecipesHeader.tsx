@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 
+import { NEW_RECIPE_ENTRY_STATE } from '@/features/send-message'
 import { ROUTES } from '@/shared/config'
 import { cn } from '@/shared/lib'
 import { Heading, Icon, ICON_SIZE, iconButtonVariants } from '@/shared/ui'
@@ -14,6 +15,7 @@ export const RecipesHeader = () => {
 			<Heading as="h1">{t('recipes.title')}</Heading>
 			<Link
 				to={ROUTES.chat}
+				state={NEW_RECIPE_ENTRY_STATE}
 				aria-label={t('recipes.newRecipe')}
 				className={cn(
 					iconButtonVariants({ variant: 'primary' }),

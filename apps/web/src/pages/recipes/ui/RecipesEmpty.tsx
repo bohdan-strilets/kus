@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
 
+import { NEW_RECIPE_ENTRY_STATE } from '@/features/send-message'
 import { ROUTES } from '@/shared/config'
 import { Button, Hamster, Heading, Text } from '@/shared/ui'
 
@@ -18,7 +19,10 @@ export const RecipesEmpty = () => {
 				{t('recipes.empty.title')}
 			</Heading>
 			<Text tone="mutedStrong">{t('recipes.empty.text')}</Text>
-			<Button className="mt-1.5" onClick={() => void navigate(ROUTES.chat)}>
+			<Button
+				className="mt-1.5"
+				onClick={() => void navigate(ROUTES.chat, { state: NEW_RECIPE_ENTRY_STATE })}
+			>
 				{t('recipes.empty.action')}
 			</Button>
 		</div>

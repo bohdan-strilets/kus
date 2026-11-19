@@ -4,8 +4,9 @@ import { useNavigate } from 'react-router'
 
 import { DeleteRecipeButton } from '@/features/delete-recipe'
 import { LogRecipePortion } from '@/features/log-recipe-portion'
+import { useStartRecipeEditDraft } from '@/features/send-message'
 import { ROUTES } from '@/shared/config'
-import { FoodIcon, Heading, ScreenHeader, Surface, Text } from '@/shared/ui'
+import { Button, FoodIcon, Heading, ScreenHeader, Surface, Text } from '@/shared/ui'
 
 import { RecipeComposition } from './RecipeComposition'
 import { RecipeMacroTiles } from './RecipeMacroTiles'
@@ -26,6 +27,7 @@ export const RecipeDetailContent = ({ recipe }: { recipe: RecipeDetail }) => {
 	const { t } = useTranslation()
 	const navigate = useNavigate()
 	const metaLine = useMetaLine(recipe)
+	const startEdit = useStartRecipeEditDraft()
 
 	return (
 		<>
@@ -47,7 +49,17 @@ export const RecipeDetailContent = ({ recipe }: { recipe: RecipeDetail }) => {
 					cookedGrams={recipe.cookedGrams}
 				/>
 				<Surface variant="list" radius="card" shadow="list" className="p-3">
-					<LogRecipePortion recipe={recipe} />
+					<LogRecipePortion recipe={recipe}>
+						<Button
+							variant="text"
+							size="md"
+							onClick={() => {
+								startEdit(recipe.name)
+							}}
+						>
+							{t('recipes.detail.editInChat')}
+						</Button>
+					</LogRecipePortion>
 				</Surface>
 				{/* not in the mockup: the delete lives at the very end, quiet, until the author decides */}
 				<div className="flex justify-center">

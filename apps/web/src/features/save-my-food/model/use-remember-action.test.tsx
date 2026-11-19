@@ -1,9 +1,11 @@
 // @vitest-environment jsdom
 import type { FoodEntryResponse } from '@kus/shared'
 import { QueryClient } from '@tanstack/react-query'
-import { act, cleanup, waitFor } from '@testing-library/react'
+import { act, cleanup, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { MY_FOODS_QUERY_KEY } from '@/entities/my-food'
+import { RECIPES_QUERY_KEY } from '@/entities/recipe'
 import { useIsOverlayOpen } from '@/shared/lib'
 import type * as sharedLib from '@/shared/lib'
 import { renderHookWithProviders } from '@/shared/testing'
@@ -23,6 +25,7 @@ const postMock = vi.mocked(postRememberEntries)
 const entry = (id: string, name: string, canRemember: boolean): FoodEntryResponse =>
 	({ id, name, canRemember }) as unknown as FoodEntryResponse
 
+const RECIPE_ID = '0199b3a4-0000-7000-8000-000000000001'
 const ONE = [entry('a', 'Кабаноси', true), entry('b', 'Хліб', false)]
 const SEVERAL = [entry('a', 'Кабаноси', true), entry('b', 'Хліб', true)]
 
@@ -108,6 +111,55 @@ describe('useRememberAction', () => {
 		expect(result.current.isSheetOpen).toBe(true)
 		expect(result.current.isVisible).toBe(true)
 	})
+
+	it('says «збережено» and refreshes the recipes when a pot became a recipe', async () => {
+		postMock.mockResolvedValue({
+			created: [],
+			createdRecipes: [{ id: RECIPE_ID, name: 'Борщ', replaced: false }],
+			skipped: [],
+		})
+		const queryClient = new QueryClient()
+		const invalidate = vi.spyOn(queryClient, 'invalidateQueries')
+		const { result } = renderHookWithProviders(() => useRememberAction(ONE), { queryClient })
+
+		await act(async () => {
+			await result.current.submit(['a'])
+		})
+
+		expect(screen.getByText('Рецепт «Борщ» збережено')).toBeTruthy()
+		expect(invalidate).toHaveBeenCalledWith({ queryKey: RECIPES_QUERY_KEY })
+	})
+
+	it('says «оновлено» when the recipe replaced an older one', async () => {
+		postMock.mockResolvedValue({
+			created: [],
+			createdRecipes: [{ id: RECIPE_ID, name: 'Борщ', replaced: true }],
+			skipped: [],
+		})
+		const { result } = renderHookWithProviders(() => useRememberAction(ONE))
+
+		await act(async () => {
+			await result.current.submit(['a'])
+		})
+
+		expect(screen.getByText('Рецепт «Борщ» оновлено')).toBeTruthy()
+		expect(screen.queryByText('Рецепт «Борщ» збережено')).toBeNull()
+	})
+
+	it('shows no toast and leaves the recipes alone for a plain food', async () => {
+		const queryClient = new QueryClient()
+		const invalidate = vi.spyOn(queryClient, 'invalidateQueries')
+		const { result } = renderHookWithProviders(() => useRememberAction(ONE), { queryClient })
+
+		await act(async () => {
+			await result.current.submit(['a'])
+		})
+
+		expect(screen.queryByText(/^Рецепт/)).toBeNull()
+		expect(invalidate).not.toHaveBeenCalledWith({ queryKey: RECIPES_QUERY_KEY })
+		expect(invalidate).toHaveBeenCalledWith({ queryKey: MY_FOODS_QUERY_KEY })
+	})
+
 	it('drops the button with the status in one render, before the refetch is done', async () => {
 		const refetches: (() => void)[] = []
 		const queryClient = new QueryClient()

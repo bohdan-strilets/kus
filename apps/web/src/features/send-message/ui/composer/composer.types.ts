@@ -40,6 +40,8 @@ export interface ComposerProps {
 	/** True: put the cursor into the field, then call onFocusHandled (a chip or a button asked). */
 	shouldFocus?: boolean
 	onFocusHandled?: () => void
+	/** Where the cursor goes on that focus; omitted — the end of the text. */
+	focusCaret?: number | null
 	/** While recording, the field becomes the wave (mockups/chat-voice.html). */
 	voice?: ComposerVoiceState
 }

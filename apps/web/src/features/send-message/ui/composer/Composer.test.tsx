@@ -50,4 +50,20 @@ describe('Composer focus request', () => {
 		expect(document.activeElement).not.toBe(screen.getByRole('textbox'))
 		expect(onFocusHandled).not.toHaveBeenCalled()
 	})
+
+	it('puts the cursor at the asked position, not at the end', () => {
+		renderWithProviders(
+			<Composer
+				value="Зміни склад: гречка"
+				onValueChange={() => undefined}
+				onSubmit={() => undefined}
+				shouldFocus
+				focusCaret={13}
+			/>,
+		)
+
+		const field = screen.getByRole<HTMLTextAreaElement>('textbox', { name: 'Повідомлення' })
+		expect(field.selectionStart).toBe(13)
+		expect(field.selectionEnd).toBe(13)
+	})
 })

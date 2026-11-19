@@ -1,6 +1,6 @@
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { motion } from 'motion/react'
-import { type CSSProperties, useEffect, useMemo, useRef } from 'react'
+import { type CSSProperties, type ReactNode, useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { messagesQueryOptions } from '@/entities/message'
@@ -31,6 +31,8 @@ export interface ChatFeedProps {
 	fadeTop: number
 	/** A sheet is open over the feed: whoever was at the end stays there (see useFeedScroll). */
 	isCovered?: boolean
+	/** Shown after the last message (the «Новий рецепт» explanation); the feed follows its growth. */
+	footer?: ReactNode
 }
 
 /** Start loading the older page this far before the top edge comes into view. */
@@ -49,6 +51,7 @@ export const ChatFeed = ({
 	headerHeight,
 	fadeTop,
 	isCovered = false,
+	footer,
 }: ChatFeedProps) => {
 	const { t } = useTranslation()
 	const query = useInfiniteQuery(messagesQueryOptions)
@@ -169,6 +172,7 @@ export const ChatFeed = ({
 						/>
 					)}
 					{renderContent()}
+					{!query.isPending && footer}
 				</div>
 			</div>
 			<ScrollToEndButton isShown={isScrolledUp} onPress={scrollToEndOnTap} />

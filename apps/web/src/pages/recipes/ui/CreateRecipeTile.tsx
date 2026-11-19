@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 
+import { NEW_RECIPE_ENTRY_STATE } from '@/features/send-message'
 import { ROUTES } from '@/shared/config'
 import { HamsterHead, Surface, Text } from '@/shared/ui'
 
@@ -18,6 +19,7 @@ export const CreateRecipeTile = () => {
 		>
 			<Link
 				to={ROUTES.chat}
+				state={NEW_RECIPE_ENTRY_STATE}
 				className="flex flex-1 flex-col items-center justify-center gap-2 p-2.5 text-center focus-visible:outline-none"
 			>
 				<HamsterHead size={HAMSTER_SIZE} />

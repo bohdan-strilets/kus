@@ -1,9 +1,11 @@
+import type { RememberEntriesResponse } from '@kus/shared'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 
 import { DAY_QUERY_KEY } from '@/entities/day'
 import { MESSAGES_QUERY_KEY } from '@/entities/message'
 import { MY_FOODS_QUERY_KEY } from '@/entities/my-food'
+import { RECIPES_QUERY_KEY } from '@/entities/recipe'
 import { getApiError } from '@/shared/api'
 import { playSound, useSettleHold } from '@/shared/lib'
 import { useToast } from '@/shared/ui'
@@ -41,23 +43,35 @@ export const useRememberEntries = (): RememberEntries => {
 		},
 	})
 
-	const refresh = async (): Promise<void> => {
+	const refresh = async (hasRecipes: boolean): Promise<void> => {
 		await Promise.all([
 			queryClient.invalidateQueries({ queryKey: MESSAGES_QUERY_KEY }),
 			queryClient.invalidateQueries({ queryKey: DAY_QUERY_KEY }),
 			queryClient.invalidateQueries({ queryKey: MY_FOODS_QUERY_KEY }),
+			// the entries of a pot became a recipe
+			...(hasRecipes ? [queryClient.invalidateQueries({ queryKey: RECIPES_QUERY_KEY })] : []),
 		])
 	}
 	const run = async (entryIds: readonly string[], onSaved?: () => void): Promise<boolean> => {
+		let response: RememberEntriesResponse
 		try {
-			await mutation.mutateAsync({ entryIds: [...entryIds] })
+			response = await mutation.mutateAsync({ entryIds: [...entryIds] })
 		} catch {
 			// the toast is shown in onError
 			return false
 		}
 		playSound('saved')
+		// one toast for the first recipe: a card holds one pot in practice
+		const [recipe] = response.createdRecipes ?? []
+		if (recipe) {
+			toast.show(
+				t(recipe.replaced ? 'remember.recipeUpdated' : 'remember.recipeSaved', {
+					name: recipe.name,
+				}),
+			)
+		}
 		onSaved?.()
-		await refresh()
+		await refresh(recipe !== undefined)
 		return true
 	}
 

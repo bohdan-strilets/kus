@@ -1,5 +1,7 @@
 import {
 	MESSAGE_TEXT_MAX_LENGTH,
+	type MessageIntent,
+	messageIntentSchema,
 	type OnboardingAnswerRequest,
 	onboardingAnswerRequestSchema,
 } from '@kus/shared'
@@ -42,6 +44,8 @@ export interface OutboxItem {
 	onboardingAnswer?: OnboardingAnswerRequest
 	/** Resent with «Надіслати»: kept, so a later retry of the same message still asks for today. */
 	sendNow?: boolean
+	/** The screen it was started from («Новий рецепт»): kept, so a resend still carries it. */
+	intent?: MessageIntent
 	/** ISO; places the bubble in the feed until the server copy arrives. */
 	createdAt: string
 	status: OutboxStatus
@@ -69,6 +73,7 @@ interface OutboxState {
 			| 'photoId'
 			| 'onboardingAnswer'
 			| 'sendNow'
+			| 'intent'
 		>,
 	) => void
 	markFailed: (clientMessageId: string, error: SendError) => void
@@ -98,6 +103,8 @@ const storedItemSchema = z
 		photoId: z.uuid().optional(),
 		onboardingAnswer: onboardingAnswerRequestSchema.optional(),
 		sendNow: z.literal(true).optional(),
+		// an intent this build does not know is dropped, the words are still resent
+		intent: messageIntentSchema.optional().catch(undefined),
 	})
 	// an empty text is only the leftover of a photo message
 	.refine((item) => item.text.length > 0 || item.photoLost === true || item.photoId !== undefined)
@@ -135,11 +142,13 @@ const toStoredState = ({ ownerId, items, hiddenIds }: OutboxState): StoredState 
 				photoLost,
 				onboardingAnswer,
 				sendNow,
+				intent,
 			}) => ({
 				clientMessageId,
 				text,
 				createdAt,
 				...(onboardingAnswer ? { onboardingAnswer } : {}),
+				...(intent ? { intent } : {}),
 				...(sendNow ? { sendNow: true as const } : {}),
 				...(photoId ? { photoId } : {}),
 				...((photo || photoLost) && !photoId ? { photoLost: true as const } : {}),

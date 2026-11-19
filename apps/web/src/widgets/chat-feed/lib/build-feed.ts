@@ -95,6 +95,7 @@ const fromOutbox = (item: OutboxItem, params: BuildFeedParams): UserEntry => ({
 				photo: item.photo,
 				photoId: item.photoId,
 				...(item.onboardingAnswer ? { onboardingAnswer: item.onboardingAnswer } : {}),
+				...(item.intent ? { intent: item.intent } : {}),
 				...(item.sendNow ? { sendNow: true } : {}),
 			},
 	// «Прибрати» is always there: an unsent message is never lost silently, and never stuck

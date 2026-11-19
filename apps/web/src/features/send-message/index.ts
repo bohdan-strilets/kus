@@ -26,5 +26,8 @@ export {
 	type MeasurementDraftKind,
 	useStartMeasurementDraft,
 } from './model/use-start-measurement-draft'
+export { NEW_RECIPE_ENTRY_STATE, getChatEntryIntent } from './lib/chat-entry-state'
+export { type ChatIntent, useChatIntent } from './model/use-chat-intent'
+export { useStartRecipeEditDraft } from './model/use-start-recipe-edit-draft'
 export { QuickChips } from './ui/quick-chips/QuickChips'
 export { shouldShowQuickChips } from './lib/should-show-quick-chips'

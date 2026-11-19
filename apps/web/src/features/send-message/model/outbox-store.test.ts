@@ -449,3 +449,40 @@ describe('outbox onboarding answers', () => {
 		expect(items).toEqual({})
 	})
 })
+
+describe('outbox intent', () => {
+	beforeEach(() => {
+		localStorage.clear()
+		useOutboxStore.setState({ ownerId: OWNER_ID, items: {}, hiddenIds: [] })
+	})
+
+	it('a failed «Новий рецепт» message survives a reload with its intent', () => {
+		useOutboxStore.getState().markSending({
+			clientMessageId: FAILED_ID,
+			text: 'борщ на 3 літри',
+			createdAt: CREATED_AT,
+			intent: 'new_recipe',
+		})
+		useOutboxStore.getState().markFailed(FAILED_ID, RESTORED_FAILURE)
+
+		const { items } = restoreOutbox(readStored() && (readStored() as { state: unknown }).state)
+		expect(items[FAILED_ID]).toMatchObject({ text: 'борщ на 3 літри', intent: 'new_recipe' })
+	})
+
+	it('keeps the words of a message whose intent this build does not know', () => {
+		const { items } = restoreOutbox({
+			ownerId: OWNER_ID,
+			items: [
+				{
+					clientMessageId: FAILED_ID,
+					text: 'борщ',
+					createdAt: CREATED_AT,
+					intent: 'something_new',
+				},
+			],
+		})
+
+		expect(items[FAILED_ID]?.text).toBe('борщ')
+		expect(items[FAILED_ID]?.intent).toBeUndefined()
+	})
+})

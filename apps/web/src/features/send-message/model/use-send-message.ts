@@ -1,4 +1,4 @@
-import type { OnboardingAnswerRequest } from '@kus/shared'
+import type { MessageIntent, OnboardingAnswerRequest } from '@kus/shared'
 import { useQueryClient } from '@tanstack/react-query'
 
 import { createSessionObjectUrl, createUuid, unlockSound } from '@/shared/lib'
@@ -14,6 +14,8 @@ export interface SendMessageActions {
 		photo?: PhotoDraftPhoto | null
 		/** A button of the training onboarding; `text` is its label. */
 		onboardingAnswer?: OnboardingAnswerRequest
+		/** The screen it is sent from («Новий рецепт»); only the first message of that state. */
+		intent?: MessageIntent
 	}) => void
 	/** «Спробувати ще»: the same id, text and photo as the failed try. */
 	retry: (params: {
@@ -23,6 +25,7 @@ export interface SendMessageActions {
 		/** Already uploaded: the resend only sends the message. */
 		photoId?: string
 		onboardingAnswer?: OnboardingAnswerRequest
+		intent?: MessageIntent
 		/** Unsent over a day: the server logs it now, not on the day it was written. */
 		sendNow?: boolean
 	}) => void
@@ -51,12 +54,13 @@ const toOutboxPhoto = ({
 export const useSendMessage = (): SendMessageActions => {
 	const queryClient = useQueryClient()
 	return {
-		send: ({ text, photo, onboardingAnswer }) => {
+		send: ({ text, photo, onboardingAnswer, intent }) => {
 			unlockSound()
 			void deliverMessage(queryClient, {
 				clientMessageId: createUuid(),
 				text: text.trim(),
 				onboardingAnswer,
+				intent,
 				// its own blob URL: the draft revokes its one the moment it is cleared
 				photo: photo ? toOutboxPhoto(photo) : undefined,
 			})

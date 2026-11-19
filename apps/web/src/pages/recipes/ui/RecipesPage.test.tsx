@@ -4,7 +4,11 @@ import { cleanup, fireEvent, screen } from '@testing-library/react'
 import { AxiosError, AxiosHeaders, type AxiosResponse } from 'axios'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+import { Route, Routes, useLocation } from 'react-router'
+
+import { getChatEntryIntent } from '@/features/send-message'
 import { httpClient } from '@/shared/api'
+import { ROUTES } from '@/shared/config'
 import { renderWithProviders } from '@/shared/testing'
 
 import { RecipesPage } from './RecipesPage'
@@ -33,10 +37,20 @@ const page = (data: unknown[]): AxiosResponse => ({
 	config: { headers: new AxiosHeaders() },
 })
 
+/** Stands for the chat: shows the intent the navigation arrived with. */
+const ChatProbe = () => {
+	const location = useLocation()
+	return <p>{`chat intent: ${getChatEntryIntent(location.state) ?? 'none'}`}</p>
+}
+
 const renderPage = () =>
-	renderWithProviders(<RecipesPage />, {
-		queryClient: new QueryClient({ defaultOptions: { queries: { retry: false } } }),
-	})
+	renderWithProviders(
+		<Routes>
+			<Route path="/" element={<RecipesPage />} />
+			<Route path={ROUTES.chat} element={<ChatProbe />} />
+		</Routes>,
+		{ queryClient: new QueryClient({ defaultOptions: { queries: { retry: false } } }) },
+	)
 
 afterEach(() => {
 	cleanup()
@@ -75,6 +89,33 @@ describe('RecipesPage', () => {
 		expect(await screen.findByRole('heading', { name: 'Тут житимуть твої страви' })).toBeTruthy()
 		expect(screen.getByRole('button', { name: 'Описати страву в чаті' })).toBeTruthy()
 		expect(screen.queryByRole('link', { name: /Опиши страву/ })).toBeNull()
+	})
+
+	it('the «+» opens the chat in «Новий рецепт»', async () => {
+		getMock.mockResolvedValue(page([makeRecipe(RECIPE_ID, 'Борщ')]))
+		renderPage()
+
+		fireEvent.click(await screen.findByRole('link', { name: 'Новий рецепт' }))
+
+		expect(screen.getByText('chat intent: new_recipe')).toBeTruthy()
+	})
+
+	it('the tile opens the chat in «Новий рецепт»', async () => {
+		getMock.mockResolvedValue(page([makeRecipe(RECIPE_ID, 'Борщ')]))
+		renderPage()
+
+		fireEvent.click(await screen.findByRole('link', { name: /Опиши страву/ }))
+
+		expect(screen.getByText('chat intent: new_recipe')).toBeTruthy()
+	})
+
+	it('the button of the empty state opens the chat in «Новий рецепт»', async () => {
+		getMock.mockResolvedValue(page([]))
+		renderPage()
+
+		fireEvent.click(await screen.findByRole('button', { name: 'Описати страву в чаті' }))
+
+		expect(screen.getByText('chat intent: new_recipe')).toBeTruthy()
 	})
 
 	it('shows an inline error and retries', async () => {

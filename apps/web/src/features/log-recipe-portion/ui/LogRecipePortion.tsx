@@ -1,6 +1,6 @@
 import type { RecipeDetail, RecipePortionShare } from '@kus/shared'
 import * as RadioGroup from '@radix-ui/react-radio-group'
-import { useState } from 'react'
+import { type ReactNode, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { formatInteger } from '@/shared/lib'
@@ -18,10 +18,12 @@ const SHARE_LABEL_KEYS = {
 
 export interface LogRecipePortionProps {
 	recipe: Pick<RecipeDetail, 'id' | 'portions'>
+	/** A page-level action shown at the end of the same card («Змінити склад у чаті»). */
+	children?: ReactNode
 }
 
 /** mockups/recipe-detail.html: «Порція» ½ / 1 / 1½ with the kcal of each and «Додати на сьогодні». */
-export const LogRecipePortion = ({ recipe }: LogRecipePortionProps) => {
+export const LogRecipePortion = ({ recipe, children }: LogRecipePortionProps) => {
 	const { t } = useTranslation()
 	const { log, isPending } = useLogRecipePortion()
 	const [share, setShare] = useState<RecipePortionShare>(DEFAULT_SHARE)
@@ -60,6 +62,7 @@ export const LogRecipePortion = ({ recipe }: LogRecipePortionProps) => {
 			>
 				{t('recipes.detail.addToday')}
 			</Button>
+			{children && <div className="flex justify-center">{children}</div>}
 		</div>
 	)
 }

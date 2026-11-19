@@ -1,5 +1,6 @@
 import { MESSAGE_TEXT_MAX_LENGTH } from '@kus/shared'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { useLocalToday } from '@/entities/day'
 import { useSessionUser } from '@/entities/session'
@@ -10,6 +11,7 @@ import {
 	Composer,
 	QuickChips,
 	shouldShowQuickChips,
+	useChatIntent,
 	useComposerDraftStore,
 	useIsPhotoBlocked,
 	usePhotoDraftStore,
@@ -17,7 +19,7 @@ import {
 } from '@/features/send-message'
 import { FEATURES } from '@/shared/config'
 import { useIsOverlayOpen } from '@/shared/lib'
-import { ChatFeed } from '@/widgets/chat-feed'
+import { ChatFeed, NewRecipeIntro } from '@/widgets/chat-feed'
 import {
 	ChatHeader,
 	COMPACT_HEADER_HEIGHT_PX,
@@ -40,7 +42,10 @@ export const ChatPage = () => {
 }
 
 const ChatScreen = ({ addressee, timeZone }: { addressee: Addressee; timeZone: string }) => {
+	const { t } = useTranslation()
 	const today = useLocalToday(timeZone)
+	// «Новий рецепт» lasts until its first message is sent
+	const chatIntent = useChatIntent()
 	const header = useChatHeaderMode()
 	const isHeaderCompact = header.mode !== 'full'
 	// the full header's height varies (skeleton, error, link): the last measured one is kept
@@ -50,6 +55,7 @@ const ChatScreen = ({ addressee, timeZone }: { addressee: Addressee; timeZone: s
 	const setText = useComposerDraftStore((state) => state.setText)
 	const clearText = useComposerDraftStore((state) => state.clear)
 	const isFocusRequested = useComposerDraftStore((state) => state.isFocusRequested)
+	const focusCaret = useComposerDraftStore((state) => state.focusCaret)
 	const resolveFocus = useComposerDraftStore((state) => state.resolveFocus)
 	const scrollToEndRequest = useComposerDraftStore((state) => state.scrollToEndRequest)
 	const requestScrollToEnd = useComposerDraftStore((state) => state.requestScrollToEnd)
@@ -88,16 +94,21 @@ const ChatScreen = ({ addressee, timeZone }: { addressee: Addressee; timeZone: s
 				headerHeight={fullHeaderHeight}
 				fadeTop={isHeaderCompact ? COMPACT_HEADER_HEIGHT_PX : fullHeaderHeight}
 				isCovered={isOverlayOpen}
+				footer={chatIntent.intent === 'new_recipe' ? <NewRecipeIntro /> : undefined}
 			/>
 			<div className="px-gutter pb-2.5">
 				<QuickChips isShown={hasQuickChips} />
 				<Composer
 					value={text}
+					placeholder={
+						chatIntent.intent === 'new_recipe' ? t('chat.newRecipe.placeholder') : undefined
+					}
 					onValueChange={setText}
 					onFocusChange={handleFocusChange}
 					onFieldPress={requestScrollToEnd}
 					onSubmit={() => {
-						send({ text, photo: photoDraft.photo })
+						send({ text, photo: photoDraft.photo, intent: chatIntent.intent ?? undefined })
+						chatIntent.end()
 						clearText()
 						photoDraft.clear()
 					}}
@@ -114,6 +125,7 @@ const ChatScreen = ({ addressee, timeZone }: { addressee: Addressee; timeZone: s
 					maxLength={MESSAGE_TEXT_MAX_LENGTH}
 					shouldFocus={isFocusRequested}
 					onFocusHandled={resolveFocus}
+					focusCaret={focusCaret}
 				/>
 			</div>
 			<EditEntrySheet />

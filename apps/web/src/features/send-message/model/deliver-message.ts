@@ -1,4 +1,4 @@
-import type { OnboardingAnswerRequest, SendMessageResponse } from '@kus/shared'
+import type { MessageIntent, OnboardingAnswerRequest, SendMessageResponse } from '@kus/shared'
 import type { QueryClient } from '@tanstack/react-query'
 
 import { DAY_QUERY_KEY } from '@/entities/day'
@@ -36,6 +36,8 @@ interface DeliverParams {
 	photoId?: string
 	/** A button of the training onboarding: `text` is its label; never together with a photo. */
 	onboardingAnswer?: OnboardingAnswerRequest
+	/** The screen the message was started from («Новий рецепт»); a resend keeps it. */
+	intent?: MessageIntent
 	/**
 	 * «Спробувати ще»: the server may replay a finished turn, without the cards it changed. The
 	 * request is always made, whatever navigator.onLine says.
@@ -65,6 +67,7 @@ const postWithPhoto = async (
 	photo: OutboxPhoto | undefined,
 	photoId: string,
 	sendNow: boolean,
+	intent: MessageIntent | undefined,
 ): Promise<SendMessageResponse | null> => {
 	const post = (id: string): Promise<SendMessageResponse> =>
 		postMessage({
@@ -72,6 +75,7 @@ const postWithPhoto = async (
 			text: text || undefined,
 			photoIds: [id],
 			...(sendNow ? { sendNow } : {}),
+			...(intent ? { intent } : {}),
 		})
 	try {
 		return await post(photoId)
@@ -101,6 +105,7 @@ export const deliverMessage = async (
 		onboardingAnswer: knownAnswer,
 		isRetry = false,
 		sendNow: knownSendNow,
+		intent: knownIntent,
 	}: DeliverParams,
 ): Promise<void> => {
 	const outbox = useOutboxStore.getState()
@@ -108,6 +113,7 @@ export const deliverMessage = async (
 	const photoId = knownPhotoId ?? outbox.items[clientMessageId]?.photoId
 	const onboardingAnswer = knownAnswer ?? outbox.items[clientMessageId]?.onboardingAnswer
 	const sendNow = knownSendNow ?? outbox.items[clientMessageId]?.sendNow ?? false
+	const intent = knownIntent ?? outbox.items[clientMessageId]?.intent
 	outbox.markSending({
 		clientMessageId,
 		text,
@@ -115,6 +121,7 @@ export const deliverMessage = async (
 		photoId,
 		onboardingAnswer,
 		sendNow: sendNow || undefined,
+		intent,
 		createdAt: new Date().toISOString(),
 	})
 	// a photo is too heavy to wait in a queue: say so at once instead of a spinner that ends in a failure.
@@ -128,12 +135,13 @@ export const deliverMessage = async (
 	try {
 		const id = photoId ?? (photo ? await uploadOutboxPhoto(clientMessageId, photo) : undefined)
 		const turn = id
-			? await postWithPhoto(clientMessageId, text, photo, id, sendNow)
+			? await postWithPhoto(clientMessageId, text, photo, id, sendNow, intent)
 			: await postMessage({
 					clientMessageId,
 					text: text || undefined,
 					onboardingAnswer,
 					...(sendNow ? { sendNow } : {}),
+					...(intent ? { intent } : {}),
 				})
 		if (!turn) {
 			playSound('oops')

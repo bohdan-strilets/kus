@@ -56,6 +56,7 @@ export const Composer = ({
 	maxLength,
 	shouldFocus = false,
 	onFocusHandled,
+	focusCaret = null,
 }: ComposerProps) => {
 	const { t } = useTranslation()
 	const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -75,8 +76,11 @@ export const Composer = ({
 		const textarea = textareaRef.current
 		if (!shouldFocus || !textarea) return
 		textarea.focus()
+		// a prefilled draft («Зміни склад «…»: ») is continued, not typed over
+		const caret = Math.min(focusCaret ?? textarea.value.length, textarea.value.length)
+		textarea.setSelectionRange(caret, caret)
 		onFocusHandled?.()
-	}, [shouldFocus, onFocusHandled])
+	}, [shouldFocus, onFocusHandled, focusCaret])
 
 	if (voice) return <VoiceRecorder {...voice} />
 

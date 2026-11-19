@@ -5,6 +5,7 @@ import { AxiosError, AxiosHeaders, type AxiosResponse } from 'axios'
 import { Route, Routes } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+import { useComposerDraftStore } from '@/features/send-message'
 import { httpClient } from '@/shared/api'
 import { getRecipePath, RECIPE_ROUTE } from '@/shared/config'
 import { renderWithProviders } from '@/shared/testing'
@@ -64,13 +65,14 @@ const httpError = (status: number, errorCode: string): AxiosError =>
 		config: { headers: new AxiosHeaders() },
 	})
 
-const renderAt = (path: string) =>
+const renderAt = (path: string, onPathname?: (pathname: string) => void) =>
 	renderWithProviders(
 		<Routes>
 			<Route path={RECIPE_ROUTE} element={<RecipeDetailPage />} />
 		</Routes>,
 		{
 			route: path,
+			onPathname,
 			queryClient: new QueryClient({ defaultOptions: { queries: { retry: false } } }),
 		},
 	)
@@ -125,12 +127,34 @@ describe('RecipeDetailPage', () => {
 		expect(screen.getByText('на всю страву · 900 г')).toBeTruthy()
 	})
 
-	it('keeps «Змінити склад у чаті» hidden', async () => {
+	it('«Змінити склад у чаті» sits inside the portion card, as a 44px-tall link', async () => {
 		getMock.mockResolvedValue(reply(recipe))
 		renderAt(getRecipePath(RECIPE_ID))
 		await screen.findByRole('heading', { name: 'Курка з гречкою' })
 
-		expect(screen.queryByText('Змінити склад у чаті')).toBeNull()
+		const link = screen.getByRole('button', { name: 'Змінити склад у чаті' })
+		const add = screen.getByRole('button', { name: 'Додати на сьогодні' })
+
+		expect(add.parentElement?.contains(link)).toBe(true)
+		expect(link.className).toContain('min-h-tap')
+	})
+
+	it('«Змінити склад у чаті» opens the chat with the name in the field', async () => {
+		useComposerDraftStore.setState({ text: '', isFocusRequested: false })
+		getMock.mockResolvedValue(reply(recipe))
+		const pathnames: string[] = []
+		renderAt(getRecipePath(RECIPE_ID), (pathname) => {
+			pathnames.push(pathname)
+		})
+		await screen.findByRole('heading', { name: 'Курка з гречкою' })
+
+		fireEvent.click(screen.getByRole('button', { name: 'Змінити склад у чаті' }))
+
+		expect(useComposerDraftStore.getState()).toMatchObject({
+			text: 'Зміни склад «Курка з гречкою»: ',
+			isFocusRequested: true,
+		})
+		expect(pathnames.at(-1)).toBe('/app')
 	})
 
 	it('says the recipe is not found on a 404', async () => {

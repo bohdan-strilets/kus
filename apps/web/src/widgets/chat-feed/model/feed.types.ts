@@ -1,4 +1,4 @@
-import type { ChatMessage, OnboardingAnswerRequest } from '@kus/shared'
+import type { ChatMessage, MessageIntent, OnboardingAnswerRequest } from '@kus/shared'
 
 import type { OutboxPhoto, SendError } from '@/features/send-message'
 
@@ -12,6 +12,7 @@ export interface RetryParams {
 	/** Already uploaded: the resend only sends the message. */
 	photoId?: string
 	onboardingAnswer?: OnboardingAnswerRequest
+	intent?: MessageIntent
 	/**
 	 * Set for a message that waited over a day: the API would log a resend on the day it was
 	 * written, so «Надіслати» asks it to log it now (same id, the server copy is restamped).

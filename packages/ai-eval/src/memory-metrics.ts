@@ -1,6 +1,7 @@
 import type { ExpectedFact, ExpectedMemory, ExpectedSavedFood } from './cases/case.types.js'
 import type { EvalCase } from './cases/index.js'
 import type { CallFacts, CaseResult, LoggedItem } from './eval.types.js'
+import { isRecipeCorrect } from './recipe-metrics.js'
 
 const GRAMS_TOLERANCE = 0.5
 const MEMORY_SOURCE = 'MEMORY'
@@ -11,9 +12,24 @@ type SavedFact = CallFacts['facts'][number]
 const isSameSet = (expected: string[], actual: string[]): boolean =>
 	expected.length === actual.length && expected.every((ref) => actual.includes(ref))
 
+const isFromItemRight = (want: ExpectedSavedFood['fromItemIndex'], got: number | null): boolean => {
+	if (want === undefined) return true
+	return Array.isArray(want) ? want.includes(got) : got === want
+}
+
+/** From an item the backend takes the values and per100g stays null: only standalone values are judged. */
+const isPer100gKcalRight = (want: ExpectedSavedFood['per100gKcal'], got: SavedFood): boolean => {
+	if (want === undefined || got.fromItemIndex !== null) return true
+	const { per100g } = got
+	if (per100g === null) return false
+	if ('exact' in want) return per100g.kcal === want.exact
+	return per100g.kcal >= want.min && per100g.kcal <= want.max
+}
+
 const isFoodRight = (want: ExpectedSavedFood, got: SavedFood): boolean =>
 	(want.nameIncludes === undefined || got.name.toLowerCase().includes(want.nameIncludes)) &&
-	(want.fromItemIndex === undefined || got.fromItemIndex === want.fromItemIndex) &&
+	isFromItemRight(want.fromItemIndex, got.fromItemIndex) &&
+	isPer100gKcalRight(want.per100gKcal, got) &&
 	(want.updateRef === undefined || got.updateRef === want.updateRef) &&
 	(want.hasPer100g === undefined || (got.per100g !== null) === want.hasPer100g) &&
 	(want.pieceGrams === undefined || got.pieceGrams === want.pieceGrams) &&
@@ -127,15 +143,17 @@ export const hasMemoryExpectations = ({ expect }: EvalCase): boolean =>
 	expect.memoryItems !== undefined ||
 	expect.findFoodCalled !== undefined ||
 	expect.getWorkouts !== undefined ||
-	expect.memoryRefs !== undefined
+	expect.memoryRefs !== undefined ||
+	expect.recipe !== undefined
 
 export const isCaseMemoryCorrect = (evalCase: EvalCase, result: CaseResult): boolean => {
-	const { memory, memoryItems, findFoodCalled, getWorkouts, memoryRefs } = evalCase.expect
+	const { memory, memoryItems, findFoodCalled, getWorkouts, memoryRefs, recipe } = evalCase.expect
 	return (
 		(memory === undefined || isMemoryCorrect(memory, result.calls)) &&
 		(memoryItems === undefined || areMemoryItemsCorrect(memoryItems, result.items)) &&
 		(findFoodCalled === undefined || isFindFoodRight(findFoodCalled, result)) &&
 		(getWorkouts === undefined || isGetWorkoutsRight(getWorkouts, result)) &&
-		(memoryRefs === undefined || areMemoryRefsRight(memoryRefs, result.items))
+		(memoryRefs === undefined || areMemoryRefsRight(memoryRefs, result.items)) &&
+		(recipe === undefined || isRecipeCorrect(recipe, result))
 	)
 }

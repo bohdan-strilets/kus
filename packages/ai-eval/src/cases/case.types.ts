@@ -1,6 +1,7 @@
 import {
 	addressFormSchema,
 	COPY_REF_PATTERN,
+	ENTRY_REF_PATTERN,
 	EXERCISE_GROUP_FIX_PATTERN,
 	exerciseKindSchema,
 	FACT_REF_PATTERN,
@@ -14,6 +15,7 @@ import {
 	measurementKindSchema,
 	muscleGroupSchema,
 	programModeSchema,
+	type RecipeIngredientValues,
 	statsDaysSchema,
 	TEMPLATE_REF_PATTERN,
 	WORKOUT_REF_PATTERN,
@@ -85,6 +87,13 @@ export const expectedEditsSchema = z.object({
 				kcal: expectedValueSchema.optional(),
 				/** Lower-case stem the new name must contain ("суп"). */
 				nameIncludes: z.string().optional(),
+				/** The pot correction: the new water or weight the call sets; null = must not be set. */
+				recipe: z
+					.object({
+						waterMl: z.number().nullable().optional(),
+						cookedGrams: z.number().nullable().optional(),
+					})
+					.optional(),
 			}),
 		)
 		.optional(),
@@ -176,8 +185,15 @@ export const expectedWorkoutSchema = z
 export const expectedSavedFoodSchema = z.object({
 	/** Lower-case stem the saved name must contain ("кабаноси"). */
 	nameIncludes: z.string().min(1).optional(),
-	/** The log_food item the values are taken from; null = standalone values. */
-	fromItemIndex: z.int().nonnegative().nullable().optional(),
+	/**
+	 * The log_food item the values are taken from; null = standalone values. A list accepts any of
+	 * them (the same values typed in the message may come from the item or stand alone).
+	 */
+	fromItemIndex: z
+		.union([z.int().nonnegative().nullable(), z.array(z.int().nonnegative().nullable()).min(1)])
+		.optional(),
+	/** kcal per 100 g of the saved food (exact or a range); judged only when fromItemIndex is null. */
+	per100gKcal: expectedValueSchema.optional(),
 	/** The m-ref being updated; null = a new food. */
 	updateRef: z.string().regex(MEMORY_REF_PATTERN).nullable().optional(),
 	hasPer100g: z.boolean().optional(),
@@ -196,6 +212,52 @@ export const expectedFactSchema = z.object({
 	textExcludes: z.array(z.string().min(1)).optional(),
 	/** No save_fact is fine too; a saved one must match the fields above. */
 	isOptional: z.boolean().optional(),
+})
+
+/**
+ * What a pot says about itself (log_food item.recipe, save_recipe.recipe); every field given is
+ * checked. `null` = the model must not set it (nothing said → nothing invented).
+ */
+export const expectedPotSchema = z.object({
+	/** Lower-case stems; each must be found in the name of some ingredient. */
+	ingredientStems: z.array(z.string().min(1)).optional(),
+	minIngredients: z.int().positive().optional(),
+	waterMl: expectedValueSchema.nullable().optional(),
+	cookedGrams: expectedValueSchema.nullable().optional(),
+	servings: z.int().positive().nullable().optional(),
+})
+
+/** One save_recipe the answer must contain; every field given is checked. */
+export const expectedSavedRecipeSchema = z.object({
+	/** The e-ref of the logged pot; null = the call carries the recipe itself. */
+	entryRef: z.string().regex(ENTRY_REF_PATTERN).nullable().optional(),
+	/** The call's own recipe. */
+	recipe: expectedPotSchema.optional(),
+	/** The portion weight of the call; null = none given. */
+	portionGrams: expectedValueSchema.nullable().optional(),
+})
+
+/**
+ * What the recipe tools must do. Unset part = not judged. The kcal of a logged pot is counted by
+ * the eval from its ingredients (recipe-values.ts) and judged by `expect.kcal`.
+ */
+export const expectedRecipeSchema = z.object({
+	/** Exactly one logged item carries a recipe like this. */
+	logged: expectedPotSchema.optional(),
+	/** A logged item eats this saved recipe again (its r-ref), and no item carries its own recipe. */
+	recipeRef: z
+		.string()
+		.regex(/^r\d{1,3}$/)
+		.optional(),
+	/** No logged item carries a recipe or a recipeRef. */
+	noLoggedPot: z.literal(true).optional(),
+	/** The save_recipe calls: null = none, else exactly one that matches. */
+	saved: expectedSavedRecipeSchema.nullable().optional(),
+	/**
+	 * Some clarify call has at least `options` answers with a water; with `hasUnknown` one of them
+	 * has a null water («Не знаю»).
+	 */
+	clarifyWater: z.object({ options: z.int().positive(), hasUnknown: z.boolean() }).optional(),
 })
 
 /**
@@ -259,6 +321,9 @@ export type ExpectedProgramTemplate = z.infer<typeof expectedProgramTemplateSche
 export type ExpectedSavedFood = z.infer<typeof expectedSavedFoodSchema>
 export type ExpectedFact = z.infer<typeof expectedFactSchema>
 export type ExpectedMemory = z.infer<typeof expectedMemorySchema>
+export type ExpectedPot = z.infer<typeof expectedPotSchema>
+export type ExpectedRecipe = z.infer<typeof expectedRecipeSchema>
+export type ExpectedSavedRecipe = z.infer<typeof expectedSavedRecipeSchema>
 export type ExpectedWorkoutExercise = z.infer<typeof expectedWorkoutExerciseSchema>
 export type ExpectedWorkout = z.infer<typeof expectedWorkoutSchema>
 
@@ -371,6 +436,8 @@ export const evalCaseSchema = z
 			sources: z.array(foodSourceSchema).min(1).optional(),
 			/** The memory calls: save_food, save_fact, forget_fact. */
 			memory: expectedMemorySchema.optional(),
+			/** The recipe tools: the pot of log_food, recipeRef, save_recipe, the water options of clarify. */
+			recipe: expectedRecipeSchema.optional(),
 			/** find_food must be called (true) or must not be (false). */
 			findFoodCalled: z.boolean().optional(),
 			/** get_workouts must be called or not; the arguments of its calls, when it is. */
@@ -422,6 +489,22 @@ export const savedFoodSchema = z.object({
 
 export type SavedFood = z.infer<typeof savedFoodSchema>
 
+/**
+ * A saved recipe of a case in code: find_food lists its ingredients, the backend counts its kcal
+ * per 100 g from them (recipe-values.ts), and so does the eval.
+ */
+export interface SavedRecipe {
+	name: string
+	aliases: string[]
+	/** The saved portion, g; null = none. */
+	portionGrams: number | null
+	ingredients: (RecipeIngredientValues & { name: string })[]
+	waterMl: number | null
+	cookedGrams: number | null
+	servings: number | null
+	usageCount: number
+}
+
 export type EvalCase = z.infer<typeof evalCaseSchema> & {
 	/** Day state the model sees; defaults to an empty day without a goal. */
 	context?: CaseContext
@@ -430,6 +513,8 @@ export type EvalCase = z.infer<typeof evalCaseSchema> & {
 	 * (findMentionedFoods, like the backend) unless `context.memory` is set, and find_food searches them all.
 	 */
 	savedFoods?: SavedFood[]
+	/** The saved recipes find_food lists; the «Saved recipes» block is the case's own context.recipes. */
+	savedRecipes?: SavedRecipe[]
 	/** The loaded photo of a private case with `image`. */
 	photo?: EvalPhoto
 	/**

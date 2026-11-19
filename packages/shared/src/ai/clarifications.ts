@@ -1,6 +1,7 @@
 // Which clarify questions are worth asking: the backend decides, not the model.
 import { isMacrosConsistent, MAX_KCAL_PER_GRAM } from '../schemas/food-entry.js'
 import { distributeOptionValues } from './option-values.js'
+import { getRecipePortionValues } from './recipe-values.js'
 import type { ClarifyInput, LogFoodInput } from './tools.js'
 
 /** Drinks with ethanol never add up from macros (see food-entry.ts). */
@@ -26,6 +27,17 @@ export interface ClarificationResult extends ClarifyInput {
 const getImpactKcal = (clarify: ClarifyInput): number => {
 	const values = clarify.options.map((option) => option.kcal)
 	return Math.max(...values) - Math.min(...values)
+}
+
+/**
+ * What the entry will hold now, for the share threshold: a pot with a known water is counted by the
+ * backend from its recipe (the model's flat `kcal` may be far off); any other item keeps its kcal.
+ */
+const getItemBaseKcal = (item: LogFoodInput['items'][number] | undefined): number => {
+	if (!item) return 0
+	const { recipe } = item
+	if (!recipe || recipe.waterMl === null) return item.kcal
+	return getRecipePortionValues({ ...recipe, cookedGrams: null }, item.grams).kcal
 }
 
 /**
@@ -95,7 +107,7 @@ export const filterClarifications = (
 	const isWorthAsking = (clarify: ClarificationResult): boolean => {
 		if (isRenameClarification(clarify)) return true
 		const itemsKcal = clarify.itemIndexes.reduce(
-			(sum, index) => sum + (log.items[index]?.kcal ?? 0),
+			(sum, index) => sum + getItemBaseKcal(log.items[index]),
 			0,
 		)
 		return (

@@ -21,6 +21,7 @@ import { MEMORY_OVERRIDE_CASES } from './memory-override.cases.js'
 import { loadHoldoutCases, loadPrivateCases } from './private-cases.js'
 import { PROGRAM_CASES } from './program.cases.js'
 import { READ_TOOL_CASES } from './read-tools.cases.js'
+import { RECIPE_CASES } from './recipe.cases.js'
 import { RANGE_CASES } from './range.cases.js'
 import { SAFETY_CASES } from './safety.cases.js'
 import { SOUP_CASES } from './soup.cases.js'
@@ -63,6 +64,7 @@ export const REPO_CASES: EvalCase[] = [
 	...LIVE_CHAT_CASES,
 	...READ_TOOL_CASES,
 	...SOUP_CASES,
+	...RECIPE_CASES,
 	...DISH_PARTS_CASES,
 	...DAY_HISTORY_CASES,
 	...WORKOUTS_READ_CASES,

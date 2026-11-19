@@ -68,10 +68,14 @@ export const MEMORY_FOOD_CASES: EvalCase[] = [
 			decision: 'log_or_clarify',
 			kcal: range(110, 150),
 			maxItems: 1,
-			memory: { foods: [{ fromItemIndex: 0 }], fact: null, forgets: [] },
+			memory: {
+				foods: [{ fromItemIndex: [0, null], per100gKcal: range(415, 441), pieceGrams: 15 }],
+				fact: null,
+				forgets: [],
+			},
 		},
 		reference:
-			'Eaten and asked to remember: log_food (2 × 15 g at 428 per 100 g ≈ 128) + save_food from item 0',
+			'Eaten and asked to remember: log_food (2 × 15 g at 428 per 100 g ≈ 128) + save_food, from item 0 or with the typed values (428 ±3 %, piece 15 g)',
 	},
 	{
 		id: 'save-food-not-asked',

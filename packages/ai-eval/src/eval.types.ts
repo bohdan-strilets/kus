@@ -83,6 +83,26 @@ export interface CallFacts {
 	foodRemovals?: ForgetFoodInput[]
 	/** Every restore_food call as the model sent it; absent in results saved before the tool. */
 	foodRestores?: RestoreFoodInput[]
+	/** Every save_recipe call, narrowed to what cases judge; absent in results saved before the tool. */
+	savedRecipes?: SavedRecipeCall[]
+}
+
+/** What a pot (item.recipe, save_recipe.recipe) says about itself: its ingredient names and size. */
+export interface PotFacts {
+	ingredientNames: string[]
+	waterMl: number | null
+	cookedGrams: number | null
+	servings: number | null
+}
+
+/** A save_recipe call, narrowed: the macros of the ingredients are not judged. */
+export interface SavedRecipeCall {
+	name: string
+	/** The e-ref of a logged pot; null = the call carries the ingredients itself. */
+	entryRef: string | null
+	portionGrams: number | null
+	/** The call's own recipe; null when it was saved by entryRef. */
+	recipe: PotFacts | null
 }
 
 export interface CaseResult {
@@ -138,7 +158,7 @@ export interface CaseResult {
 
 export interface ClarifyCall {
 	question: string
-	options: { label: string; kcal: number; name: string | null }[]
+	options: { label: string; kcal: number; name: string | null; waterMl?: number | null }[]
 	impactKcal: number
 	/** rename — which food it was: kept without the kcal thresholds when its shape fits. */
 	kind: ClarifyKind
@@ -213,7 +233,14 @@ export interface LoggedProgram {
 
 export interface EditResult {
 	/** Values as the backend would store them (a new weight alone rescales the entry). */
-	corrections: { ref: string; name: string; grams: number; kcal: number }[]
+	corrections: {
+		ref: string
+		name: string
+		grams: number
+		kcal: number
+		/** The pot's new water or weight (correct_entry.recipe); the backend recounts the values, so grams and kcal stay as they were. */
+		pot?: { waterMl: number | null; cookedGrams: number | null }
+	}[]
 	deletions: string[]
 	restorations: string[]
 	resolutions: {
@@ -238,6 +265,10 @@ export interface LoggedItem {
 	/** Ref of the earlier entry the item copies (y1, h1); null = not a copy. */
 	copyRef: string | null
 	assumption: string | null
+	/** The pot the portion comes from (log_food item.recipe); absent = none. */
+	recipe?: PotFacts
+	/** The saved recipe the item eats again (item.recipeRef); absent = none. */
+	recipeRef?: string | null
 }
 
 export interface ErrorStats {

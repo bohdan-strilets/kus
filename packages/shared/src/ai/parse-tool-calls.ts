@@ -38,6 +38,7 @@ import {
 	getShowDayErrors,
 	getShowStatsErrors,
 } from './date-errors.js'
+import { withPotWaterValues } from './clarify-pot-values.js'
 import {
 	type ClarificationResult,
 	filterClarifications,
@@ -628,7 +629,11 @@ const decide = (
 			...memoryErrors,
 		]
 		if (errors.length > 0) return { decision: null, errors }
-		const selected = filterClarifications(log, clarifications)
+		// the pot's water options are counted from its recipe before the thresholds judge them
+		const selected = filterClarifications(
+			log,
+			clarifications.map((clarify) => withPotWaterValues(log, clarify)),
+		)
 		return {
 			decision: {
 				kind: 'log',

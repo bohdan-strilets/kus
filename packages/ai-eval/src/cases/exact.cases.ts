@@ -1,6 +1,6 @@
 // Exact references: weighed plain products (USDA FoodData Central, SR Legacy, per 100 g)
 // and package labels whose numbers are in the message itself.
-import { per100 } from './case-builders.js'
+import { per100, range } from './case-builders.js'
 import type { EvalCase } from './case.types.js'
 
 const USDA = 'USDA FDC SR Legacy, per 100 g'
@@ -132,7 +132,7 @@ export const EXACT_CASES: EvalCase[] = [
 		text: '200 г броколі на пару',
 		expect: {
 			decision: 'log',
-			kcal: per100(35, 200),
+			kcal: range(66, 74),
 			protein: per100(2.38, 200),
 			categories: ['vegetables'],
 		},

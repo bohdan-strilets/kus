@@ -65,6 +65,35 @@ describe('isMemoryCorrect: foods', () => {
 		).toBe(false)
 	})
 
+	it('accepts any fromItemIndex of a list and judges per100g kcal by a range', () => {
+		const expected: ExpectedMemory = {
+			foods: [{ fromItemIndex: [0, null], per100gKcal: { min: 415, max: 441 }, pieceGrams: 15 }],
+		}
+		const per100g = { kcal: 428, protein: 24, fat: 20, carbs: 2, fiber: null }
+		for (const fromItemIndex of [0, null]) {
+			const saved = calls({ savedFoods: [food({ per100g, fromItemIndex })] })
+			expect(isMemoryCorrect(expected, saved)).toBe(true)
+		}
+		const other = calls({ savedFoods: [food({ per100g, fromItemIndex: 1 })] })
+		expect(isMemoryCorrect(expected, other)).toBe(false)
+		const far = calls({ savedFoods: [food({ per100g: { ...per100g, kcal: 280 } })] })
+		expect(isMemoryCorrect(expected, far)).toBe(false)
+		expect(isMemoryCorrect(expected, calls({ savedFoods: [food({ per100g: null })] }))).toBe(false)
+	})
+
+	it('does not judge per100g kcal for a food taken from an item (the backend fills it)', () => {
+		const expected: ExpectedMemory = {
+			foods: [{ fromItemIndex: [0, null], per100gKcal: { min: 415, max: 441 }, pieceGrams: 15 }],
+		}
+		const fromItem = calls({ savedFoods: [food({ per100g: null, fromItemIndex: 0 })] })
+		expect(isMemoryCorrect(expected, fromItem)).toBe(true)
+		const standalone = { kcal: 428, protein: 24, fat: 20, carbs: 2, fiber: null }
+		const outOfRange = food({ per100g: { ...standalone, kcal: 280 }, fromItemIndex: null })
+		expect(isMemoryCorrect(expected, calls({ savedFoods: [outOfRange] }))).toBe(false)
+		const inRange = food({ per100g: standalone, fromItemIndex: null })
+		expect(isMemoryCorrect(expected, calls({ savedFoods: [inRange] }))).toBe(true)
+	})
+
 	it('counts exactly: an extra save_food fails, [] means none', () => {
 		const expected: ExpectedMemory = { foods: [{ nameIncludes: 'кабаноси' }] }
 		expect(isMemoryCorrect(expected, calls({ savedFoods: [food(), food()] }))).toBe(false)

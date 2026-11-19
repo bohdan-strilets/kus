@@ -4,10 +4,12 @@ import {
 	type FoodParseContext,
 	type FoodParseDecision,
 	getParseRefs,
+	getRecipePortionValues,
 	type MemoryFoodContext,
 	mergeParseRefs,
 	parseToolCalls,
 	type RawToolCall,
+	type RecipeContext,
 } from '@kus/shared'
 
 import type { EvalCase } from './cases/index.js'
@@ -15,6 +17,7 @@ import type {
 	ActualDecision,
 	CaseResult,
 	LoggedItem,
+	PotFacts,
 	RawAttempt,
 	ReadStats,
 	ValidationAttempt,
@@ -46,23 +49,51 @@ export interface ItemSources {
 	memory: MemoryFoodContext[]
 	/** Entries a copyRef can point at: earlier ones (y, h) and today's own (e). */
 	earlier: Pick<EarlierEntryContext, 'ref' | 'kcal'>[]
+	/** «Saved recipes» of the request and the ones find_food handed out. */
+	recipes: RecipeContext[]
+}
+
+/** A pot's portion, counted by the shared recipe-values as the backend does (not by the model). */
+const getPotTotals = (
+	item: AiFoodItem,
+	recipe: NonNullable<AiFoodItem['recipe']>,
+): { kcal: number; protein: number } => {
+	const portion = getRecipePortionValues({ ...recipe, portionGrams: item.grams }, item.grams)
+	return { kcal: portion.kcal, protein: portion.protein }
 }
 
 /**
  * Per item: a memory item's numbers come from the saved food, scaled by grams; a copy takes the
- * earlier entry's kcal (the model's own number is ignored) — as the backend does.
+ * earlier entry's kcal (the model's own number is ignored); a pot is counted from its ingredients
+ * and a saved recipe from its kcal per 100 g — as the backend does.
  */
 const getItemTotals = (
 	item: AiFoodItem,
-	{ memory, earlier }: ItemSources,
+	{ memory, earlier, recipes }: ItemSources,
 ): { kcal: number; protein: number } => {
 	const copied = earlier.find((entry) => entry.ref === item.copyRef)
 	if (copied) return { kcal: copied.kcal, protein: item.protein }
+	if (item.recipe) return getPotTotals(item, item.recipe)
+	const saved = recipes.find((recipe) => recipe.ref === item.recipeRef)
+	if (saved)
+		return { kcal: (saved.kcalPer100g * item.grams) / GRAMS_PER_100, protein: item.protein }
 	const food = memory.find((saved) => saved.ref === item.memoryRef)
 	if (!food) return { kcal: item.kcal, protein: item.protein }
 	const factor = item.grams / GRAMS_PER_100
 	return { kcal: food.per100g.kcal * factor, protein: food.per100g.protein * factor }
 }
+
+const toPotFacts = ({
+	ingredients,
+	waterMl,
+	cookedGrams,
+	servings,
+}: NonNullable<AiFoodItem['recipe']>): PotFacts => ({
+	ingredientNames: ingredients.map(({ name }) => name),
+	waterMl,
+	cookedGrams,
+	servings,
+})
 
 const toLoggedItem = (
 	item: AiFoodItem,
@@ -78,6 +109,8 @@ const toLoggedItem = (
 	memoryRef: item.memoryRef,
 	copyRef: item.copyRef,
 	assumption: item.assumption,
+	...(item.recipe ? { recipe: toPotFacts(item.recipe) } : {}),
+	...(item.recipeRef ? { recipeRef: item.recipeRef } : {}),
 })
 
 const sumItems = (items: AiFoodItem[], sources: ItemSources) =>
@@ -190,6 +223,7 @@ export const scoreAttempt = (input: ScoreInput): ScoreOutcome => {
 	const sources: ItemSources = {
 		memory: [...context.memory, ...(reads?.memory ?? [])],
 		earlier: [...(context.earlier ?? []), ...context.entries, ...(reads?.earlier ?? [])],
+		recipes: [...(context.recipes ?? []), ...(reads?.recipes ?? [])],
 	}
 	const refs = reads
 		? mergeParseRefs(getParseRefs(context), reads.refsPatch)

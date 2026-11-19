@@ -37,7 +37,17 @@ export const getEditResult = (
 			const entry = context.entries.find((item) => item.ref === change.ref)
 			if (!entry) return []
 			const { grams, kcal } = getCorrectedValues(toEntryValues(entry), change)
-			return [{ ref: change.ref, name: change.name ?? entry.name, grams, kcal }]
+			return [
+				{
+					ref: change.ref,
+					name: change.name ?? entry.name,
+					grams,
+					kcal,
+					...(change.recipe
+						? { pot: { waterMl: change.recipe.waterMl, cookedGrams: change.recipe.cookedGrams } }
+						: {}),
+				},
+			]
 		}),
 		deletions,
 		restorations,

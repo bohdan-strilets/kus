@@ -26,7 +26,12 @@ export const getClarifyCalls = (
 			return [
 				{
 					question: parsed.data.question,
-					options: parsed.data.options,
+					options: parsed.data.options.map(({ label, kcal: optionKcal, name, waterMl }) => ({
+						label,
+						kcal: optionKcal,
+						name,
+						waterMl,
+					})),
 					impactKcal: Math.max(...kcal) - Math.min(...kcal),
 					kind: parsed.data.kind,
 					isKept: kept.some((item) => item.question === parsed.data.question),

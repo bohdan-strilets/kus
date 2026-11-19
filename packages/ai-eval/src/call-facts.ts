@@ -10,7 +10,7 @@ import {
 } from '@kus/shared'
 import { z } from 'zod'
 
-import type { CallFacts } from './eval.types.js'
+import type { CallFacts, PotFacts } from './eval.types.js'
 
 // Narrow schemas of just what the cases judge, read from the raw tool arguments: the harness does not
 // depend on the shared input types, so a model that ignores a newer contract field simply shows null.
@@ -32,6 +32,32 @@ const showStatsFactsSchema = z.object({
 	advice: z.boolean().optional(),
 })
 
+// save_recipe as the cases judge it: the shared input type is not exported, and the macros do not matter
+const potFactsSchema = z.object({
+	ingredients: z.array(z.object({ name: z.string() })).default([]),
+	waterMl: z.number().nullable().optional(),
+	cookedGrams: z.number().nullable().optional(),
+	servings: z.number().nullable().optional(),
+})
+const saveRecipeFactsSchema = z.object({
+	name: z.string(),
+	entryRef: z.string().nullable().optional(),
+	recipe: potFactsSchema.nullable().optional(),
+	portionGrams: z.number().nullable().optional(),
+})
+
+const toPotFacts = ({
+	ingredients,
+	waterMl,
+	cookedGrams,
+	servings,
+}: z.infer<typeof potFactsSchema>): PotFacts => ({
+	ingredientNames: ingredients.map(({ name }) => name),
+	waterMl: waterMl ?? null,
+	cookedGrams: cookedGrams ?? null,
+	servings: servings ?? null,
+})
+
 export const EMPTY_CALL_FACTS: CallFacts = {
 	logDate: null,
 	itemDates: [],
@@ -44,6 +70,7 @@ export const EMPTY_CALL_FACTS: CallFacts = {
 	forgets: [],
 	foodRemovals: [],
 	foodRestores: [],
+	savedRecipes: [],
 }
 
 const parseArguments = (text: string): unknown => {
@@ -69,6 +96,7 @@ export const getCallFacts = (rawCalls: RawToolCall[], today: string): CallFacts 
 		forgets: [],
 		foodRemovals: [],
 		foodRestores: [],
+		savedRecipes: [],
 	}
 	for (const call of rawCalls) {
 		const args = parseArguments(call.arguments)
@@ -102,6 +130,17 @@ export const getCallFacts = (rawCalls: RawToolCall[], today: string): CallFacts 
 		if (call.name === 'save_food') {
 			const parsed = saveFoodInputSchema.safeParse(args)
 			if (parsed.success) facts.savedFoods.push(parsed.data)
+		}
+		if (call.name === 'save_recipe') {
+			const parsed = saveRecipeFactsSchema.safeParse(args)
+			if (parsed.success) {
+				facts.savedRecipes?.push({
+					name: parsed.data.name,
+					entryRef: parsed.data.entryRef ?? null,
+					portionGrams: parsed.data.portionGrams ?? null,
+					recipe: parsed.data.recipe ? toPotFacts(parsed.data.recipe) : null,
+				})
+			}
 		}
 		if (call.name === 'save_fact') {
 			const parsed = saveFactInputSchema.safeParse(args)

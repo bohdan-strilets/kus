@@ -22,6 +22,8 @@ import {
 	type ParseRefsPatch,
 	type RawToolCall,
 	READ_CLOSED_ERROR,
+	RECIPE_REF_PREFIX,
+	type RecipeContext,
 	runFindFood,
 	SAVED_FOOD_REF_PREFIX,
 	splitToolCalls,
@@ -31,7 +33,7 @@ import {
 import { getCaseToday } from './cases/case-builders.js'
 import type { EvalCase } from './cases/index.js'
 import type { ReadStats } from './eval.types.js'
-import { getReadFixtures, toMemoryFoodContext } from './read-fixtures.js'
+import { getReadFixtures, toMemoryFoodContext, toRecipeContext } from './read-fixtures.js'
 
 export interface ReadOutcome {
 	/** The tool result the model reads. */
@@ -40,6 +42,8 @@ export interface ReadOutcome {
 	/** Context items of the refs this read handed out: their values count when the item is logged. */
 	memory: MemoryFoodContext[]
 	earlier: EarlierEntryContext[]
+	/** Saved recipes of the refs this read handed out: a recipeRef item takes its kcal per 100 g. */
+	recipes: RecipeContext[]
 }
 
 /** Answers one read call of the case; an unknown read tool is a harness error, as it is in the backend. */
@@ -48,9 +52,10 @@ export type ReadExecutor = (call: RawToolCall) => ReadOutcome
 /** What the reads of a turn added so far. */
 export interface ReadTurn {
 	stats: ReadStats
-	refsPatch: { memoryRefs: string[]; copyRefs: string[] }
+	refsPatch: { memoryRefs: string[]; copyRefs: string[]; recipeRefs?: string[] }
 	memory: MemoryFoodContext[]
 	earlier: EarlierEntryContext[]
+	recipes: RecipeContext[]
 }
 
 export const EMPTY_READ_STATS: ReadStats = { steps: 0, findFoodCalls: 0 }
@@ -60,6 +65,7 @@ export const createReadTurn = (): ReadTurn => ({
 	refsPatch: { memoryRefs: [], copyRefs: [] },
 	memory: [],
 	earlier: [],
+	recipes: [],
 })
 
 /** The read calls of an answer that run now: at most MAX_PARALLEL_READS, like the backend's. */
@@ -94,6 +100,9 @@ const getEmptyWorkoutsRead = (today: string): WorkoutsReadData => ({
 export const createReadExecutor = (evalCase: EvalCase, context: FoodParseContext): ReadExecutor => {
 	const fixtures = getReadFixtures(evalCase)
 	const keyByName = new Map(fixtures.data.saved.map((food) => [food.name, food.key]))
+	const recipeKeyByName = new Map(
+		(fixtures.data.recipes ?? []).map((recipe) => [recipe.name, recipe.key]),
+	)
 	// the refs the request already carries keep their numbers; new ones continue after them
 	const refs = {
 		saved: createRefIssuer(
@@ -110,6 +119,16 @@ export const createReadExecutor = (evalCase: EvalCase, context: FoodParseContext
 			),
 		),
 	}
+	const recipeRefs = createRefIssuer(
+		RECIPE_REF_PREFIX,
+		(context.recipes ?? []).map(
+			(recipe) =>
+				[
+					recipe.ref,
+					recipeKeyByName.get(recipe.name) ?? `${CONTEXT_KEY_PREFIX}${recipe.ref}`,
+				] as const,
+		),
+	)
 	// a fixed clock, so the usage bonus and the recency order do not depend on the day of the run
 	const now = new Date(`${getCaseToday(evalCase.context)}T12:00:00Z`)
 
@@ -122,16 +141,28 @@ export const createReadExecutor = (evalCase: EvalCase, context: FoodParseContext
 					: formatGetWorkoutsResult(
 							evalCase.workoutsRead ?? getEmptyWorkoutsRead(getCaseToday(evalCase.context)),
 						)
-			return { text, refsPatch: {}, memory: [], earlier: [] }
+			return { text, refsPatch: {}, memory: [], earlier: [], recipes: [] }
 		}
 		if (call.name !== FIND_FOOD_TOOL_NAME) throw new Error(`unknown read tool: ${call.name}`)
 		const input = parseFindFoodArguments(call.arguments)
 		if (input === null) {
-			return { text: FIND_FOOD_INVALID_ARGUMENTS_RESULT, refsPatch: {}, memory: [], earlier: [] }
+			return {
+				text: FIND_FOOD_INVALID_ARGUMENTS_RESULT,
+				refsPatch: {},
+				memory: [],
+				earlier: [],
+				recipes: [],
+			}
 		}
-		const result = runFindFood({ input, data: fixtures.data, refs, now })
+		const result = runFindFood({
+			input,
+			data: fixtures.data,
+			refs: { ...refs, recipes: recipeRefs },
+			now,
+		})
 		const issuedSaved = new Map(refs.saved.getIssued())
 		const issuedHistory = new Map(refs.history.getIssued())
+		const issuedRecipes = new Map(recipeRefs.getIssued())
 		const memory = (result.refsPatch.memoryRefs ?? []).flatMap((ref) => {
 			const food = fixtures.savedByKey.get(issuedSaved.get(ref) ?? '')
 			return food ? [toMemoryFoodContext(food, ref)] : []
@@ -153,7 +184,11 @@ export const createReadExecutor = (evalCase: EvalCase, context: FoodParseContext
 					]
 				: []
 		})
-		return { text: result.text, refsPatch: result.refsPatch, memory, earlier }
+		const recipes = (result.refsPatch.recipeRefs ?? []).flatMap((ref) => {
+			const recipe = fixtures.recipeByKey.get(issuedRecipes.get(ref) ?? '')
+			return recipe ? [toRecipeContext(recipe, ref)] : []
+		})
+		return { text: result.text, refsPatch: result.refsPatch, memory, earlier, recipes }
 	}
 }
 
@@ -179,6 +214,13 @@ export const runReadStep = (
 		turn.refsPatch.copyRefs.push(...(outcome.refsPatch.copyRefs ?? []))
 		turn.memory.push(...outcome.memory)
 		turn.earlier.push(...outcome.earlier)
+		turn.recipes.push(...outcome.recipes)
+		if (outcome.refsPatch.recipeRefs) {
+			turn.refsPatch.recipeRefs = [
+				...(turn.refsPatch.recipeRefs ?? []),
+				...outcome.refsPatch.recipeRefs,
+			]
+		}
 	}
 	return outcomes
 }

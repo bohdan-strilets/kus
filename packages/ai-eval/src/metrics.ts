@@ -66,6 +66,19 @@ const isSameSet = (expected: string[] = [], actual: string[] = []): boolean =>
 const isWithin = (expected: ExpectedValue | undefined, actual: number | null): boolean =>
 	!expected || (actual !== null && getErrorPct(expected, actual, 0) === 0)
 
+/** The pot correction (correct_entry.recipe) sets what the case names; unset = not judged. */
+const isPotRight = (
+	want: NonNullable<ExpectedEdits['corrected']>[number]['recipe'],
+	got: { waterMl: number | null; cookedGrams: number | null } | undefined,
+): boolean => {
+	if (want === undefined) return true
+	if (!got) return false
+	const isSame = (expected: number | null | undefined, actual: number | null): boolean =>
+		expected === undefined ||
+		(expected === null ? actual === null : actual !== null && Math.abs(actual - expected) < 0.5)
+	return isSame(want.waterMl, got.waterMl) && isSame(want.cookedGrams, got.cookedGrams)
+}
+
 /** Exactly the expected refs changed, each the expected way; nothing else touched. */
 export const isEditsCorrect = (expected: ExpectedEdits, actual: EditResult | null): boolean => {
 	const corrected = expected.corrected ?? []
@@ -83,7 +96,12 @@ export const isEditsCorrect = (expected: ExpectedEdits, actual: EditResult | nul
 			const got = corrections.find(({ ref }) => ref === want.ref)
 			if (!got) return false
 			const isNamed = !want.nameIncludes || got.name.toLowerCase().includes(want.nameIncludes)
-			return isNamed && isWithin(want.grams, got.grams) && isWithin(want.kcal, got.kcal)
+			return (
+				isNamed &&
+				isWithin(want.grams, got.grams) &&
+				isWithin(want.kcal, got.kcal) &&
+				isPotRight(want.recipe, got.pot)
+			)
 		}) &&
 		isSameSet(
 			resolved.map(({ ref }) => ref),

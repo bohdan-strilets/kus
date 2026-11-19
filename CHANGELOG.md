@@ -6,6 +6,39 @@ All notable changes to Kusik are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.13.0] — 2026-11-19
+
+«Recipes»: the screen and the detail, a portion logged in one tap, soups from the chat as pots with a recipe, the save-recipe flow and the new-recipe chat state. The prompt changed (compression and pot rules, `PROMPT_VERSION` 2026-11-19.2); eval spent $0.8716 of $1.20 (22 cases with `--only`, smoke 43/46, retry 9/11; case list shortened). The migration is additive, no `pg_dump`.
+
+### Added
+
+- Recipes: the list screen, the recipe detail and the `recipes` API module with the shared schemas and the `recipe` web entity ([87f1881], [980329d], [9d70c05], [b3ade1a])
+- «Додати на сьогодні»: a portion of a recipe is logged in one tap, a recipe can be deleted ([da132ca])
+- Hamster mood `dreamy` for the empty recipes list ([d67070a])
+- Recipe drafts on entries (`recipe_draft` with `pot_id`) and a recipe source message; migration `20261118204950_recipe_drafts` ([295fbd0])
+- AI: the `recipe` field, `recipeRef` and the `save_recipe` tool ([42d7f1f])
+- AI context: «Saved recipes» and recipes in `find_food` ([3e0ced0])
+- Chat: pots, `save_recipe` and `correct_entry` for pots ([63c4c4b])
+- Chat: the «Новий рецепт» state, a recipe is saved without logging it as eaten ([a302294])
+
+### Changed
+
+- The prompt is compressed to 14 paragraphs without rule changes ([c9156d2])
+- Prompt 2026-11-19.2: pot rules; the water-question option values are counted by the backend ([a2e7d28], [8411298])
+- Entries can have no source message and carry a recipe link, copies keep it; «Remember» on a pot portion creates a recipe ([1b34768])
+
+### Fixed
+
+- «Remember» no longer creates a `MyFood` from an undetailed entry or from a portion of an active recipe: the server checks `canRemember` ([1b34768])
+
+### Known
+
+- Two smoke cases (`private:0310-day`, `private:0410`) are not checked by eval: the general limit of the eval key is spent
+- `recipe-show-from-history`: retry and tone are not settled
+- `chat-turn.service.ts` is about 880 lines
+- Gradient tiles per category are not done; the empty-state offset is about 16–18 px against the mockup
+- The «Мої продукти» tab, search and pagination of the recipes list are not in this release
+
 ## [0.12.2] — 2026-11-16
 
 Program change card details after a look on the phone, and the chat history moved out of the context service. The prompt and the tool descriptions are unchanged; no eval.
@@ -953,7 +986,23 @@ Design sync with `design/` v0.5.2. Web only: no API, shared-package or migration
 
 ## 0.2.0 / 0.1.0 — see tags
 
-[Unreleased]: https://github.com/bohdan-strilets/kus/compare/v0.12.2...HEAD
+[Unreleased]: https://github.com/bohdan-strilets/kus/compare/v0.13.0...HEAD
+[0.13.0]: https://github.com/bohdan-strilets/kus/compare/v0.12.2...v0.13.0
+[87f1881]: https://github.com/bohdan-strilets/kus/commit/87f188142f10f89467aab91847e2fd06e1dac921
+[1b34768]: https://github.com/bohdan-strilets/kus/commit/1b34768801bb80e60768d1288734f4c800ea2195
+[980329d]: https://github.com/bohdan-strilets/kus/commit/980329df37ca3015cc1f9684fcd858148d856351
+[9d70c05]: https://github.com/bohdan-strilets/kus/commit/9d70c0585e128b508e11b08935d5f8c8c45fccb2
+[da132ca]: https://github.com/bohdan-strilets/kus/commit/da132cac37acbf8bb3a7e308b2d2094518513063
+[b3ade1a]: https://github.com/bohdan-strilets/kus/commit/b3ade1a6945189b8f853082cffa8d2913654771f
+[d67070a]: https://github.com/bohdan-strilets/kus/commit/d67070ac92a87c8f386d537016a821ab7762c425
+[295fbd0]: https://github.com/bohdan-strilets/kus/commit/295fbd0a34eff9a6b1e4418be73d034fa770945b
+[c9156d2]: https://github.com/bohdan-strilets/kus/commit/c9156d2cc8af245a1dd444c13c3c4351defa31af
+[42d7f1f]: https://github.com/bohdan-strilets/kus/commit/42d7f1f04104c592c6949fe443b66c87376b5c17
+[8411298]: https://github.com/bohdan-strilets/kus/commit/841129833cde620e269bb393df98d96964447430
+[3e0ced0]: https://github.com/bohdan-strilets/kus/commit/3e0ced0ff3097659d73a80c536d3d382d13031f9
+[63c4c4b]: https://github.com/bohdan-strilets/kus/commit/63c4c4b9a67a367a52674e0cf12273f2fc0dd72a
+[a302294]: https://github.com/bohdan-strilets/kus/commit/a3022944180d6fa4113e39c772ae23177e7d1f23
+[a2e7d28]: https://github.com/bohdan-strilets/kus/commit/a2e7d287366df60bc123d62fc12c828e0d6ad7d5
 [0.12.2]: https://github.com/bohdan-strilets/kus/compare/v0.12.1...v0.12.2
 [161bb36]: https://github.com/bohdan-strilets/kus/commit/161bb3691f71f23b695a731cf8295f50d389d933
 [1e240f8]: https://github.com/bohdan-strilets/kus/commit/1e240f8756f16070eceec65268cace5a651dd2c4

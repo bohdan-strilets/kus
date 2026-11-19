@@ -1,6 +1,8 @@
+import { randomUUID } from 'node:crypto'
+
 import { Injectable } from '@nestjs/common'
 
-import type { Prisma } from '../../generated/prisma/client'
+import type { FoodCategory, Prisma } from '../../generated/prisma/client'
 import { PrismaService } from '../../prisma'
 
 /** RecipeIngredient has no userId: it is read only through its recipe, which is the user's. */
@@ -19,6 +21,36 @@ const MATCHABLE = {
 } satisfies Prisma.RecipeSelect
 
 export type MatchableRecipe = Prisma.RecipeGetPayload<{ select: typeof MATCHABLE }>
+
+/** A recipe from the chat: the composition is saved with it, the counters may come from a replaced one. */
+export interface NewRecipe {
+	userId: string
+	name: string
+	nameNormalized: string
+	aliases: string[]
+	category: FoodCategory
+	cookedGrams: number
+	defaultGrams: number
+	usageCount: number
+	lastUsedAt: Date | null
+	sourceMessageId: string | null
+	ingredients: {
+		name: string
+		grams: number
+		kcal: number
+		proteinG: number
+		fatG: number
+		carbsG: number
+		fiberG: number | null
+	}[]
+}
+
+/** The counters of an active recipe a new one takes over. */
+export interface ReplacedRecipe {
+	id: string
+	usageCount: number
+	lastUsedAt: Date | null
+}
 
 @Injectable()
 export class RecipesRepository {
@@ -113,17 +145,59 @@ export class RecipesRepository {
 		})
 	}
 
+	/** The user's active recipe of this name with its counters, inside the turn's transaction. */
+	findActiveByNameInTx(
+		{ userId, nameNormalized }: { userId: string; nameNormalized: string },
+		tx: Prisma.TransactionClient,
+	): Promise<ReplacedRecipe | null> {
+		return tx.recipe.findFirst({
+			where: { userId, nameNormalized, deletedAt: null },
+			select: { id: true, usageCount: true, lastUsedAt: true },
+		})
+	}
+
+	/**
+	 * Conflict-safe insert for the chat turn: ON CONFLICT DO NOTHING honours the partial unique index,
+	 * while a violation would abort the turn's transaction. null = the name is taken.
+	 */
+	async createIfFree(
+		{ ingredients, ...data }: NewRecipe,
+		tx: Prisma.TransactionClient,
+	): Promise<RecipeWithIngredients | null> {
+		const id = randomUUID()
+		const { count } = await tx.recipe.createMany({ data: [{ id, ...data }], skipDuplicates: true })
+		if (count === 0) return null
+		await tx.recipeIngredient.createMany({
+			data: ingredients.map((ingredient, position) => ({ recipeId: id, position, ...ingredient })),
+		})
+		return this.findActive({ userId: data.userId, id }, tx)
+	}
+
+	/** The weight of the finished dish of the user's active recipes; a deleted recipe stays as it was. */
+	async updateCookedGrams(
+		{ userId, ids, cookedGrams }: { userId: string; ids: string[]; cookedGrams: number },
+		tx: Prisma.TransactionClient,
+	): Promise<void> {
+		await tx.recipe.updateMany({
+			where: { id: { in: ids }, userId, deletedAt: null },
+			data: { cookedGrams },
+		})
+	}
+
 	/** Soft delete (a date) or restore (null); only a row in the opposite state. false = nothing matched. */
-	async setDeletedAt({
-		userId,
-		id,
-		deletedAt,
-	}: {
-		userId: string
-		id: string
-		deletedAt: Date | null
-	}): Promise<boolean> {
-		const { count } = await this.prisma.recipe.updateMany({
+	async setDeletedAt(
+		{
+			userId,
+			id,
+			deletedAt,
+		}: {
+			userId: string
+			id: string
+			deletedAt: Date | null
+		},
+		tx?: Prisma.TransactionClient,
+	): Promise<boolean> {
+		const { count } = await (tx ?? this.prisma).recipe.updateMany({
 			where: { id, userId, deletedAt: deletedAt === null ? { not: null } : null },
 			data: { deletedAt },
 		})
@@ -131,11 +205,11 @@ export class RecipesRepository {
 	}
 
 	async markUsed(
-		{ userId, id, usedAt }: { userId: string; id: string; usedAt: Date },
+		{ userId, ids, usedAt }: { userId: string; ids: string[]; usedAt: Date },
 		tx: Prisma.TransactionClient,
 	): Promise<void> {
 		await tx.recipe.updateMany({
-			where: { id, userId, deletedAt: null },
+			where: { id: { in: ids }, userId, deletedAt: null },
 			data: { usageCount: { increment: 1 }, lastUsedAt: usedAt },
 		})
 	}

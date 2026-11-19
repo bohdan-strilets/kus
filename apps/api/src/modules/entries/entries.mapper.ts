@@ -48,6 +48,8 @@ export const isNeverRememberable = (entry: EntryWithSavedFood): boolean => {
  */
 export const canRemember = (entry: EntryWithSavedFood): boolean => {
 	if (isNeverRememberable(entry)) return false
+	// a portion of a pot is saved as a recipe, whatever food it was once linked to
+	if ((entry.potId ?? null) !== null) return true
 	if (entry.myFoodId === null) return true
 	return (entry.myFood?.deletedAt ?? null) !== null
 }

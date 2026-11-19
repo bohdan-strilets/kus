@@ -27,6 +27,7 @@ const createEntry = (overrides: Partial<FoodEntry> = {}): FoodEntry =>
 		isUndetailed: false,
 		myFoodId: null,
 		recipeId: null,
+		potId: null,
 		sourceMessageId: null,
 		...overrides,
 	}) as FoodEntry
@@ -90,5 +91,40 @@ describe('toLoggedMeal', () => {
 		expect(card.entries.map(({ id }) => id)).toEqual(['created'])
 		expect(card.totals.kcal).toBe(100)
 		expect(card.mealTotalKcal).toBe(150)
+	})
+})
+
+describe('toFoodEntryResponse canRemember for a pot portion', () => {
+	const POT_ID = '0190f3a0-0000-7000-8000-000000000004'
+
+	it('offers it for a portion of a pot whose recipe is not saved', () => {
+		expect(toFoodEntryResponse(createEntry({ potId: POT_ID })).canRemember).toBe(true)
+	})
+
+	it('offers it even when the portion is still linked to a food', () => {
+		const entry = {
+			...createEntry({ potId: POT_ID, myFoodId: FOOD_ID }),
+			myFood: { deletedAt: null },
+		}
+
+		expect(toFoodEntryResponse(entry).canRemember).toBe(true)
+	})
+
+	it('hides it once its recipe is saved and active', () => {
+		const entry = {
+			...createEntry({ potId: POT_ID, recipeId: RECIPE_ID }),
+			recipe: { deletedAt: null },
+		}
+
+		expect(toFoodEntryResponse(entry).canRemember).toBe(false)
+	})
+
+	it('offers it again after the recipe was deleted', () => {
+		const entry = {
+			...createEntry({ potId: POT_ID, recipeId: RECIPE_ID }),
+			recipe: { deletedAt: new Date() },
+		}
+
+		expect(toFoodEntryResponse(entry).canRemember).toBe(true)
 	})
 })

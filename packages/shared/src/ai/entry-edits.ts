@@ -123,6 +123,11 @@ const getCorrectionErrors = (change: EntryChange, refs: ParseRefs): string[] => 
 	const entry = refs.entries.get(change.ref)
 	if (!entry)
 		return [`correct_entry: ${change.ref} is not in "Today's entries" — ${OUT_OF_CONTEXT_HINT}`]
+	if (change.recipe && !entry.pot) {
+		return [
+			`correct_entry: ${change.ref} is not a pot — recipe only changes the water or weight of an entry marked "(pot…)" in "Today's entries"`,
+		]
+	}
 	if (!change.values) return []
 	const values = getCorrectedValues(toEntryValues(entry), change)
 	const errors: string[] = []

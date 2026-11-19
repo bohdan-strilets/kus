@@ -253,6 +253,12 @@ sequenceDiagram
 - `POST /recipes/:id/log { share }` — «Додати на сьогодні»: у транзакції запис через `EntriesService.logEntries` (`sourceMessageId: null`, `source: MEMORY`, `confidence 0.9`, `recipeId`), тип прийому за локальною годиною, далі `usageCount++`, `lastUsedAt`. Порція понад 5000 г або густіша за 9,5 ккал/г → 422 `RECIPE_PORTION_INVALID`.
 - `DELETE /recipes/:id` — soft delete, 204; `POST /recipes/:id/restore` — повертає, 409 `RECIPE_NAME_TAKEN`, якщо зʼявився активний рецепт з тією ж назвою.
 
+### Каструля (варка)
+
+Страва з `log_food.items[].recipe` — «каструля»: `food_entries.recipe_draft` (JSON, тіло рецепта: інгредієнти, `waterMl` / `cookedGrams` / `servings`) і `pot_id` (одна варка; його генерує лише бекенд, модель його не бачить). Усі порції однієї варки діляться `pot_id`. `save_recipe` за `entryRef` ставить `recipeId` усім активним записам з тією ж `pot_id` і завжди пише `defaultGrams` (вага порції, яку з'їли). Рецепт з тією ж назвою заміняється: старий — soft delete, `usageCount` і `lastUsedAt` переходять новому; відповідь несе `replaced` (тост «збережено» / «оновлено»). `save_food` на порцію каструлі парсер відхиляє (`save_food: items.N is a pot portion — use save_recipe …`).
+
+Перерахунок іде за `pot_id`: `correct_entry.recipe` і `clarify` з `waterMl` міняють усі порції цієї варки; інші варки того ж рецепта не чіпаються. «Запам'ятати» на порції каструлі створює рецепт, а не продукт (`createdRecipes` у відповіді `remember`).
+
 ## Факти про тебе (`/facts`)
 
 Модуль `facts`: короткі факти про звички користувача (`UserFact`, до 120 символів, одна строка). Усі маршрути — лише власні факти (`userId` з токена), чужий, видалений чи не в потрібному стані id → 404 `FACT_NOT_FOUND`, ніколи 403.

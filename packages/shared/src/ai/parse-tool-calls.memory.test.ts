@@ -212,6 +212,24 @@ describe('parseToolCalls with the memory tools', () => {
 			)
 		})
 
+		it('rejects fromItemIndex of a pot portion, accepts a plain item', () => {
+			const potItem = {
+				...egg,
+				category: 'soup',
+				recipe: {
+					ingredients: [{ ...egg, name: 'Курка', grams: 400, fiber: null }],
+					waterMl: 3000,
+					cookedGrams: null,
+					servings: null,
+				},
+			}
+			const potLog = call('log_food', { items: [egg, potItem], mealType: null, reply: 'Записав.' })
+			expect(getErrors([potLog, fromItem({ fromItemIndex: 1 })])).toContain(
+				'save_food: foods.0 is a pot portion — use save_recipe with its entry after the user agrees',
+			)
+			expect(parseToolCalls([potLog, fromItem({ fromItemIndex: 0 })], refs).ok).toBe(true)
+		})
+
 		it('rejects per100g that cannot be real', () => {
 			expect(getErrors([fromValues({ per100g: { ...per100g, kcal: 1000 } }), reply])).toContain(
 				'save_food: per100g.kcal',

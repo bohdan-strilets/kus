@@ -30,6 +30,11 @@ const getSaveFoodValueErrors = (
 		if (food.fromItemIndex >= log.items.length) {
 			return [`${prefix} fromItemIndex ${food.fromItemIndex} is not a log_food item`]
 		}
+		if (log.items[food.fromItemIndex]?.recipe != null) {
+			return [
+				`save_food: foods.${index} is a pot portion — use save_recipe with its entry after the user agrees`,
+			]
+		}
 		return []
 	}
 	if (food.per100g === null || food.category === null) {

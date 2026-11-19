@@ -117,6 +117,12 @@ export const ErrorCodes = {
 	RECIPE_NAME_TAKEN: 'RECIPE_NAME_TAKEN',
 	/** The portion would be over 5000 g or denser than 9.5 kcal/g. */
 	RECIPE_PORTION_INVALID: 'RECIPE_PORTION_INVALID',
+	/** The chat changes the water or weight of a pot, but the entry is not a portion of one. */
+	POT_NOT_FOUND: 'POT_NOT_FOUND',
+	/** save_recipe points at an entry that is not a portion of a pot (no composition to save). */
+	RECIPE_FROM_ENTRY_INVALID: 'RECIPE_FROM_ENTRY_INVALID',
+	/** save_recipe with ingredients, but neither a portion weight nor the weight and servings of the pot. */
+	RECIPE_PORTION_UNKNOWN: 'RECIPE_PORTION_UNKNOWN',
 
 	// facts about the user
 	/** No active fact with this id for this user, or not in the state the route needs (another user's reads the same). */

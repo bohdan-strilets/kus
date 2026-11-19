@@ -13,6 +13,7 @@ import {
 	type LogFoodInput,
 	type LogMeasurementInput,
 	type MemoryActions,
+	type MessageIntent,
 	type ProgramView,
 	STATS_EMPTY_REPLY,
 	type StatsCard,
@@ -37,7 +38,13 @@ import { EntriesService } from '../entries/entries.service'
 import type { EntryWithMealType } from '../entries/entries.repository'
 import type { LogEntriesParams, MealEntryInput, NewFoodEntry } from '../entries/entries.types'
 import { MemoryService, type RelevantFoods } from '../memory/memory.service'
+import { parseRecipeDraft } from '../recipes/recipe-draft'
 import { ChatTurnMemoryService, type SavedFoodRef } from './chat-turn-memory.service'
+import {
+	ChatTurnRecipesService,
+	NO_RECIPES_BY_REF,
+	type RecipesByRef,
+} from './chat-turn-recipes.service'
 import { ProgressStatsService } from '../progress/progress-stats.service'
 import { NO_TEMPLATE_REFS, type TemplateRefIds } from '../programs/program-chat-context'
 import {
@@ -80,6 +87,8 @@ export interface TurnParams {
 	localDate: Date
 	/** The last answer of the training onboarding: stored with the turn, its five answers go to «Program». */
 	onboardingAnswer?: OnboardingAnswer
+	/** The screen the message was started from; the model reads it as a line of the context. */
+	intent?: MessageIntent | null
 }
 
 /** What an edited turn changed, and the messages whose measurement card a new value replaced. */
@@ -98,6 +107,8 @@ interface MemoryTurn {
 	actions: MemoryActions
 	foodsByRef: RelevantFoods['byRef']
 	factIdByRef: ReadonlyMap<string, string>
+	/** `e1…` → entry ids of the request: where save_recipe's entryRef points. */
+	entryIdByRef: ReadonlyMap<string, string>
 	removals: FoodRemovalRefs
 }
 
@@ -170,8 +181,11 @@ const copyEntryValues = (
 	| 'myFoodId'
 	| 'copiedFromDate'
 	| 'recipeId'
+	| 'recipeDraft'
+	| 'potId'
 > => {
 	const factor = grams / entry.grams
+	const draft = entry.potId === null ? null : parseRecipeDraft(entry.recipeDraft)
 	return {
 		kcal: entry.kcal * factor,
 		protein: entry.proteinG * factor,
@@ -184,6 +198,8 @@ const copyEntryValues = (
 		myFoodId: entry.myFoodId,
 		copiedFromDate: entry.meal.localDate,
 		recipeId: entry.recipeId,
+		// «ще тарілку»: the same pot, so a later «там було 4 л» recounts this portion too
+		...(draft && entry.potId ? { recipeDraft: draft, potId: entry.potId } : {}),
 	}
 }
 
@@ -213,6 +229,7 @@ export class ChatTurnService {
 		private readonly programProposals: ProgramProposalsService,
 		private readonly programs: ProgramsService,
 		private readonly trainingOnboarding: ChatTrainingOnboardingAnswersService,
+		private readonly turnRecipes: ChatTurnRecipesService,
 	) {}
 
 	async saveDecision(
@@ -226,6 +243,7 @@ export class ChatTurnService {
 			factRefIds = NO_FACT_REFS,
 			foodRemovals = NO_FOOD_REMOVAL_REFS,
 			templateRefIds = NO_TEMPLATE_REFS,
+			recipes = NO_RECIPES_BY_REF,
 			requestStatsAdvice,
 			turnStartedAt = Date.now(),
 		}: {
@@ -240,6 +258,8 @@ export class ChatTurnService {
 			foodRemovals?: FoodRemovalRefs
 			/** `t1…` of «Program»; omitted where the context had no program. */
 			templateRefIds?: TemplateRefIds
+			/** `r1…` of «Saved recipes» and find_food; omitted where the turn had none. */
+			recipes?: RecipesByRef
 			/** The second model call of «summary and advice»; without it a stats card is just the card. */
 			requestStatsAdvice?: RequestStatsAdvice
 			/** When the turn began (ms); the advice gets what is left of the proxy time. */
@@ -281,6 +301,7 @@ export class ChatTurnService {
 						actions: decision.memory,
 						foodsByRef: memory.byRef,
 						factIdByRef: factRefIds,
+						entryIdByRef: refIds.entries,
 						removals: foodRemovals,
 					}
 				: null
@@ -407,6 +428,7 @@ export class ChatTurnService {
 				log: decision.log,
 				memory,
 				copies,
+				recipes,
 				isFromPhoto: photo !== undefined,
 			})
 			const { entryIds } = await this.entriesService.logEntries(
@@ -415,6 +437,10 @@ export class ChatTurnService {
 			)
 			const usedFoodIds = [...new Set(entries.flatMap(({ entry }) => entry.myFoodId ?? []))]
 			await this.memoryService.markUsed({ userId, ids: usedFoodIds, usedAt: now }, tx)
+			await this.turnRecipes.markUsed(
+				{ userId, items: decision.log.items, byRef: recipes, usedAt: now },
+				tx,
+			)
 			const memoryOutcome = await this.saveMemory(
 				{ userId, message, replyId: reply.id, replyText, hasPhoto: photo !== undefined },
 				{ memoryTurn, entryIds },
@@ -508,6 +534,7 @@ export class ChatTurnService {
 				memory: memoryTurn.actions,
 				foodsByRef: memoryTurn.foodsByRef,
 				factIdByRef: memoryTurn.factIdByRef,
+				entryIdByRef: memoryTurn.entryIdByRef,
 				...memoryTurn.removals,
 				entryIds,
 				hasPhoto,
@@ -771,12 +798,14 @@ export class ChatTurnService {
 		log,
 		memory,
 		copies,
+		recipes,
 		isFromPhoto,
 	}: {
 		params: Pick<TurnParams, 'userId' | 'timezone' | 'message' | 'now' | 'localDate'>
 		log: LogFoodInput
 		memory: RelevantFoods
 		copies: ReadonlyMap<string, EntryWithMealType>
+		recipes: RecipesByRef
 		isFromPhoto: boolean
 	}): { entries: MealEntryInput[]; getEatenAt: LogEntriesParams['getEatenAt'] } {
 		const today = formatDbDate(localDate)
@@ -790,7 +819,7 @@ export class ChatTurnService {
 			return {
 				mealType: namedType ?? clockMealType,
 				localDate: toDbDate(day),
-				entry: this.toNewEntry(item, { memory, copies }, isFromPhoto),
+				entry: this.toNewEntry(item, { memory, copies, recipes }, isFromPhoto),
 			}
 		})
 		return {
@@ -807,24 +836,39 @@ export class ChatTurnService {
 	}
 
 	/**
-	 * A memory item takes its numbers from the saved food, a copy item from the earlier entry, both
-	 * scaled by the backend. A copyRef always has its entry here (loadCopySources throws otherwise).
+	 * A memory item takes its numbers from the saved food, a copy item from the earlier entry, a pot or
+	 * saved-recipe item from the recipe, all scaled by the backend. A copyRef always has its entry here
+	 * (loadCopySources throws otherwise).
 	 */
 	// mealType, date, memoryRef, copyRef, recipe and recipeRef aren't FoodEntry columns: left in the
-	// spread, Prisma would reject them (recipe and recipeRef are not carried out here yet)
+	// spread, Prisma would reject them
 	private toNewEntry(
 		{
 			memoryRef,
 			copyRef,
 			mealType: _mealType,
 			date: _date,
-			recipe: _recipe,
-			recipeRef: _recipeRef,
+			recipe,
+			recipeRef,
 			...item
 		}: AiFoodItem,
-		{ memory, copies }: { memory: RelevantFoods; copies: ReadonlyMap<string, EntryWithMealType> },
+		{
+			memory,
+			copies,
+			recipes,
+		}: {
+			memory: RelevantFoods
+			copies: ReadonlyMap<string, EntryWithMealType>
+			recipes: RecipesByRef
+		},
 		fromPhoto: boolean,
 	): NewFoodEntry {
+		const recipeEntry = this.turnRecipes.toRecipeEntry(
+			{ ...item, myFoodId: null, fromPhoto },
+			{ recipe, recipeRef },
+			recipes,
+		)
+		if (recipeEntry) return recipeEntry
 		const copied = copyRef === null ? undefined : copies.get(copyRef)
 		if (copied) return { ...item, fromPhoto, ...copyEntryValues(copied, item.grams) }
 		const food = memoryRef === null ? undefined : memory.byRef.get(memoryRef)

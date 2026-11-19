@@ -15,6 +15,7 @@ import {
 	type MeasurementsContext,
 	type FoodRefContext,
 	type MemoryFoodContext,
+	type MessageIntent,
 	type RecentMeasurementContext,
 	type RecipeContext,
 	shiftDate,
@@ -56,6 +57,8 @@ interface BuildContextParams {
 	userId: string
 	timezone: string
 	addressForm?: AddressForm
+	/** The screen the message was started from; no line in the context when omitted or null. */
+	intent?: MessageIntent | null
 	message: MessageWithAttachments
 	/** The words of the user's message; photo-only has none. */
 	text?: string
@@ -183,6 +186,7 @@ export class ChatContextService {
 		userId,
 		timezone,
 		addressForm,
+		intent,
 		message,
 		text = '',
 		now,
@@ -301,6 +305,7 @@ export class ChatContextService {
 			context: {
 				localTime: formatLocalTime(now, timezone),
 				...(addressForm ? { addressForm } : {}),
+				...(intent ? { intent } : {}),
 				dayTotals: summary.totals,
 				meals: summary.meals,
 				...edit,

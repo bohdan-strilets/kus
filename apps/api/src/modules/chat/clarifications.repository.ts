@@ -27,16 +27,19 @@ export class ClarificationsRepository {
 		await tx.clarification.create({
 			data: {
 				...data,
-				options: options.map(({ label, kcal, protein, fat, carbs, fiber, grams, name }) => ({
-					label,
-					kcal,
-					protein,
-					fat,
-					carbs,
-					fiber,
-					grams,
-					name,
-				})),
+				options: options.map(
+					({ label, kcal, protein, fat, carbs, fiber, grams, name, waterMl }) => ({
+						label,
+						kcal,
+						protein,
+						fat,
+						carbs,
+						fiber,
+						grams,
+						name,
+						waterMl,
+					}),
+				),
 				entries: { create: entryIds.map((foodEntryId) => ({ foodEntryId })) },
 			},
 		})

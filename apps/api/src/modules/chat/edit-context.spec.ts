@@ -95,3 +95,18 @@ describe('buildEditContext valuesBefore', () => {
 		])
 	})
 })
+
+describe('buildEditContext pot', () => {
+	const build = (entries: Active) =>
+		buildEditContext({ active: entries, deleted: [], clarifications: [], today: '2026-10-18' })
+
+	it('marks a portion of a pot by whether its recipe is saved, and a plain entry not at all', () => {
+		const { entries } = build([
+			toEntry('plain'),
+			toEntry('unsaved', { potId: 'pot-1', recipeId: null }),
+			toEntry('saved', { potId: 'pot-1', recipeId: 'recipe-1' }),
+		])
+
+		expect(entries.map(({ pot }) => pot)).toEqual([undefined, 'unsaved', 'saved'])
+	})
+})

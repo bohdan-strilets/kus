@@ -19,6 +19,7 @@ import { EntriesService } from '../entries/entries.service'
 import { FactsService } from '../facts/facts.service'
 import { MyFoodsService } from '../memory/my-foods.service'
 import { toNewChatFood } from '../memory/my-foods.utils'
+import { ChatTurnRecipesService } from './chat-turn-recipes.service'
 
 /** A food the turn saved or updated; only live in the response of the turn. */
 export interface SavedFoodRef {
@@ -40,6 +41,8 @@ export interface MemoryTurnParams {
 	foodsByRef: ReadonlyMap<string, MyFood>
 	/** `f1…` → the ids of the facts shown to the model in this request. */
 	factIdByRef: ReadonlyMap<string, string>
+	/** `e1…` → the ids of today's entries shown in this request: where save_recipe's entryRef points. */
+	entryIdByRef: ReadonlyMap<string, string>
 	/** `m…` of «Foods to remove» → the food the previous reply asked about. */
 	pendingFoodsByRef: ReadonlyMap<string, MyFood>
 	/** `g1…` of «Foods forgotten today» → the food. */
@@ -75,6 +78,7 @@ export class ChatTurnMemoryService {
 		private readonly facts: FactsService,
 		private readonly entriesService: EntriesService,
 		private readonly ai: AiService,
+		private readonly turnRecipes: ChatTurnRecipesService,
 	) {}
 
 	/** Texts and names never reach the log: counts only. */
@@ -87,19 +91,33 @@ export class ChatTurnMemoryService {
 		const forgotten = await this.forget(params, tx)
 		const factNotice = await this.saveFact(params, tx)
 		const savedFoods = await this.saveFoods(params, tx)
+		const savedRecipes = await this.saveRecipes(params, tx)
 		const { forgotten: removed, notice: removeNotice } = await this.forgetFoods(params, tx)
 		const proposeNotice = await this.proposeFoodRemovals(params, tx)
 		const restore = await this.restoreFoods(params, tx)
 		await this.recordFoodCalls(params, { removed, restored: restore.restored }, tx)
 		const forgottenFoods = removed.map(({ id, name }) => ({ id, name }))
 		this.logger.log(
-			`Memory turn user=${userId} foods=${savedFoods.length}/${memory.foods.length} fact=${memory.fact ? 1 : 0} forgotten=${forgotten}/${memory.forgets.length} foodsRemoved=${forgottenFoods.length}/${memory.foodRemovals.length} foodsRestored=${restore.restored.length}/${memory.foodRestores.length}`,
+			`Memory turn user=${userId} foods=${savedFoods.length}/${memory.foods.length} fact=${memory.fact ? 1 : 0} forgotten=${forgotten}/${memory.forgets.length} foodsRemoved=${forgottenFoods.length}/${memory.foodRemovals.length} foodsRestored=${restore.restored.length}/${memory.foodRestores.length} recipes=${savedRecipes}/${memory.recipes.length}`,
 		)
 		return {
 			savedFoods,
 			forgottenFoods,
 			notice: factNotice ?? removeNotice ?? proposeNotice ?? restore.notice,
 		}
+	}
+
+	/** save_recipe: counts only; the recipes module throws when the recipe cannot be saved. */
+	private async saveRecipes(
+		{ userId, messageId, memory, entryIdByRef }: MemoryTurnParams,
+		tx: Prisma.TransactionClient,
+	): Promise<number> {
+		if (memory.recipes.length === 0) return 0
+		const saved = await this.turnRecipes.save(
+			{ userId, messageId, recipes: memory.recipes, entryIdByRef },
+			tx,
+		)
+		return saved.length
 	}
 
 	/** The parser caps the calls too; the service keeps its own guard so a bypassed parser cannot delete more. */

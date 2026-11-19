@@ -1,8 +1,9 @@
 import { Injectable } from '@nestjs/common'
-import type { EntryEdits } from '@kus/shared'
+import type { EntryChange, EntryEdits } from '@kus/shared'
 
 import type { Prisma } from '../../generated/prisma/client'
 import { EntryEditsService } from '../entries/entry-edits.service'
+import { RecipesPotService } from '../recipes/recipes-pot.service'
 import { type WorkoutRefIds, WorkoutsTurnService } from '../workouts/workouts-turn.service'
 import { ClarificationsRepository } from './clarifications.repository'
 import { ClarificationsService } from './clarifications.service'
@@ -37,6 +38,7 @@ export class ChatEditsService {
 		private readonly clarifications: ClarificationsService,
 		private readonly clarificationsRepository: ClarificationsRepository,
 		private readonly workoutsTurn: WorkoutsTurnService,
+		private readonly recipesPot: RecipesPotService,
 	) {}
 
 	async applyEdits(
@@ -80,6 +82,7 @@ export class ChatEditsService {
 		const deletedIds = entryDeletions.map((ref) => toId(refIds.entries, ref))
 		const messageId = userMessageId
 		const corrected = await this.entryEdits.correctEntries({ userId, corrections, messageId }, tx)
+		const potCorrected = await this.correctPots({ userId, messageId, corrections }, tx)
 		const deleted = await this.entryEdits.deleteEntries({ userId, ids: deletedIds, messageId }, tx)
 		// the entry changed in words: its old options no longer fit (answered ones are not OPEN)
 		const dismissedReplyIds = await this.clarificationsRepository.dismissOpenClarifications(
@@ -105,8 +108,34 @@ export class ChatEditsService {
 			)),
 		]
 		return {
-			sourceMessageIds: [...new Set([...corrected, ...deleted, ...restored, ...workoutMessages])],
+			sourceMessageIds: [
+				...new Set([...corrected, ...potCorrected, ...deleted, ...restored, ...workoutMessages]),
+			],
 			replyIds: [...new Set([...replyIds, ...dismissedReplyIds])],
 		}
+	}
+
+	/**
+	 * «Там було 4 л»: the water or weight of the pot an entry came from; the backend recounts the pot and
+	 * every portion of it. Returns the source messages of the portions it changed.
+	 */
+	private async correctPots(
+		{
+			userId,
+			messageId,
+			corrections,
+		}: { userId: string; messageId: string; corrections: { id: string; change: EntryChange }[] },
+		tx: Prisma.TransactionClient,
+	): Promise<string[]> {
+		const messageIds: string[] = []
+		for (const { id, change } of corrections) {
+			if (change.recipe === null) continue
+			const { sourceMessageIds } = await this.recipesPot.correctPot(
+				{ userId, entryId: id, correction: change.recipe, messageId },
+				tx,
+			)
+			messageIds.push(...sourceMessageIds)
+		}
+		return messageIds
 	}
 }

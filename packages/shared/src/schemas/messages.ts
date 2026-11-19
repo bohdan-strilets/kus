@@ -15,6 +15,7 @@ import {
 import { dayVerdictSchema } from './day-verdict.js'
 import { factProposalSchema } from './facts.js'
 import { measurementCardSchema } from './measurements.js'
+import { messageIntentSchema } from './message-intent.js'
 import { PHOTOS_PER_MESSAGE_LIMIT } from './photo-limits.js'
 import { programCardSchema, programCardStateSchema, programViewSchema } from './programs.js'
 import { statsCardSchema } from './stats-card.js'
@@ -76,6 +77,8 @@ export const sendMessageRequestSchema = z
 		 * instead of the day it was written. Ignored for a new message and a finished turn.
 		 */
 		sendNow: z.boolean().optional(),
+		/** The screen the message was started from («Новий рецепт»); null or absent = the plain chat. */
+		intent: messageIntentSchema.nullable().optional(),
 	})
 	.refine(
 		(request) =>

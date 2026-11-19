@@ -94,11 +94,11 @@ describe('RecipesService.logPortion', () => {
 			confidence: RECIPE_ENTRY_CONFIDENCE,
 		})
 		const [usage, usageTx] = markUsed.mock.calls[0] as [
-			{ userId: string; id: string; usedAt: Date },
+			{ userId: string; ids: string[]; usedAt: Date },
 			unknown,
 		]
 		expect(usageTx).toBe(TX)
-		expect(usage).toMatchObject({ userId: USER_ID, id: RECIPE_ID })
+		expect(usage).toMatchObject({ userId: USER_ID, ids: [RECIPE_ID] })
 		expect(usage.usedAt).toBeInstanceOf(Date)
 		expect(response.entry).toBe(LOGGED_ENTRY)
 		expect(response.mealType).toBe('LUNCH')

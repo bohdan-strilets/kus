@@ -53,6 +53,7 @@ const toEntryContext = (
 	source: entry.source,
 	isEdited: entry.isEdited,
 	...(entry.isEdited && was ? { was } : {}),
+	...(entry.potId ? { pot: entry.recipeId ? ('saved' as const) : ('unsaved' as const) } : {}),
 })
 
 /**

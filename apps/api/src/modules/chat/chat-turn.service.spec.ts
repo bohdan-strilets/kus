@@ -10,134 +10,19 @@ import {
 import type { TemplateRefIds } from '../programs/program-chat-context'
 import { STATS_ADVICE_FAILED_REPLY } from './chat.constants'
 import { TurnCopySourceMissingException, TurnDateOutOfRangeException } from './chat.exceptions'
-import { ChatTurnService } from './chat-turn.service'
+import {
+	createService,
+	getLogged,
+	NOW,
+	TODAY,
+	toItem,
+	toLogDecision,
+} from './chat-turn.service.test-utils'
 
 beforeEach(() => {
 	vi.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined)
 	vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined)
 })
-
-const TIMEZONE = 'Europe/Warsaw'
-// 14:20 on Sunday 2026-10-18 in Warsaw (UTC+2): lunch by the clock
-const NOW = new Date('2026-10-18T12:20:00Z')
-const TODAY = new Date('2026-10-18T00:00:00Z')
-
-const toItem = (name: string, overrides: Record<string, unknown> = {}) => ({
-	name,
-	grams: 100,
-	quantity: null,
-	kcal: 100,
-	protein: 1,
-	fat: 1,
-	carbs: 1,
-	fiber: null,
-	category: 'other',
-	source: 'ESTIMATE',
-	confidence: 0.8,
-	assumption: null,
-	memoryRef: null,
-	copyRef: null,
-	mealType: null,
-	date: null,
-	...overrides,
-})
-
-const toLogDecision = (items: ReturnType<typeof toItem>[], log: Record<string, unknown> = {}) =>
-	({
-		kind: 'log',
-		log: { items, mealType: null, date: null, reply: 'ok', ...log },
-		clarifications: [],
-		edits: { corrections: [], deletions: [], restorations: [], resolutions: [] },
-		measurements: [],
-		measurementDeletions: [],
-		workouts: [],
-		memory: NO_MEMORY_ACTIONS,
-	}) as never
-
-const createService = () => {
-	const logEntries = vi.fn().mockResolvedValue({ meals: [], entryIds: [] })
-	const remove = vi.fn().mockResolvedValue([])
-	const record = vi.fn().mockResolvedValue([])
-	const build = vi.fn().mockResolvedValue(null)
-	const close = vi.fn().mockResolvedValue({ dayCard: null, isLogged: false })
-	const buildStats = vi.fn().mockResolvedValue(null)
-	const completeTurn = vi.fn().mockResolvedValue({ id: 'reply-1' })
-	const setDayCard = vi.fn().mockResolvedValue(undefined)
-	const findActiveEntriesByIds = vi.fn().mockResolvedValue([])
-	const recordForTurn = vi.fn()
-	const logWorkouts = vi.fn().mockResolvedValue({ sourceMessageIds: [], hasNewRecord: false })
-	const buildProposalCard = vi.fn().mockResolvedValue({ status: 'UNCHANGED' })
-	const resolveTemplateIds = vi.fn().mockResolvedValue(new Set())
-	const getActiveView = vi.fn().mockResolvedValue(null)
-	const service = new ChatTurnService(
-		{ $transaction: (callback: (tx: unknown) => unknown) => callback({}) } as never,
-		{ completeTurn, setDayCard } as never,
-		{ createClarification: vi.fn() } as never,
-		{ applyEdits: vi.fn().mockResolvedValue({ sourceMessageIds: [], replyIds: [] }) } as never,
-		{ logEntries, findActiveEntriesByIds } as never,
-		{ markUsed: vi.fn() } as never,
-		{ remove, record } as never,
-		{ recordForTurn } as never,
-		{ build } as never,
-		{ close } as never,
-		{ build: buildStats } as never,
-		{ logWorkouts } as never,
-		{ apply: vi.fn() } as never,
-		{ buildProposalCard, resolveTemplateIds } as never,
-		{ getActiveView } as never,
-		{ storeAnswer: vi.fn(), offerAfterWorkout: vi.fn() } as never,
-	)
-	const save = (
-		decision: never,
-		copyRefIds: Map<string, string> = new Map(),
-		templateRefIds?: TemplateRefIds,
-		requestStatsAdvice?: (card: never, deadlineMs: number) => Promise<string | null>,
-		turnStartedAt?: number,
-	) =>
-		service.saveDecision(
-			{
-				userId: 'u1',
-				timezone: TIMEZONE,
-				message: { id: 'm1' } as never,
-				now: NOW,
-				localDate: TODAY,
-			},
-			decision,
-			{
-				memory: { byRef: new Map(), context: [] },
-				refIds: {},
-				copyRefIds,
-				...(templateRefIds ? { templateRefIds } : {}),
-				...(requestStatsAdvice ? { requestStatsAdvice } : {}),
-				...(turnStartedAt === undefined ? {} : { turnStartedAt }),
-			} as never,
-		)
-	return {
-		save,
-		logEntries,
-		remove,
-		record,
-		build,
-		completeTurn,
-		close,
-		buildStats,
-		setDayCard,
-		findActiveEntriesByIds,
-		recordForTurn,
-		buildProposalCard,
-		resolveTemplateIds,
-		getActiveView,
-		logWorkouts,
-	}
-}
-
-const getLogged = (logEntries: ReturnType<typeof vi.fn>) => {
-	const params: unknown = logEntries.mock.calls[0]?.[0]
-	return params as {
-		entries: { mealType: string; localDate: Date; entry: Record<string, unknown> }[]
-		getEatenAt: (meal: { type: string; localDate: Date }) => Date
-	}
-}
 
 describe('ChatTurnService.saveDecision food days', () => {
 	it('puts an item without a date on today and picks its meal by the clock', async () => {

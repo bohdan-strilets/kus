@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common'
 import {
+	type MessageIntent,
 	type OnboardingAnswerRequest,
 	type SendMessageResponse,
 	TRAINING_ONBOARDING_LAST_QUESTION,
@@ -52,6 +53,8 @@ export interface SendMessageParams {
 	onboardingAnswer?: OnboardingAnswerRequest
 	/** A resend of a FAILED message is logged now, not on the day of its old createdAt. */
 	sendNow?: boolean
+	/** The screen the message was started from; null = the plain chat. */
+	intent?: MessageIntent | null
 }
 
 /** One chat turn: user message → AI → entries / questions / answer, idempotent by clientMessageId. */
@@ -111,7 +114,17 @@ export class ChatService {
 		const now = existing ? message.createdAt : new Date()
 		const localDate = getLocalDate(now, timezone)
 		const edited = await this.runTurn(
-			{ userId, timezone, addressForm, message, text, photo, now, localDate },
+			{
+				userId,
+				timezone,
+				addressForm,
+				message,
+				text,
+				photo,
+				now,
+				localDate,
+				intent: params.intent,
+			},
 			// the daily budget is spent on the day the model is actually called
 			getLocalDate(new Date(), timezone),
 			route,
@@ -324,6 +337,7 @@ export class ChatService {
 				factRefIds,
 				foodRemovals: removals.refs,
 				templateRefIds,
+				recipes: recipes.byRef,
 				turnStartedAt,
 				requestStatsAdvice:
 					decision.kind === 'stats' && decision.advice

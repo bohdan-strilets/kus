@@ -63,9 +63,13 @@ const getSaveRecipeErrorsOf = (
 		return [`${prefix} needs exactly one of entryRef or recipe`]
 	}
 	if (entryRef !== null) {
-		return refs.entries.has(entryRef)
+		const entry = refs.entries.get(entryRef)
+		if (!entry) return [`${prefix}.entryRef "${entryRef}" is not in "Today's entries"`]
+		return entry.pot
 			? []
-			: [`${prefix}.entryRef "${entryRef}" is not in "Today's entries"`]
+			: [
+					`${prefix}.entryRef "${entryRef}" is not a pot — only an entry marked "(pot…)" in "Today's entries" can be saved this way; send recipe with the ingredients instead`,
+				]
 	}
 	if (body === null) return []
 	// the portion of a saved recipe is never guessed by the backend: the model says it, or it is the

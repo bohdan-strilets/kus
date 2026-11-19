@@ -120,7 +120,7 @@ export class RecipesService {
 				},
 				tx,
 			)
-			await this.recipesRepository.markUsed({ userId, id, usedAt: now }, tx)
+			await this.recipesRepository.markUsed({ userId, ids: [id], usedAt: now }, tx)
 			const meal = meals[0]
 			const entry = meal?.entries[0]
 			if (!meal || !entry) throw new Error('Recipe portion was not logged')
@@ -128,6 +128,15 @@ export class RecipesService {
 		})
 		this.logger.log(`Recipe portion logged user=${userId} recipe=${id} share=${share}`)
 		return response
+	}
+
+	/** Portions of these recipes were eaten again from the chat: the counters go up in the turn's transaction. */
+	async markUsed(
+		{ userId, ids, usedAt }: { userId: string; ids: string[]; usedAt: Date },
+		tx: Prisma.TransactionClient,
+	): Promise<void> {
+		if (ids.length === 0) return
+		await this.recipesRepository.markUsed({ userId, ids, usedAt }, tx)
 	}
 
 	async remove(userId: string, id: string): Promise<void> {

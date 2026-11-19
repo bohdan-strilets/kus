@@ -52,6 +52,11 @@ export interface TodayEntryContext {
 	isEdited: boolean
 	/** Only for an edited entry whose original values are known. */
 	was?: EntryWasContext
+	/**
+	 * A portion of a pot cooked at home (log_food with recipe): `unsaved` until save_recipe ran,
+	 * then `saved`. Only such an entry can be saved as a recipe or have its pot corrected.
+	 */
+	pot?: 'unsaved' | 'saved'
 }
 
 export type DeletedEntryContext = Pick<TodayEntryContext, 'ref' | 'name' | 'grams' | 'kcal'>
@@ -105,8 +110,16 @@ const formatChangedMarker = (entry: TodayEntryContext): string => {
 	return was === '' ? CHANGED_MARKER : ` (changed after logging; was: ${was})`
 }
 
+const POT_MARKERS: Readonly<Record<NonNullable<TodayEntryContext['pot']>, string>> = {
+	unsaved: ' (pot, recipe not saved)',
+	saved: ' (pot, recipe saved)',
+}
+
+const formatPotMarker = (entry: TodayEntryContext): string =>
+	entry.pot ? POT_MARKERS[entry.pot] : ''
+
 const formatEntry = (entry: TodayEntryContext): string =>
-	`- ${entry.ref} ${entry.mealType}${entry.date ? ` ${entry.date}` : ''} "${entry.name}": ${round(entry.grams)} g, ${round(entry.kcal)} kcal, P ${round(entry.protein)} F ${round(entry.fat)} C ${round(entry.carbs)}${formatChangedMarker(entry)}`
+	`- ${entry.ref} ${entry.mealType}${entry.date ? ` ${entry.date}` : ''} "${entry.name}": ${round(entry.grams)} g, ${round(entry.kcal)} kcal, P ${round(entry.protein)} F ${round(entry.fat)} C ${round(entry.carbs)}${formatPotMarker(entry)}${formatChangedMarker(entry)}`
 
 const formatClarification = (clarification: OpenClarificationContext): string => {
 	const options = clarification.options

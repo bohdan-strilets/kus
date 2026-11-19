@@ -1,6 +1,7 @@
 // Builds the model input: static prompt (cacheable) + the chat of the day (cacheable) + day/memory
 // context + the message.
 import type { AddressForm, FoodCategory, MealType, MeasurementKind } from '../schemas/enums.js'
+import type { MessageIntent } from '../schemas/message-intent.js'
 import { getWeekday, type LoggableDayLabel } from './dates.js'
 import {
 	estimateHistoryTokens,
@@ -117,6 +118,8 @@ export interface FoodParseContext {
 	localTime: string
 	/** The gender forms the user chose; the line is always there when it is set. */
 	addressForm?: AddressForm
+	/** The screen of the app this message was started from; no line when omitted or null. */
+	intent?: MessageIntent | null
 	dayTotals: MacroTotals
 	meals: DayMealContext[]
 	/** Today's active entries, oldest first: the newest MAX_CONTEXT_ENTRIES. */
@@ -273,6 +276,13 @@ const ADDRESS_FORM_LABELS: Readonly<Record<AddressForm, string>> = {
 const formatAddressForm = (form: AddressForm | undefined): string[] =>
 	form === undefined ? [] : [`Address form: ${ADDRESS_FORM_LABELS[form]}.`]
 
+const INTENT_LABELS: Readonly<Record<MessageIntent, string>> = {
+	new_recipe: '«Новий рецепт»',
+}
+
+const formatIntent = (intent: MessageIntent | null | undefined): string[] =>
+	intent ? [`This message comes from ${INTENT_LABELS[intent]}.`] : []
+
 export const formatContext = (context: FoodParseContext): string => {
 	const meals =
 		context.meals.length === 0
@@ -288,6 +298,7 @@ export const formatContext = (context: FoodParseContext): string => {
 	return [
 		`Local time: ${context.localTime}.`,
 		...formatAddressForm(context.addressForm),
+		...formatIntent(context.intent),
 		`Eaten today: ${formatMacros(context.dayTotals)}.`,
 		...meals,
 		...formatEditContext(context),

@@ -17,6 +17,7 @@ const pot: TodayEntryContext = {
 	category: 'soup',
 	source: 'ESTIMATE',
 	isEdited: false,
+	pot: 'unsaved',
 }
 
 const refs: ParseRefs = {
@@ -210,6 +211,21 @@ describe('save_recipe', () => {
 		expect(errorsOf([saveRecipe({ entryRef: 'e7' }), reply])).toContain('"e7" is not in')
 	})
 
+	it('rejects an entryRef of an entry that is not a pot, with a hint', () => {
+		const plain: TodayEntryContext = { ...pot, ref: 'e2', pot: undefined }
+		const plainRefs: ParseRefs = { ...refs, entries: new Map([[plain.ref, plain]]) }
+		const result = parseToolCalls([saveRecipe({ entryRef: 'e2' }), reply], plainRefs)
+		expect(result.ok).toBe(false)
+		if (result.ok) return
+		expect(result.errors.join(' | ')).toContain('"e2" is not a pot')
+	})
+
+	it('accepts the entryRef of a pot whose recipe is saved (the new one replaces it)', () => {
+		const saved: TodayEntryContext = { ...pot, pot: 'saved' }
+		const savedRefs: ParseRefs = { ...refs, entries: new Map([[saved.ref, saved]]) }
+		expect(parseToolCalls([saveRecipe({ entryRef: 'e1' }), reply], savedRefs).ok).toBe(true)
+	})
+
 	it('rejects a malformed entryRef', () => {
 		expect(errorsOf([saveRecipe({ entryRef: 'm1' }), reply])).toContain('entryRef')
 	})
@@ -241,6 +257,15 @@ describe('correct_entry recipe', () => {
 
 	it('takes the cooked weight of the pot', () => {
 		expect(parseToolCalls([correct({ recipe: { cookedGrams: 3000 } }), reply], refs).ok).toBe(true)
+	})
+
+	it('rejects the pot correction of an entry that is not a pot', () => {
+		const plain: TodayEntryContext = { ...pot, pot: undefined }
+		const plainRefs: ParseRefs = { ...refs, entries: new Map([[plain.ref, plain]]) }
+		const result = parseToolCalls([correct({ recipe: { waterMl: 4000 } }), reply], plainRefs)
+		expect(result.ok).toBe(false)
+		if (result.ok) return
+		expect(result.errors.join(' | ')).toContain('e1 is not a pot')
 	})
 
 	it('rejects an empty recipe', () => {

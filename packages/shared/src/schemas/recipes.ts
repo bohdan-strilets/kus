@@ -80,6 +80,7 @@ export const logRecipePortionResponseSchema = z.object({
 export type LogRecipePortionResponse = z.infer<typeof logRecipePortionResponseSchema>
 
 export {
+	RECIPE_COOKED_GRAMS_MAX,
 	recipeBodySchema,
 	recipeDraftSchema,
 	recipeIngredientInputSchema,

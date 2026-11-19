@@ -12,6 +12,7 @@ import { paginate, type PaginatedResult } from '../../common/pagination'
 import { type MyFood, Prisma } from '../../generated/prisma/client'
 import { PrismaService } from '../../prisma'
 import { EntriesService } from '../entries/entries.service'
+import { RecipesSaveService, type SavedRecipe } from '../recipes/recipes-save.service'
 import { MemoryRepository } from './memory.repository'
 import { MyFoodExistsException, MyFoodNotFoundException } from './my-foods.exceptions'
 import { toMyFoodResponse } from './my-foods.mapper'
@@ -43,6 +44,7 @@ export class MyFoodsService {
 		private readonly prisma: PrismaService,
 		private readonly memoryRepository: MemoryRepository,
 		private readonly entriesService: EntriesService,
+		private readonly recipesSave: RecipesSaveService,
 	) {}
 
 	async list(
@@ -205,7 +207,8 @@ export class MyFoodsService {
 	/**
 	 * Saves the entries' foods and links the entries to them. All or nothing: an entry that isn't
 	 * the user's active one fails the request with nothing written. A name that is saved already
-	 * (or comes earlier in the request) is skipped, not an error.
+	 * (or comes earlier in the request) is skipped, not an error. A portion of a pot is saved as a
+	 * recipe (the same name replaces the old recipe, as in the chat).
 	 */
 	async rememberEntries(userId: string, entryIds: string[]): Promise<RememberEntriesResponse> {
 		let response: RememberEntriesResponse
@@ -226,9 +229,25 @@ export class MyFoodsService {
 		return this.prisma.$transaction(async (tx) => {
 			const entries = await this.entriesService.getRememberableEntries(userId, entryIds, tx)
 			const created: MyFood[] = []
+			const createdRecipes: SavedRecipe[] = []
 			const skipped: RememberEntriesResponse['skipped'] = []
 			const takenNames = new Set<string>()
 			for (const entry of entries) {
+				// a portion of a pot is a recipe, not a food: its composition is what is worth keeping
+				if (entry.potId) {
+					createdRecipes.push(
+						await this.recipesSave.saveFromEntry(
+							{
+								userId,
+								entryId: entry.id,
+								identity: { name: entry.name, aliases: [], category: entry.category },
+								messageId: null,
+							},
+							tx,
+						),
+					)
+					continue
+				}
 				const data = toNewMyFood(entry)
 				const isTaken =
 					takenNames.has(data.nameNormalized) ||
@@ -245,7 +264,7 @@ export class MyFoodsService {
 				await this.entriesService.linkMyFood({ userId, entryId: entry.id, myFoodId: food.id }, tx)
 				created.push(food)
 			}
-			return { created: created.map(toMyFoodResponse), skipped }
+			return { created: created.map(toMyFoodResponse), createdRecipes, skipped }
 		})
 	}
 

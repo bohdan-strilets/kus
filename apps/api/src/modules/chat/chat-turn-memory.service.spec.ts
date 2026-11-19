@@ -13,6 +13,7 @@ import type { EntriesService } from '../entries/entries.service'
 import type { FactsService } from '../facts/facts.service'
 import type { MyFoodsService } from '../memory/my-foods.service'
 import { ChatTurnMemoryService, type MemoryTurnParams } from './chat-turn-memory.service'
+import type { ChatTurnRecipesService } from './chat-turn-recipes.service'
 
 const tx = {} as Prisma.TransactionClient
 const USER_ID = 'user-1'
@@ -30,7 +31,13 @@ const removals = (count: number, confirmed: boolean): MemoryActions['foodRemoval
 	Array.from({ length: count }, (_, index) => ({ ref: refOf(index + 1), confirmed }))
 
 const setup = (forgetFromChat: (id: string) => boolean = () => true) => {
+	const recipes = {
+		save: vi.fn().mockResolvedValue([{ id: 'recipe-1', name: 'Суп', replaced: false }]),
+	}
+	const findActiveEntriesByIds = vi.fn().mockResolvedValue([])
+	const saveFromChat = vi.fn()
 	const myFoods = {
+		saveFromChat,
 		proposeRemovalFromChat: vi.fn().mockResolvedValue(undefined),
 		forgetFromChat: vi.fn(({ id }: { id: string }) => Promise.resolve(forgetFromChat(id))),
 		restoreFromChat: vi.fn().mockResolvedValue('restored'),
@@ -39,8 +46,9 @@ const setup = (forgetFromChat: (id: string) => boolean = () => true) => {
 	const service = new ChatTurnMemoryService(
 		myFoods as unknown as MyFoodsService,
 		{} as FactsService,
-		{} as EntriesService,
+		{ findActiveEntriesByIds, linkMyFood: vi.fn() } as unknown as EntriesService,
 		ai as unknown as AiService,
+		recipes as unknown as ChatTurnRecipesService,
 	)
 	const run = (overrides: Partial<MemoryTurnParams>) =>
 		service.apply(
@@ -50,6 +58,7 @@ const setup = (forgetFromChat: (id: string) => boolean = () => true) => {
 				memory: NO_MEMORY_ACTIONS,
 				foodsByRef: new Map(),
 				factIdByRef: new Map(),
+				entryIdByRef: new Map(),
 				pendingFoodsByRef: new Map(),
 				forgottenFoodsByRef: new Map(),
 				previousUserMessageId: PREVIOUS_MESSAGE_ID,
@@ -59,7 +68,7 @@ const setup = (forgetFromChat: (id: string) => boolean = () => true) => {
 			},
 			tx,
 		)
-	return { myFoods, run }
+	return { myFoods, run, recipes, findActiveEntriesByIds }
 }
 
 describe('ChatTurnMemoryService forget_food', () => {
@@ -165,5 +174,36 @@ describe('ChatTurnMemoryService forget_food', () => {
 
 		expect(result.forgottenFoods).toEqual([{ id: 'food-1', name: 'Food 1' }])
 		expect(result.notice).toBe(FOOD_REMOVE_FAILED_NOTICE)
+	})
+})
+
+describe('ChatTurnMemoryService save_recipe', () => {
+	const recipe = {
+		name: 'Суп',
+		aliases: [],
+		category: 'soup' as const,
+		entryRef: 'e1',
+		recipe: null,
+		portionGrams: null,
+	}
+
+	it('hands the recipes and the refs of the request to the recipes service', async () => {
+		const { run, recipes } = setup()
+		const entryIdByRef = new Map([['e1', 'entry-1']])
+
+		await run({ memory: { ...NO_MEMORY_ACTIONS, recipes: [recipe] }, entryIdByRef })
+
+		expect(recipes.save).toHaveBeenCalledWith(
+			{ userId: USER_ID, messageId: 'message-1', recipes: [recipe], entryIdByRef },
+			tx,
+		)
+	})
+
+	it('does not touch the recipes service without a save_recipe', async () => {
+		const { run, recipes } = setup()
+
+		await run({})
+
+		expect(recipes.save).not.toHaveBeenCalled()
 	})
 })

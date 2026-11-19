@@ -121,6 +121,10 @@ export const rememberSkipReasonSchema = z.enum(['exists'])
 
 export const rememberEntriesResponseSchema = z.object({
 	created: z.array(myFoodResponseSchema),
+	/** Entries of a pot become a recipe, not a food. */
+	createdRecipes: z
+		.array(z.object({ id: z.uuid(), name: z.string(), replaced: z.boolean() }))
+		.optional(),
 	skipped: z.array(z.object({ entryId: z.uuid(), reason: rememberSkipReasonSchema })),
 })
 

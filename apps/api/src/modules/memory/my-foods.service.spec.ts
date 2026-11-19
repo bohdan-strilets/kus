@@ -32,6 +32,7 @@ describe('MyFoodsService.saveFromChat', () => {
 			{} as never,
 			{ createFoodIfFree } as unknown as MemoryRepository,
 			{} as never,
+			{} as never,
 		)
 
 		await service.saveFromChat({ userId: USER_ID, data: DATA, sourceMessageId: 'm1' }, TX)
@@ -44,7 +45,12 @@ describe('MyFoodsService.saveFromChat', () => {
 })
 
 const makeService = (repository: Partial<Record<keyof MemoryRepository, unknown>>) =>
-	new MyFoodsService({} as never, repository as unknown as MemoryRepository, {} as never)
+	new MyFoodsService(
+		{} as never,
+		repository as unknown as MemoryRepository,
+		{} as never,
+		{} as never,
+	)
 
 describe('MyFoodsService.forgetFromChat', () => {
 	it('deletes only through the previous message and the time window', async () => {
@@ -142,6 +148,7 @@ describe('MyFoodsService.rememberEntries', () => {
 		isUndetailed: false,
 		myFoodId: null,
 		recipeId: null,
+		potId: null,
 		myFood: null,
 		recipe: null,
 		...overrides,
@@ -170,10 +177,90 @@ describe('MyFoodsService.rememberEntries', () => {
 			prisma as never,
 			{ findActiveFoodByName } as unknown as MemoryRepository,
 			entriesService,
+			{} as never,
 		)
 
 		const response = await service.rememberEntries(USER_ID, ['linked', 'rest', 'portion', 'both'])
 
-		expect(response).toEqual({ created: [], skipped: [{ entryId: 'linked', reason: 'exists' }] })
+		expect(response).toEqual({
+			created: [],
+			createdRecipes: [],
+			skipped: [{ entryId: 'linked', reason: 'exists' }],
+		})
+	})
+	it('saves a portion of a pot as a recipe, not as a food', async () => {
+		const rows = [
+			createRow({ id: 'pot-portion', name: 'Суп курячий', potId: 'pot-1', category: 'soup' }),
+			createRow({ id: 'plain', name: 'Скир' }),
+		]
+		const entriesService = new EntriesService({
+			findVisibleEntries: vi.fn().mockResolvedValue(rows),
+		} as unknown as EntriesRepository)
+		const saveFromEntry = vi
+			.fn()
+			.mockResolvedValue({ id: 'recipe-1', name: 'Суп курячий', replaced: false })
+		const createFood = vi
+			.fn()
+			.mockResolvedValue({ id: 'food-1', ...DATA, brand: null, aliases: [], updatedAt: new Date() })
+		const linkMyFood = vi.spyOn(entriesService, 'linkMyFood').mockResolvedValue(undefined)
+		const prisma = { $transaction: (fn: (tx: unknown) => unknown) => fn(TX) }
+		const service = new MyFoodsService(
+			prisma as never,
+			{
+				findActiveFoodByName: vi.fn().mockResolvedValue(null),
+				createFood,
+			} as unknown as MemoryRepository,
+			entriesService,
+			{ saveFromEntry } as never,
+		)
+
+		const response = await service.rememberEntries(USER_ID, ['pot-portion', 'plain'])
+
+		expect(saveFromEntry).toHaveBeenCalledOnce()
+		expect(saveFromEntry).toHaveBeenCalledWith(
+			{
+				userId: USER_ID,
+				entryId: 'pot-portion',
+				identity: { name: 'Суп курячий', aliases: [], category: 'soup' },
+				messageId: null,
+			},
+			TX,
+		)
+		expect(createFood).toHaveBeenCalledOnce()
+		expect(linkMyFood).not.toHaveBeenCalledWith(
+			expect.objectContaining({ entryId: 'pot-portion' }),
+			TX,
+		)
+		expect(response.createdRecipes).toEqual([
+			{ id: 'recipe-1', name: 'Суп курячий', replaced: false },
+		])
+		expect(response.created).toHaveLength(1)
+	})
+
+	it('leaves a pot portion whose recipe is active out, like any portion of a recipe', async () => {
+		const rows = [
+			createRow({
+				id: 'saved-pot',
+				potId: 'pot-1',
+				recipeId: 'r1',
+				recipe: { deletedAt: null },
+			}),
+		]
+		const entriesService = new EntriesService({
+			findVisibleEntries: vi.fn().mockResolvedValue(rows),
+		} as unknown as EntriesRepository)
+		const saveFromEntry = vi.fn()
+		const prisma = { $transaction: (fn: (tx: unknown) => unknown) => fn(TX) }
+		const service = new MyFoodsService(
+			prisma as never,
+			{} as unknown as MemoryRepository,
+			entriesService,
+			{ saveFromEntry } as never,
+		)
+
+		const response = await service.rememberEntries(USER_ID, ['saved-pot'])
+
+		expect(saveFromEntry).not.toHaveBeenCalled()
+		expect(response).toEqual({ created: [], createdRecipes: [], skipped: [] })
 	})
 })

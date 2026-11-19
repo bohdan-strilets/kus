@@ -10,6 +10,7 @@ import { z } from 'zod'
 import { ClarificationStatus, type Prisma } from '../../generated/prisma/client'
 import { PrismaService } from '../../prisma'
 import { EntryEditsService } from '../entries/entry-edits.service'
+import { RecipesPotService } from '../recipes/recipes-pot.service'
 import { ChatFeedService } from './chat-feed.service'
 import {
 	ClarificationAlreadyAnsweredException,
@@ -45,6 +46,7 @@ export class ClarificationsService {
 		private readonly clarificationsRepository: ClarificationsRepository,
 		private readonly chatFeed: ChatFeedService,
 		private readonly entryEdits: EntryEditsService,
+		private readonly recipesPot: RecipesPotService,
 	) {}
 
 	/** Returns the assistant message that asked, with its updated meal card. */
@@ -84,7 +86,30 @@ export class ClarificationsService {
 		}
 		const option = optionIndex === null ? null : this.getOption(clarification.options, optionIndex)
 		const applied = option ?? values
-		if (applied) {
+		// a question about the water of a pot: some of its options carry waterMl
+		const isWaterQuestion = option !== null && this.hasWaterOptions(clarification.options)
+		const potEntry = isWaterQuestion
+			? await this.recipesPot.findPotEntry(
+					userId,
+					clarification.entries.map((entry) => entry.foodEntryId),
+					tx,
+				)
+			: null
+		if (option && potEntry) {
+			// the answer is about the water of a pot: the backend recounts every portion of it, and an
+			// answer without water ("Не знаю") leaves the estimate as it is
+			if (option.waterMl !== null) {
+				await this.recipesPot.correctPot(
+					{
+						userId,
+						entryId: potEntry.id,
+						correction: { waterMl: option.waterMl, cookedGrams: null },
+						messageId: answerMessageId ?? undefined,
+					},
+					tx,
+				)
+			}
+		} else if (applied) {
 			const isApplied = await this.entryEdits.applyOptionValues(
 				{
 					userId,
@@ -117,6 +142,11 @@ export class ClarificationsService {
 		tx: Prisma.TransactionClient,
 	): Promise<string[]> {
 		return this.clarificationsRepository.dismissOpenClarifications({ userId, entryIds }, tx)
+	}
+
+	private hasWaterOptions(stored: Prisma.JsonValue): boolean {
+		const options = storedOptionsSchema.safeParse(stored)
+		return options.success && options.data.some(({ waterMl }) => waterMl !== null)
 	}
 
 	private getOption(stored: Prisma.JsonValue, optionIndex: number): ClarifyOption {

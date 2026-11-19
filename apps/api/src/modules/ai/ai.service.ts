@@ -389,6 +389,7 @@ export class AiService {
 			(merged, { refsPatch: patch }) => ({
 				memoryRefs: [...(merged.memoryRefs ?? []), ...(patch?.memoryRefs ?? [])],
 				copyRefs: [...(merged.copyRefs ?? []), ...(patch?.copyRefs ?? [])],
+				recipeRefs: [...(merged.recipeRefs ?? []), ...(patch?.recipeRefs ?? [])],
 			}),
 			{},
 		)

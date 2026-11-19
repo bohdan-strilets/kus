@@ -16,6 +16,7 @@ import {
 	type FoodRefContext,
 	type MemoryFoodContext,
 	type RecentMeasurementContext,
+	type RecipeContext,
 	shiftDate,
 	shouldShowProgramRules,
 } from '@kus/shared'
@@ -61,6 +62,8 @@ interface BuildContextParams {
 	now: Date
 	localDate: Date
 	memory: MemoryFoodContext[]
+	/** Recipes the message names (`r1…`); no block when empty. */
+	recipes?: RecipeContext[]
 	/** Saved food id → its `m1…` in `memory`: the history says which turn saved it. */
 	foodRefById?: ReadonlyMap<string, string>
 	/** Foods the last reply asked to remove (`m…`) and the ones forgotten today (`g…`). */
@@ -185,6 +188,7 @@ export class ChatContextService {
 		now,
 		localDate,
 		memory,
+		recipes = [],
 		foodRefById = new Map(),
 		pendingRemovals = [],
 		forgottenFoods = [],
@@ -310,6 +314,8 @@ export class ChatContextService {
 				days,
 				measurements,
 				memory,
+				// no block at all unless a recipe matches the message
+				...(recipes.length > 0 ? { recipes } : {}),
 				// no block at all unless there is a fact or a proposal
 				...(factContexts.length > 0 ? { facts: factContexts } : {}),
 				...(facts.proposal ? { proposedFact: facts.proposal.text } : {}),

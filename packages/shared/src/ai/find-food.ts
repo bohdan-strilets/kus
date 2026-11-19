@@ -4,6 +4,12 @@
 import { z } from 'zod'
 
 import type { ParseRefsPatch } from './entry-edits.js'
+import {
+	type FindFoodRecipe,
+	formatFoundRecipe,
+	listRecipes,
+	searchRecipes,
+} from './find-food-recipes.js'
 import { FOOD_SEARCH_LIMIT, type FoodSearchCandidate, searchFoods } from './food-search.js'
 import { toContextText } from './memory-context.js'
 import { joinReadDigest } from './read-digest.js'
@@ -139,11 +145,15 @@ export const createRefIssuer = (
 export interface FindFoodData {
 	saved: readonly FindFoodSavedFood[]
 	history: readonly FindFoodHistoryEntry[]
+	/** The saved recipes; searched with the saved foods (scope saved and all). */
+	recipes?: readonly FindFoodRecipe[]
 }
 
 export interface FindFoodRefs {
 	saved: RefIssuer
 	history: RefIssuer
+	/** `r…` refs; without it the recipes are not listed. */
+	recipes?: RefIssuer
 }
 
 export interface FindFoodResult {
@@ -219,20 +229,42 @@ const searchByKey = <T extends { key: string }>(
 const compareByUse = (a: FindFoodSavedFood, b: FindFoodSavedFood): number =>
 	b.usageCount - a.usageCount || (b.lastUsedAt?.getTime() ?? 0) - (a.lastUsedAt?.getTime() ?? 0)
 
+/** Recipes of the result with their `r…` refs; none without a ref issuer. */
+const issueRecipeLines = (
+	recipes: readonly FindFoodRecipe[],
+	refs: FindFoodRefs,
+): { ref: string; recipe: FindFoodRecipe }[] => {
+	const issuer = refs.recipes
+	if (!issuer) return []
+	return recipes.map((recipe) => ({ ref: issuer.issue(recipe.key), recipe }))
+}
+
+/** `recipeRefs` only when there are some: a result without recipes keeps its old shape. */
+const toRecipePatch = (lines: readonly { ref: string }[]): ParseRefsPatch =>
+	lines.length > 0 ? { recipeRefs: lines.map(({ ref }) => ref) } : {}
+
 /** The whole memory without a query: the most used foods (at most FIND_FOOD_LIST_LIMIT) and the total. */
 const listSavedFoods = (data: FindFoodData, refs: FindFoodRefs): FindFoodResult => {
-	if (data.saved.length === 0) {
+	const recipeLines = issueRecipeLines(listRecipes(data.recipes ?? []), refs)
+	if (data.saved.length === 0 && recipeLines.length === 0) {
 		return { text: NO_SAVED_FOODS, refsPatch: { memoryRefs: [], copyRefs: [] }, foundCount: 0 }
 	}
 	const shown = [...data.saved].sort(compareByUse).slice(0, FIND_FOOD_LIST_LIMIT)
 	const lines = shown.map((food) => ({ ref: refs.saved.issue(food.key), food }))
+	const total =
+		data.saved.length > 0 ? [`${data.saved.length} saved in total; ask a name to narrow`] : []
 	return {
 		text: [
 			...lines.map(({ ref, food }) => formatFoundSavedFood(food, ref)),
-			`${data.saved.length} saved in total; ask a name to narrow`,
+			...recipeLines.map(({ ref, recipe }) => formatFoundRecipe(recipe, ref)),
+			...total,
 		].join('\n'),
-		refsPatch: { memoryRefs: lines.map(({ ref }) => ref), copyRefs: [] },
-		foundCount: lines.length,
+		refsPatch: {
+			memoryRefs: lines.map(({ ref }) => ref),
+			copyRefs: [],
+			...toRecipePatch(recipeLines),
+		},
+		foundCount: lines.length + recipeLines.length,
 	}
 }
 
@@ -288,10 +320,13 @@ export const runFindFood = ({
 					}),
 					now,
 				)
+	const recipes = input.scope === 'history' ? [] : searchRecipes(query, data.recipes ?? [], now)
 	const savedLines = saved.map((food) => ({ ref: refs.saved.issue(food.key), food }))
+	const recipeLines = issueRecipeLines(recipes, refs)
 	const historyLines = history.map((entry) => ({ ref: refs.history.issue(entry.key), entry }))
 	const lines = [
 		...savedLines.map(({ ref, food }) => formatFoundSavedFood(food, ref)),
+		...recipeLines.map(({ ref, recipe }) => formatFoundRecipe(recipe, ref)),
 		...historyLines.map(({ ref, entry }) => formatFoundHistoryEntry(entry, ref)),
 	]
 	return {
@@ -299,6 +334,7 @@ export const runFindFood = ({
 		refsPatch: {
 			memoryRefs: savedLines.map(({ ref }) => ref),
 			copyRefs: historyLines.map(({ ref }) => ref),
+			...toRecipePatch(recipeLines),
 		},
 		foundCount: lines.length,
 	}

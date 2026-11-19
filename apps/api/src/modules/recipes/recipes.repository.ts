@@ -10,6 +10,16 @@ const WITH_INGREDIENTS = {
 
 export type RecipeWithIngredients = Prisma.RecipeGetPayload<{ include: typeof WITH_INGREDIENTS }>
 
+const MATCHABLE = {
+	id: true,
+	name: true,
+	aliases: true,
+	usageCount: true,
+	lastUsedAt: true,
+} satisfies Prisma.RecipeSelect
+
+export type MatchableRecipe = Prisma.RecipeGetPayload<{ select: typeof MATCHABLE }>
+
 @Injectable()
 export class RecipesRepository {
 	constructor(private readonly prisma: PrismaService) {}
@@ -28,6 +38,45 @@ export class RecipesRepository {
 			include: WITH_INGREDIENTS,
 			orderBy: [{ lastUsedAt: { sort: 'desc', nulls: 'last' } }, { createdAt: 'desc' }],
 			skip,
+			take,
+		})
+	}
+
+	/** Names only (no ingredients): the message is matched in memory, the matches are loaded after. */
+	findMatchable({ userId, take }: { userId: string; take: number }): Promise<MatchableRecipe[]> {
+		return this.prisma.recipe.findMany({
+			where: { userId, deletedAt: null },
+			select: MATCHABLE,
+			orderBy: [{ lastUsedAt: { sort: 'desc', nulls: 'last' } }, { createdAt: 'desc' }],
+			take,
+		})
+	}
+
+	findActiveByIds({
+		userId,
+		ids,
+	}: {
+		userId: string
+		ids: string[]
+	}): Promise<RecipeWithIngredients[]> {
+		return this.prisma.recipe.findMany({
+			where: { id: { in: ids }, userId, deletedAt: null },
+			include: WITH_INGREDIENTS,
+		})
+	}
+
+	/** The recipes find_food searches: the user's active ones, the most used first, at most `take`. */
+	findActiveForSearch({
+		userId,
+		take,
+	}: {
+		userId: string
+		take: number
+	}): Promise<RecipeWithIngredients[]> {
+		return this.prisma.recipe.findMany({
+			where: { userId, deletedAt: null },
+			include: WITH_INGREDIENTS,
+			orderBy: [{ usageCount: 'desc' }, { lastUsedAt: { sort: 'desc', nulls: 'last' } }],
 			take,
 		})
 	}

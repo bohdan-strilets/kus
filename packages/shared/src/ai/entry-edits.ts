@@ -77,6 +77,7 @@ export const getParseRefs = (context: FoodParseContext): ParseRefs => ({
 		),
 	),
 	memoryRefByName: new Map(context.memory.map((food) => [toFoodNameKey(food.name), food.ref])),
+	recipeRefs: new Set((context.recipes ?? []).map((recipe) => recipe.ref)),
 	today: context.measurements.today,
 	measurementDays: new Set(
 		(context.measurements.recent ?? []).map(({ kind, localDate }) =>

@@ -11,6 +11,7 @@ import { AiUsageService } from '../ai/ai-usage.service'
 import { AiService, type ParseFoodParams } from '../ai/ai.service'
 import { MeasurementsService } from '../measurements/measurements.service'
 import { MemoryService } from '../memory/memory.service'
+import { RecipesContextService } from '../recipes/recipes-context.service'
 import { UsersService } from '../users/users.service'
 import { ChatContextService } from './chat-context.service'
 import { NO_EDITED_MESSAGES } from './chat-edits.service'
@@ -74,6 +75,7 @@ export class ChatService {
 		private readonly onboardingAnswers: ChatTrainingOnboardingAnswersService,
 		private readonly workoutSummary: ChatWorkoutSummaryService,
 		private readonly readTools: ChatReadToolsService,
+		private readonly recipesContext: RecipesContextService,
 	) {}
 
 	async sendMessage(userId: string, params: SendMessageParams): Promise<SendMessageResponse> {
@@ -261,6 +263,8 @@ export class ChatService {
 				hasPhoto: photo !== undefined,
 			})
 			const memory = await this.memoryService.findRelevantFoods(userId, params.text ?? '')
+			// the turn's `r…` refs: the block of the context and find_food's extend this one map
+			const recipes = await this.recipesContext.findRelevant(userId, params.text ?? '')
 			// extends memory.byRef with the foods the last reply asked to remove
 			const removals = await this.foodRemovals.load({
 				userId,
@@ -278,6 +282,7 @@ export class ChatService {
 				await this.chatContext.buildContext({
 					...params,
 					memory: memory.context,
+					recipes: recipes.context,
 					foodRefById: new Map([...memory.byRef].map(([ref, food]) => [food.id, ref])),
 					pendingRemovals: removals.pending,
 					forgottenFoods: removals.forgotten,
@@ -304,7 +309,7 @@ export class ChatService {
 						: null
 				},
 				text: params.text ?? '',
-				readTools: this.readTools.createExecutor({ memory, copyRefIds: turnCopyRefIds }),
+				readTools: this.readTools.createExecutor({ memory, recipes, copyRefIds: turnCopyRefIds }),
 				// the only place the bytes become base64: it goes straight into the request body
 				image: photo
 					? { mimeType: photo.mimeType, base64: photo.bytes.toString('base64') }

@@ -5,6 +5,7 @@ import { afterAll, describe, expect, it, vi } from 'vitest'
 import type { MyFood } from '../../generated/prisma/client'
 import { AiUnavailableException } from '../ai/ai.exceptions'
 import type { RecentEntryName } from '../entries/entries.service'
+import type { RecipeWithIngredients } from '../recipes/recipes.repository'
 import { ChatReadToolsService, type ReadToolTurnRefs } from './chat-read-tools.service'
 
 const logSpy = vi.spyOn(Logger.prototype, 'log').mockImplementation(() => undefined)
@@ -60,9 +61,11 @@ const create = () => {
 		{ findRecentEntryNames } as never,
 		{} as never,
 		{} as never,
+		{ findForSearch: vi.fn(() => Promise.resolve([])) } as never,
 	)
 	const turn: ReadToolTurnRefs = {
 		memory: { byRef: new Map([['m1', food('f-ctx', 'Ковбаса')]]) },
+		recipes: { byRef: new Map() },
 		copyRefIds: new Map([
 			['y1', 'e-y'],
 			['h2', 'e-h'],
@@ -199,8 +202,18 @@ describe('ChatReadToolsService find_food', () => {
 	})
 
 	it('fails the turn for a read tool it does not know', async () => {
-		const service = new ChatReadToolsService({} as never, {} as never, {} as never, {} as never)
-		const executor = service.createExecutor({ memory: { byRef: new Map() }, copyRefIds: new Map() })
+		const service = new ChatReadToolsService(
+			{} as never,
+			{} as never,
+			{} as never,
+			{} as never,
+			{} as never,
+		)
+		const executor = service.createExecutor({
+			memory: { byRef: new Map() },
+			recipes: { byRef: new Map() },
+			copyRefIds: new Map(),
+		})
 
 		await expect(
 			executor.execute(
@@ -242,7 +255,12 @@ describe('ChatReadToolsService get_workouts', () => {
 			{} as never,
 			{ getReadData } as never,
 			{ getActiveForRead } as never,
-		).createExecutor({ memory: { byRef: new Map() }, copyRefIds: new Map() })
+			{} as never,
+		).createExecutor({
+			memory: { byRef: new Map() },
+			recipes: { byRef: new Map() },
+			copyRefIds: new Map(),
+		})
 		const run = (arguments_: unknown) =>
 			executor.execute(
 				{ name: 'get_workouts', arguments: JSON.stringify(arguments_) },
@@ -305,5 +323,64 @@ describe('ChatReadToolsService get_workouts', () => {
 
 		const logged = spy.mock.calls.map(([line]) => String(line)).join('\n')
 		expect(logged).toBe(`get_workouts user=${OWNER} days=14 hasExercise=true count=0`)
+	})
+})
+
+const recipeRow = (id: string, name: string): RecipeWithIngredients =>
+	({
+		id,
+		name,
+		aliases: [],
+		cookedGrams: 1000,
+		defaultGrams: 350,
+		usageCount: 1,
+		lastUsedAt: null,
+		ingredients: [{ name: 'Буряк', grams: 1000, kcal: 1000 }],
+	}) as unknown as RecipeWithIngredients
+
+describe('ChatReadToolsService find_food recipes', () => {
+	const createRecipes = (rows: RecipeWithIngredients[], context: RecipeWithIngredients[] = []) => {
+		const findForSearch = vi.fn((_userId: string) => Promise.resolve(rows))
+		const executor = new ChatReadToolsService(
+			{ searchFoods: () => Promise.resolve([]) } as never,
+			{} as never,
+			{} as never,
+			{} as never,
+			{ findForSearch } as never,
+		).createExecutor({
+			memory: { byRef: new Map() },
+			recipes: { byRef: new Map(context.map((recipe, index) => [`r${index + 1}`, recipe])) },
+			copyRefIds: new Map(),
+		})
+		const find = (query: string) =>
+			executor.execute(
+				{ name: 'find_food', arguments: JSON.stringify({ query, scope: 'saved' }) },
+				{
+					userId: OWNER,
+					localDate: new Date('2026-11-09T00:00:00Z'),
+					signal: AbortSignal.timeout(1000),
+				},
+			)
+		return { find, findForSearch }
+	}
+
+	it('hands out an r-ref for a found recipe and the patch carries it', async () => {
+		const { find, findForSearch } = createRecipes([recipeRow('rec-1', 'Борщ')])
+
+		const result = await find('борщ')
+
+		expect(result.text).toContain(
+			'r1 "Борщ" — recipe: portion 350 g, 100 kcal/100 g; ingredients: Буряк 1000 g',
+		)
+		expect(result.refsPatch).toEqual({ memoryRefs: [], copyRefs: [], recipeRefs: ['r1'] })
+		expect(findForSearch).toHaveBeenCalledWith(OWNER)
+	})
+
+	it('continues the numbering after the refs of the context and keeps a known recipe ref', async () => {
+		const known = recipeRow('rec-1', 'Борщ')
+		const { find } = createRecipes([known, recipeRow('rec-2', 'Плов')], [known])
+
+		expect((await find('борщ')).text).toMatch(/^r1 "Борщ"/)
+		expect((await find('плов')).text).toMatch(/^r2 "Плов"/)
 	})
 })

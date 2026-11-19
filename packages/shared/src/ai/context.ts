@@ -31,6 +31,7 @@ import {
 	type ProgramProposalContext,
 } from './program-context.js'
 import { SYSTEM_PROMPT } from './prompt.js'
+import { formatSavedRecipes, type RecipeContext } from './recipe-context.js'
 import type { ExerciseContext, TodayWorkoutContext } from './workout-context.js'
 
 /**
@@ -133,6 +134,8 @@ export interface FoodParseContext {
 	days?: DayContext[]
 	measurements: MeasurementsContext
 	memory: MemoryFoodContext[]
+	/** Saved recipes the message names (`r1…`); no block when omitted or empty. */
+	recipes?: RecipeContext[]
 	/** Confirmed facts about the user, oldest first; no block when omitted or empty. */
 	facts?: FactContext[]
 	/** The fact waiting for the user's «Так / Ні»; no line when omitted or null. */
@@ -293,6 +296,7 @@ export const formatContext = (context: FoodParseContext): string => {
 		formatMeasurements(context.measurements),
 		...formatRecentMeasurements(context.measurements.recent ?? []),
 		memory,
+		...formatSavedRecipes(context.recipes ?? []),
 		...formatFacts(context.facts ?? [], context.proposedFact ?? null),
 		...formatFoodRemovals(context.pendingRemovals ?? [], context.forgottenFoods ?? []),
 		...formatProgramSection(context),

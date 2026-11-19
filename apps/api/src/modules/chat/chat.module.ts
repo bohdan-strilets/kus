@@ -7,6 +7,7 @@ import { FactsModule } from '../facts/facts.module'
 import { GoalsModule } from '../goals/goals.module'
 import { MeasurementsModule } from '../measurements/measurements.module'
 import { MemoryModule } from '../memory/memory.module'
+import { RecipesModule } from '../recipes/recipes.module'
 import { PhotosModule } from '../photos/photos.module'
 import { ProfileModule } from '../profile/profile.module'
 import { ProgramsModule } from '../programs/programs.module'
@@ -60,6 +61,7 @@ import { TrainingOnboardingMessagesRepository } from './training-onboarding-mess
 		ProfileModule,
 		ProgramsModule,
 		ProgressModule,
+		RecipesModule,
 		UsersModule,
 		WorkoutsModule,
 	],

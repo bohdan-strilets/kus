@@ -14,6 +14,7 @@ import {
 	HISTORY_FOOD_REF_PREFIX,
 	parseFindFoodArguments,
 	parseGetWorkoutsArguments,
+	RECIPE_REF_PREFIX,
 	runFindFood,
 	SAVED_FOOD_REF_PREFIX,
 } from '@kus/shared'
@@ -30,6 +31,8 @@ import type {
 import { EntriesService, type RecentEntryName } from '../entries/entries.service'
 import { MemoryService, type RelevantFoods } from '../memory/memory.service'
 import { ProgramsService } from '../programs/programs.service'
+import { RecipesContextService, type RelevantRecipes } from '../recipes/recipes-context.service'
+import { toFindFoodRecipe } from '../recipes/recipes.mapper'
 import { WorkoutStatsService } from '../workouts/workout-stats.service'
 
 const toSavedFood = (food: MyFood): FindFoodSavedFood => ({
@@ -64,6 +67,8 @@ const toHistoryEntry = ({ entry, count }: RecentEntryName): FindFoodHistoryEntry
 export interface ReadToolTurnRefs {
 	/** The turn's saved foods by ref (`m…`); new refs are added to it. */
 	memory: Pick<RelevantFoods, 'byRef'>
+	/** The turn's saved recipes by ref (`r…`); new refs are added to it. */
+	recipes: Pick<RelevantRecipes, 'byRef'>
 	/** The turn's earlier entries by ref (`y…`/`h…`) → entry id; new refs are added to it. */
 	copyRefIds: Map<string, string>
 }
@@ -85,6 +90,7 @@ export class ChatReadToolsService {
 		private readonly entriesService: EntriesService,
 		private readonly workoutStatsService: WorkoutStatsService,
 		private readonly programsService: ProgramsService,
+		private readonly recipesContext: RecipesContextService,
 	) {}
 
 	createExecutor(turn: ReadToolTurnRefs): ReadToolExecutor {
@@ -154,8 +160,11 @@ export class ChatReadToolsService {
 		const input = parseFindFoodArguments(call.arguments)
 		if (input === null) return { text: FIND_FOOD_INVALID_ARGUMENTS_RESULT }
 
-		const [foods, recent] = await Promise.all([
+		const [foods, recipes, recent] = await Promise.all([
 			input.scope === 'history' ? [] : once('saved', () => this.memoryService.searchFoods(userId)),
+			input.scope === 'history'
+				? []
+				: once('recipes', () => this.recipesContext.findForSearch(userId)),
 			input.scope === 'saved'
 				? []
 				: once('history', () =>
@@ -167,7 +176,12 @@ export class ChatReadToolsService {
 		])
 		// from here on synchronous: parallel calls never see a half-extended map
 		const foodsByKey = new Map(foods.map((food) => [food.id, food]))
+		const recipesByKey = new Map(recipes.map((recipe) => [recipe.id, recipe]))
 		const refs = {
+			recipes: createRefIssuer(
+				RECIPE_REF_PREFIX,
+				[...turn.recipes.byRef].map(([ref, recipe]) => [ref, recipe.id] as const),
+			),
 			saved: createRefIssuer(
 				SAVED_FOOD_REF_PREFIX,
 				[...turn.memory.byRef].map(([ref, food]) => [ref, food.id] as const),
@@ -176,12 +190,20 @@ export class ChatReadToolsService {
 		}
 		const result = runFindFood({
 			input,
-			data: { saved: foods.map(toSavedFood), history: recent.map(toHistoryEntry) },
+			data: {
+				saved: foods.map(toSavedFood),
+				history: recent.map(toHistoryEntry),
+				recipes: recipes.map(toFindFoodRecipe),
+			},
 			refs,
 		})
 		for (const [ref, key] of refs.saved.getIssued()) {
 			const food = foodsByKey.get(key)
 			if (food) turn.memory.byRef.set(ref, food)
+		}
+		for (const [ref, key] of refs.recipes.getIssued()) {
+			const recipe = recipesByKey.get(key)
+			if (recipe) turn.recipes.byRef.set(ref, recipe)
 		}
 		for (const [ref, key] of refs.history.getIssued()) turn.copyRefIds.set(ref, key)
 		// metadata only: never the query or the names (CLAUDE.md §10.1)
